@@ -27,6 +27,13 @@ begin
   end;
 end;
 
+procedure TControlCanvas.SetHandle(NewHandle: HDC);
+begin
+  if NewHandle=0 then // don't allow to clear handle if there's valid FDeviceContext - otherwise it doesn't get freed!
+    NewHandle := FDeviceContext;
+  inherited SetHandle(NewHandle);
+end;
+
 function TControlCanvas.GetDefaultColor(const ADefaultColorType: TDefaultColorType): TColor;
 begin
   if Assigned(FControl) then
@@ -92,9 +99,7 @@ begin
       else
         WinControl := FControl.Parent;
       WinControl.HandleNeeded;
-    end;
-    if FDeviceContext = 0 then
-    begin
+
       // store the handle locally since  we need it to check (and do not
       // want to fire creation events)
       FDeviceContext := FControl.GetDeviceContext(FWindowHandle);
@@ -112,12 +117,12 @@ end;
  ------------------------------------------------------------------------------}
 procedure TControlCanvas.FreeHandle;
 begin
-  inherited;
   if FDeviceContext <> 0 then
   begin
     ReleaseDC(FWindowHandle, FDeviceContext);
     FDeviceContext := 0;
   end;
+  inherited;
 end;
 
 function TControlCanvas.ControlIsPainting: boolean;
