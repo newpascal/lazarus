@@ -100,9 +100,16 @@ begin
         WinControl := FControl.Parent;
       WinControl.HandleNeeded;
 
-      // store the handle locally since  we need it to check (and do not
-      // want to fire creation events)
-      FDeviceContext := FControl.GetDeviceContext(FWindowHandle);
+      // important: keep the condition here again because
+      // CreateWnd (called via WinControl.HandleNeeded above) could execute
+      // this function again and thus allocate FDeviceContext twice
+      // resulting in a memory leak
+      if FDeviceContext = 0 then
+      begin
+        // store the handle locally since  we need it to check (and do not
+        // want to fire creation events)
+        FDeviceContext := FControl.GetDeviceContext(FWindowHandle);
+      end;
     end;
     Handle := FDeviceContext;
   end;
