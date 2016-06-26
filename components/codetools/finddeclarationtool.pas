@@ -2945,8 +2945,7 @@ begin
       CurPos.StartPos:=-1;
     end else begin
       CurPos.StartPos:=-1;
-      ErrMsg:=Format(ctsNeededByMode, [CompilerModeNames[Scanner.CompilerMode]]
-        );
+      ErrMsg:=Format(ctsNeededByMode, [CompilerModeNames[Scanner.CompilerMode]]);
     end;
     if CompiledFilename<>'' then begin
       // there is a compiled unit, only the source was not found
@@ -9585,9 +9584,9 @@ begin
         end
         else if (CompareIdentifiers(IdentPos,'COPY')=0) then
         begin
-          if (ParamList.Count<>3) or (Scanner.Values.IsDefined('VER1_0')) then
+          if (ParamList.Count<1) or (ParamList.Count>3) or (Scanner.Values.IsDefined('VER1_0')) then
             exit;
-          Result.Desc:=xtString;
+          Result:=ParamList.Items[0]; // Copy sets the result based on the first parameter (can be any kind of string or array)
         end
         else if (CompareIdentifiers(IdentPos,'OBJCSELECTOR')=0) then
         begin
