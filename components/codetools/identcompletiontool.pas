@@ -1389,9 +1389,17 @@ begin
     AddCompilerProcedure('Break','');
     AddCompilerFunction('Concat','S1:String;S2:String[...;Sn:String]', 'String');
     AddCompilerProcedure('Continue','');
-    AddCompilerFunction('Copy','const S:String;FromPosition,Count:Integer', 'String');
+    if StrToIntDef(Scanner.Values['FPC_FULLVERSION'],0)>=30100 then // FromPosition and Count parameters are optional
+      AddCompilerFunction('Copy','const S:StringOrArray[;FromPosition,Count:Integer]', 'String')
+    else
+      AddCompilerFunction('Copy','const S:StringOrArray;FromPosition,Count:Integer', 'String');
     AddCompilerProcedure('Dec','var X:Ordinal;N:Integer=1');
     AddCompilerFunction('Default','T:Type','const');
+    if StrToIntDef(Scanner.Values['FPC_FULLVERSION'],0)>=30100 then //Delete and Insert are available as intrinsic since FPC 3.1
+    begin
+      AddCompilerProcedure('Delete','var S:string;Index,Count:Integer');
+      AddCompilerProcedure('Insert','const Source:string;var Dest:string;Index:Integer');
+    end;
     AddCompilerProcedure('Dispose','var X:Pointer');
     AddCompilerProcedure('Exclude','var S:Set;X:Ordinal');
     AddCompilerProcedure('Exit','');
@@ -2935,7 +2943,10 @@ var
       AddCompilerProc('Addr','var X','Pointer');
       AddCompilerProc('BitSizeOf','Identifier','Integer');
       AddCompilerProc('Concat','S1:String;S2:String[...;Sn:String]', 'String');
-      AddCompilerProc('Copy','const S:String;FromPosition,Count:Integer', 'String');
+      if StrToIntDef(Scanner.Values['FPC_FULLVERSION'],0)>=30100 then // FromPosition and Count parameters are optional
+        AddCompilerProc('Copy','const S:StringOrArray[;FromPosition,Count:Integer]', 'String')
+      else
+        AddCompilerProc('Copy','const S:StringOrArray;FromPosition,Count:Integer', 'String');
       AddCompilerProc('Dec','var X:Ordinal;N:Integer=1');
       AddCompilerProc('Default','T:Type','const');
       AddCompilerProc('Dispose','var X:Pointer');
@@ -2944,6 +2955,11 @@ var
       AddCompilerProc('Finalize','var X');
       AddCompilerProc('get_frame','','Pointer');
       AddCompilerProc('High','Arg:TypeOrVariable','Ordinal');
+      if StrToIntDef(Scanner.Values['FPC_FULLVERSION'],0)>=30100 then //Delete and Insert are available as intrinsic since FPC 3.1
+      begin
+        AddCompilerProc('Delete','var S:string;Index,Count:Integer');
+        AddCompilerProc('Insert','const Source:string;var Dest:string;Index:Integer');
+      end;
       AddCompilerProc('Inc','var X:Ordinal;N:Integer=1');
       AddCompilerProc('Include','var S:Set;X:Ordinal');
       AddCompilerProc('Initialize','var X');
