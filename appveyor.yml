@@ -5,6 +5,7 @@ branches:
     - release
   except:
     - master
+    - lazarus
 
 
 # Do not build on tags (GitHub only)
