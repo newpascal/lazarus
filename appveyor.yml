@@ -31,7 +31,7 @@ environment:
   BINW32_DL:
     secure: 638jQ7/uOvgtb2oIeUqEe/6/wQXnTX5Y4M5gGYkz8jE=
   DOWNLOAD_DL:
-    secure: 638jQ7/uOvgtb2oIeUqEeyjgKd+47aJdonyR7MdhGuJnZZxNlQqijRl1SOO7oBNW
+    secure: 638jQ7/uOvgtb2oIeUqEezQIuaElv9GkTYJNxZwp1LqfbMXuUUNoSW6k1VMSA79w
 
 install:
   - rm appveyor.yml
