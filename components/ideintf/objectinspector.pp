@@ -711,6 +711,7 @@ type
     FUpdatingAvailComboBox: Boolean;
     FComponentEditor: TBaseComponentEditor;
     FOnNodeGetImageIndex: TOnOINodeGetImageEvent;
+    procedure TopSplitterMoved(Sender: TObject);
     procedure CreateTopSplitter;
     procedure CreateBottomSplitter;
     function GetParentCandidates: TFPList;
@@ -762,6 +763,7 @@ type
     procedure CreateNoteBook;
     procedure KeyDown(var Key: Word; Shift: TShiftState); override;
     procedure KeyUp(var Key: Word; Shift: TShiftState); override;
+    procedure Resize; override;
     procedure DoModified(Sender: TObject);
     function GetSelectedPersistent: TPersistent;
     function GetComponentEditorForSelection: TBaseComponentEditor;
@@ -2724,9 +2726,6 @@ begin
       // resize the edit component
       if (FCurrentEdit is TEdit) or (FCurrentEdit is TComboBox) then
       begin
-        {$IFnDEF LCLGTK2}
-        Dec(EditCompRect.Left);
-        {$ENDIF}
         Dec(EditCompRect.Top);
       {$IFDEF UseOINormalCheckBox}
       end
@@ -2734,7 +2733,11 @@ begin
       begin
         with EditCompRect do  // Align "normal" CheckBox to the middle vertically
           Inc(Top, (Bottom - Top - ValueCheckBox.Height) div 2);
-        Inc(EditCompRect.Left);  // and move it a little right.
+      {$ELSE}
+      end
+      else if FCurrentEdit is TCheckBoxThemed then
+      begin             // Move right as much as in TPropertyEditor.DrawCheckValue.
+        Inc(EditCompRect.Left, CheckBoxThemedLeftOffs);
       {$ENDIF}
       end;
       //debugln('TOICustomPropertyGrid.AlignEditComponents A ',dbgsName(FCurrentEdit),' ',dbgs(EditCompRect));
@@ -5186,8 +5189,7 @@ end;
 procedure TObjectInspectorDlg.WidgetSetRestrictedPaint(Sender: TObject);
 begin
   if RestrictedProps <> nil then
-    RestrictedPaint(
-      WidgetSetsRestrictedBox, RestrictedProps.WidgetSetRestrictions);
+    RestrictedPaint(WidgetSetsRestrictedBox, RestrictedProps.WidgetSetRestrictions);
 end;
 
 procedure TObjectInspectorDlg.ComponentRestrictedPaint(Sender: TObject);
@@ -5209,6 +5211,12 @@ begin
   RestrictedPaint(ComponentRestrictedBox, WidgetSetRestrictions);
 end;
 
+procedure TObjectInspectorDlg.TopSplitterMoved(Sender: TObject);
+begin
+  Assert(Assigned(ComponentTree));
+  ComponentTree.Invalidate;  // Update Scrollbars.
+end;
+
 procedure TObjectInspectorDlg.CreateTopSplitter;
 // vertical splitter between component tree and notebook
 begin
@@ -5220,6 +5228,7 @@ begin
     Align := alTop;
     Top := ComponentPanelHeight;
     Height := 5;
+    OnMoved := @TopSplitterMoved;
   end;
 end;
 
@@ -5435,6 +5444,13 @@ begin
   inherited KeyUp(Key, Shift);
   if (Key<>VK_UNKNOWN) and Assigned(OnRemainingKeyUp) then
     OnRemainingKeyUp(Self,Key,Shift);
+end;
+
+procedure TObjectInspectorDlg.Resize;
+begin
+  inherited Resize;
+  if Assigned(ComponentTree) then
+    ComponentTree.Invalidate;  // Update Scrollbars.
 end;
 
 procedure TObjectInspectorDlg.DoModified(Sender: TObject);

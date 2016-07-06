@@ -4027,22 +4027,49 @@ procedure TMainIDE.mnuProjectResaveFormsWithI18n(Sender: TObject);
 var
   AnUnitInfo: TUnitInfo;
   LFMFileName: string;
+  OpenStatus, WriteStatus: TModalResult;
+  AbortFlag, ReadSaveFailFlag: boolean;
 begin
+  AbortFlag:=false;
   AnUnitInfo:=Project1.FirstPartOfProject;
-  while AnUnitInfo<>nil do
+  while (AnUnitInfo<>nil) and (not AbortFlag) do
   begin
+    ReadSaveFailFlag:=false;
     if FileNameIsPascalSource(AnUnitInfo.Filename) then
     begin
       LFMFileName:=AnUnitInfo.UnitResourceFileformat.GetUnitResourceFilename(AnUnitInfo.Filename,true);
       if FileExistsCached(LFMFileName) and (not AnUnitInfo.DisableI18NForLFM) then
-        if LazarusIDE.DoOpenEditorFile(AnUnitInfo.Filename,-1,-1,[ofAddToRecent])=mrOk then
+      begin
+        OpenStatus:=LazarusIDE.DoOpenEditorFile(AnUnitInfo.Filename,-1,-1,[ofAddToRecent]);
+        if OpenStatus=mrOk then
         begin
           AnUnitInfo.Modified:=true;
-          LazarusIDE.DoSaveEditorFile(AnUnitInfo.Filename,[]);
+          WriteStatus:=LazarusIDE.DoSaveEditorFile(AnUnitInfo.Filename,[]);
           //DebugLn(['TMainIDE.mnuProjectResaveFormsWithI18n Resaving form "',AnUnitInfo.Filename,'"']);
+          if WriteStatus<>mrOk then
+          begin
+            ReadSaveFailFlag:=true;
+            if (WriteStatus=mrAbort) or
+              (IDEMessageDialog(lisErrorSavingForm, Format(lisCannotSaveForm, [
+                AnUnitInfo.Filename]), mtError, [
+                mbRetry, mbAbort])=mrAbort) then
+                AbortFlag:=true;
+          end;
+        end
+        else
+        begin
+          ReadSaveFailFlag:=true;
+          if (OpenStatus=mrAbort) or
+            (IDEMessageDialog(lisErrorOpeningForm, Format(lisCannotOpenForm, [
+              AnUnitInfo.Filename]), mtError, [mbRetry,
+              mbAbort])=mrAbort) then
+              AbortFlag:=true;
         end;
+      end;
     end;
-    AnUnitInfo:=AnUnitInfo.NextPartOfProject;
+    //we try next file only if read and write were successful, otherwise we retry current file or abort
+    if not ReadSaveFailFlag then
+      AnUnitInfo:=AnUnitInfo.NextPartOfProject;
   end;
 end;
 
@@ -4641,7 +4668,7 @@ procedure TMainIDE.DoLoadIDEOptions(Sender: TObject; AOptions: TAbstractIDEOptio
 begin
   if ConsoleVerbosity>0 then
     DebugLn(['Hint: (lazarus) TMainIDE.OnLoadIDEOptions: ', AOptions.ClassName]);
-  // ToDo: Figure out why this is not called.
+  // ToDo: Figure out why this is not called with TEnvironmentOptions.
   if AOptions is TEnvironmentOptions then
     LoadDesktopSettings(AOptions as TEnvironmentOptions);
 end;
@@ -4650,7 +4677,7 @@ procedure TMainIDE.DoSaveIDEOptions(Sender: TObject; AOptions: TAbstractIDEOptio
 begin
   if ConsoleVerbosity>0 then
     DebugLn(['Hint: (lazarus) TMainIDE.OnSaveIDEOptions: ', AOptions.ClassName]);
-  // ToDo: Figure out why this is not called.
+  // ToDo: Figure out why this is not called with TEnvironmentOptions.
   if AOptions is TEnvironmentOptions then
     SaveDesktopSettings(AOptions as TEnvironmentOptions);
 end;

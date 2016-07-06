@@ -697,6 +697,7 @@ type
     FFastEditing: boolean;
     FAltColorStartNormal: boolean;
     FFlat: Boolean;
+    FOnAfterSelection: TOnSelectEvent;
     FOnLoadColumn: TSaveColumnEvent;
     FOnSaveColumn: TSaveColumnEvent;
     FRangeSelectMode: TRangeSelectMode;
@@ -721,8 +722,8 @@ type
     FOnPrepareCanvas: TOnPrepareCanvasEvent;
     FOnSelectEditor: TSelectEditorEvent;
     FOnValidateEntry: TValidateEntryEvent;
-    FGridLineColor: TColor;
-    FFixedcolor, FFixedHotColor, FFocusColor, FSelectedColor: TColor;
+    FGridLineColor, FFixedGridLineColor: TColor;
+    FFixedColor, FFixedHotColor, FFocusColor, FSelectedColor: TColor;
     FFocusRectVisible: boolean;
     FCols,FRows: TList;
     FsaveOptions: TSaveOptions;
@@ -857,6 +858,7 @@ type
     procedure SetEditor(AValue: TWinControl);
     procedure SetFocusColor(const AValue: TColor);
     procedure SetGridLineColor(const AValue: TColor);
+    procedure SetFixedGridLineColor(const AValue: TColor);
     procedure SetGridLineStyle(const AValue: TPenStyle);
     procedure SetGridLineWidth(const AValue: Integer);
     procedure SetLeftCol(const AValue: Integer);
@@ -887,6 +889,7 @@ type
     procedure AddSelectedRange;
     procedure AdjustClientRect(var ARect: TRect); override;
     procedure AdjustEditorBounds(NewCol,NewRow:Integer); virtual;
+    procedure AfterMoveSelection(const prevCol,prevRow: Integer); virtual;
     procedure AssignTo(Dest: TPersistent); override;
     procedure AutoAdjustColumn(aCol: Integer); virtual;
     procedure BeforeMoveSelection(const DCol,DRow: Integer); virtual;
@@ -1136,6 +1139,7 @@ type
     property FixedCols: Integer read FFixedCols write SetFixedCols default 1;
     property FixedRows: Integer read FFixedRows write SetFixedRows default 1;
     property FixedColor: TColor read GetFixedColor write SetFixedcolor default clBtnFace;
+    property FixedGridLineColor: TColor read FFixedGridLineColor write SetFixedGridLineColor default cl3DDKShadow;
     property FixedHotColor: TColor read FFixedHotColor write FFixedHotColor default cl3DLight;
     property Flat: Boolean read FFlat write SetFlat default false;
     property FocusColor: TColor read FFocusColor write SetFocusColor;
@@ -1174,6 +1178,7 @@ type
     property VisibleColCount: Integer read GetVisibleColCount stored false;
     property VisibleRowCount: Integer read GetVisibleRowCount stored false;
 
+    property OnAfterSelection: TOnSelectEvent read FOnAfterSelection write FOnAfterSelection;
     property OnBeforeSelection: TOnSelectEvent read FOnBeforeSelection write FOnBeforeSelection;
     property OnCheckboxToggled: TToggledcheckboxEvent read FOnCheckboxToggled write FOnCheckboxToggled;
     property OnCompareCells: TOnCompareCells read FOnCompareCells write FOnCompareCells;
@@ -1332,6 +1337,7 @@ type
     property ExtendedColSizing;
     property AltColorStartNormal;
     property FastEditing;
+    property FixedGridLineColor;
     property FocusColor;
     property FocusRectVisible;
     property GridHeight;
@@ -1392,6 +1398,7 @@ type
     property VisibleColCount;
     property VisibleRowCount;
 
+    property OnAfterSelection;
     property OnBeforeSelection;
     property OnClick;
     property OnColRowDeleted: TgridOperationEvent read FOnColRowDeleted write FOnColRowDeleted;
@@ -1498,6 +1505,7 @@ type
     property VisibleColCount;
     property VisibleRowCount;
 
+    property OnAfterSelection;
     property OnBeforeSelection;
     property OnCheckboxToggled;
     property OnClick;
@@ -1718,6 +1726,7 @@ type
     property VisibleColCount;
     property VisibleRowCount;
 
+    property OnAfterSelection;
     property OnBeforeSelection;
     property OnChangeBounds;
     property OnCheckboxToggled;
@@ -2559,6 +2568,13 @@ begin
   Invalidate;
 end;
 
+procedure TCustomGrid.SetFixedGridLineColor(const AValue: TColor);
+begin
+  if FFixedGridLineColor=AValue then exit;
+  FFixedGridLineColor:=AValue;
+  Invalidate;
+end;
+
 procedure TCustomGrid.SetLeftCol(const AValue: Integer);
 begin
   TryScrollTo(AValue, FTopLeft.Y, True, False);
@@ -2569,12 +2585,12 @@ begin
   if FOptions=AValue then exit;
   FOptions:=AValue;
   UpdateSelectionRange;
-  if goAlwaysShowEditor in Options then begin
+  if goEditing in Options then
     SelectEditor;
-    EditorShow(true);
-  end else begin
+  if goAlwaysShowEditor in Options then
+    EditorShow(true)
+  else
     EditorHide;
-  end;
   if goAutoAddRowsSkipContentCheck in Options then
     FRowAutoInserted := False;
   VisualChange;
@@ -2842,6 +2858,12 @@ begin
   SetColRow(NewCol,NewRow);
   if EditorMode then
     EditorPos;
+end;
+
+procedure TCustomGrid.AfterMoveSelection(const prevCol, prevRow: Integer);
+begin
+  if Assigned(OnAfterSelection) then
+    OnAfterSelection(Self, prevCol, prevRow);
 end;
 
 procedure TCustomGrid.AssignTo(Dest: TPersistent);
@@ -4261,8 +4283,10 @@ begin
             end;
           end;
         end;
+        Pen.Color := cl3DDKShadow;
+      end else begin
+        Pen.Color := FFixedGridLineColor;
       end;
-      Pen.Color := cl3DDKShadow;
     end else begin
       Dv := goVertLine in Options;
       Dh := goHorzLine in Options;
@@ -6993,14 +7017,17 @@ begin
       if not FEditorKey and (Shift = [ssShift]) then
         doCutToClipboard;
     VK_DELETE:
-      if not FEditorKey and EditingAllowed(FCol)
-      and (Editor is TCustomEdit) and not (csDesigning in ComponentState)
-      then begin
-        EditorShow(False);
-        TCustomEdit(Editor).Text:='';
-        InvalidateCell(FCol,FRow,True);
-        EditorShow(True);
-        Key := 0;
+      if not FEditorKey and EditingAllowed(FCol) and
+         not (csDesigning in ComponentState) then begin
+        if Editor=nil then
+          SelectEditor;
+        if Editor is TCustomEdit then begin
+          EditorShow(False);
+          TCustomEdit(Editor).Text:='';
+          InvalidateCell(FCol,FRow,True);
+          EditorShow(True);
+          Key := 0;
+        end;
       end;
   end;
   if FEditorKey and (not PreserveRowAutoInserted) then
@@ -7149,6 +7176,7 @@ function TCustomGrid.MoveExtend(Relative: Boolean; DCol, DRow: Integer;
   ForceFullyVisible: Boolean): Boolean;
 var
   OldRange: TRect;
+  prevCol, prevRow: Integer;
 begin
   Result:=TryMoveSelection(Relative,DCol,DRow);
   if (not Result) then Exit;
@@ -7160,6 +7188,8 @@ begin
   BeforeMoveSelection(DCol,DRow);
 
   OldRange := FRange;
+  PrevRow := FRow;
+  PrevCol := FCol;
 
   if goRowSelect in Options then
     FRange:=Rect(FFixedCols, DRow, Colcount-1, DRow)
@@ -7192,6 +7222,8 @@ begin
       EditorHide;
     EditorShow(true);
   end;
+
+  AfterMoveSelection(PrevCol,PrevRow);
 
   {$IfDef dbgGrid}DebugLnExit('MoveExtend END FCol= ',IntToStr(FCol), ' FRow= ',IntToStr(FRow));{$Endif}
 end;
@@ -9025,6 +9057,7 @@ begin
   FDefColWidth:=DEFCOLWIDTH;
   FDefRowHeight:=GetDefaultRowHeight;
   FGridLineColor:=clSilver;
+  FFixedGridLineColor := cl3DDKShadow;
   FGridLineStyle:=psSolid;
   FGridLineWidth := 1;
   fFocusColor:=clRed;

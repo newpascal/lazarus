@@ -308,6 +308,10 @@ resourcestring
   lisDiscardChanges = 'Discard changes';
   lisDiscardChangesAll = 'Discard all changes';
   lisDoNotCloseTheProject = 'Do not close the project';
+  lisErrorSavingForm = 'Error saving form';
+  lisCannotSaveForm = 'Cannot save form "%s".';
+  lisErrorOpeningForm = 'Error opening form';
+  lisCannotOpenForm = 'Cannot open form "%s".';
   lisConvert = 'Convert';
   lisPLDShowGlobalLinksIn = 'Show global links in ';
   lisPLDShowUserLinksIn = 'Show user links in ';
@@ -479,7 +483,7 @@ resourcestring
   lisMenuOpenRecentProject = 'Open Recent Project';
   lisMenuSaveProject = 'Save Project';
   lisMenuSaveProjectAs = 'Save Project As ...';
-  lisMenuResaveFormsWithI18n = 'Resave forms with i18n';
+  lisMenuResaveFormsWithI18n = 'Resave forms with enabled i18n';
   lisMenuPublishProject = 'Publish Project ...';
   lisPublishProject = 'Publish Project';
   lisMenuProjectInspector = 'Project Inspector';
@@ -2261,6 +2265,8 @@ resourcestring
   dlgLinkSmart = 'Link smart';
   dlgPassOptsLinker = 'Pass options to linker with "-k", delimiter is space';
   dlgWin32GUIApp = 'Win32 gui application';
+  lisOptionValueIgnored = 'ignored';
+  lisCannotSubstituteMacroS = 'Cannot substitute macro "%s".';
   dlgTargetSpecificOptions = 'Target-specific options';
   dlgVerbosity = 'Verbosity during compilation:';
   dlgCOShowErr = 'Show errors';
@@ -2845,9 +2851,8 @@ resourcestring
   srkmCommand  = 'Command:';
   lisKeyOr2KeySequence = 'Key (or 2 key sequence)';
   lisTheKeyIsAlreadyAssignedToRemoveTheOldAssignmentAnd = 'The key %s'
-    +'%sis already assigned to %s.'
-    +'%sRemove the old assignment and assign the key to the new function'
-    +'%s%s?';
+    +' is already assigned to %s%s.'
+    +'%s%sRemove the old assignment and assign the key to the new function %s?';
   lisAlternativeKeyOr2KeySequence = 'Alternative key (or 2 key sequence)';
   srkmConflic  = 'Conflict ';
   lisThereAreNoConflictingKeys = 'There are no conflicting keys.';

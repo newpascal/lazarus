@@ -1338,8 +1338,6 @@ begin
       for I := dtpHour to dtpMiliSec do
         if not (I in FEffectiveHideDateTimeParts) then begin
           Inc(TimeParts);
-          if TimeParts > 1 then
-            Inc(FTimeWidth, FTimeSeparatorWidth);
 
           if I = dtpMiliSec then
             FTimeWidth := FTimeWidth + 3 * FDigitWidth
@@ -3605,7 +3603,7 @@ begin
     asYetAnotherShape:
       { something in between, not very pretty:  }
       Canvas.Polygon([Point(X+0, Y+1), Point(X+1, Y+0),
-            Point(X+2, Y+1), Point(X+6, Y+1),Point(X+7, Y+0), Point(X+8, 1), Point(X+4, Y+5)]);
+            Point(X+2, Y+1), Point(X+6, Y+1),Point(X+7, Y+0), Point(X+8, Y+1), Point(X+4, Y+5)]);
   end;
 end;
 
