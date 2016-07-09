@@ -1768,12 +1768,28 @@ type
       Add(IsKeyWordMethodSpecifier.GetItem(i).KeyWord+';');
   end;
 
+  procedure AddProcSpecifiers;
+  var
+    i: Integer;
+  begin
+    for i:=0 to IsKeyWordProcedureSpecifier.Count-1 do
+      Add(IsKeyWordProcedureSpecifier.GetItem(i).KeyWord+';');
+  end;
+
+  procedure AddProcTypeSpecifiers;
+  var
+    i: Integer;
+  begin
+    for i:=0 to IsKeyWordProcedureTypeSpecifier.Count-1 do
+      Add(IsKeyWordProcedureTypeSpecifier.GetItem(i).KeyWord+';');
+  end;
+
 var
   Node: TCodeTreeNode;
   SubNode: TCodeTreeNode;
   NodeInFront: TCodeTreeNode;
   p: Integer;
-  NodeBehind: TCodeTreeNode;
+  NodeBehind, LastChild: TCodeTreeNode;
 begin
   try
     Node:=Context.Node;
@@ -1813,18 +1829,15 @@ begin
         if (Node.Desc=ctnRecordType) or (Node.Parent.Desc=ctnRecordType) then begin
           Add('case');
         end;
-        if (Node.LastChild<>nil) and (CleanPos>Node.LastChild.StartPos)
-        and (Node.LastChild.EndPos>Node.LastChild.StartPos)
-        and (Node.LastChild.EndPos<Srclen) then begin
+        LastChild:=Node.LastChild;
+        if (LastChild<>nil) and (CleanPos>LastChild.StartPos)
+        and (LastChild.EndPos>LastChild.StartPos)
+        and (LastChild.EndPos<Srclen) then begin
           //debugln(['TIdentCompletionTool.GatherContextKeywords end of class section ',dbgstr(copy(Src,Node.LastChild.EndPos-10,10))]);
-          SubNode:=Node.LastChild;
+          SubNode:=LastChild;
           if SubNode.Desc=ctnProperty then begin
             CheckProperty(SubNode);
           end;
-        end;
-        if NodeInFront<>nil then begin
-          if NodeInFront.Desc=ctnProcedure then
-            AddMethodSpecifiers;
         end;
       end;
 
@@ -1932,6 +1945,25 @@ begin
     ctnProperty:
       CheckProperty(Node);
 
+    end;
+
+    if NodeInFront<>nil then begin
+      if NodeInFront.Desc=ctnProcedureHead then begin
+        // procedure head postfix modifiers
+        //debugln(['TIdentCompletionTool.GatherContextKeywords NodeInFront.Parent=',NodeInFront.Parent.DescAsString]);
+        if NodeInFront.Parent.Desc=ctnProcedure then begin
+          //debugln(['TIdentCompletionTool.GatherContextKeywords NodeInFront.Parent.Parent=',NodeInFront.Parent.Parent.DescAsString]);
+          case NodeInFront.Parent.Parent.Desc of
+          ctnClass,ctnObject,ctnObjCCategory,ctnObjCClass,
+          ctnClassHelper, ctnRecordHelper, ctnTypeHelper,
+          ctnClassPrivate,ctnClassProtected,ctnClassPublic,ctnClassPublished:
+            AddMethodSpecifiers;
+          else
+            AddProcSpecifiers;
+          end;
+        end else if NodeInFront.Parent.Desc=ctnProcedureType then
+          AddProcTypeSpecifiers;
+      end;
     end;
   except
     // ignore parser errors
