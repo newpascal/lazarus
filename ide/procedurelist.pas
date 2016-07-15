@@ -379,27 +379,24 @@ begin
         or (lCodeTool.Tree.Root = nil) then
       Exit; //==>
 
-    if Assigned(lCodeTool.Tree) then
+    { Find the starting point }
+    lNode := lCodeTool.FindImplementationNode;
+    if lNode = nil then
     begin
-      { Find the starting point }
-      lNode := lCodeTool.FindImplementationNode;
-      if lNode = nil then
-      begin
-        { fall back - guess we are working with a program unit }
-        lNode := lCodeTool.Tree.Root;
-      end;
+      { fall back - guess we are working with a program or there is a syntax error }
+      lNode := lCodeTool.Tree.Root;
+    end;
 
-      { populate the listview here }
-      lNode := lNode.FirstChild;
-      while lNode <> nil do
+    { populate the listview here }
+    lNode := lNode.FirstChild;
+    while lNode <> nil do
+    begin
+      if lNode.Desc = ctnProcedure then
       begin
-        if lNode.Desc = ctnProcedure then
-        begin
-          AddToListView(lCodeTool, lNode);
-        end;
-        lNode := lNode.NextBrother;
+        AddToListView(lCodeTool, lNode);
       end;
-    end;  { if }
+      lNode := lNode.Next;
+    end;
   finally
     if LV.Items.Count > 0 then
     begin
@@ -482,7 +479,7 @@ begin
   if FSearchAll and tbFilterAny.Down then
   begin
     lAttr := [phpWithoutClassKeyword, phpWithoutParamList, phpWithoutBrackets,
-       phpWithoutSemicolon, phpAddClassName];
+       phpWithoutSemicolon, phpAddClassName, phpAddParentProcs];
   end
   else
   begin
@@ -501,7 +498,7 @@ begin
 
   { procedure name }
   lNodeText := pCodeTool.ExtractProcHead(pNode,
-      [phpWithoutParamList, phpWithoutBrackets, phpWithoutSemicolon]);
+      [phpAddParentProcs, phpWithoutParamList, phpWithoutBrackets, phpWithoutSemicolon]);
   lItem.SubItems.Add(lNodeText);
 
   { type }
@@ -519,7 +516,7 @@ begin
   
   { full procedure name used in statusbar }
   lNodeText := pCodeTool.ExtractProcHead(pNode,
-                  [phpWithStart,phpWithVarModifiers,
+                  [phpWithStart,phpAddParentProcs,phpWithVarModifiers,
                    phpWithParameterNames,phpWithDefaultValues,phpWithResultType,
                    phpWithOfObject,phpWithCallingSpecs,phpWithProcModifiers]);
   lItem.SubItems.Add(lNodeText);
