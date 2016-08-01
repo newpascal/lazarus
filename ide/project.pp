@@ -1014,6 +1014,8 @@ type
     function GetStateFilename: string;
     function GetCompileSourceFilename: string;
     procedure AutoAddOutputDirToIncPath;
+    function ExtendUnitSearchPath(NewUnitPaths: string): boolean;
+    function ExtendIncSearchPath(NewIncPaths: string): boolean;
 
     // compile state file
     function LoadStateFile(IgnoreErrors: boolean): TModalResult;
@@ -4835,8 +4837,7 @@ end;
 
 procedure TProject.AddSrcPath(const SrcPathAddition: string);
 begin
-  CompilerOptions.SrcPath:=MergeSearchPaths(CompilerOptions.SrcPath,
-                                            GetForcedPathDelims(SrcPathAddition));
+  CompilerOptions.MergeToSrcPath( GetForcedPathDelims(SrcPathAddition) );
 end;
 
 function TProject.GetSourceDirs(WithProjectDir, WithoutOutputDir: boolean): string;
@@ -4875,16 +4876,55 @@ begin
 end;
 
 procedure TProject.AutoAddOutputDirToIncPath;
-var
-  IncPath: String;
 begin
   if pfLRSFilesInOutputDirectory in Flags then begin
     // the .lrs files are auto created in the output directory
     // => make sure the project output directory is in the include path
-    IncPath:=CompilerOptions.IncludePath;
-    if SearchDirectoryInSearchPath(IncPath,'$(ProjOutDir)')<1 then
-      CompilerOptions.IncludePath:=MergeSearchPaths(IncPath,';$(ProjOutDir)');
+    if SearchDirectoryInSearchPath(CompilerOptions.IncludePath,'$(ProjOutDir)')<1 then
+      CompilerOptions.MergeToIncludePaths(';$(ProjOutDir)');
   end;
+end;
+
+function TProject.ExtendUnitSearchPath(NewUnitPaths: string): boolean;
+var
+  CurUnitPaths: String;
+  r: TModalResult;
+begin
+  CurUnitPaths:=CompilerOptions.ParsedOpts.GetParsedValue(pcosUnitPath);
+  NewUnitPaths:=RemoveSearchPaths(NewUnitPaths,CurUnitPaths);
+  if NewUnitPaths<>'' then begin
+    NewUnitPaths:=CreateRelativeSearchPath(NewUnitPaths,ProjectDirectory);
+    r:=IDEMessageDialog(lisExtendUnitPath,
+      Format(lisExtendUnitSearchPathOfProjectWith, [#13, NewUnitPaths]),
+      mtConfirmation, [mbYes, mbNo, mbCancel]);
+    case r of
+    mrYes: CompilerOptions.MergeToUnitPaths(NewUnitPaths);
+    mrNo: ;
+    else exit(false);
+    end;
+  end;
+  Result:=true;
+end;
+
+function TProject.ExtendIncSearchPath(NewIncPaths: string): boolean;
+var
+  CurIncPaths: String;
+  r: TModalResult;
+begin
+  CurIncPaths:=CompilerOptions.ParsedOpts.GetParsedValue(pcosIncludePath);
+  NewIncPaths:=RemoveSearchPaths(NewIncPaths,CurIncPaths);
+  if NewIncPaths<>'' then begin
+    NewIncPaths:=CreateRelativeSearchPath(NewIncPaths,ProjectDirectory);
+    r:=IDEMessageDialog(lisExtendIncludePath,
+      Format(lisExtendIncludeFilesSearchPathOfProjectWith, [#13, NewIncPaths]),
+      mtConfirmation, [mbYes, mbNo, mbCancel]);
+    case r of
+    mrYes: CompilerOptions.MergeToIncludePaths(NewIncPaths);
+    mrNo: ;
+    else exit(false);
+    end;
+  end;
+  Result:=true;
 end;
 
 function TProject.LoadStateFile(IgnoreErrors: boolean): TModalResult;

@@ -113,6 +113,7 @@ const
     'Highlight all',       'Brackets highlight',        'Mouse link',
     'Line number',         'Line highlight',            'Modified line',
     'Code folding tree',   'Highlight current word',    'Folded code',
+    'Folded code Line',    'Hidden code Line',
     'Word-Brackets',       'TemplateEdit Current',      'TemplateEdit Sync',
     'TemplateEdit Cells',  'SyncronEdit Current Cells', 'SyncronEdit Syncron Cells',
     'SyncronEdit Other Cells', 'SyncronEdit Range',
@@ -144,6 +145,8 @@ const
     { ahaCodeFoldingTree }     agnGutter,
     { ahaHighlightWord }       agnText,
     { ahaFoldedCode }          agnGutter,
+    { ahaFoldedCodeLine }      agnGutter,
+    { ahaHiddenCodeLine }      agnGutter,
     { ahaWordGroup }           agnText,
     { ahaTemplateEditCur }     agnTemplateMode,
     { ahaTemplateEditSync }    agnTemplateMode,
@@ -184,6 +187,8 @@ const
     { ahaCodeFoldingTree }    [hafBackColor, hafForeColor, hafFrameColor],
     { ahaHighlightWord }      [hafBackColor, hafForeColor, hafFrameColor, hafAlpha, hafPrior, hafFrameStyle, hafFrameEdges, hafStyle, hafStyleMask],
     { ahaFoldedCode }         [hafBackColor, hafForeColor, hafFrameColor, hafAlpha, hafPrior, hafFrameStyle, hafFrameEdges, hafStyle, hafStyleMask],
+    { ahaFoldedCodeLine }     [hafBackColor, hafForeColor, hafFrameColor, hafAlpha, hafPrior, hafFrameStyle, hafFrameEdges, hafStyle, hafStyleMask],
+    { ahaHiddenCodeLine }     [hafBackColor, hafForeColor, hafFrameColor, hafAlpha, hafPrior, hafFrameStyle, hafFrameEdges, hafStyle, hafStyleMask],
     { ahaWordGroup }          [hafBackColor, hafForeColor, hafFrameColor, hafAlpha, hafPrior, hafFrameStyle, hafFrameEdges, hafStyle, hafStyleMask],
     { ahaTemplateEditCur }    [hafBackColor, hafForeColor, hafFrameColor, hafAlpha, hafPrior, hafFrameStyle, hafFrameEdges, hafStyle, hafStyleMask],
     { ahaTemplateEditSync }   [hafBackColor, hafForeColor, hafFrameColor, hafAlpha, hafPrior, hafFrameStyle, hafFrameEdges, hafStyle, hafStyleMask],
@@ -2526,6 +2531,8 @@ begin
   AdditionalHighlightAttributes[ahaCodeFoldingTree]     := dlgAddHiAttrCodeFoldingTree;
   AdditionalHighlightAttributes[ahaHighlightWord]       := dlgAddHiAttrHighlightWord;
   AdditionalHighlightAttributes[ahaFoldedCode]          := dlgAddHiAttrFoldedCode;
+  AdditionalHighlightAttributes[ahaFoldedCodeLine]      := dlgAddHiAttrFoldedCodeLine;
+  AdditionalHighlightAttributes[ahaHiddenCodeLine]      := dlgAddHiAttrHiddenCodeLine;
   AdditionalHighlightAttributes[ahaWordGroup]           := dlgAddHiAttrWordGroup;
   AdditionalHighlightAttributes[ahaTemplateEditCur]     := dlgAddHiAttrTemplateEditCur;
   AdditionalHighlightAttributes[ahaTemplateEditSync]    := dlgAddHiAttrTemplateEditSync;
@@ -2714,7 +2721,7 @@ begin
     TheType := lshHTML;
     DefaultCommentType := DefaultCommentTypes[TheType];
     SynClass := LazSyntaxHighlighterClasses[TheType];
-    SetBothFilextensions('htm;html');
+    SetBothFilextensions('htm;html;xhtml');
     SampleSource :=
       '<html>'#13 + '<title>Lazarus Sample source for html</title>'#13 +
       '<body bgcolor=#ffffff background="bg.jpg">'#13 +
@@ -2774,7 +2781,7 @@ begin
     TheType := lshXML;
     DefaultCommentType := DefaultCommentTypes[TheType];
     SynClass := LazSyntaxHighlighterClasses[TheType];
-    SetBothFilextensions('xml;xsd;xsl;xslt;dtd;lpi;lps;lpk');
+    SetBothFilextensions('xml;xsd;xsl;xslt;dtd;lpi;lps;lpk;wsdl;svg');
     SampleSource :=
       '<?xml version="1.0"?>'#13 + '<!DOCTYPE root ['#13 +
       '  ]>'#13 + '<!-- Comment -->'#13 + '<root version="&test;">'#13 +
@@ -3026,7 +3033,19 @@ begin
     SetBothFilextensions('js');
     SampleSource :=
       '/* JScript */'#13#10 +
-      '/* To be written ... /*'#13#10 + #13#10 +
+      'var semafor={'#13#10 +
+      '  semafor:0,'#13#10 +
+      '  timer:null,'#13#10 +
+      '  name:"Name",'#13#10 +
+      '  clear: function(){'#13#10 +
+      '    try{'#13#10 +
+      '      this.semafor=0;'#13#10 +
+      '      clearTimeout(this.timer);'#13#10 +
+      '    }  catch (e)  { }'#13#10 +
+      '  }'#13#10 +
+      '};'#13#10 +
+
+      #13#10 +
       '/* Text Block */'#13#10 + #13#10;
     AddAttrSampleLines[ahaTextBlock] := 2;
     MappedAttributes := TStringList.Create;
@@ -6445,6 +6464,8 @@ begin
     SetMarkupColor(ahaBracketMatch,      aSynEdit.BracketMatchColor);
     SetMarkupColor(ahaMouseLink,         aSynEdit.MouseLinkColor);
     SetMarkupColor(ahaFoldedCode,        aSynEdit.FoldedCodeColor);
+    SetMarkupColor(ahaFoldedCodeLine,    aSynEdit.FoldedCodeLineColor);
+    SetMarkupColor(ahaHiddenCodeLine,    aSynEdit.HiddenCodeLineColor);
     SetMarkupColor(ahaLineHighlight,     aSynEdit.LineHighlightColor);
     if ASynEdit is TIDESynEditor then
       SetMarkupColor(ahaTopInfoHint,  TIDESynEditor(aSynEdit).TopInfoMarkup);
