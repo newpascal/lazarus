@@ -188,8 +188,9 @@ type
   // Called when an item is filtered. Returns true if the item passes the filter.
   // Done=False means the data should also be filtered by its title string.
   // Done=True means no other filtering is needed.
-  TFilterItemEvent = function (Item: TObject; out Done: Boolean): Boolean of object;
-  TFilterItemExEvent = function (ACaption: string;Item: TObject; out Done: Boolean): Boolean of object;
+  TFilterItemEvent = function (ItemData: Pointer; out Done: Boolean): Boolean of object;
+  TFilterItemExEvent = function (const ACaption: string; ItemData: Pointer;
+                                 out Done: Boolean): Boolean of object;
 
   // Can be used only for items that have a checkbox. Returns true if checked.
   TCheckItemEvent = function (Item: TObject): Boolean of object;
@@ -222,10 +223,10 @@ type
     fOnFilterItem: TFilterItemEvent;
     fOnFilterItemEx: TFilterItemExEvent;
     fOnCheckItem: TCheckItemEvent;
-    function DoFilterItem(const ACaption: string; const Item: TObject;
-      const FilterLC: string): Boolean; virtual;
-    function DoDefaultFilterItem(const ACaption: string; const Item: TObject;
-      const FilterLC: string): Boolean; virtual;
+    function DoFilterItem(const ACaption, FilterLC: string;
+      ItemData: Pointer): Boolean;
+    function DoDefaultFilterItem(const ACaption, FilterLC: string;
+      const ItemData: Pointer): Boolean; virtual;
     procedure EditKeyDown(var Key: Word; Shift: TShiftState); override;
     procedure EditChange; override;
     procedure EditEnter; override;
@@ -452,6 +453,7 @@ type
     FRootDir: String;
     FOnAcceptDir: TAcceptFileNameEvent;
     FShowHidden: Boolean;
+    FDialogOptions: TOpenOptions;
     function GetDirectory: String;
     procedure SetDirectory(const AValue: String);
   protected
@@ -463,12 +465,14 @@ type
     procedure RunDialog; virtual;
   public
     property AutoSelected;
+    constructor Create(AOwner: TComponent); override;
   published
     // TDirectory properties.
     property Directory: String read GetDirectory write SetDirectory;
     property RootDir: String read FRootDir write FRootDir;
     property OnAcceptDirectory: TAcceptFileNameEvent read FOnAcceptDir write FonAcceptDir;
     property DialogTitle: String read FDialogTitle write FDialogTitle;
+    property DialogOptions: TOpenOptions read FDialogOptions write FDialogOptions default DefaultOpenDialogOptions;
     property ShowHidden: Boolean read FShowHidden write FShowHidden;
     // TEditButton properties.
     property ButtonCaption;
@@ -552,8 +556,6 @@ type
     FDroppedDown: Boolean;
     FOnAcceptDate: TAcceptDateEvent;
     FOnCustomDate: TCustomDateEvent;
-    FOKCaption: TCaption;
-    FCancelCaption: TCaption;
     FFixedDateFormat: string; //used when DateOrder <> doNone
     FFreeDateFormat: String;  //used when DateOrder = doNone
     FDate: TDateTime;
@@ -585,8 +587,6 @@ type
     property CalendarDisplaySettings: TDisplaySettings read FDisplaySettings write FDisplaySettings;
     property OnAcceptDate: TAcceptDateEvent read FOnAcceptDAte write FOnAcceptDate;
     property OnCustomDate: TCustomDateEvent read FOnCustomDate write FOnCustomDate;
-    property OKCaption: TCaption read FOKCaption write FOKCaption;
-    property CancelCaption: TCaption read FCancelCaption write FCancelCaption;
     property ReadOnly;
     property DefaultToday: Boolean read FDefaultToday write FDefaultToday default False;
     Property DateOrder : TDateOrder Read FDateOrder Write SetDateOrder;
@@ -1122,31 +1122,31 @@ begin
   inherited Destroy;
 end;
 
-function TCustomControlFilterEdit.DoDefaultFilterItem(const ACaption: string;
-  const Item: TObject; const FilterLC: string): Boolean;
+function TCustomControlFilterEdit.DoDefaultFilterItem(const ACaption,
+  FilterLC: string; const ItemData: Pointer): Boolean;
 begin
   Result := (FilterLC='') or (Pos(FilterLC,UTF8LowerCase(ACaption))>0);
 end;
 
-function TCustomControlFilterEdit.DoFilterItem(const ACaption: string;
-  const Item: TObject; const FilterLC: string): Boolean;
+function TCustomControlFilterEdit.DoFilterItem(const ACaption,
+  FilterLC: string; ItemData: Pointer): Boolean;
 var
   Done: Boolean;
 begin
   Done := False;
+  Result := False;
 
   // Filter with event handler if there is one.
   if Assigned(fOnFilterItemEx) then
-    Result:=fOnFilterItemEx(ACaption, Item, Done)
-  else
-    Result:=False;
+    Result := fOnFilterItemEx(ACaption, ItemData, Done);
+
   // Support also the old filter event without a caption.
   if (not (Result and Done)) and Assigned(fOnFilterItem) then
-    Result:=fOnFilterItem(Item, Done);
+    Result := fOnFilterItem(ItemData, Done);
 
   // Filter by item's caption text if needed.
   if not (Result or Done) then
-    Result:=DoDefaultFilterItem(ACaption, Item, FilterLC);
+    Result := DoDefaultFilterItem(ACaption, FilterLC, ItemData);
 end;
 
 procedure TCustomControlFilterEdit.OnIdle(Sender: TObject; var Done: Boolean);
@@ -1500,6 +1500,12 @@ end;
 
 { TDirectoryEdit }
 
+constructor TDirectoryEdit.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  FDialogOptions := DefaultOpenDialogOptions;
+end;
+
 procedure TDirectoryEdit.SetDirectory(const AValue: String);
 begin
   if (Text<>AValue) then
@@ -1520,6 +1526,7 @@ begin
     TSelectDirectoryDialog(Result).FileName:=Directory;
   end;
   // Set some common things.
+  TSelectDirectoryDialog(Result).Options := DialogOptions;
   Result.Title := DialogTitle;
 end;
 
@@ -1597,8 +1604,6 @@ begin
   FUpdatingDate := False;
   FDefaultToday := False;
   FDisplaySettings := [dsShowHeadings, dsShowDayNames];
-  OKCaption := 'OK';
-  CancelCaption := 'Cancel';
 end;
 
 
@@ -2271,5 +2276,9 @@ begin
   RegisterComponents('Misc', [TEditButton,TFileNameEdit,TDirectoryEdit,
                               TDateEdit,TTimeEdit,TCalcEdit]);
 end;
+
+Initialization
+  RegisterPropertyToSkip(TDateEdit, 'OKCaption', 'Property streamed in older Lazarus revision','');
+  RegisterPropertyToSkip(TDateEdit, 'CancelCaption', 'Property streamed in older Lazarus revision','');
 
 end.

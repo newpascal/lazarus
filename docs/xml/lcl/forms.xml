@@ -9317,6 +9317,8 @@ Before 0.9.31 there was no exception. Therefore some resourceless forms might us
         <errors/>
         <seealso/>
       </element>
+      <element name="TApplication.OnCircularException"><short>Handler invoked when there is an exception circle before killing the app with Halt</short>
+      </element>
     </module>
     <!-- Forms -->
   </package>

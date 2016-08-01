@@ -1300,6 +1300,7 @@ type
     FMainFormOnTaskBar: Boolean;
     FModalLevel: Integer;
     FMoveFormFocusToChildren: Boolean;
+    FOnCircularException: TExceptionEvent;
     FOnGetMainFormHandle: TGetHandleEvent;
     FOnMessageDialogFinished: TModalDialogFinished;
     FOnModalBegin: TNotifyEvent;
@@ -1562,6 +1563,7 @@ type
     property OnShowHint: TShowHintEvent read FOnShowHint write FOnShowHint;
     property OnUserInput: TOnUserInputEvent read FOnUserInput write FOnUserInput;
     property OnDestroy: TNotifyEvent read FOnDestroy write FOnDestroy;
+    property OnCircularException: TExceptionEvent read FOnCircularException write FOnCircularException;
     property ShowButtonGlyphs: TApplicationShowGlyphs read FShowButtonGlyphs write SetShowButtonGlyphs default sbgAlways;
     property ShowMenuGlyphs: TApplicationShowGlyphs read FShowMenuGlyphs write SetShowMenuGlyphs default sbgAlways;
     property ShowHint: Boolean read FShowHint write SetShowHint;

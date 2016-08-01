@@ -1194,6 +1194,10 @@ begin
     // there was an exception during showing the exception -> break the circle
     DebugLn('TApplication.HandleException: ',
       'there was another exception during showing the first exception');
+
+    if Assigned(OnCircularException) and (ExceptObject is Exception) then
+      OnCircularException(Sender, Exception(ExceptObject));
+
     HaltingProgram:=true;
     DumpExceptionBackTrace;
     Halt;

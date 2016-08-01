@@ -88,7 +88,7 @@ interface
 uses
   Classes, SysUtils, LCLProc, FileUtil, LazFileUtils, StringHashList, AvgLvlTree,
   LConvEncoding, LazUTF8, LazUTF8Classes,
-  {$IF FPC_FULLVERSION>=30101}jsonscanner,{$ENDIF} jsonparser, fpjson;
+  {$IF FPC_FULLVERSION>=30001}jsonscanner,{$ENDIF} jsonparser, fpjson;
 
 type
   TStringsType = (
@@ -1147,6 +1147,7 @@ end;
 function TPOFile.Translate(const Identifier, OriginalValue: String): String;
 var
   Item: TPOFileItem;
+  l: Integer;
 begin
   Item:=TPOFileItem(FIdentifierLowToItem[lowercase(Identifier)]);
   if Item=nil then
@@ -1166,6 +1167,23 @@ begin
     if Result='' then RaiseGDBException('TPOFile.Translate Inconsistency');
   end else
     Result:=OriginalValue;
+  //Remove lineending at the end of the string if present.
+  //This is the case e.g. for multiline strings and not desired when assigning e.g. to
+  //Caption property (can negatively affect form layout). In other cases it should not matter.
+  l:=Length(Result);
+  if l>1 then
+  begin
+    //Every string with #13 and/or #10 character at the end was treated as multiline, this means that
+    //extra lineending could have been added to it.
+    if RightStr(Result,2)=#13#10 then
+    begin
+      if l>2 then //do not leave the string empty
+        SetLength(Result,l-2);
+    end
+    else
+      if (Result[l]=#13) or (Result[l]=#10) then
+        SetLength(Result,l-1);
+  end;
 end;
 
 procedure TPOFile.Report;
@@ -1359,7 +1377,7 @@ var
     K, L: Integer;
     Data: TJSONData;
   begin
-    Parser := TJSONParser.Create(InputLines.Text{$IF FPC_FULLVERSION>=30101},jsonscanner.DefaultOptions{$ENDIF});
+    Parser := TJSONParser.Create(InputLines.Text{$IF FPC_FULLVERSION>=30001},jsonscanner.DefaultOptions{$ENDIF});
     try
       JsonData := Parser.Parse as TJSONObject;
       try
