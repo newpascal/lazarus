@@ -35,7 +35,7 @@ uses
   AVL_Tree, typinfo, math, Classes, SysUtils, Controls, Forms, Dialogs, LCLIntf,
   LCLType, LCLProc, FileProcs, IDEProcs, DialogProcs, IDEDialogs,
   LConvEncoding, LazFileCache, FileUtil, LazFileUtils, LazUTF8, LResources, PropEdits,
-  DefineTemplates, IDEMsgIntf, IDEProtocol, LazarusIDEStrConsts, NewDialog,
+  DefineTemplates, IDEMsgIntf, IDEProtocol, LazarusIDEStrConsts, LclStrConsts, NewDialog,
   NewProjectDlg, LazIDEIntf, MainBase, MainBar, MainIntf, MenuIntf, NewItemIntf,
   CompOptsIntf, SrcEditorIntf, IDEWindowIntf, ProjectIntf, Project, ProjectDefs,
   ProjectInspector, PackageIntf, PackageDefs, PackageSystem, CompilerOptions,
@@ -1539,7 +1539,7 @@ begin
     // for example 'SysUtils.CompareText'
     FFileName:=FActiveSrcEdit.EditorComponent.GetWordAtRowCol(
       FActiveSrcEdit.EditorComponent.LogicalCaretXY);
-    if (FFileName<>'') and IsValidIdent(FFileName) then begin
+    if IsValidIdent(FFileName) then begin
       // search pascal unit
       AUnitName:=FFileName;
       InFilename:='';
@@ -4433,7 +4433,7 @@ function TLazSourceFileManager.CreateNewForm(NewUnitInfo: TUnitInfo;
 var
   NewComponent: TComponent;
   new_x, new_y: integer;
-  p: TPoint;
+  MainIDEBarBottom: integer;
   r: TRect;
 begin
   if not AncestorType.InheritsFrom(TComponent) then
@@ -4441,11 +4441,9 @@ begin
 
   //debugln('TLazSourceFileManager.CreateNewForm START ',NewUnitInfo.Filename,' ',AncestorType.ClassName,' ',dbgs(ResourceCode<>nil));
   // create a buffer for the new resource file and for the LFM file
-  if ResourceCode=nil then begin
-    ResourceCode:=
-      CodeToolBoss.CreateFile(ChangeFileExt(NewUnitInfo.Filename,
-                              ResourceFileExt));
-  end;
+  if ResourceCode=nil then
+    ResourceCode:=CodeToolBoss.CreateFile(ChangeFileExt(NewUnitInfo.Filename,
+                                                        ResourceFileExt));
   //debugln('TLazSourceFileManager.CreateNewForm B ',ResourceCode.Filename);
   ResourceCode.Source:='{ '+LRSComment+' }';
   CodeToolBoss.CreateFile(ChangeFileExt(NewUnitInfo.Filename,'.lfm'));
@@ -4455,11 +4453,9 @@ begin
 
   // Figure out where we want to put the new form
   // if there is more place left of the OI put it left, otherwise right
-  p:=Point(0,0);
   if ObjectInspector1<>nil then begin
-    p:=ObjectInspector1.ClientOrigin;
-    new_x:=p.x;
-    new_y:=p.Y+10;
+    new_x:=ObjectInspector1.Left+10;
+    new_y:=ObjectInspector1.Top+10;
   end else begin
     new_x:=200;
     new_y:=100;
@@ -4467,7 +4463,14 @@ begin
   if new_x>Screen.Width div 2 then
     new_x:=new_x-500
   else if ObjectInspector1<>nil then
-    new_x:=new_x+ObjectInspector1.Width;
+    new_x:=new_x + ObjectInspector1.Width + GetSystemMetrics(SM_CXFRAME) shl 1;
+  if Assigned(MainIDEBar) then
+  begin
+    MainIDEBarBottom:=MainIDEBar.Top+MainIDEBar.Height+GetSystemMetrics(SM_CYFRAME) shl 1
+                                                      +GetSystemMetrics(SM_CYCAPTION);
+    if MainIDEBarBottom < Screen.Height div 2 then
+      new_y:=Max(new_y,MainIDEBarBottom+10);
+  end;
   r:=Screen.PrimaryMonitor.WorkareaRect;
   new_x:=Max(r.Left,Min(new_x,r.Right-400));
   new_y:=Max(r.Top,Min(new_y,r.Bottom-400));
@@ -4558,7 +4561,7 @@ function TLazSourceFileManager.NewUniqueComponentName(Prefix: string): string;
   function IdentifierIsOk(Identifier: string): boolean;
   begin
     Result:=false;
-    if (Identifier='') or not IsValidIdent(Identifier) then exit;
+    if not IsValidIdent(Identifier) then exit;
     if AllKeyWords.DoIdentifier(PChar(Identifier)) then exit;
     if IdentifierExists(Identifier) then exit;
     if IdentifierExists('T'+Identifier) then exit;
@@ -4572,7 +4575,7 @@ begin
     exit(Prefix);
   while (Prefix<>'') and (Prefix[length(Prefix)] in ['0'..'9']) do
     System.Delete(Prefix,length(Prefix),1);
-  if (Prefix='') or (not IsValidIdent(Prefix)) then
+  if not IsValidIdent(Prefix) then
     Prefix:='Resource';
   i:=0;
   repeat
@@ -5700,7 +5703,7 @@ begin
     Result:=IDEQuestionDialog(lisFileNotLowercase,
       Format(lisTheUnitIsNotLowercaseTheFreePascalCompiler,
              [OldFilename, LineEnding, LineEnding+LineEnding]),
-      mtConfirmation,[mrYes,mrIgnore,lisNo,mrAbort],'');
+      mtConfirmation,[mrYes,mrIgnore,rsmbNo,mrAbort],'');
     if Result<>mrYes then exit;
   end;
   NewUnitName:=AnUnitInfo.SrcUnitName;
@@ -6845,7 +6848,7 @@ begin
   CTErrorLine:=0;
   CTErrorCol:=0;
 
-  if (AComponentClassName='') or (not IsValidIdent(AComponentClassName)) then
+  if not IsValidIdent(AComponentClassName) then
   begin
     DebugLn(['TLazSourceFileManager.FindComponentClass invalid component class name "',AComponentClassName,'"']);
     exit(mrCancel);
@@ -7017,7 +7020,7 @@ begin
   Quiet:=([ofProjectLoading,ofQuiet]*Flags<>[]);
   HideAbort:=not (ofProjectLoading in Flags);
 
-  if (AComponentClassName='') or (not IsValidIdent(AComponentClassName)) then
+  if not IsValidIdent(AComponentClassName) then
   begin
     DebugLn(['TLazSourceFileManager.LoadComponentDependencyHidden invalid component class name "',AComponentClassName,'"']);
     exit(mrCancel);
@@ -7868,7 +7871,7 @@ begin
     // lpi file will change => ask
     Result:=IDEQuestionDialog(lisProjectChanged,
       Format(lisSaveChangesToProject, [Project1.GetTitleOrName]),
-      mtConfirmation, [mrYes, mrNoToAll, lisNo, mbCancel], '');
+      mtConfirmation, [mrYes, mrNoToAll, rsmbNo, mbCancel], '');
     if Result=mrNoToAll then exit(mrOk);
     if Result<>mrYes then exit(mrCancel);
   end
@@ -7876,7 +7879,7 @@ begin
   begin
     // some non project files were changes in the source editor
     Result:=IDEQuestionDialog(lisSaveChangedFiles,lisSaveChangedFiles,
-      mtConfirmation, [mrYes, mrNoToAll, lisNo, mbCancel], '');
+      mtConfirmation, [mrYes, mrNoToAll, rsmbNo, mbCancel], '');
     if Result=mrNoToAll then exit(mrOk);
     if Result<>mrYes then exit(mrCancel);
   end
@@ -7893,7 +7896,7 @@ begin
       if EnvironmentOptions.AskSaveSessionOnly then begin
         Result:=IDEQuestionDialog(lisProjectSessionChanged,
           Format(lisSaveSessionChangesToProject, [Project1.GetTitleOrName]),
-          mtConfirmation, [mrYes, mrNoToAll, lisNo, mbCancel], '');
+          mtConfirmation, [mrYes, mrNoToAll, rsmbNo, mbCancel], '');
         if Result=mrNoToAll then exit(mrOk);
         if Result<>mrYes then exit(mrCancel);
       end;

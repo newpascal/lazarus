@@ -381,14 +381,8 @@ begin
     exit(mrCancel);
   end;
 
-  // check packagename
-  if not IsValidPkgName(NewPkgName) then begin
-    if not Quiet then
-      IDEMessageDialog(lisProjAddInvalidPackagename,
-        Format(lisA2PThePackageNameIsInvalidPleaseChooseAnExisting,[NewPkgName,LineEnding]),
-        mtError,[mbCancel]);
-    exit(mrCancel);
-  end;
+  // package name is checked earlier
+  Assert(IsValidPkgName(NewPkgName), 'CheckAddingDependency: ' + NewPkgName + ' is not valid.');
 
   // check if package is already required
   if (CompareText(NewPkgName,LazPackage.Name)=0)
@@ -1122,7 +1116,7 @@ begin
     IDEComponentPalette.FindComponent(fLastNewComponentAncestorType));
 
   // create unique classname
-  if (not IsValidIdent(ClassNameEdit.Text)) or (ClassNameEdit.Text='') then
+  if not IsValidIdent(ClassNameEdit.Text) then
     ClassNameEdit.Text:=IDEComponentPalette.CreateNewClassName(
                                                  fLastNewComponentAncestorType);
   // choose the same page name

@@ -68,7 +68,9 @@ type
     FTitle : string;
     FUserChoice: integer;
     FHelpContext: THelpContext;
-    FCanCloseCalled: Boolean;
+    FDoCanCloseCalled: Boolean;
+    FDoShowCalled: Boolean;
+    FDoCloseCalled: Boolean;
     FClosing: boolean;
     procedure SetHandle(const AValue: THandle);
     function IsTitleStored: boolean;
@@ -80,6 +82,7 @@ type
     function GetWidth: Integer; virtual;
     procedure SetHeight(const AValue: integer); virtual;
     procedure SetWidth(const AValue: integer); virtual;
+    procedure ResetShowCloseFlags;
   public
     FCompStyle : LongInt;
     constructor Create(TheOwner: TComponent); override;
@@ -127,6 +130,7 @@ type
   public
     constructor Create(TheOwner: TComponent); override;
     destructor Destroy; override;
+    procedure DoCanClose(var CanClose: Boolean); override;
     procedure DoTypeChange; virtual;
     property Files: TStrings read FFiles;
     property HistoryList: TStrings read FHistoryList write SetHistoryList;
@@ -198,6 +202,7 @@ type
     function DefaultTitle: string; override;
   public
     constructor Create(TheOwner: TComponent); override;
+    procedure DoCanClose(var CanClose: Boolean); override;
     procedure DoFolderChange; virtual;
     procedure DoSelectionChange; virtual;
     procedure IntfSetOption(const AOption: TOpenOption; const AValue: Boolean);
@@ -408,6 +413,7 @@ type
     function GetHeight: Integer; override;
     function GetWidth: Integer; override;
     procedure DoCloseForm(Sender: TObject; var CloseAction: TCloseAction);virtual;
+    procedure DoShowForm(Sender: TObject);virtual;
     procedure Find; virtual;
     procedure Help; virtual;
     procedure Replace; virtual;

@@ -666,12 +666,17 @@ type
 
   //----------------------------------------------------------------------------
 
+  TFindIdentifierInUsesSection_FindMissingFPCUnit = class;
+
+  //----------------------------------------------------------------------------
+
   { TFindDeclarationTool }
 
   TFindDeclarationTool = class(TPascalReaderTool)
   private
     FAdjustTopLineDueToComment: boolean;
     FDirectoryCache: TCTDirectoryCache;
+    FFindMissingFPCUnits: TFindIdentifierInUsesSection_FindMissingFPCUnit;
     FInterfaceIdentifierCache: TInterfaceIdentifierCache;
     FInterfaceHelperCache: array[TFDHelpersListKind] of TFDHelpersList;
     FOnFindUsedUnit: TOnFindUsedUnit;
@@ -681,6 +686,7 @@ type
     FOnGetSrcPathForCompiledUnit: TOnGetSrcPathForCompiledUnit;
     FOnGetUnitSourceSearchPath: TOnGetSearchPath;
     FFirstNodeCache: TCodeTreeNodeCache;
+    FOnRescanFPCDirectoryCache: TNotifyEvent;
     FRootNodeCache: TCodeTreeNodeCache;
     FFirstBaseTypeCache: TBaseTypeCache;
     FDependentCodeTools: TAVLTree;// the codetools, that depend on this codetool
@@ -718,7 +724,7 @@ type
     function FindIdentifierInAncestors(ClassNode: TCodeTreeNode;
       Params: TFindDeclarationParams): boolean;
     function FindIdentifierInUsesSection(UsesNode: TCodeTreeNode;
-      Params: TFindDeclarationParams): boolean; // ToDo: dotted
+      Params: TFindDeclarationParams; FindMissingFPCUnits: Boolean): boolean; // ToDo: dotted
     function FindIdentifierInHiddenUsedUnits(
       Params: TFindDeclarationParams): boolean;
     function FindIdentifierInUsedUnit(const AnUnitName: string;
@@ -1016,6 +1022,22 @@ type
     property AdjustTopLineDueToComment: boolean
                read FAdjustTopLineDueToComment write FAdjustTopLineDueToComment;
     property DirectoryCache: TCTDirectoryCache read FDirectoryCache write FDirectoryCache;
+
+    property OnRescanFPCDirectoryCache: TNotifyEvent read FOnRescanFPCDirectoryCache write FOnRescanFPCDirectoryCache;
+  end;
+
+  TFindIdentifierInUsesSection_FindMissingFPCUnit = class
+  private
+    FUnitName: string;
+    FFound: Boolean;
+    FResults: TStringList;
+
+    procedure Iterate(const AFilename: string);
+  public
+    constructor Create;
+    destructor Destroy; override;
+    function Find(const AUnitName: string; const ADirectoryCache: TCTDirectoryCache): Boolean;
+    function IsInResults(const AUnitName: string): Boolean;
   end;
 
 function ExprTypeToString(const ExprType: TExpressionType): string;
@@ -1445,6 +1467,50 @@ begin
   end;
   ListOfPFindContext.Free;
   ListOfPFindContext:=nil;
+end;
+
+{ TFindIdentifierInUsesSection_FindMissingFPCUnit }
+
+constructor TFindIdentifierInUsesSection_FindMissingFPCUnit.Create;
+begin
+  inherited;
+  FResults := TStringList.Create;
+  FResults.CaseSensitive := True;
+  FResults.Duplicates := dupIgnore;
+  FResults.Sorted := True;
+end;
+
+destructor TFindIdentifierInUsesSection_FindMissingFPCUnit.Destroy;
+begin
+  FResults.Free;
+
+  inherited Destroy;
+end;
+
+function TFindIdentifierInUsesSection_FindMissingFPCUnit.Find(
+  const AUnitName: string; const ADirectoryCache: TCTDirectoryCache): Boolean;
+var
+  IRes: Integer;
+begin
+  IRes := FResults.IndexOf(AUnitName);
+  if IRes>=0 then
+    Exit(Boolean(PtrInt(FResults.Objects[IRes])));
+  FUnitName := AUnitName;
+  ADirectoryCache.IterateFPCUnitsInSet(@Iterate);
+  Result := FFound;
+  FResults.AddObject(AUnitName, TObject(PtrInt(Result)));
+end;
+
+function TFindIdentifierInUsesSection_FindMissingFPCUnit.IsInResults(
+  const AUnitName: string): Boolean;
+begin
+  Result := FResults.IndexOf(AUnitName)>=0;
+end;
+
+procedure TFindIdentifierInUsesSection_FindMissingFPCUnit.Iterate(
+  const AFilename: string);
+begin
+  FFound := FFound or SameFileName(FUnitName, ExtractFileNameOnly(AFilename));
 end;
 
 { TTypeAliasOrderList }
@@ -2401,7 +2467,7 @@ begin
   try
     Params.Flags:=[fdfExceptionOnNotFound];
     Params.SetIdentifier(Self,PChar(Pointer(Identifier)),nil);
-    if FindIdentifierInUsesSection(UsesNode,Params) then begin
+    if FindIdentifierInUsesSection(UsesNode,Params,True) then begin
       if Params.NewNode=nil then exit;
       Result:=Params.NewCodeTool.JumpToNode(Params.NewNode,NewPos,
                                             NewTopLine,false);
@@ -4480,7 +4546,7 @@ begin
           
         ctnUsesSection:
           begin
-            if FindIdentifierInUsesSection(ContextNode,Params)
+            if FindIdentifierInUsesSection(ContextNode,Params,True)
             and CheckResult(true,false) then
               exit;
           end;
@@ -7457,7 +7523,8 @@ begin
 end;
 
 function TFindDeclarationTool.FindIdentifierInUsesSection(
-  UsesNode: TCodeTreeNode; Params: TFindDeclarationParams): boolean;
+  UsesNode: TCodeTreeNode; Params: TFindDeclarationParams;
+  FindMissingFPCUnits: Boolean): boolean;
 { this function is internally used by FindIdentifierInContext
 
    search backwards through the uses section
@@ -7543,7 +7610,20 @@ begin
 
     if (not Result) and (MissingUnit<>nil) then begin
       // identifier not found and there is a missing unit
-      RaiseUnitNotFound;
+      if FindMissingFPCUnits and Assigned(FOnRescanFPCDirectoryCache) then
+      begin
+        AnUnitName := LowerCase(AnUnitName);
+        if FFindMissingFPCUnits=nil then
+          FFindMissingFPCUnits := TFindIdentifierInUsesSection_FindMissingFPCUnit.Create;
+        if not FFindMissingFPCUnits.IsInResults(AnUnitName) // don't rescan twice
+        and FFindMissingFPCUnits.Find(AnUnitName, DirectoryCache) then
+        begin
+          FOnRescanFPCDirectoryCache(Self);
+          Result := FindIdentifierInUsesSection(UsesNode, Params, False);
+        end else
+          RaiseUnitNotFound;
+      end else
+        RaiseUnitNotFound;
     end;
   end;
 end;
@@ -11104,6 +11184,7 @@ begin
     FDirectoryCache.Release;
     FDirectoryCache:=nil;
   end;
+  FFindMissingFPCUnits.Free;
   inherited Destroy;
 end;
 
