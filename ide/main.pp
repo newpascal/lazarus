@@ -62,7 +62,7 @@ uses
   Math, Classes, SysUtils, TypInfo, types, strutils, AVL_Tree,
   // LCL
   LCLProc, LCLType, LCLIntf, LResources, ComCtrls, HelpIntfs, InterfaceBase,
-  Forms, Buttons, Menus, Controls, GraphType, Graphics, ExtCtrls, Dialogs,
+  Forms, Buttons, Menus, Controls, GraphType, Graphics, ExtCtrls, Dialogs, LclStrConsts,
   // CodeTools
   FileProcs, FindDeclarationTool, LinkScanner, BasicCodeTools, CodeToolsStructs,
   CodeToolManager, CodeCache, DefineTemplates, KeywordFuncLists, CodeTree,
@@ -7906,7 +7906,7 @@ begin
   Result:=mrOk;
   if ToolStatus=itDebugger then begin
     Result:=IDEQuestionDialog(lisStopDebugging2, lisStopCurrentDebuggingAndRebuildProject,
-                              mtConfirmation,[mrYes, mrCancel, lisNo],'');
+                              mtConfirmation,[mrYes, mrCancel, rsmbNo],'');
     if Result<>mrYes then exit;
 
     Result:=DebugBoss.DoStopProject;
@@ -8970,7 +8970,7 @@ end;
 procedure TMainIDE.OnControlSelectionFormChanged(Sender: TObject; OldForm,
   NewForm: TCustomForm);
 begin
-  if (TheControlSelection=nil) or (FormEditor1=nil) or not FIDEStarted then exit;
+  if (TheControlSelection=nil) or (FormEditor1=nil) then exit;
   if OldForm<>nil then
     OldForm.Invalidate;
   if TheControlSelection.LookupRoot<>nil then
@@ -8981,7 +8981,8 @@ begin
   DebugLn('***');
   DebugLn('** TMainIDE.OnControlSelectionFormChanged: Calling UpdateIDEComponentPalette(true)');
   {$ENDIF}
-  MainIDEBar.UpdateIDEComponentPalette(true);
+  if FIDEStarted then
+    MainIDEBar.UpdateIDEComponentPalette(true);
 end;
 
 procedure TMainIDE.OnGetDesignerSelection(const ASelection: TPersistentSelectionList);
@@ -11094,7 +11095,7 @@ begin
     case IDEQuestionDialog(lisSaveChanges,
           Format(lisSaveFileBeforeClosingForm,
                  [AnUnitInfo.Filename, LineEnding, ADesigner.LookupRoot.Name]),
-          mtConfirmation,[mrYes,mrNoToAll,lisNo,mrCancel],'') of
+          mtConfirmation,[mrYes,mrNoToAll,rsmbNo,mrCancel],'') of
       mrYes: begin
         if DoSaveEditorFile(ASrcEdit,[sfCheckAmbiguousFiles])<>mrOk
         then Exit;
@@ -11318,7 +11319,7 @@ var
   OldOpenEditorsOnCodeToolChange: Boolean;
 begin
   DebugLn('Hint: (lazarus) TMainIDE.OnDesignerRenameComponent Old=',AComponent.Name,':',AComponent.ClassName,' New=',NewName,' Owner=',dbgsName(AComponent.Owner));
-  if (not IsValidIdent(NewName)) or (NewName='') then
+  if not IsValidIdent(NewName) then
     raise Exception.Create(Format(lisComponentNameIsNotAValidIdentifier, [Newname]));
   if WordIsKeyWord.DoItCaseInsensitive(PChar(NewName))
   or WordIsDelphiKeyWord.DoItCaseInsensitive(PChar(NewName))

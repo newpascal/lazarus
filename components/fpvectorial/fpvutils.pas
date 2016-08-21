@@ -54,6 +54,7 @@ function SeparateString(AString: string; ASeparator: char): T10Strings;
 function Make3DPoint(AX, AY, AZ: Double): T3DPoint; overload; inline;
 function Make3DPoint(AX, AY: Double): T3DPoint; overload; inline;
 function Point2D(AX, AY: Double): T2DPoint; inline;
+function IsGradientBrush(ABrush: TvBrush): Boolean;
 // Mathematical routines
 function LineEquation_GetPointAndTangentForLength(AStart, AEnd: T3DPoint; ADistance: Double; out AX, AY, ATangentAngle: Double): Boolean;
 procedure EllipticalArcToBezier(Xc, Yc, Rx, Ry, startAngle, endAngle: Double; var P1, P2, P3, P4: T3DPoint);
@@ -73,9 +74,14 @@ procedure ConvertPathToPolygons(APath: TPath; ADestX, ADestY: Integer; AMulX, AM
   var PolygonPoints: TPointsArray; var PolygonStartIndexes: TIntegerDynArray);
 procedure ConvertPathToPoints(APath: TPath; ADestX, ADestY: Integer; AMulX, AMulY: Double; var Points: TPointsArray);
 function GetLinePolygonIntersectionPoints(ACoord: Double;
-  const APoints: T2DPointsArray; ACoordIsX: Boolean): T2DPointsArray;
+  const APoints: T2DPointsArray; const APolyStarts: TIntegerDynArray;
+  ACoordIsX: Boolean): T2DPointsArray; overload;
+function GetLinePolygonIntersectionPoints(ACoord: Double;
+  const APoints: T2DPointsArray; ACoordIsX: Boolean): T2DPointsArray; overload;
 function Rotate2DPoint(P, RotCenter: TPoint; alpha:double): TPoint;
 function Rotate3DPointInXY(P, RotCenter: T3DPoint; alpha:double): T3DPoint;
+function SamePoint(P1, P2: T3DPoint; Epsilon: Double = 0.0): Boolean; overload;
+function SamePoint(P1, P2: TPoint): Boolean; overload;
 procedure NormalizeRect(var ARect: TRect);
 // Transformation matrix operations
 // See http://www.useragentman.com/blog/2011/01/07/css3-matrix-transform-for-the-mathematically-challenged/
@@ -103,6 +109,8 @@ function ConvertPathToRegion(APath: TPath; ADestX, ADestY: Integer; AMulX, AMulY
 var
   FPVUDebugOutCallback: TFPVUDebugOutCallback; // executes DebugLn
   FPVDebugBuffer: string;
+  ScreenDpiX: Integer = 96;
+  ScreenDpiY: Integer = 96;
 
 implementation
 
@@ -266,6 +274,12 @@ begin
   Result.X := AX;
   Result.Y := AY;
   Result.Z := 0;
+end;
+
+function IsGradientBrush(ABrush: TvBrush): Boolean;
+begin
+  Result := ABrush.Kind in [bkHorizontalGradient, bkVerticalGradient,
+    bkOtherLinearGradient, bkRadialGradient];
 end;
 
 { Considering a counter-clockwise arc, elliptical and alligned to the axises
@@ -709,15 +723,27 @@ begin
   Result := CompareValue(val1^, val2^);
 end;
 
+function GetLinePolygonIntersectionPoints(ACoord: Double;
+  const APoints: T2DPointsArray; ACoordIsX: Boolean): T2DPointsArray;
+var
+  polystarts: TIntegerDynArray;
+begin
+  SetLength(polystarts, 1);
+  polystarts[0] := 0;
+  Result := GetLinePolygonIntersectionPoints(ACoord, APoints, ACoordIsX);
+end;
+
 {@@ Calculates the intersection points of a vertical (ACoordIsX = true) or
     horizontal (ACoordIsX = false) line with border of the polygon specified
     by APoints. Returns the coordinates of the intersection points }
 function GetLinePolygonIntersectionPoints(ACoord: Double;
-  const APoints: T2DPointsArray; ACoordIsX: Boolean): T2DPointsArray;
+  const APoints: T2DPointsArray; const APolyStarts: TIntegerDynArray;
+  ACoordIsX: Boolean): T2DPointsArray;
 const
   EPS = 1e-9;
 var
-  j: Integer;
+  j, p: Integer;
+  firstj,lastj: Integer;
   dx, dy: Double;
   xval, yval: Double;
   val: ^Double;
@@ -726,41 +752,72 @@ begin
   list := TFPList.Create;
   if ACoordIsX then
   begin
-    for j:=0 to High(APoints) - 1 do
-    begin
-      if ((APoints[j].X <= ACoord) and (ACoord < APoints[j+1].X)) or
-         ((APoints[j+1].X <= ACoord) and (ACoord < APoints[j].X)) then
-      begin
-        dx := APoints[j+1].X - APoints[j].X;   // can't be zero here
-        dy := APoints[j+1].Y - APoints[j].Y;
-        New(val);
-        val^ := APoints[j].Y + (ACoord - APoints[j].X) * dy / dx;
-        list.Add(val);
+    for p := 0 to High(APolyStarts) do begin
+      firstj := APolyStarts[p];
+      lastj := IfThen(p = High(APolyStarts), High(APoints), APolyStarts[p+1]-1);
+      // Skip non-closed polygons
+      if (APoints[firstj].X <> APoints[lastj].x) or (APoints[lastj].Y <> APoints[lastj].Y) then
+        continue;
+      for j := firstj to lastj-1 do
+        if ((APoints[j].X <= ACoord) and (ACoord < APoints[j+1].X)) or
+           ((APoints[j+1].X <= ACoord) and (ACoord < APoints[j].X)) then
+        begin
+          dx := APoints[j+1].X - APoints[j].X;   // can't be zero here
+          dy := APoints[j+1].Y - APoints[j].Y;
+          New(val);
+          val^ := APoints[j].Y + (ACoord - APoints[j].X) * dy / dx;
+          list.Add(val);
+        end;
       end;
-    end;
   end else
   begin
-    for j:=0 to High(APoints) - 1 do
-      if ((APoints[j].Y <= ACoord) and (ACoord < APoints[j+1].Y)) or
-         ((APoints[j+1].Y <= ACoord) and (ACoord < APoints[j].Y)) then
-      begin
-        dy := APoints[j+1].Y - APoints[j].Y;     // can't be zero here
-        dx := APoints[j+1].X - APoints[j].X;
-        New(val);
-        val^ := APoints[j].X + (ACoord - APoints[j].Y) * dx / dy;
-        list.Add(val);
-      end;
+    for p := 0 to High(APolyStarts) do begin
+      firstj := APolyStarts[p];
+      lastj := IfThen(p = High(APolyStarts), High(APoints), APolyStarts[p+1]-1);
+      // Skip non-closed polygons
+      if (APoints[firstj].X <> APoints[lastj].x) or (APoints[lastj].Y <> APoints[lastj].Y) then
+        continue;
+      for j := firstj to lastj-1 do
+        if ((APoints[j].Y <= ACoord) and (ACoord < APoints[j+1].Y)) or
+           ((APoints[j+1].Y <= ACoord) and (ACoord < APoints[j].Y)) then
+        begin
+          dy := APoints[j+1].Y - APoints[j].Y;     // can't be zero here
+          dx := APoints[j+1].X - APoints[j].X;
+          New(val);
+          val^ := APoints[j].X + (ACoord - APoints[j].Y) * dx / dy;
+          list.Add(val);
+        end;
+    end;
   end;
 
   // Sort intersection coordinates in ascending order
   list.Sort(@CompareDbl);
-  SetLength(Result, list.Count);
-  if ACoordIsX then
-    for j:=0 to list.Count-1 do
-      Result[j] := Point2D(ACoord, Double(list[j]^))
-  else
-    for j:=0 to list.Count-1 do
-      Result[j] := Point2D(Double(list[j]^), ACoord);
+
+  // When scanning across an non-contiguous polygon the scan may produce an
+  // odd number of points where the scan finds irregular points due to interaction
+  // with the other polygon curves. I don't have a general solution, only for
+  // the case of 3 points.
+  (*
+  if list.Count = 3 then begin // this can't be --> use ony outer points
+    SetLength(Result, 2);
+    if ACoordIsX then begin
+      Result[0] := Point2D(ACoord, Double(list[0]^));
+      Result[1] := Point2D(ACoord, Double(list[2]^));
+    end else begin
+      Result[0] := Point2D(Double(list[0]^), ACoord);
+      Result[1] := Point2D(Double(list[2]^), ACoord);
+    end;
+  end else
+  *)
+  begin    // regular case
+    SetLength(Result, list.Count);
+    if ACoordIsX then
+      for j:=0 to list.Count-1 do
+        Result[j] := Point2D(ACoord, Double(list[j]^))
+    else
+      for j:=0 to list.Count-1 do
+        Result[j] := Point2D(Double(list[j]^), ACoord);
+  end;
 
   // Clean-up
   for j:=list.Count-1 downto 0 do
@@ -797,6 +854,18 @@ begin
   result.x := Round( p.x*cosinus + p.y*sinus)   +  RotCenter.x;
   result.y := Round(-p.x*sinus   + p.y*cosinus) +  RotCenter.y;
   result.z := P.z;
+end;
+
+function SamePoint(P1, P2: TPoint): Boolean;
+begin
+  Result := (P1.X = P2.X) and (P1.Y = P2.Y);
+end;
+
+function SamePoint(P1, P2: T3DPoint; Epsilon: Double = 0.0): Boolean;
+begin
+  Result := SameValue(P1.X, P2.X, Epsilon) and
+            SameValue(P1.Y, P2.Y, Epsilon) and
+            SameValue(P1.Z, P2.Z, Epsilon);
 end;
 
 procedure NormalizeRect(var ARect: TRect);

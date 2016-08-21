@@ -161,6 +161,7 @@ type
     Color: TFPColor;
     Style: TFPBrushStyle;
     Kind: TvBrushKind;
+    Image: TFPCustomImage;
     // Gradient filling support
     Gradient_start: T2DPoint; // Start/end point of gradient, in pixels by default,
     Gradient_end: T2DPoint;   // but if gfRel* in flags relative to entity boundary or user space
@@ -561,12 +562,17 @@ type
     procedure CalcGradientVector(out AGradientStart, AGradientEnd: T2dPoint;
       const ARect: TRect; ADestX: Integer = 0; ADestY: Integer = 0;
       AMulX: Double = 1.0; AMulY: Double = 1.0);
-    procedure DrawPolygonBrushGradient(ADest: TFPCustomCanvas; var ARenderInfo: TvRenderInfo;
-      const APoints: TPointsArray; ARect: TRect; AGradientStart, AGradientEnd: T2DPoint);
+    procedure DrawPolygon(ADest: TFPCustomCanvas; var RenderInfo: TvRenderInfo;
+      const APoints: TPointsArray; const APolyStarts: TIntegerDynArray; ARect: TRect);
+    procedure DrawPolygonBrushLinearGradient(ADest: TFPCustomCanvas; var ARenderInfo: TvRenderInfo;
+      const APoints: TPointsArray;const APolyStarts: TIntegerDynArray;
+      ARect: TRect; AGradientStart, AGradientEnd: T2DPoint);
     procedure DrawPolygonBrushRadialGradient(ADest: TFPCustomCanvas; var ARenderInfo: TvRenderInfo;
       const APoints: TPointsArray; ARect: TRect);
     procedure DrawNativePolygonBrushRadialGradient(ADest: TFPCustomCanvas; var ARenderInfo: TvRenderInfo;
       const APoints: TPointsArray; ARect: TRect);
+    procedure DrawPolygonBorderOnly(ADest: TFPCustomCanvas; var ARenderInfo: TvRenderInfo;
+      const APoints: TPointsArray);
   public
     {@@ The global Brush for the entire entity. In the case of paths, individual
         elements might be able to override this setting. }
@@ -769,6 +775,7 @@ type
   end;
 
   { TvRectangle }
+  { The point (X,Y) refers to the left/top corner of the rectangle! }
 
   TvRectangle = class(TvEntityWithPenBrushAndFont)
   protected
@@ -1507,6 +1514,7 @@ type
     procedure AutoFit(ADest: TFPCustomCanvas; AWidth, AHeight, ARenderHeight: Integer; out ADeltaX, ADeltaY: Integer; out AZoom: Double); virtual;
     procedure GetNaturalRenderPos(var APageHeight: Integer; out AMulY: Double); virtual; abstract;
     procedure SetNaturalRenderPos(AUseTopLeftCoords: Boolean); virtual;
+    function HasNaturalRenderPos: Boolean;
     { Debug methods }
     procedure GenerateDebugTree(ADestRoutine: TvDebugAddItemProc; APageItem: Pointer); virtual; abstract;
   end;
@@ -3944,13 +3952,90 @@ begin
   end;
 end;
 
-{ Fills the entity with a gradient.
+{ Fills a polygon with the color of the current brush. The routine can handle
+  non-contiguous polygons (holes!) correctly using the ScanLine algorithm and
+  the even-odd rule
+  http://www.tutorialspoint.com/computer_graphics/polygon_filling_algorithm.htm
+
+  The array APoints must be in canvas units.
+
+  NOTES:
+  - The method only performs a solid fill, i.e. Brush.Style is ignored
+  - The method modifies the current pen. }
+procedure TvEntityWithPenAndBrush.DrawPolygon(ADest: TFPCustomCanvas;
+  var RenderInfo: TvRenderInfo; const APoints: TPointsArray;
+  const APolyStarts: TIntegerDynArray; ARect: TRect);
+var
+  scanlineY, scanLineY1, scanLineY2: Integer;
+  lPoints, pts: T2DPointsArray;
+  j: Integer;
+begin
+  if ARect.Top < ARect.Bottom then
+  begin
+    scanLineY1 := ARect.Top;
+    scanLineY2 := ARect.Bottom;
+  end else
+  begin
+    scanLineY1 := ARect.Bottom;
+    scanLineY2 := ARect.Top;
+  end;
+
+  // Prepare points as needed by the GetLinePolygonIntersectionPoints procedure
+  SetLength(pts, Length(APoints));
+  for j := 0 to High(APoints) do
+    pts[j] := Point2D(APoints[j].X, APoints[j].Y);
+
+  // Prepare parameters and polygon points
+  ADest.Pen.Style := psSolid;
+  ADest.Pen.Width := 1;
+  ADest.Pen.FPColor := Brush.Color;
+
+  // Fill polygon by drawing horizontal line segments
+  scanlineY := scanlineY1;
+  while (scanlineY <= scanlineY2) do begin
+    // Find intersection points of horizontal scan line with polygon
+    // with polygon
+    lPoints := GetLinePolygonIntersectionPoints(scanlineY, pts, APolyStarts, false);
+    if Length(lPoints) < 2 then begin
+      inc(scanlineY);
+      Continue;
+    end;
+    // Draw lines between intersection points, skip every second pair
+    j := 0;
+    while j < High(lPoints) do
+    begin
+      ADest.Line(round(lPoints[j].X), round(lPoints[j].Y), round(lPoints[j+1].X), round(lPoints[j+1].Y));
+      inc(j, 2);
+    end;
+    // Proceed to next scan line
+    inc(scanlineY);
+  end;
+end;
+
+{ Paints the border around the shape. Ignores the brush.
+  APoints must be in canvas units. }
+procedure TvEntityWithPenAndBrush.DrawPolygonBorderOnly(ADest: TFPCustomCanvas;
+  var ARenderInfo: TvRenderInfo; const APoints: TPointsArray);
+var
+  j: Integer;
+begin
+  if Pen.Style <> psClear then
+  begin
+    ApplyPenToCanvas(ADest, ARenderInfo);
+    ADest.MoveTo(APoints[0].X, APoints[0].Y);
+    for j:=1 to High(APoints) do
+      ADest.LineTo(APoints[j].X, APoints[j].Y);
+  end;
+end;
+
+{ Fills the entity with a linear gradient.
   Assumes that the boundary is already in canvas units and is specified by
-  polygon APoints. }
-procedure TvEntityWithPenAndBrush.DrawPolygonBrushGradient(
+  polygon APoints.
+  NOTE: The method modifies the current pen. }
+procedure TvEntityWithPenAndBrush.DrawPolygonBrushLinearGradient(
   ADest: TFPCustomCanvas; var ARenderInfo: TvRenderInfo;
-  const APoints: TPointsArray; ARect: TRect; AGradientStart,
-  AGradientEnd: T2DPoint);
+  const APoints: TPointsArray;const APolyStarts: TIntegerDynArray;
+  ARect: TRect; AGradientStart, AGradientEnd: T2DPoint);
 var
   lPoints, pts: T2DPointsArray;
   i, j: Integer;
@@ -3967,14 +4052,6 @@ var
   dir: Integer;
   lStr: String;
 begin
-  if Brush.Kind = bkRadialGradient then
-  begin
-    DrawPolygonBrushRadialGradient(ADest, ARenderInfo, APoints, ARect);
-    Exit;
-  end;
-  if not (Brush.Kind in [bkVerticalGradient, bkHorizontalGradient, bkOtherLinearGradient]) then
-    Exit;
-
   // Direction of gradient vector. The gradient vector begins at the first
   // color position and ends at the last color position specified in the
   // brush's Gradient_colors.
@@ -4072,7 +4149,7 @@ begin
   begin
     // Find intersection points of gradient line (normal to gradient vector)
     // with polygon
-    lPoints := GetLinePolygonIntersectionPoints(coord, pts, coordIsX);
+    lPoints := GetLinePolygonIntersectionPoints(coord, pts, APolyStarts, coordIsX);
     if Length(lPoints) < 2 then begin
       coord := coord + dcoord;
       Continue;
@@ -4272,30 +4349,32 @@ begin
     exit;
   try
     ConvertPathToPolygons(tmpPath, ADestX, ADestY, AMulX, AMulY, polypoints, polystarts);
+
     // Boundary rect of shape filled with a gradient
     lRect := Rect(x1, y1, x2, y2);
     NormalizeRect(lRect);
-    // calculate gradient vector
-    CalcGradientVector(gv1, gv2, lRect, ADestX, ADestY, AMulX, AMulY);
-    // Draw the gradient
-    {$ifdef USE_LCL_CANVAS}
-    if Widgetset.GetLCLCapability(lcRadialGradientBrush) = LCL_CAPABILITY_YES then
-    begin
-      DrawNativePolygonBrushRadialGradient(ADest, ARenderInfo, polypoints, Bounds(0, 0, 1, 1));
-    end
-    else
-    {$endif}
-      DrawPolygonBrushGradient(ADest, ARenderInfo, polypoints, lRect, gv1, gv2);
-    // to do: multiple polygons!
+
+    case Brush.Kind of
+      bkHorizontalGradient,
+      bkVerticalGradient,
+      bkOtherLinearGradient:
+        begin
+          // calculate gradient vector
+          CalcGradientVector(gv1, gv2, lRect, ADestX, ADestY, AMulX, AMulY);
+          // Draw the gradient
+          DrawPolygonBrushLinearGradient(ADest, ARenderInfo, polyPoints, polystarts, lRect, gv1, gv2);
+        end;
+      bkRadialGradient:
+       {$ifdef USE_LCL_CANVAS}
+        if Widgetset.GetLCLCapability(lcRadialGradientBrush) = LCL_CAPABILITY_YES then
+          DrawNativePolygonBrushRadialGradient(ADest, ARenderInfo, polypoints, Bounds(0, 0, 1, 1))
+        else
+       {$endif}
+          DrawPolygonBrushRadialGradient(ADest, ARenderInfo, polypoints, lRect);
+    end;
 
     // Paint outline
-    if ADest.Pen.Style <> psClear then
-    begin
-      ApplyPenToCanvas(ADest, ARenderInfo);
-      ADest.MoveTo(polypoints[0].X, polypoints[0].Y);
-      for j:=1 to High(polypoints) do
-        ADest.LineTo(polypoints[j].X, polypoints[j].Y);
-    end;
+    DrawPolygonBorderOnly(ADest, ARenderInfo, polyPoints);
 
   finally
     tmpPath.Free;
@@ -4959,6 +5038,8 @@ begin
     y2 := max(y2, FPolyPoints[i].Y);
   end;
   CalcEntityCanvasMinMaxXY_With2Points(ARenderInfo, x1, y1, x2, y2);
+  // Boundary rect of shape filled with a gradient
+  lRect := Rect(x1, y1, x2, y2);
 
   if ADoDraw then
   begin
@@ -4969,29 +5050,39 @@ begin
         bkSimpleBrush:
           if Brush.Style <> bsClear then
           begin
-            {$IFDEF USE_LCL_CANVAS}
-            for i := 0 to High(FPolyStarts) do
-            begin
-              j := FPolyStarts[i];
-              if i = High(FPolyStarts) then
-                n := Length(FPolyPoints) - j
-              else
-                n := FPolyStarts[i+1] - FPolyStarts[i]; // + 1;
-              ACanvas.Polygon(@FPolyPoints[j], n, WindingRule = vcmNonZeroWindingRule);
-            end;
-            {$ELSE}
-            ADest.Polygon(FPolyPoints);
-            {$ENDIF}
+            if (Brush.Style = bsSolid) and (Length(FPolyStarts) > 1) then
+              // Non-contiguous polygon (polygon with "holes") --> use special procedure
+              // Disadvantage: it can oly do solid fills!
+              DrawPolygon(ADest, ARenderInfo, FPolyPoints, FPolyStarts, lRect)
+            else
+              {$IFDEF USE_LCL_CANVAS}
+              for i := 0 to High(FPolyStarts) do
+              begin
+                j := FPolyStarts[i];
+                if i = High(FPolyStarts) then
+                  n := Length(FPolyPoints) - j
+                else
+                  n := FPolyStarts[i+1] - FPolyStarts[i]; // + 1;
+                ACanvas.Polygon(@FPolyPoints[j], n, WindingRule = vcmNonZeroWindingRule);
+              end;
+              {$ELSE}
+              ADest.Polygon(FPolyPoints);
+              {$ENDIF}
           end;
-        else  // gradients
-          // Boundary rect of shape filled with a gradient
-          lRect := Rect(x1, y1, x2, y2);
-          // calculate gradient vector
-          CalcGradientVector(gv1, gv2, lRect, ADestX, ADestY, AMulX, AMulY);
-          // Draw the gradient
-          DrawPolygonBrushGradient(ADest, ARenderInfo, FPolyPoints, lRect, gv1, gv2);
-          // to do: multiple polygons!
-      end;
+
+        bkHorizontalGradient,
+        bkVerticalGradient,
+        bkOtherLinearGradient:
+          begin
+            // calculate gradient vector
+            CalcGradientVector(gv1, gv2, lRect, ADestX, ADestY, AMulX, AMulY);
+            // Draw the gradient
+            DrawPolygonBrushLinearGradient(ADest, ARenderInfo, FPolyPoints, FPolyStarts, lRect, gv1, gv2);
+          end;
+
+        bkRadialGradient:
+          DrawPolygonBrushRadialGradient(ADest, ARenderInfo, FPolyPoints, lRect);
+      end;  // case Brush.Kind of...
 
     // (2) draw border, take care of the segments with modified pen
     ADest.Brush.Style := bsClear;               // We will paint no background
@@ -5635,6 +5726,7 @@ var
   lTextSize: TSize;
   lTextWidth: Integer;
   tm: TLCLTextMetric;
+  ts: TTextStyle;
   {$endif}
 begin
   lText := Value.Text + Format(' F=%d', [ADest.Font.Size]); // for debugging
@@ -6406,34 +6498,69 @@ end;
 
 procedure TvPolygon.Render(ADest: TFPCustomCanvas; var ARenderInfo: TvRenderInfo;
   ADestX: Integer; ADestY: Integer; AMulX: Double; AMulY: Double; ADoDraw: Boolean);
-
-  function CoordToCanvasX(ACoord: Double): Integer;
-  begin
-    Result := Round(ADestX + AmulX * ACoord);
-  end;
-
-  function CoordToCanvasY(ACoord: Double): Integer;
-  begin
-    Result := Round(ADestY + AmulY * ACoord);
-  end;
-
 var
   lPoints: array of TPoint;
   i: Integer;
+  x1, x2, y1, y2: Integer;
+  polystarts: TIntegerDynArray;
+  lRect: TRect;
+  gv1, gv2: T2DPoint;
 begin
   inherited Render(ADest, ARenderInfo, ADestX, ADestY, AMulX, AMulY, ADoDraw);
 
+  x1 := MaxInt;
+  y1 := maxInt;
+  x2 := -MaxInt;
+  y2 := -MaxInt;
   SetLength(lPoints, Length(Points));
-  for i := 0 to Length(Points)-1 do
+  for i := 0 to High(Points) do
   begin
-    lPoints[i].X := CoordToCanvasX(Points[i].X);
-    lPoints[i].Y := CoordToCanvasY(Points[i].Y);
-    CalcEntityCanvasMinMaxXY(ARenderInfo, lPoints[i].X, lPoints[i].Y);
+    lPoints[i].X := CoordToCanvasX(Points[i].X, ADestX, AMulX);
+    lPoints[i].Y := CoordToCanvasY(Points[i].Y, ADestY, AMulY);
+    x1 := min(x1, lPoints[i].X);
+    y1 := min(y1, lPoints[i].Y);
+    x2 := max(x2, lPoints[i].X);
+    y2 := max(y2, lPoints[i].Y);
   end;
+  CalcEntityCanvasMinMaxXY_With2Points(ARenderInfo, x1, y1, x2, y2);
 
   if ADoDraw then
-    ADest.Polygon(lPoints);
+    if (Length(lPoints) > 2) then
+    begin
+      case Brush.Kind of
+        bkSimpleBrush:
+          ADest.Polygon(lPoints);  // fills the polygon and paints the border
+        bkHorizontalGradient,
+        bkVerticalGradient,
+        bkOtherLinearGradient:
+          begin
+            // Border will be drawn later (gradient painting needs its own pen)
+            ADest.Pen.Style := psClear;
+            // Boundary rect of shape to be filled by a gradient
+            lRect := Rect(x1, y1, x2, y2);
+            // Calculate gradient vector
+            CalcGradientVector(gv1, gv2, lRect, ADestX, ADestY, AMulX, AMulY);
+            // Indexes where polygon starts: no multiple polygones here
+            SetLength(polyStarts, 1);
+            polyStarts[0] := 0;
+            // Draw the gradient
+            DrawPolygonBrushLinearGradient(ADest, ARenderInfo, lPoints, polyStarts, lRect, gv1, gv2);
+            // Draw border
+            DrawPolygonBorderOnly(ADest, ARenderInfo, lPoints);
+          end;
+        bkRadialGradient:
+          begin
+            // Border will be drawn later (gradient painting needs its own pen)
+            ADest.Pen.Style := psClear;
+            // Draw the gradient
+            DrawPolygonBrushRadialGradient(ADest, ARenderInfo, lPoints, lRect);
+            // Draw border
+            DrawPolygonBorderOnly(ADest, ARenderInfo, lPoints);
+          end;
+      end;
+    end;
 end;
+
 
 { TvAlignedDimension }
 
@@ -8815,6 +8942,12 @@ begin
   FUseTopLeftCoordinates := AUseTopLeftCoords;
 end;
 
+function TvPage.HasNaturalRenderPos: Boolean;
+begin
+  Result := FUseTopLeftCoordinates;
+end;
+
+
 { TvVectorialPage }
 
 procedure TvVectorialPage.ClearTmpPath;
@@ -9900,7 +10033,7 @@ procedure TvVectorialDocument.WriteToFile(AFileName: string);
 var
   lFormat: TvVectorialFormat;
 begin
-  lFormat := GetFormatFromExtension(ExtractFileExt(AFileName));
+  lFormat := GetFormatFromExtension(AFileName);
   WriteToFile(AFileName, lFormat);
 end;
 

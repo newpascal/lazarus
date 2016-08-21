@@ -1228,7 +1228,7 @@ begin
   if IndexOf(JITComponent)<0 then
     raise Exception.Create('TJITComponentList.RemoveMethod JITComponent.ClassName='+
       JITComponent.ClassName);
-  if (AName='') or (not IsValidIdent(AName)) then
+  if not IsValidIdent(AName) then
     raise Exception.Create('TJITComponentList.RemoveMethod invalid name: "'+AName+'"');
 
   // delete TJITMethod
@@ -1254,7 +1254,7 @@ begin
   if IndexOf(JITComponent)<0 then
     raise Exception.Create('TJITComponentList.RenameMethod JITComponent.ClassName='+
       JITComponent.ClassName);
-  if (NewName='') or (not IsValidIdent(NewName)) then
+  if not IsValidIdent(NewName) then
     raise Exception.Create('TJITComponentList.RenameMethod invalid name: "'+NewName+'"');
     
   // rename TJITMethod
@@ -1278,7 +1278,7 @@ begin
   if IndexOf(JITComponent)<0 then
     raise Exception.Create('TJITComponentList.RenameComponentClass JITComponent.ClassName='+
       JITComponent.ClassName);
-  if (NewName='') or (not IsValidIdent(NewName)) then
+  if not IsValidIdent(NewName) then
     raise Exception.Create('TJITComponentList.RenameComponentClass invalid name: "'+NewName+'"');
   DoRenameClass(JITComponent.ClassType,NewName);
 end;
@@ -1401,7 +1401,7 @@ begin
   if IndexOf(JITComponent)<0 then
     raise Exception.Create('TJITComponentList.CreateNewMethod JITComponent.ClassName='+
       JITComponent.ClassName);
-  if (AName='') or (not IsValidIdent(AName)) then
+  if not IsValidIdent(AName) then
     raise Exception.Create('TJITComponentList.CreateNewMethod invalid name: "'+AName+'"');
   OldCode:=JITComponent.MethodAddress(AName);
   if OldCode<>nil then begin
@@ -1588,7 +1588,8 @@ procedure TJITComponentList.FreeJITClass(var AClass: TClass);
   end;
 
 var
-  OldVMT, ClassNamePShortString: Pointer;
+  OldVMT: PVmt;
+  ClassNamePShortString: Pointer; // don't use PShortString so that the compiler don't get silly ideas
   OldFieldTable: PFieldTable;
   OldTypeInfo: PTypeInfo;
   OldMethodTable: PMethodNameTable;
@@ -1599,27 +1600,32 @@ begin
   // free TJITMethods
   JITMethods.DeleteAllOfClass(AClass);
 
-  OldVMT:=Pointer(AClass);
+  OldVMT:=PVmt(Pointer(AClass));
 
   // free methodtable
-  OldMethodTable:=PMethodNameTable((OldVMT+vmtMethodTable)^);
+  OldMethodTable:=PMethodNameTable(OldVMT^.vMethodTable);
   if Assigned(OldMethodTable) then begin
     FreeMethodTableEntries(OldMethodTable);
     FreeMem(OldMethodTable);
   end;
 
+  // set vmtParent
+  {$IFNDEF HasVMTParent}
+  FreeMem(OldVMT^.vParentRef);
+  {$ENDIF}
+
   // free classname
-  ClassNamePShortString:=Pointer((OldVMT+vmtClassName)^);
+  ClassNamePShortString:=Pointer(OldVMT^.vClassName);
   FreeMem(ClassNamePShortString);
 
   // free field table
-  OldFieldTable:=PFieldTable((OldVMT+vmtFieldTable)^);
+  OldFieldTable:=PFieldTable(OldVMT^.vFieldTable);
   ReallocMem(OldFieldTable^.ClassTable,0);
   FreeMem(OldFieldTable);
 
   // free typeinfo
-  OldTypeInfo:=PTypeInfo((OldVMT+vmtTypeInfo)^);
-  {$IF FPC_FULLVERSION>=30100}
+  OldTypeInfo:=PTypeInfo(OldVMT^.vTypeInfo);
+  {$IFNDEF HasVMTParent}
   // free ParentInfoRef
   OldTypeData:=GetTypeData(OldTypeInfo);
   FreeMem(OldTypeData^.ParentInfoRef);

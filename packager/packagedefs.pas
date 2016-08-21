@@ -920,7 +920,7 @@ end;
 
 function IsValidPkgName(APkgName: String): Boolean;
 begin
-  Result := IsValidIdent(APkgName);
+  Result := IsDottedIdentifier(APkgName);
 end;
 
 function PkgFileTypeIdentToType(const s: string): TPkgFileType;
@@ -2225,7 +2225,7 @@ begin
   end;
 
   // check build macros
-  if (MacroName<>'') and IsValidIdent(MacroName) then
+  if IsValidIdent(MacroName) then
   begin
     Values:=GetBuildMacroValues(CompilerOptions,true);
     if Values<>nil then begin
