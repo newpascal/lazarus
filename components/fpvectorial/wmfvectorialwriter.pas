@@ -81,6 +81,7 @@ type
     procedure WriteBkColor(AStream: TStream; APage: TvVectorialPage);
     procedure WriteBkMode(AStream: TStream; AMode: Word);
     procedure WriteBrush(AStream: TStream; ABrush: TvBrush);
+    procedure WriteCircle(AStream: TStream; ACircle: TvCircle);
     procedure WriteEllipse(AStream: TStream; AEllipse: TvEllipse);
     procedure WriteEOF(AStream: TStream);
     procedure WriteExtText(AStream: TStream; AText: TvText);
@@ -402,13 +403,18 @@ var
   rec: TWMFBrushRecord;
   idx: Word;
   wmfbrush: TWMFBrush;
+  brushstyle: TFPBrushStyle;
 begin
   if SameBrush(ABrush, FCurrBrush) then
     exit;
 
   idx := FObjList.FindBrush(ABrush);
   if idx = Word(-1) then begin
-    case ABrush.Style of
+    // No gradient support by wmf --> use a clear brush instead.
+    if ABrush.Kind <> bkSimpleBrush then
+      brushstyle := bsClear else
+      brushstyle := ABrush.Style;
+    case brushstyle of
       bsClear      : rec.Style := BS_NULL;
       bsSolid      : rec.Style := BS_SOLID;
       bsHorizontal : begin rec.Style := BS_HATCHED; rec.Hatch := HS_HORIZONTAL; end;
@@ -441,6 +447,35 @@ begin
   FCurrBrush := ABrush;
 end;
 
+procedure TvWMFVectorialWriter.WriteCircle(AStream: TStream;
+  ACircle: TvCircle);
+var
+  rec: TWMFRectRecord;
+  c, r: TPoint;
+begin
+  WritePen(AStream, ACircle.Pen);
+  WriteBrush(AStream, ACircle.Brush);
+  c.x := ScaleX(ACircle.X);
+  c.y := ScaleY(ACircle.Y);
+  r.x := ScaleSizeX(ACircle.Radius);
+  r.y := ScaleSizeY(ACircle.Radius);
+  rec.Left := c.x - r.x;
+  rec.Right := c.x + r.x;
+  if FUseTopLeftCoordinates then begin
+    rec.Top := c.y - r.y;
+    rec.Bottom := c.y + r.y;
+  end else
+  begin
+    rec.Top := c.y + r.y;
+    reC.Bottom := c.y - r.y;
+  end;
+  UpdateBounds(rec.Left, rec.Top);
+  UpdateBounds(rec.Right, rec.Bottom);
+
+  // WMF record header + parameters
+  WriteWMFRecord(AStream, META_ELLIPSE, rec, SizeOf(TWMFRectRecord));
+end;
+
 procedure TvWMFVectorialWriter.WriteEllipse(AStream: TStream;
   AEllipse: TvEllipse);
 var
@@ -466,6 +501,8 @@ begin
     WritePolygon(AStream, TvPolygon(AEntity))
   else if AEntity is TvRectangle then
     WriteRectangle(AStream, TvRectangle(AEntity))
+  else if AEntity is TvCircle then
+    WriteCircle(AStream, TvCircle(AEntity))
   else if AEntity is TvEllipse then
     WriteEllipse(AStream, TvEllipse(AEntity))
   else if AEntity is TvText then
@@ -904,7 +941,7 @@ begin
   FWMFHeader.MaxRecordSize := 0;
   FBBox := Rect(0, 0, 0, 0);
   page := AData.GetPageAsVectorial(PAGE_INDEX);
-  FUseTopLeftCoordinates := page.HasNaturalRenderPos;
+  FUseTopLeftCoordinates := page.UseTopLeftCoordinates;
 
   // Prepare scaling
   PrepareScaling(page);

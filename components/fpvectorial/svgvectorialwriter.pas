@@ -41,6 +41,7 @@ type
 
     procedure WriteDocumentSize(AStrings: TStrings; AData: TvVectorialDocument);
     procedure WriteDocumentName(AStrings: TStrings; AData: TvVectorialDocument);
+    procedure WriteViewBox(AStrings: TStrings; AData: TvVectorialDocument);
 
     // Writing of svg entities
     procedure WriteCircle(AStrings: TStrings; ADoc: TvVectorialDocument;
@@ -53,6 +54,8 @@ type
       APage: TvVectorialPage; AEntity: TvEntity);
     procedure WriteLayer(AStrings: TStrings; ADoc: TvVectorialDocument;
       APage: TvVectorialPage; ALayer: Tvlayer);
+    procedure WriteParagraph(AStrings: TStrings; ADoc: TvVectorialDocument;
+      APage: TvVectorialPage; AParagraph: TvParagraph);
     procedure WritePath(AStrings: TStrings; ADoc: TvVectorialDocument;
       APage: TvVectorialPage; APath: TPath);
     procedure WritePolygon(AStrings: TStrings;ADoc: TvVectorialDocument;
@@ -95,7 +98,9 @@ procedure TvSVGVectorialWriter.ConvertFPVCoordinatesToSVGCoordinates(
   const ASrcX, ASrcY: Double; var ADestX, ADestY: double);
 begin
   ADestX := ASrcX * FLOAT_PIXELS_PER_MILLIMETER;
-  ADestY := (APage.Height - ASrcY) * FLOAT_PIXELS_PER_MILLIMETER;
+  if APage.UseTopLeftCoordinates then
+    ADestY := ASrcY * FLOAT_PIXELS_PER_MILLIMETER else
+    ADestY := (APage.Height - ASrcY) * FLOAT_PIXELS_PER_MILLIMETER;
 end;
 
 procedure TvSVGVectorialWriter.ConvertFPVSizeToSVGSize(
@@ -272,6 +277,17 @@ begin
   AStrings.Add('  sodipodi:docname="New document 1">');
 end;
 
+procedure TvSVGVectorialWriter.WriteViewbox(AStrings: TStrings;
+  AData: TvVectorialDocument);
+var
+  x, y, w, h: Double;
+begin
+  x := 0;
+  y := 0;
+  ConvertFPVSizeToSVGSize(AData.Width, AData.Height, w, h);
+  AStrings.Add(Format('  viewBox="%f %f %f %f"', [x, y, w, h], FPointSeparator));
+end;
+
 procedure TvSVGVectorialWriter.WriteCircle(AStrings: TStrings;
   ADoc: TvVectorialDocument; APage: TvVectorialPage; ACircle: TvCircle);
 var
@@ -333,14 +349,17 @@ begin
   if AEntity is TvEllipse then
     WriteEllipse(AStrings, ADoc, APage, TvEllipse(AEntity))
   else
-  if AEntity is TvLayer then
-    WriteLayer(AStrings, ADoc, APage, TvLayer(AEntity))
-  else
   if AEntity is TvRectangle then
     WriteRectangle(AStrings, ADoc, APage, TvRectangle(AEntity))
   else
   if AEntity is TvPolygon then
-    WritePolygon(AStrings, ADoc, APage, TvPolygon(AEntity));
+    WritePolygon(AStrings, ADoc, APage, TvPolygon(AEntity))
+  else
+  if AEntity is TvLayer then
+    WriteLayer(AStrings, ADoc, APage, TvLayer(AEntity))
+  else
+  if AEntity is TvParagraph then
+    WriteParagraph(AStrings, ADoc, APage, TvParagraph(AEntity));
 end;
 
 procedure TvSVGVectorialWriter.WriteLayer(AStrings: TStrings;
@@ -356,6 +375,29 @@ begin
     lEntity := ALayer.GetNextEntity;
   end;
   AStrings.Add('  </g>');
+end;
+
+procedure TvSVGVectorialWriter.WriteParagraph(AStrings: TStrings;
+  ADoc: TvVectorialDocument; APage: TvVectorialPage; AParagraph: TvParagraph);
+var
+  lEntity: TvEntity;
+  textEntity: TvText;
+  x, y: Double;
+begin
+  lEntity := AParagraph.GetFirstEntity;
+  while lEntity <> nil do begin
+    if (lEntity is TvText) then begin
+      textEntity := TvText(lEntity);
+      x := textEntity.X;
+      y := textEntity.Y;
+      textEntity.X := AParagraph.X + x;
+      textEntity.Y := AParagraph.Y + y;
+      WriteText(AStrings, ADoc, APage, textEntity);
+      textEntity.X := x;
+      textEntity.Y := y;
+    end;
+    lEntity := AParagraph.GetNextEntity;
+  end;
 end;
 
 {@@
@@ -379,9 +421,14 @@ var
   PathStr: string;
   PtX, PtY, OldPtX, OldPtY: double;
   BezierCP1X, BezierCP1Y, BezierCP2X, BezierCP2Y: double;
+  cx, cy, rx, ry, phi: Double;
+  t1, t2: Double;
+  x1,y1,x2,y2: Double;
+  sweep, longarc: Integer;
   segment: TPathSegment;
   l2DSegment: T2DSegment absolute segment;
   l2DBSegment: T2DBezierSegment absolute segment;
+  l2DArcSegment: T2dEllipticalArcSegment absolute segment;
   styleStr: string;
 begin
   OldPtX := 0;
@@ -398,7 +445,9 @@ begin
       and (segment.SegmentType <> st2DLineWithPen)
       and (segment.SegmentType <> stMoveTo)
       and (segment.SegmentType <> st2DBezier)
-      then Break; // unsupported line type
+      and (segment.SegmentType <> st2DEllipticalArc)
+    then
+      break; // unsupported line type
 
     // Coordinate conversion from fpvectorial to SVG
     ConvertFPVCoordinatesToSVGCoordinates(APage, l2DSegment.X, l2DSegment.Y, PtX, PtY);
@@ -434,6 +483,36 @@ begin
         [BezierCP1X, BezierCP1Y, BezierCP2X, BezierCP2Y, PtX, PtY],
         FPointSeparator
       );
+    end else
+    if (segment.SegmentType = st2DEllipticalArc) then
+    begin
+      // Convert everything to svg coordinates. Note: this is top/left!
+      ConvertFPVSizeToSVGSize(l2DArcSegment.RX, l2DArcSegment.RY, rx, ry);
+      ConvertFPVCoordinatesToSVGCoordinates(APage, l2DArcSegment.CX, l2DArcSegment.CY, cx, cy);
+      // Determine the large-arc flag
+      x1 := OldPtX;
+      y1 := OldPtY;
+      x2 := OldPtX + PtX;
+      y2 := OldPtY + PtY;
+      phi := l2DArcSegment.XRotation * APage.GetTopLeftCoords_Adjustment();
+      sweep := IfThen(l2DArcSegment.ClockwiseArcFlag, 1, 0);
+      t1 := CalcEllipsePointAngle(x1, y1, rx, ry, cx, cy, phi);
+      t2 := CalcEllipsePointAngle(x2, y2, rx, ry, cx, cy, phi);
+      if sweep = 1 then
+      begin
+        // clockwise
+        // We have top/left coords now --> angle increases --> t2 must be > t1
+        if t2 < t1 then t2 := TWO_PI + t2;
+      end else
+      begin
+        // counter-clockwise
+        // angle decreases in top/left coords --> t2 must be < t1
+        if t2 > t1 then t1 := TWO_PI + t1;
+      end;
+      longarc := IfThen(abs(t2 - t1) < pi, 0, 1);
+
+      PathStr := PathStr + Format('a %g,%g %g %d,%d %g,%g',
+        [rx, ry, RadToDeg(phi), longarc, sweep, PtX, PtY], FPointSeparator);
     end;
 
     // Store the current position for future points
@@ -586,6 +665,7 @@ begin
   AStrings.Add('  xmlns="http://www.w3.org/2000/svg"');
   AStrings.Add('  xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"');
   WriteDocumentSize(AStrings, AData);
+  WriteViewbox(AStrings, AData);
   AStrings.Add('  id="svg2"');
   AStrings.Add('  version="1.1"');
   WriteDocumentName(AStrings, AData);

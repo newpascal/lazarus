@@ -2,7 +2,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: \n"
 "POT-Creation-Date: \n"
-"PO-Revision-Date: 2016-07-19 20:02+0200\n"
+"PO-Revision-Date: 2016-09-19 18:46+0200\n"
 "Last-Translator: Swen Heinig <swen@heinig.email>\n"
 "Language-Team: Deutsch <lazarus@miraclec.com>\n"
 "MIME-Version: 1.0\n"
@@ -4067,10 +4067,6 @@ msgstr "Die Minimalversion \"%s\" ist ungültig.%sBitte verwenden Sie das Format
 #: lazarusidestrconsts.lisa2pthepackagehasalreadyadependencyforthe
 msgid "The package already has a dependency on the package \"%s\"."
 msgstr "Das Package besitzt bereits eine Abhängigkeit auf \"%s\"."
-
-#: lazarusidestrconsts.lisa2pthepackagenameisinvalidpleasechooseanexisting
-msgid "The package name \"%s\" is invalid.%sPlease choose an existing package."
-msgstr "Der Package-Name \"%s\" ist ungültig.%sBitte wählen Sie ein vorhandenes Package."
 
 #: lazarusidestrconsts.lisa2pthepagenameistoolongmax100chars
 msgid "The page name \"%s\" is too long (max 100 chars)."
@@ -8620,7 +8616,9 @@ msgid "Enable Macros"
 msgstr "Makros einschalten"
 
 #: lazarusidestrconsts.lisenablereplacewholeidentifierdisablereplaceprefix
-msgid "Enable = replace whole identifier, Disable = replace prefix"
+#, fuzzy
+#| msgid "Enable = replace whole identifier, Disable = replace prefix"
+msgid "Enable = pressing Return replaces whole identifier and Shift+Return replaces prefix, Disable = pressing Return replaces prefix and Shift+Return replaces whole identifier"
 msgstr "Aktivieren = ganzen Bezeichner ersetzen, Deaktivieren = Präfix ersetzen"
 
 #: lazarusidestrconsts.lisenclose
@@ -11304,7 +11302,7 @@ msgstr "Lade Makro aus"
 
 #: lazarusidestrconsts.lislocal
 msgid "&Local"
-msgstr ""
+msgstr "&Lokal"
 
 #: lazarusidestrconsts.lislocals
 msgid "Locals"
@@ -11800,7 +11798,7 @@ msgstr "Imagelisten-Icon ändern"
 
 #: lazarusidestrconsts.lismenueditorchangeshortcutcaptionforcomponent
 msgid "Change %s for %s"
-msgstr ""
+msgstr "Ändere %s für %s"
 
 #: lazarusidestrconsts.lismenueditorchangeshortcutconflicts
 msgid "Change shortcut conflict \"%s\""
@@ -11840,7 +11838,7 @@ msgstr "<Konfliktauflösung komplett>"
 
 #: lazarusidestrconsts.lismenueditorconflictsfoundinitiallyd
 msgid "Conflicts found initially: %d"
-msgstr ""
+msgstr "Eingangs gefundene Konflikte: %d"
 
 #: lazarusidestrconsts.lismenueditordeepestnestedmenulevels
 msgid "Deepest nested menu level: %s"
@@ -12563,7 +12561,7 @@ msgstr "&Projekt"
 
 #: lazarusidestrconsts.lismenuprojectinspector
 msgid "Project Inspector"
-msgstr "Projektinspektor ..."
+msgstr "Projektinspektor"
 
 #: lazarusidestrconsts.lismenuprojectoptions
 msgid "Project Options ..."
@@ -13326,7 +13324,7 @@ msgstr "Mehrfache Verzeichnisse werden mit Semikolons getrennt"
 
 #: lazarusidestrconsts.lismultiplepack
 msgid ", multiple packages: "
-msgstr ""
+msgstr ", mehrfache Packages: "
 
 #: lazarusidestrconsts.lismvsavemessagestofiletxt
 msgid "Save messages to file (*.txt)"
@@ -15397,10 +15395,6 @@ msgstr "Dateien hinzufügen"
 msgid "Invalid Min-Max version"
 msgstr "Ungültiger Min-/Max-Version"
 
-#: lazarusidestrconsts.lisprojaddinvalidpackagename
-msgid "Invalid packagename"
-msgstr "Ungültiger Package-Name"
-
 #: lazarusidestrconsts.lisprojaddinvalidpascalunitname
 msgid "Invalid Pascal unit name"
 msgstr "Ungültiger Pascaldateiname"
@@ -15447,10 +15441,6 @@ msgstr "Die maximal benötigte Version ist kleiner als die minimale."
 msgctxt "lazarusidestrconsts.lisprojaddtheminimumversionisinvalid"
 msgid "The Minimum Version \"%s\" is invalid.%sPlease use the format major.minor.release.build%sFor example: 1.0.20.10"
 msgstr "Die Minimalversionsangabe \"%s\" ist ungültig.%sBitte verwenden Sie das Format Major.Minor.Release.Build%sBeispielsweise: 1.0.20.10"
-
-#: lazarusidestrconsts.lisprojaddthepackagenameisinvalidplasechooseanexistingpackag
-msgid "The package name \"%s\" is invalid.%sPlase choose an existing package."
-msgstr "Der Package-Name \"%s\" ist ungültig.%sBitte wählen Sie ein vorhandenes Package."
 
 #: lazarusidestrconsts.lisprojaddtheprojecthasalreadyadependency
 msgid "The project has already a dependency for the package \"%s\"."
@@ -16401,7 +16391,7 @@ msgstr "Ausgewählt"
 
 #: lazarusidestrconsts.lisselectedaddition
 msgid "Selected addition:"
-msgstr ""
+msgstr "Gewählte Hinzufügung:"
 
 #: lazarusidestrconsts.lisselectedandchildcontrols
 msgid "Selected and child controls"
@@ -17832,11 +17822,11 @@ msgstr "Ausgewählte Units"
 
 #: lazarusidestrconsts.lisudshownodesfordirectories
 msgid "Show nodes for directories"
-msgstr ""
+msgstr "Zeige Knoten für Verzeichnisse"
 
 #: lazarusidestrconsts.lisudshownodesforprojectandpackages
 msgid "Show nodes for project and packages"
-msgstr ""
+msgstr "Zeige Knoten für Projekt und Packages"
 
 #: lazarusidestrconsts.lisudunits
 msgid "Units"
@@ -18672,6 +18662,10 @@ msgstr "Wenn eine Unit umbenannt wird, Referenzen aktualisieren ..."
 #: lazarusidestrconsts.liswhenenabledthecurrentoptionsaresavedtothetemplatew
 msgid "When enabled the current options are saved to the template, which is used when creating new projects"
 msgstr "Wenn eingeschaltet, werden die derzeit gewählten Optionen in ein Template für das Anlegen neuer Projekte gespeichert"
+
+#: lazarusidestrconsts.liswhenthereisonlyonepossiblecompletionitemuseitimmed
+msgid "When there is only one possible completion item use it immediately, without showing the completion box"
+msgstr ""
 
 #: lazarusidestrconsts.liswhenthesourceeditorcursormovesshowthecurrentnodein
 msgid "When the source editor cursor moves, show the current node in the code explorer"
@@ -20832,4 +20826,3 @@ msgstr "Schreibgeschützt"
 #: lazarusidestrconsts.versioninfotitle
 msgid "Version Info"
 msgstr "Versionsinformation"
-

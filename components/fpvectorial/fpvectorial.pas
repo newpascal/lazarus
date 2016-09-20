@@ -316,6 +316,8 @@ type
   { TPathSegment }
 
   TPathSegment = class
+  protected
+    FPath: TPath;
   public
     SegmentType: TSegmentType;
     // Fields for linking the list
@@ -332,6 +334,8 @@ type
     function GenerateDebugTree(ADestRoutine: TvDebugAddItemProc; APageItem: Pointer): Pointer; virtual;
     // rendering
     procedure AddToPoints(ADestX, ADestY: Integer; AMulX, AMulY: Double; var Points: TPointsArray); virtual;
+    // helper methods
+    function UseTopLeftCoordinates: Boolean;
   end;
 
   {@@
@@ -464,7 +468,8 @@ type
   TvEntityFeatures = record
     DrawsUpwards: Boolean; // TvText, TvEmbeddedVectorialDoc, etc draws upwards, but in the future we might have entities drawing downwards
     DrawsUpwardHeightAdjustment: Integer; // in Canvas pixels
-    DrawsUpwardHeightAdjustment_FirstLineExcluded: Integer; // in Canvas pixels
+    FirstLineHeight: Integer; // in Canvas pixels
+    TotalHeight: Integer; // in Canvas pixels
   end;
 
   { Now all elements }
@@ -487,7 +492,7 @@ type
     // This cased is utilized to guess the size of a document even before getting a canvas to draw at
     procedure CalculateBoundingBox(ADest: TFPCustomCanvas; out ALeft, ATop, ARight, ABottom: Double); virtual;
     function CalculateSizeInCanvas(ADest: TFPCustomCanvas; APage: TvPage; APageHeight: Integer; AZoom: Double; out ALeft, ATop, AWidth, AHeight: Integer): Boolean;
-    procedure CalculateHeightInCanvas(ADest: TFPCustomCanvas; out AHeight: Integer);
+    procedure CalculateHeightInCanvas(ADest: TFPCustomCanvas; AMulX, AMulY: Double; out AHeight: Integer);
     // helper functions for CalculateBoundingBox & TvRenderInfo
     procedure ExpandBoundingBox(ADest: TFPCustomCanvas; var ALeft, ATop, ARight, ABottom: Double);
     class procedure CalcEntityCanvasMinMaxXY(var ARenderInfo: TvRenderInfo; APointX, APointY: Integer);
@@ -515,7 +520,7 @@ type
       ADestY: Integer = 0; AMulX: Double = 1.0; AMulY: Double = 1.0; ADoDraw: Boolean = True); virtual;
     function AdjustColorToBackground(AColor: TFPColor; ARenderInfo: TvRenderInfo): TFPColor;
     function GetNormalizedPos(APage: TvVectorialPage; ANewMin, ANewMax: Double): T3DPoint;
-    function GetEntityFeatures(ADest: TFPCustomCanvas): TvEntityFeatures; virtual;
+    function GetEntityFeatures(ADest: TFPCustomCanvas; AMulX, AMulY: Double): TvEntityFeatures; virtual;
     function GenerateDebugTree(ADestRoutine: TvDebugAddItemProc; APageItem: Pointer): Pointer; virtual;
     class function GenerateDebugStrForFPColor(AColor: TFPColor): string;
     class function GenerateDebugStrForString(AValue: string): string;
@@ -677,6 +682,8 @@ type
   { TvText }
 
   TvText = class(TvEntityWithStyle)
+  private
+    function GetTextMetric_Descender_px(ADest: TFPCustomCanvas; AMulX: Double = 1.0): Integer;
   public
     Value: TStringList;
     Render_NextText_X: Integer;
@@ -687,7 +694,7 @@ type
     procedure CalculateBoundingBox(ADest: TFPCustomCanvas; out ALeft, ATop, ARight, ABottom: Double); override;
     procedure Render(ADest: TFPCustomCanvas; var ARenderInfo: TvRenderInfo; ADestX: Integer = 0;
       ADestY: Integer = 0; AMulX: Double = 1.0; AMulY: Double = 1.0; ADoDraw: Boolean = True); override;
-    function GetEntityFeatures(ADest: TFPCustomCanvas): TvEntityFeatures; override;
+    function GetEntityFeatures(ADest: TFPCustomCanvas; AMulX, AMulY: Double): TvEntityFeatures; override;
     function GenerateDebugTree(ADestRoutine: TvDebugAddItemProc; APageItem: Pointer): Pointer; override;
   end;
 
@@ -1134,6 +1141,7 @@ type
     Width, Height: Double;
     AutoExpand: TvRichTextAutoExpand;
     ListStyle : TvListStyle; // For Bulleted or Numbered Lists...
+    YPos_NeedsAdjustment_DelFirstLineBodyHeight: Boolean; // SVG coordinates for text are cumbersome, we need this
     constructor Create(APage: TvPage); override;
     destructor Destroy; override;
     function AddText(AText: string): TvText;
@@ -1395,6 +1403,14 @@ type
     function GenerateDebugTree(ADestRoutine: TvDebugAddItemProc; APageItem: Pointer): Pointer; override;
   end;
 
+  TvVectorialReaderFlag = (vrfSVG_UseBottomLeftCoords, vrfWMF_UseBottomLeftCoords);
+  TvVectorialReaderFlags = set of TvVectorialReaderFlag;
+
+  TvVectorialReaderSettings = record
+    VecReaderFlags: TvVectorialReaderFlags;
+    HelperToolPath: string;
+  end;
+
   { TvVectorialDocument }
 
   TvVectorialDocument = class
@@ -1422,6 +1438,8 @@ type
     StyleHeading1Centralized, StyleHeading2Centralized, StyleHeading3Centralized: TvStyle; // heading modifications
     StyleBulletList, StyleNumberList : TvListStyle;
     StyleTextSpanBold, StyleTextSpanItalic, StyleTextSpanUnderline: TvStyle;
+    // Reader properties
+    ReaderSettings: TvVectorialReaderSettings;
     { Base methods }
     constructor Create; virtual;
     destructor Destroy; override;
@@ -1515,8 +1533,11 @@ type
     procedure GetNaturalRenderPos(var APageHeight: Integer; out AMulY: Double); virtual; abstract;
     procedure SetNaturalRenderPos(AUseTopLeftCoords: Boolean); virtual;
     function HasNaturalRenderPos: Boolean;
+    function GetTopLeftCoords_Adjustment(): Double;
     { Debug methods }
     procedure GenerateDebugTree(ADestRoutine: TvDebugAddItemProc; APageItem: Pointer); virtual; abstract;
+
+    property UseTopLeftCoordinates: Boolean read FUseTopLeftCoordinates write FUseTopLeftCoordinates;
   end;
 
   { TvVectorialPage }
@@ -1658,6 +1679,7 @@ type
     class function GetTextContentsFromNode(ANode: TDOMNode): DOMString;
     class function RemoveLineEndingsAndTrim(AStr: string): string;
   public
+    Settings: TvVectorialReaderSettings;
     { General reading methods }
     constructor Create; virtual;
     procedure ReadFromFile(AFileName: string; AData: TvVectorialDocument); virtual;
@@ -2889,6 +2911,7 @@ var
   xstart, ystart: Double;
   n: Integer;
   done: Boolean;
+  clockwise: Boolean;
 begin
   n := 0;
   SetLength(Points, BUFSIZE);
@@ -2900,21 +2923,25 @@ begin
   tstart := CalcEllipsePointAngle(xstart, ystart, RX, RY, CX, CY, XRotation);
   tend := CalcEllipsePointAngle(X, Y, RX, RY, CX, CY, XRotation);
 
-  // wp: Something's wrong here: I think "clockwise" is the other way round...
+  // Flip clockwise flag in case of top/left coordinates
+  clockwise := ClockwiseArcFlag xor UseTopLeftCoordinates;
 
-  if ClockwiseArcFlag then
-  begin              // tend must be larger than tstart
-    if tend < tstart then tend := TWO_PI + tend;
-  end else begin     // tend must be smaller than tstart
-    if tstart < tend then tstart := TWO_PI + tstart;
+  if clockwise then
+  begin
+    // clockwise --> angle decreases --> tstart must be > tend
     dt := -dt;
+    if tstart < tend then tstart := TWO_PI + tstart;
+  end else
+  begin
+    // counter-clockwise --> angle increases --> tstart must be < tend
+    if tend < tstart then tend := TWO_PI + tend;
   end;
 
   done := false;
   t := tstart;
   while not done do begin
-    if (ClockwiseArcFlag and (t > tend)) or
-       (not ClockwiseArcFlag and (t < tend)) then
+    if (clockwise and (t < tend)) or         // angle decreases
+       (not clockwise and (t > tend)) then   // angle increases
     begin
       t := tend;
       done := true;
@@ -2923,7 +2950,7 @@ begin
       SetLength(Points, Length(Points) + BUFSIZE);
     CalcEllipsePoint(t, RX, RY, CX, CY, XRotation, Points[n].x, Points[n].y);
     inc(n);
-    t := t + dt;      // Note: dt is <0 in counter-clockwise case
+    t := t + dt;      // Note: dt is < 0 in clockwise case
   end;
   SetLength(Points, n);
 end;
@@ -2939,7 +2966,7 @@ begin
   E2.X := E2.Y + ADeltaY;
 
   CX := CX + ADeltaX;
-  CX := CY + ADeltaY;
+  CY := CY + ADeltaY;
 end;
 
 
@@ -3327,6 +3354,11 @@ begin
   // Override by descendants
 end;
 
+function TPathSegment.UseTopLeftCoordinates: Boolean;
+begin
+  Result := (FPath <> nil) and FPath.FPage.UseTopLeftCoordinates;
+end;
+
 
 { T2DSegment }
 
@@ -3344,8 +3376,7 @@ function T2DSegment.GetPointAndTangentForDistance(ADistance: Double; out AX,
 var
   lStartPoint: T3DPoint;
 begin
-  Result:=inherited GetPointAndTangentForDistance(ADistance, AX, AY,
-    ATangentAngle);
+  Result:=inherited GetPointAndTangentForDistance(ADistance, AX, AY, ATangentAngle);
   if not GetStartPoint(lStartPoint) then Exit;
   Result := LineEquation_GetPointAndTangentForLength(lStartPoint, Make3DPoint(X, Y), ADistance, AX, AY, ATangentAngle);
 end;
@@ -3571,11 +3602,11 @@ begin
      Result := False;
 end;
 
-procedure TvEntity.CalculateHeightInCanvas(ADest: TFPCustomCanvas; out AHeight: Integer);
+procedure TvEntity.CalculateHeightInCanvas(ADest: TFPCustomCanvas; AMulX, AMulY: Double; out AHeight: Integer);
 var
   lRenderInfo: TvRenderInfo;
 begin
-  Render(ADest, lRenderInfo, 0, 0, 1, 1, False);
+  Render(ADest, lRenderInfo, 0, 0, AMulX, AMulY, False);
   AHeight := lRenderInfo.EntityCanvasMaxXY.Y - lRenderInfo.EntityCanvasMinXY.Y;
 end;
 
@@ -3776,11 +3807,12 @@ begin
   Result.Z := (Z - APage.MinZ) * (ANewMax - ANewMin) / (APage.MaxZ - APage.MinZ) + ANewMin;
 end;
 
-function TvEntity.GetEntityFeatures(ADest: TFPCustomCanvas): TvEntityFeatures;
+function TvEntity.GetEntityFeatures(ADest: TFPCustomCanvas; AMulX, AMulY: Double): TvEntityFeatures;
 begin
   Result.DrawsUpwards := False;
   Result.DrawsUpwardHeightAdjustment := 0;
-  Result.DrawsUpwardHeightAdjustment_FirstLineExcluded := 0;
+  Result.FirstLineHeight := 0;
+  Result.TotalHeight := 0;
 end;
 
 function TvEntity.GenerateDebugTree(ADestRoutine: TvDebugAddItemProc;
@@ -3851,6 +3883,8 @@ end;
 procedure TvEntityWithPen.ApplyPenToCanvas(ADest: TFPCustomCanvas;
   ARenderInfo: TvRenderInfo; APen: TvPen);
 begin
+  if ADest = nil then
+    exit;
   ADest.Pen.FPColor := AdjustColorToBackground(APen.Color, ARenderInfo);
   ADest.Pen.Width := Max(1, APen.Width);   // wp: why was here "1;//APen.Width;" ???
   ADest.Pen.Style := APen.Style;
@@ -3899,6 +3933,8 @@ end;
 procedure TvEntityWithPenAndBrush.ApplyBrushToCanvas(ADest: TFPCustomCanvas;
   ABrush: PvBrush);
 begin
+  if ADest = nil then
+    exit;
   ADest.Brush.FPColor := ABrush^.Color;
   ADest.Brush.Style := ABrush^.Style;
 end;
@@ -4525,6 +4561,8 @@ var
   {$endif}
   lFPColor: TFPColor;
 begin
+  if ADest = nil then
+    exit;
   ADest.Font.Name := AFont.Name;
   if AFont.Size = 0 then AFont.Size := 10;
   ADest.Font.Size := Round(AmulX * AFont.Size);
@@ -4772,6 +4810,8 @@ procedure TPath.AppendSegment(ASegment: TPathSegment);
 var
   L: Integer;
 begin
+  ASegment.FPath := self;
+
   // Check if we are the first segment in the tmp path
   if PointsEnd = nil then
   begin
@@ -5645,6 +5685,29 @@ end;
 
 { TvText }
 
+function TvText.GetTextMetric_Descender_px(ADest: TFPCustomCanvas; AMulX: Double = 1.0): Integer;
+var
+  {$ifdef USE_LCL_CANVAS}
+  ACanvas: TCanvas absolute ADest;
+  tm: TLCLTextMetric;
+  {$else}
+  lFontSizePx: Integer;
+  lTextSize: TSize;
+  {$endif}
+begin
+  Result := 0;
+
+  {$IFDEF USE_LCL_CANVAS}
+  if ACanvas.GetTextMetrics(tm) then
+    Result := tm.Descender;
+  {$ELSE}
+  lFontSizePx := Font.Size;        // is without multiplier!
+  if lFontSizePx = 0 then lFontSizePx := 10;
+  lTextSize := ADest.TextExtent(Str_Line_Height_Tester);
+  Result := (lTextSize.CY - lFontSizePx) div 2;  // rough estimate only
+  {$ENDIF}
+end;
+
 constructor TvText.Create(APage: TvPage);
 begin
   inherited Create(APage);
@@ -5725,8 +5788,6 @@ var
   ACanvas: TCanvas absolute ADest;
   lTextSize: TSize;
   lTextWidth: Integer;
-  tm: TLCLTextMetric;
-  ts: TTextStyle;
   {$endif}
 begin
   lText := Value.Text + Format(' F=%d', [ADest.Font.Size]); // for debugging
@@ -5742,11 +5803,7 @@ begin
   lFontSizePx := Font.Size;        // is without multiplier!
   if lFontSizePx = 0 then lFontSizePx := 10;
   lTextSize := ADest.TextExtent(Str_Line_Height_Tester);
-  lDescender := (lTextSize.CY - lFontSizePx) div 2;  // rough estimate only
-  {$IFDEF USE_LCL_CANVAS}
-  if ACanvas.GetTextMetrics(tm) then
-    lDescender := tm.Descender;
-  {$ENDIF}
+  lDescender := GetTextMetric_Descender_px(ADest, AMulX);
 
   // Angle of text rotation
   phi := sign(AMulY) * DegToRad(Font.Orientation);
@@ -5793,7 +5850,7 @@ begin
 
     // Start point of text, rotated around the reference point
     pt := Point(round(Render_NextText_X), round(curDimY));  // before rotation
-    pt := Rotate2dPoint(pt, refPt, -Phi);                      // after rotation
+    pt := Rotate2dPoint(pt, refPt, -Phi);                   // after rotation
 
     // Paint line
     if ADoDraw then
@@ -5818,25 +5875,32 @@ begin
     curDimY := IfThen(AMulY < 0,
       curDimY - (lFontSizePx * (1 + LINE_SPACING) * AMulY),
       curDimY + (lFontSizePx * (1 + LINE_SPACING) * AMulY));
+    // wp: isn't this the same as
+    // curDimY := curDimY + (lFontSizePx * (1 + LINE_SPACING) * abs(AMulY);
   end;
 end;
 
-function TvText.GetEntityFeatures(ADest: TFPCustomCanvas): TvEntityFeatures;
+function TvText.GetEntityFeatures(ADest: TFPCustomCanvas; AMulX, AMulY: Double): TvEntityFeatures;
 var
   ActualText: String;
   lHeight_px: Integer = 0;
 begin
+  // Calculate the total height
+  CalculateHeightInCanvas(ADest, AMulX, AMulY, lHeight_px);
+  Result.TotalHeight := lHeight_px;
+
   Result.DrawsUpwardHeightAdjustment := 0;
-  if Value.Count > 0 then
-  begin
-    CalculateHeightInCanvas(ADest, lHeight_px);
+  if (not FPage.UseTopLeftCoordinates) then
     Result.DrawsUpwardHeightAdjustment := lHeight_px;
 
+  Result.FirstLineHeight := 0;
+  if (Value.Count > 0) then
+  begin
     ActualText := Value.Text;
-    if Value.Count > 0 then
-      Value.Delete(0);
-    CalculateHeightInCanvas(ADest, lHeight_px);
-    Result.DrawsUpwardHeightAdjustment_FirstLineExcluded := lHeight_px;
+    Value.Text := Value.Strings[0];
+    CalculateHeightInCanvas(ADest, AMulX, AMulY, lHeight_px);
+    Result.FirstLineHeight := lHeight_px - GetTextMetric_Descender_px(ADest, AMulX);
+
     Value.Text := ActualText;
   end;
   Result.DrawsUpwards := True;
@@ -6324,7 +6388,7 @@ begin
     ALeft := X;
     ATop := Y;
     ARight := X + CX;
-    ABottom := Y - CY;
+    ABottom := IfThen(FPage.FUseTopLeftCoordinates, Y + CY, Y - CY);
   end;
 end;
 
@@ -6333,27 +6397,30 @@ var
   pts: T3dPointsArray;
   ctr: T3dPoint;
   j: Integer;
-  phi: Double;
+  phi, lYAdj: Double;
 begin
+  lYAdj := FPage.GetTopLeftCoords_Adjustment(); // top/left: +1, bottom/left: -1
+
   if (RX > 0) and (RY > 0) then
   begin
     SetLength(pts, 9);
-    pts[0] := Make3dPoint(X, Y-RY);
-    pts[1] := Make3dPoint(X+RX, Y);
-    pts[2] := Make3dPoint(X+CX-RX, Y);
-    pts[3] := Make3dPoint(X+CX, Y-RY);
-    pts[4] := Make3dPoint(X+CX, Y-CY+RY);
-    pts[5] := Make3dPoint(X+CX-RX, Y-CY);
-    pts[6] := Make3dPoint(X+RX, Y-CY);
-    pts[7] := Make3dPoint(X, Y-CY+RY);
-    pts[8] := Make3dPoint(X, Y-RY);
-  end else
+    pts[0] := Make3dPoint(X, Y+lYAdj*RY);           {    1              2    }
+    pts[1] := Make3dPoint(X+RX, Y);                 {  0,8                3  }
+    pts[2] := Make3dPoint(X+CX-RX, Y);              {                        }
+    pts[3] := Make3dPoint(X+CX, Y+lYAdj*RY);        {                        }
+    pts[4] := Make3dPoint(X+CX, Y+lYAdj*(CY-RY));   {  7                  4  }
+    pts[5] := Make3dPoint(X+CX-RX, Y+lYAdj*CY);     {    6              5    }
+    pts[6] := Make3dPoint(X+RX, Y+lYAdj*CY);
+    pts[7] := Make3dPoint(X, Y+lYAdj*(CY-RY));
+    pts[8] := Make3dPoint(X, Y+lYAdj*RY);
+  end
+  else
   begin
     SetLength(pts, 5);
     pts[0] := Make3dPoint(X, Y);
     pts[1] := Make3dPoint(X+CX, Y);
-    pts[2] := Make3dPoint(X+CX, Y-CY);
-    pts[3] := Make3dPoint(X, Y-CY);
+    pts[2] := Make3dPoint(X+CX, Y+lYAdj*CY);
+    pts[3] := Make3dPoint(X, Y+lYAdj*CY);
     pts[4] := Make3dPoint(X, Y);
   end;
   ctr := Make3DPoint(X, Y);  // Rotation center
@@ -6366,17 +6433,16 @@ begin
   begin
     Result.AppendMoveToSegment(pts[0].x, pts[0].y);
     Result.AppendEllipticalArcWithCenter(RX, RY, phi, pts[1].x, pts[1].y,
-      pts[1].x, pts[0].y, false);
-    // wp: strange - why must the clockwise flag be false here? It should be true!
+      pts[1].x, pts[0].y, true);
     Result.AppendLineToSegment(pts[2].x, pts[2].y);
     Result.AppendEllipticalArcWithCenter(RX, RY, phi, pts[3].x, pts[3].y,
-      pts[2].x, pts[3].y, false);
+      pts[2].x, pts[3].y, true);
     Result.AppendLineToSegment(pts[4].x, pts[4].y);
     Result.AppendEllipticalArcWithCenter(RX, RY, phi, pts[5].x, pts[5].y,
-      pts[5].x, pts[4].y, false);
+      pts[5].x, pts[4].y, true);
     Result.AppendLineToSegment(pts[6].x, pts[6].y);
     Result.AppendEllipticalArcWithCenter(RX, RY, phi, pts[7].x, pts[7].y,
-      pts[6].x, pts[7].y, false);
+      pts[6].x, pts[7].y, true);
     Result.AppendLineToSegment(pts[8].x, pts[8].y);
   end else
   begin
@@ -8380,6 +8446,7 @@ var
   lResetOldStyle: Boolean = False;
   lEntityRenderInfo: TvRenderInfo;
   CurX, CurY, lHeight_px: Integer;
+  lFeatures: TvEntityFeatures;
 begin
   InitializeRenderInfo(ARenderInfo, Self);
   InitializeRenderInfo(lEntityRenderInfo, Self);
@@ -8388,7 +8455,12 @@ begin
   lEntity := GetFirstEntity();
   while lEntity <> nil do
   begin
-    lHeight_px := lEntity.GetEntityFeatures(ADest).DrawsUpwardHeightAdjustment_FirstLineExcluded;
+    lFeatures := lEntity.GetEntityFeatures(ADest, AMulX, AMulY);
+    lHeight_px := 0;
+    if YPos_NeedsAdjustment_DelFirstLineBodyHeight then
+      lHeight_px := -1 * lFeatures.FirstLineHeight;
+    if (lFeatures.DrawsUpwardHeightAdjustment > 0) then
+      lHeight_px := lFeatures.DrawsUpwardHeightAdjustment - lFeatures.FirstLineHeight;
 
     if lEntity is TvText then
     begin
@@ -8412,10 +8484,10 @@ begin
       OldTextX := lText.X;
       OldTextY := lText.Y;
       CurX := CoordToCanvasX(lText.X + X + lCurWidth, ADestX, AMulX);
+      CurY := CoordToCanvasY(lText.Y + Y, ADestY, AMulY);
       lText.X := 0;
       lText.Y := 0;
-      CurY := CoordToCanvasY(lText.Y + Y, ADestY, AMulY);
-      if AMulY < 0 then CurY += lHeight_px; // to keep the position in case of inversed drawing
+      CurY += lHeight_px;
       lText.Render_Use_NextText_X := not lFirstText;
       if lText.Render_Use_NextText_X then
         lText.Render_NextText_X := lPrevText.Render_NextText_X;
@@ -8600,8 +8672,7 @@ begin
   begin
     // handle both directions of drawing
     lHeight_px := 0;
-    //if lEntity.GetEntityFeatures().DrawsUpwards then
-      lEntity.CalculateHeightInCanvas(ADest, lHeight_px);
+    lEntity.CalculateHeightInCanvas(ADest, AMulX, AMulY, lHeight_px);
 
     // draw the bullet (if necessary)
     if lEntity is TvParagraph then
@@ -8753,7 +8824,7 @@ begin
   begin
     lEntity.X := X;
     lEntity.Y := Y + lCurHeight;
-    lHeight_px := lEntity.GetEntityFeatures(ADest).DrawsUpwardHeightAdjustment;
+    lHeight_px := lEntity.GetEntityFeatures(ADest, AMulX, AMulY).DrawsUpwardHeightAdjustment;
     CopyAndInitDocumentRenderInfo(lEntityRenderInfo, ARenderInfo);
     lEntity.Render(ADest, lEntityRenderInfo, ADestX, ADestY + lHeight_px, AMulX, AMulY, ADoDraw);
     lEntity.CalculateBoundingBox(ADest, lLeft, lTop, lRight, lBottom);
@@ -8945,6 +9016,14 @@ end;
 function TvPage.HasNaturalRenderPos: Boolean;
 begin
   Result := FUseTopLeftCoordinates;
+end;
+
+function TvPage.GetTopLeftCoords_Adjustment: Double;
+begin
+  if UseTopLeftCoordinates then
+    Result := 1
+  else
+    Result := -1;
 end;
 
 
@@ -9395,8 +9474,9 @@ end;
 }
 function  TvVectorialPage.EndPath(AOnlyCreate: Boolean = False): TPath;
 begin
-  if FTmPPath.Len = 0 then Exit;
-  Result := AddPathCopyMem(FTmPPath, AOnlyCreate);
+  if FTmpPath.Len = 0 then Exit;
+  Result := AddPathCopyMem(FTmpPath, AOnlyCreate);
+  Result.FPage := self;
   ClearTmpPath();
 end;
 
@@ -9731,6 +9811,7 @@ constructor TvTextPageSequence.Create(AOwner: TvVectorialDocument);
 begin
   inherited Create(AOwner);
 
+  FUseTopLeftCoordinates := True;
   Footer := TvRichText.Create(Self);
   Header := TvRichText.Create(Self);
   MainText := TvRichText.Create(Self);
@@ -9874,7 +9955,7 @@ begin
 
     CurEntity.X := 0;
     CurEntity.Y := 0;
-    lHeight_px := CurEntity.GetEntityFeatures(ADest).DrawsUpwardHeightAdjustment;
+    lHeight_px := CurEntity.GetEntityFeatures(ADest, AMulX, AMulY).TotalHeight;
     RenderInfo.BackgroundColor := BackgroundColor;
     CurEntity.Render(ADest, RenderInfo, ADestX, CurY_px + lHeight_px, AMulX, AMulY, ADoDraw);
     // Store the old position in X/Y but don't use it, we use this to debug out the position
@@ -10081,6 +10162,7 @@ begin
 
   AReader := CreateVectorialReader(AFormat);
   try
+    AReader.Settings := ReaderSettings;
     AReader.ReadFromFile(AFileName, Self);
   finally
     AReader.Free;
@@ -10112,6 +10194,7 @@ begin
 
   AReader := CreateVectorialReader(AFormat);
   try
+    AReader.Settings := ReaderSettings;
     AReader.ReadFromStream(AStream, Self);
   finally
     AReader.Free;
@@ -10127,6 +10210,7 @@ begin
 
   AReader := CreateVectorialReader(AFormat);
   try
+    AReader.Settings := ReaderSettings;
     AReader.ReadFromStrings(AStrings, Self);
   finally
     AReader.Free;

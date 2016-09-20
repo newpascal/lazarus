@@ -28,9 +28,9 @@ configuration:
 
 environment:
   BINW32_PATH: '%APPVEYOR_BUILD_FOLDER%\..\binw32'
-  PPDIR: '%APPVEYOR_BUILD_FOLDER%\..\newpascal\fpc\bin\i386-win32'
+  PPDIR: '%APPVEYOR_BUILD_FOLDER%\..\freepascal\fpc\bin\i386-win32'
   BINW32_DL: 'https://raw.githubusercontent.com/newpascal/npbuild/master/binw32.7z'
-  DOWNLOAD_DL: 'https://raw.githubusercontent.com/newpascal/npbuild/master/download4sparta.js'
+  DOWNLOAD_DL: 'https://raw.githubusercontent.com/newpascal/npbuild/master/download4lazarus.js'
 
 install:
   - rm appveyor.yml
@@ -40,8 +40,8 @@ install:
   - npm install github
   - npm install download
   - npm install unzip
-  - appveyor DownloadFile %DOWNLOAD_DL% -FileName %APPVEYOR_BUILD_FOLDER%\..\download4sparta.js
-  - node download4sparta.js
+  - appveyor DownloadFile %DOWNLOAD_DL% -FileName %APPVEYOR_BUILD_FOLDER%\..\download4lazarus.js
+  - node download4lazarus.js
 
 build_script:
   - SET ORIGINAL_PATH=%PATH%
@@ -51,20 +51,20 @@ build_script:
 
 after_build:
   - SET PATH=%ORIGINAL_PATH%
-  - 7z a -tzip sparta.zip %APPVEYOR_BUILD_FOLDER%
-  - move /Y sparta.zip %APPVEYOR_BUILD_FOLDER%
+  - 7z a -tzip lazarus.zip %APPVEYOR_BUILD_FOLDER%
+  - move /Y lazarus.zip %APPVEYOR_BUILD_FOLDER%
   
 artifacts:
-  - path: sparta.zip
-    name: sparta
+  - path: lazarus.zip
+    name: lazarus
 
 deploy:
-  release: sparta-v$(appveyor_build_version)
-  description: 'Release of Lazarus/Sparta IDE'
+  release: lazarus4np-v$(appveyor_build_version)
+  description: 'Release of Lazarus for NewPascal'
   provider: GitHub
   auth_token:
-    secure: hciZXDslu8epZhwmm/LfiZBmhbPk7BPpLd/3MOtst/uIRw2LPeAEMCXmBFikJzxQ
-  artifact: sparta
+    secure: 0zjNX5MmwwPNlCpgGKHe44W2flr5RdJm1uqe7poKPfnUDQYXzpgGOVPTU7pLVY0s
+  artifact: lazarus
   draft: false
   prerelease: false
   on:

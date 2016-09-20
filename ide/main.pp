@@ -6167,6 +6167,7 @@ begin
     if not DoResetToolStatus([rfInteractive, rfSuccessOnTrigger]) then exit;
     if SourceFileMgr.AskSaveProject(lisDoYouStillWantToCreateTheNewProject,
       lisDiscardChangesCreateNewProject)<>mrOK then exit;
+    GlobalDesignHook.LookupRoot:=nil;
     Result:=DoCloseProject;
     if Result=mrAbort then exit;
   end;
@@ -7876,7 +7877,7 @@ var
 begin
   ToolCount:=ExternalUserTools.Count;
   Section:=itmCustomTools;
-  Section.BeginUpdate;
+  //Section.BeginUpdate;
   try
     // add enough menuitems
     while Section.Count-1<ToolCount do
@@ -7897,7 +7898,7 @@ begin
       CurMenuItem.OnClick:=@mnuExternalUserToolClick;
     end;
   finally
-    Section.EndUpdate;
+    //Section.EndUpdate;
   end;
 end;
 
