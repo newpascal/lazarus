@@ -97,6 +97,7 @@ type
     class procedure UpdateWindowMask(AWindow: NSWindow; ABorderStyle: TFormBorderStyle; ABorderIcons: TBorderIcons);
   public
     class function GetWindowFromHandle(const ACustomForm: TCustomForm): TCocoaWindow;
+    class function GetWindowContentFromHandle(const ACustomForm: TCustomForm): TCocoaWindowContent;
   published
     class function CreateHandle(const AWinControl: TWinControl; const AParams: TCreateParams): TLCLIntfHandle; override;
 
@@ -431,6 +432,13 @@ begin
   Result := TCocoaWindow(TCocoaWindowContent(ACustomForm.Handle).lclOwnWindow);
 end;
 
+class function TCocoaWSCustomForm.GetWindowContentFromHandle(const ACustomForm: TCustomForm): TCocoaWindowContent;
+begin
+  Result := nil;
+  if not ACustomForm.HandleAllocated then Exit;
+  Result := TCocoaWindowContent(ACustomForm.Handle);
+end;
+
 class function TCocoaWSCustomForm.CreateHandle(const AWinControl: TWinControl;
   const AParams: TCreateParams): TLCLIntfHandle;
 var
@@ -488,13 +496,10 @@ var
     win.LCLForm := Form;
     win.setContentView(cnt);
 
-    if (AParams.WndParent <> 0) then
-    begin
-      if (NSObject(AParams.WndParent).isKindOfClass(TCocoaWindowContent)) and (not TCocoaWindowContent(AParams.WndParent).isembedded) then
-        TCocoaWindowContent(AParams.WndParent).window.addChildWindow_ordered(win, NSWindowAbove)
-      else
-        NSWindow(AParams.WndParent).addChildWindow_ordered(win, NSWindowAbove);
-    end;
+    // Don't call addChildWindow_ordered here because this function can cause
+    // events to arrive for this window, creating a second call to TCocoaWSCustomForm.CreateHandle
+    // while the first didn't finish yet, instead delay the call
+    cnt.popup_parent := AParams.WndParent;
 
     // support for drag & drop
     win.registerForDraggedTypes(NSArray.arrayWithObjects_count(@NSFilenamesPboardType, 1));
@@ -568,33 +573,54 @@ end;
 
 class procedure TCocoaWSCustomForm.CloseModal(const ACustomForm: TCustomForm);
 begin
-//  if ACustomForm.HandleAllocated then
-//    NSPanel(ACustomForm.Handle).setStyleMask(NSwindow(ACustomForm.Handle).styleMask and not NSDocModalWindowMask);
-  {if CocoaWidgetSet.CurModalSession <> nil then
+  {$ifdef COCOA_MODAL_USE_SESSION}
+  if ACustomForm.HandleAllocated then
+    NSPanel(ACustomForm.Handle).setStyleMask(NSwindow(ACustomForm.Handle).styleMask and not NSDocModalWindowMask);
+  if CocoaWidgetSet.CurModalSession <> nil then
     NSApp.endModalSession(CocoaWidgetSet.CurModalSession);
-  CocoaWidgetSet.CurModalSession := nil;}
- {$ifdef COCOA_USE_NATIVE_MODAL}
- NSApp.stopModal();
- {$endif}
+  CocoaWidgetSet.CurModalSession := nil;
+  {$endif}
+
+  {$ifdef COCOA_USE_NATIVE_MODAL}
+  NSApp.stopModal();
+  {$endif}
+
   CocoaWidgetSet.CurModalForm := nil;
 end;
 
 class procedure TCocoaWSCustomForm.ShowModal(const ACustomForm: TCustomForm);
 var
+  lWinContent: TCocoaWindowContent;
+  {$ifdef COCOA_MODAL_USE_SESSION}
   win: TCocoaWindow;
+  CurModalSession: NSModalSession;
+  {$endif}
+  {$ifdef COCOA_USE_NATIVE_MODAL}
+  win: TCocoaWindow;
+  {$endif}
 begin
   // Another possible implementation is to have modal started in ShowHide with (fsModal in AForm.FormState)
-  win := TCocoaWSCustomForm.GetWindowFromHandle(ACustomForm);
-  if win = nil then Exit;
 
-  { Another possible implementation is using a session, but this requires
-    disabling the other windows ourselves
-  CurModalSession: NSModalSession;
-  CocoaWidgetSet.CurModalSession := NSApp.beginModalSessionForWindow(win);
-  NSApp.runModalSession(CocoaWidgetSet.CurModalSession);}
+  // Handle PopupParent
+  lWinContent := GetWindowContentFromHandle(ACustomForm);
+  if lWinContent <> nil then
+    lWinContent.resolvePopupParent();
 
   CocoaWidgetSet.CurModalForm := ACustomForm;
+
+  // Another possible implementation is using a session, but this requires
+  //  disabling the other windows ourselves
+  {$ifdef COCOA_MODAL_USE_SESSION}
+  win := TCocoaWSCustomForm.GetWindowFromHandle(ACustomForm);
+  if win = nil then Exit;
+  CocoaWidgetSet.CurModalSession := NSApp.beginModalSessionForWindow(win);
+  NSApp.runModalSession(CocoaWidgetSet.CurModalSession);}
+  {$endif}
+
+  // Another possible implementation is using runModalForWindow
   {$ifdef COCOA_USE_NATIVE_MODAL}
+  win := TCocoaWSCustomForm.GetWindowFromHandle(ACustomForm);
+  if win = nil then Exit;
   NSApp.runModalForWindow(win);
   {$endif}
 end;

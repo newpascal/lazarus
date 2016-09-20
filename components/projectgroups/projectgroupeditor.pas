@@ -366,6 +366,10 @@ begin
   ConfigAction(ATargetUninstall,iiTargetUninstall,lisTargetUninstallCaption,lisTargetUninstallHint,Nil);
   ConfigAction(ATargetActivate,iiTargetActivate,lisTargetActivateCaption,lisTargetActivateHint,Nil);
   ConfigAction(ATargetOpen,iiTargetOpen,lisTargetOpenCaption,lisTargetOpenHint,Nil);
+  ConfigAction(ATargetCopyFilename,0,lisTargetCopyFilename,'',Nil);
+  ConfigAction(ATargetCompileFromHere,0,lisTargetCompileFromHere,'',Nil);
+  ConfigAction(AProjectGroupReload,0,lisProjectGroupReload,'',Nil);
+  TBMore.Caption:=lisMore;
 end;
 
 procedure TProjectGroupEditorForm.AProjectGroupSaveUpdate(Sender: TObject);
@@ -582,7 +586,7 @@ begin
       PkgName:=ND.Value;
       if PackageEditingInterface.DoOpenPackageWithName(PkgName,[pofAddToRecent],false)<>mrOk
       then begin
-        IDEMessageDialog('Package not found','Package "'+PkgName+'" not found.',mtError,[mbOk]);
+        IDEMessageDialog(lisPackageNotFound, Format(lisPackageNotFound2, [PkgName]), mtError, [mbOk]);
         exit;
       end;
     end;
@@ -631,7 +635,7 @@ begin
       s:=ND.Target.Filename;
     end else begin
       case ND.NodeType of
-      ntBuildMode: s:='Build Mode "'+ND.Value+'"';
+      ntBuildMode: s := Format(lisBuildMode2, [ND.Value]);
       ntFile: s:=ND.Value;
       end;
     end;
@@ -751,10 +755,10 @@ begin
     InitIDEFileDialog(OpenDialogTarget);
     With OpenDialogTarget do
     begin
-      Filter:='Lazarus projects (*.lpi)|*.lpi'
-       +'|Lazarus packages (*.lpk)|*.lpk'
-       +'|Lazarus project groups (*.lpg)|*.lpg'
-       +'|Pascal file (*.pas;*.pp;*.p)|*.pas;*.pp;*.p';
+      Filter := lisLazarusProjectsLpi + '|*.lpi'
+       + '|' + lisLazarusPackagesLpk + '|*.lpk'
+       + '|' + lisLazarusProjectGroupsLpg + '|*.lpg'
+       + '|' + lisPascalFilePasPpP + '|*.pas;*.pp;*.p';
       If Execute then
       begin
         aTarget:=FProjectGroup.AddTarget(FileName) as TIDECompileTarget;
@@ -800,7 +804,7 @@ begin
   begin
     PG:=TIDEProjectGroup(ProjectGroup);
     if PG.Modified then begin
-      IDEMessageDialog('Need save','Please save your changes before reloading the project group.',
+      IDEMessageDialog(lisNeedSave, lisPleaseSaveYourChangesBeforeReloadingTheProjectGrou,
         mtError,[mbOK]);
       exit;
     end;

@@ -2114,13 +2114,16 @@ Begin
     Prefix := CurrentString;
     case CurrentCompletionType of
      ctIdentCompletion:
-       if not InitIdentCompletionValues(S) then begin
+       if InitIdentCompletionValues(S) then begin
+         ToggleReplaceWhole:=not CodeToolsOpts.IdentComplReplaceIdentifier;
+       end else begin
          ItemList.Clear;
          exit;
        end;
 
      ctWordCompletion:
        begin
+         ToggleReplaceWhole:=not CodeToolsOpts.IdentComplReplaceIdentifier;
          ccSelection := '';
        end;
 
@@ -2240,8 +2243,6 @@ Begin
 
     ctIdentCompletion:
       begin
-        if not CodeToolsOpts.IdentComplReplaceIdentifier then
-          SourceEnd:=Editor.LogicalCaretXY;
         if Manager.ActiveCompletionPlugin<>nil then
         begin
           Manager.ActiveCompletionPlugin.Complete(Value,SourceValue,
@@ -6522,7 +6523,7 @@ var
 begin
   PopM:=TPopupMenu(Sender);
   SourceTabMenuRoot.MenuItem:=PopM.Items;
-  SourceTabMenuRoot.BeginUpdate;
+  //SourceTabMenuRoot.BeginUpdate;
   try
     // Get the tab that was clicked
     if PopM.PopupComponent is TPageControl then begin
@@ -6624,7 +6625,7 @@ begin
 
     end;
   finally
-    SourceTabMenuRoot.EndUpdate;
+    //SourceTabMenuRoot.EndUpdate;
   end;
 end;
 
@@ -6660,93 +6661,89 @@ begin
   IDECommandList.ExecuteUpdateEvents;
 
   SourceEditorMenuRoot.MenuItem:=SrcPopupMenu.Items;
-  SourceEditorMenuRoot.BeginUpdate;
-  try
-    RemoveUserDefinedMenuItems;
-    RemoveContextMenuItems;
+  RemoveUserDefinedMenuItems;
+  RemoveContextMenuItems;
 
-    ASrcEdit:=FindSourceEditorWithEditorComponent(TPopupMenu(Sender).PopupComponent);
-    Assert(Assigned(ASrcEdit), 'TSourceNotebook.SrcPopUpMenuPopup: ASrcEdit=nil');
-    Assert((ASrcEdit=GetActiveSE), 'TSourceNotebook.SrcPopUpMenuPopup: ASrcEdit<>GetActiveSE');
-    EditorComp:=ASrcEdit.EditorComponent;
+  ASrcEdit:=FindSourceEditorWithEditorComponent(TPopupMenu(Sender).PopupComponent);
+  Assert(Assigned(ASrcEdit), 'TSourceNotebook.SrcPopUpMenuPopup: ASrcEdit=nil');
+  Assert((ASrcEdit=GetActiveSE), 'TSourceNotebook.SrcPopUpMenuPopup: ASrcEdit<>GetActiveSE');
+  EditorComp:=ASrcEdit.EditorComponent;
 
-    SrcEditMenuReadOnly.Checked:=ASrcEdit.ReadOnly;
-    SrcEditMenuShowLineNumbers.Checked := ASrcEdit.EditorComponent.Gutter.LineNumberPart.Visible;
-    SrcEditMenuDisableI18NForLFM.Visible:=false;
+  SrcEditMenuReadOnly.Checked:=ASrcEdit.ReadOnly;
+  SrcEditMenuShowLineNumbers.Checked := ASrcEdit.EditorComponent.Gutter.LineNumberPart.Visible;
+  SrcEditMenuDisableI18NForLFM.Visible:=false;
 
-    UpdateHighlightMenuItems(ASrcEdit);
-    UpdateEncodingMenuItems(ASrcEdit);
-    UpdateLineEndingMenuItems(ASrcEdit);
+  UpdateHighlightMenuItems(ASrcEdit);
+  UpdateEncodingMenuItems(ASrcEdit);
+  UpdateLineEndingMenuItems(ASrcEdit);
 
-    // ask Codetools
-    CurFilename:=ASrcEdit.FileName;
-    ShortFileName:=ExtractFileName(CurFilename);
-    MainCodeBuf:=nil;
-    if FilenameIsPascalUnit(ShortFileName)
-    or (CompareFileExt(ShortFileName,'.inc',true)=0) then
-      MainCodeBuf:=CodeToolBoss.GetMainCode(ASrcEdit.CodeBuffer)
-    else if FilenameIsPascalSource(ShortFileName) then
-      MainCodeBuf:=ASrcEdit.CodeBuffer;
+  // ask Codetools
+  CurFilename:=ASrcEdit.FileName;
+  ShortFileName:=ExtractFileName(CurFilename);
+  MainCodeBuf:=nil;
+  if FilenameIsPascalUnit(ShortFileName)
+  or (CompareFileExt(ShortFileName,'.inc',true)=0) then
+    MainCodeBuf:=CodeToolBoss.GetMainCode(ASrcEdit.CodeBuffer)
+  else if FilenameIsPascalSource(ShortFileName) then
+    MainCodeBuf:=ASrcEdit.CodeBuffer;
 
-    if (FilenameIsAbsolute(CurFilename)) then begin
-      if (MainCodeBuf<>nil) and (MainCodeBuf<>ASrcEdit.CodeBuffer)
-      and (not MainCodeBuf.IsVirtual) then begin
-        // this is an include file => add link to open unit
-        CurFilename:=MainCodeBuf.Filename;
-        ShortFileName:=ExtractFileName(CurFilename);
-        AddContextPopupMenuItem(
-          Format(lisOpenLfm,
-                 [CreateRelativePath(CurFilename,ExtractFilePath(ASrcEdit.Filename))]),
-          true,@OnPopupMenuOpenFile);
-      end;
-      if FilenameIsPascalUnit(ShortFileName) then begin
-        MaybeAddPopup('.lfm');
-        MaybeAddPopup('.dfm');
-        MaybeAddPopup('.lrs');
-        MaybeAddPopup('.s');
-      end;
-      // ToDo: unit resources
-      if (CompareFileExt(ShortFileName,'.lfm',true)=0)
-      or (CompareFileExt(ShortFileName,'.dfm',true)=0) then begin
-        MaybeAddPopup('.pas');
-        MaybeAddPopup('.pp');
-        MaybeAddPopup('.p');
-      end;
-      if (CompareFileExt(ShortFileName,'.lpi',true)=0)
-      or (CompareFileExt(ShortFileName,'.lpk',true)=0) then begin
-        AddContextPopupMenuItem(
-          Format(lisOpenLfm,[ShortFileName]),true,@OnPopupMenuOpenFile);
-      end;
-      FPDocSrc:=LazarusHelp.GetFPDocFilenameForSource(CurFilename,false,AnOwner);
-      if FPDocSrc<>'' then
-        AddContextPopupMenuItem(
-          Format(lisOpenLfm,
-                 [CreateRelativePath(FPDocSrc,ExtractFilePath(CurFilename))]),
-          true,@OnPopupMenuOpenFile);
+  if (FilenameIsAbsolute(CurFilename)) then begin
+    if (MainCodeBuf<>nil) and (MainCodeBuf<>ASrcEdit.CodeBuffer)
+    and (not MainCodeBuf.IsVirtual) then begin
+      // this is an include file => add link to open unit
+      CurFilename:=MainCodeBuf.Filename;
+      ShortFileName:=ExtractFileName(CurFilename);
+      AddContextPopupMenuItem(
+        Format(lisOpenLfm,
+               [CreateRelativePath(CurFilename,ExtractFilePath(ASrcEdit.Filename))]),
+        true,@OnPopupMenuOpenFile);
     end;
-
-    EditorPopupPoint:=EditorComp.ScreenToClient(SrcPopUpMenu.PopupPoint);
-    if EditorPopupPoint.X<=EditorComp.Gutter.Width then begin
-      EditorCaret := EditorComp.PhysicalToLogicalPos(EditorComp.PixelsToRowColumn(EditorPopupPoint));
-      // user clicked on gutter
-      SourceEditorMarks.GetMarksForLine(ASrcEdit, EditorCaret.y, Marks, MarkCount);
-      if Marks <> nil then begin
-        for i := 0 to MarkCount-1 do
-          Marks[i].CreatePopupMenuItems(@AddUserDefinedPopupMenuItem);
-        FreeMem(Marks);
-      end;
-      if (EditorCaret.Y<=EditorComp.Lines.Count)
-      and (MessagesView<>nil) then
-        MessagesView.SourceEditorPopup(EditorComp.Marks.Line[EditorCaret.Y],
-          EditorComp.LogicalCaretXY);
+    if FilenameIsPascalUnit(ShortFileName) then begin
+      MaybeAddPopup('.lfm');
+      MaybeAddPopup('.dfm');
+      MaybeAddPopup('.lrs');
+      MaybeAddPopup('.s');
     end;
-
-    if Assigned(Manager.OnPopupMenu) then
-      Manager.OnPopupMenu(@AddContextPopupMenuItem);
-    SourceEditorMenuRoot.NotifySubSectionOnShow(Self);
-  finally
-    SourceEditorMenuRoot.EndUpdate;
+    // ToDo: unit resources
+    if (CompareFileExt(ShortFileName,'.lfm',true)=0)
+    or (CompareFileExt(ShortFileName,'.dfm',true)=0) then begin
+      MaybeAddPopup('.pas');
+      MaybeAddPopup('.pp');
+      MaybeAddPopup('.p');
+    end;
+    if (CompareFileExt(ShortFileName,'.lpi',true)=0)
+    or (CompareFileExt(ShortFileName,'.lpk',true)=0) then begin
+      AddContextPopupMenuItem(
+        Format(lisOpenLfm,[ShortFileName]),true,@OnPopupMenuOpenFile);
+    end;
+    FPDocSrc:=LazarusHelp.GetFPDocFilenameForSource(CurFilename,false,AnOwner);
+    if FPDocSrc<>'' then
+      AddContextPopupMenuItem(
+        Format(lisOpenLfm,
+               [CreateRelativePath(FPDocSrc,ExtractFilePath(CurFilename))]),
+        true,@OnPopupMenuOpenFile);
   end;
+
+  EditorPopupPoint:=EditorComp.ScreenToClient(SrcPopUpMenu.PopupPoint);
+  if EditorPopupPoint.X<=EditorComp.Gutter.Width then begin
+    EditorCaret := EditorComp.PhysicalToLogicalPos(EditorComp.PixelsToRowColumn(EditorPopupPoint));
+    // user clicked on gutter
+    SourceEditorMarks.GetMarksForLine(ASrcEdit, EditorCaret.y, Marks, MarkCount);
+    if Marks <> nil then begin
+      for i := 0 to MarkCount-1 do
+        Marks[i].CreatePopupMenuItems(@AddUserDefinedPopupMenuItem);
+      FreeMem(Marks);
+    end;
+    if (EditorCaret.Y<=EditorComp.Lines.Count)
+    and (MessagesView<>nil) then
+      MessagesView.SourceEditorPopup(EditorComp.Marks.Line[EditorCaret.Y],
+        EditorComp.LogicalCaretXY);
+  end;
+
+  if Assigned(Manager.OnPopupMenu) then
+    Manager.OnPopupMenu(@AddContextPopupMenuItem);
+  SourceEditorMenuRoot.NotifySubSectionOnShow(Self);
+  //SrcPopupMenu.Items.WriteDebugReport('TSourceNotebook.SrcPopUpMenuPopup() ');
 end;
 
 procedure TSourceNotebook.DbgPopUpMenuPopup(Sender: TObject);
@@ -6803,8 +6800,6 @@ begin
     Images := IDEImages.Images_16;
   end;
 
-  // assign the root TMenuItem to the registered menu root.
-  // This will automatically create all registered items
   {$IFDEF VerboseMenuIntf}
   SrcPopupMenu.Items.WriteDebugReport('TSourceNotebook.BuildPopupMenu ');
   SourceTabMenuRoot.ConsistencyCheck;

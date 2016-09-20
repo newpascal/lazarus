@@ -58,6 +58,10 @@ type
 
   { TCommonDialog }
 
+  TCDWSEventCapability = (cdecWSPerformsDoShow, cdecWSPerformsDoCanClose, cdecWSPerformsDoClose,
+                          cdecWSNOCanCloseSupport);
+  TCDWSEventCapabilities = set of TCDWSEventCapability;
+
   TCommonDialog = class(TLCLComponent)
   private
     FHandle : THandle;
@@ -72,6 +76,7 @@ type
     FDoShowCalled: Boolean;
     FDoCloseCalled: Boolean;
     FClosing: boolean;
+    FWSEventCapabilities :TCDWSEventCapabilities;
     procedure SetHandle(const AValue: THandle);
     function IsTitleStored: boolean;
   protected
@@ -576,6 +581,11 @@ function InputQuery(const ACaption: string; const APrompts: array of string;
   var AValues: array of string; ACloseEvent: TInputCloseQueryEvent = nil): boolean;
 function DefaultInputDialog(const InputCaption, InputPrompt : String;
   MaskInput : Boolean; var Value : String) : Boolean;// widgetset independent implementation, see InputDialogFunction
+
+function InputCombo(const ACaption, APrompt: string; const AList: TStrings): Integer;
+function InputCombo(const ACaption, APrompt: string; const AList : Array of String): Integer;
+function InputComboEx(const ACaption, APrompt: string; const AList: TStrings; AllowCustomText: Boolean = False): String;
+function InputComboEx(const ACaption, APrompt: string; const AList : Array of String; AllowCustomText: Boolean = False): String;
 
 function ExtractColorIndexAndColor(const AColorList: TStrings; const AIndex: Integer;
   out ColorIndex: Integer; out ColorValue: TColor): Boolean;
