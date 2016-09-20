@@ -59,7 +59,8 @@ artifacts:
     name: lazarus
 
 deploy:
-  release: lazarus4np-v$(appveyor_build_version)
+  tag: lazarus4np-v$(appveyor_build_version)
+  release: 'Lazarus for NewPascal v$(appveyor_build_version)'
   description: 'Release of Lazarus for NewPascal'
   provider: GitHub
   auth_token:
