@@ -138,7 +138,14 @@ begin
   if (csDestroying in ComponentState) then
     Exit;
   if FListLink.Active then
-    Initialize(FControlLink, FControlItems);
+    Initialize(FControlLink, FControlItems)
+  else
+  begin
+    SetLength(FListKeys, 0);
+    FControlItems.Clear;
+  end;
+  if Assigned(FControlLink) and FControlLink.Active then
+    FControlLink.Reset;
 end;
 
 procedure TDBLookup.DatasetChange(Sender: TObject);

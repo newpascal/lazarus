@@ -5509,7 +5509,9 @@ msgid ". Check if package %s is in the dependencies"
 msgstr ". Ellenőrizni kell, hogy a(z) %s csomag szerepel-e a függőségek között"
 
 #: lazarusidestrconsts.lischeckifthenexttokeninsourceisanendandifnotreturnsl
-msgid "check if the next token in source is an end and if not returns lineend + end; + lineend"
+#, fuzzy
+#| msgid "Check if the next token in source is an \"end\" and if not return \"LineEnding + end; + LineEnding\""
+msgid "Check if the next token in source is an \"end\" and if not return \"LineEnding + end; + LineEnding\"."
 msgstr "ellenőrzi, hogy a következő szimbólum a forrásban egy end és, hogy nem ad-e vissza sorvég + end; + sorvéget"
 
 #: lazarusidestrconsts.lischeckoptions
@@ -5782,6 +5784,7 @@ msgid "Close files"
 msgstr "Fájlok bezárása"
 
 #: lazarusidestrconsts.lisclosealltabshide
+msgctxt "lazarusidestrconsts.lisclosealltabshide"
 msgid "Hide window"
 msgstr "Ablak elrejtése"
 
@@ -8481,10 +8484,6 @@ msgstr "Egy érvényes eszköznek legalább címének és fájlnevének kell len
 msgid "Edit Tool"
 msgstr "Eszköz szerkesztése"
 
-#: lazarusidestrconsts.lisedtexttoolhidemainform
-msgid "Hide main form"
-msgstr "Főablak elrejtése"
-
 #: lazarusidestrconsts.lisedtexttoolkey
 msgctxt "lazarusidestrconsts.lisedtexttoolkey"
 msgid "Key"
@@ -8504,11 +8503,15 @@ msgid "Program Filename:"
 msgstr "Program fájlnév:"
 
 #: lazarusidestrconsts.lisedtexttoolscanoutputforfreepascalcompilermessages
-msgid "Scan output for Free Pascal Compiler messages"
+#, fuzzy
+#| msgid "Scan output for Free Pascal Compiler messages"
+msgid "Scan output for FPC messages"
 msgstr "Free Pascal fordító üzenetek keresése a kimenetben"
 
 #: lazarusidestrconsts.lisedtexttoolscanoutputformakemessages
-msgid "Scan output for make messages"
+#, fuzzy
+#| msgid "Scan output for make messages"
+msgid "Scan output for \"make\" messages"
 msgstr "Make üzenetek keresése a kimenetben"
 
 #: lazarusidestrconsts.lisedtexttooltitleandfilenamerequired
@@ -9537,6 +9540,10 @@ msgstr "Általános"
 msgid "get word at current cursor position"
 msgstr "kifejezés lekérdezése a kurzor jelenlegi helyénél"
 
+#: lazarusidestrconsts.lisgetwordatcurrentcursorposition2
+msgid "Get word at current cursor position."
+msgstr ""
+
 #: lazarusidestrconsts.lisglobalsettings
 msgid "Global settings"
 msgstr "Általános beállítások"
@@ -9667,6 +9674,12 @@ msgstr "Üzenet elrejtése IDE direktíva beszúrásával {%H-}"
 #: lazarusidestrconsts.lishidesearch
 msgid "Hide Search"
 msgstr "Keresés elrejtése"
+
+#: lazarusidestrconsts.lishidewindow
+#, fuzzy
+msgctxt "lazarusidestrconsts.lishidewindow"
+msgid "Hide window"
+msgstr "Ablak elrejtése"
 
 #: lazarusidestrconsts.lishidewithpackageoptionvm
 msgid "Hide with package option (-vm%s)"
@@ -10080,16 +10093,49 @@ msgid "insert date and time"
 msgstr "dátum és idő beillesztése"
 
 #: lazarusidestrconsts.lisinsertdateandtimeoptionalformatstring
-msgid "Insert date and time. Optional: format string"
+#, fuzzy
+#| msgid "Insert date and time. Optional: format string"
+msgid "Insert date and time. Optional: format string."
 msgstr "Dátum és idő beszúrása. Nem kötelező: formátum karakterlánc"
 
 #: lazarusidestrconsts.lisinsertdateoptionalformatstring
-msgid "Insert date. Optional: format string"
+#, fuzzy
+#| msgid "Insert date. Optional: format string"
+msgid "Insert date. Optional: format string."
 msgstr "Dátum beillesztése. Nem kötelező: formátum karakterlánc"
 
 #: lazarusidestrconsts.lisinsertendifneeded
 msgid "insert end if needed"
 msgstr "end beillesztése, ha szükséges"
+
+#: lazarusidestrconsts.lisinsertheaderofcurrentprocedure
+msgid ""
+"Insert header of current procedure.\n"
+"\n"
+"Optional Parameters (comma separated):\n"
+"WithStart,          // proc keyword e.g. 'function', 'class procedure'\n"
+"WithoutClassKeyword,// without 'class' proc keyword\n"
+"AddClassName,       // extract/add ClassName.\n"
+"WithoutClassName,   // skip classname\n"
+"WithoutName,        // skip function name\n"
+"WithoutParamList,   // skip param list\n"
+"WithVarModifiers,   // extract 'var', 'out', 'const'\n"
+"WithParameterNames, // extract parameter names\n"
+"WithoutParamTypes,  // skip colon, param types and default values\n"
+"WithDefaultValues,  // extract default values\n"
+"WithResultType,     // extract colon + result type\n"
+"WithOfObject,       // extract 'of object'\n"
+"WithCallingSpecs,   // extract cdecl; inline;\n"
+"WithProcModifiers,  // extract forward; alias; external;\n"
+"WithComments,       // extract comments and spaces\n"
+"InUpperCase,        // turn to uppercase\n"
+"CommentsToSpace,    // replace comments with a single space\n"
+"                      //  (default is to skip unnecessary space,\n"
+"                      //    e.g 'Do   ;' normally becomes 'Do;'\n"
+"                      //    with this option you get 'Do ;')\n"
+"WithoutBrackets,    // skip start- and end-bracket of parameter list\n"
+"WithoutSemicolon,   // skip semicolon at end\n"
+msgstr ""
 
 #: lazarusidestrconsts.lisinsertmacro
 msgctxt "lazarusidestrconsts.lisinsertmacro"
@@ -10097,7 +10143,9 @@ msgid "Insert Macro"
 msgstr "Makró beszúrása"
 
 #: lazarusidestrconsts.lisinsertnameofcurrentprocedure
-msgid "Insert name of current procedure"
+#, fuzzy
+#| msgid "Insert name of current procedure"
+msgid "Insert name of current procedure."
 msgstr "Aktuális eljárás nevének beszúrása"
 
 #: lazarusidestrconsts.lisinsertprintshorttag
@@ -10121,7 +10169,9 @@ msgid "insert time"
 msgstr "idő beszúrása"
 
 #: lazarusidestrconsts.lisinserttimeoptionalformatstring
-msgid "Insert time. Optional: format string"
+#, fuzzy
+#| msgid "Insert time. Optional: format string"
+msgid "Insert time. Optional: format string."
 msgstr "Idő beszúrása. Nem kötelező: formátum karakterlánc"
 
 #: lazarusidestrconsts.lisinserturltag
@@ -11343,7 +11393,9 @@ msgid "lowercase string"
 msgstr "kisbetűs karakterlánc"
 
 #: lazarusidestrconsts.lislowercasestringgivenasparameter
-msgid "Lowercase string given as parameter"
+#, fuzzy
+#| msgid "Lowercase string given as parameter"
+msgid "Lowercase string given as parameter."
 msgstr "Paraméterként megadott kisbetűs karakterlánc"
 
 #: lazarusidestrconsts.lislpkhasvanishedondiskusingasalternative
@@ -12452,6 +12504,11 @@ msgstr "Szerkesztő makrók ..."
 msgid "Make Resource String ..."
 msgstr "ResourceString létrehozása ..."
 
+#: lazarusidestrconsts.lismenumultipaste
+msgctxt "lazarusidestrconsts.lismenumultipaste"
+msgid "MultiPaste ..."
+msgstr ""
+
 #: lazarusidestrconsts.lismenunewcomponent
 msgctxt "lazarusidestrconsts.lismenunewcomponent"
 msgid "New Component"
@@ -12547,6 +12604,12 @@ msgstr "Csomag fa"
 #: lazarusidestrconsts.lismenupackagelinks
 msgid "Package Links ..."
 msgstr "Csomag hivatkozások ..."
+
+#: lazarusidestrconsts.lismenupastefromclipboard
+#, fuzzy
+msgctxt "lazarusidestrconsts.lismenupastefromclipboard"
+msgid "Paste from clipboard"
+msgstr "Beillesztés a vágólapról"
 
 #: lazarusidestrconsts.lismenupkgnewpackagecomponent
 msgid "New package component"
@@ -13320,6 +13383,43 @@ msgstr "Mozgatás ide: "
 msgid "Moving these units will break their uses sections. See Messages window for details."
 msgstr "Ezen unitok áthelyezése törést okoz a uses szakaszokban. Lásd az Üzenetek ablakát a részletekért!"
 
+#: lazarusidestrconsts.lismpcstyle
+msgid "C style: \" => \\\""
+msgstr ""
+
+#: lazarusidestrconsts.lismpescapequotes
+msgid "Escape &quotes"
+msgstr ""
+
+#: lazarusidestrconsts.lismpmultipaste
+msgctxt "lazarusidestrconsts.lismpmultipaste"
+msgid "MultiPaste"
+msgstr ""
+
+#: lazarusidestrconsts.lismppascalstyle
+msgid "Pascal style: ' => ''"
+msgstr ""
+
+#: lazarusidestrconsts.lismppasteoptions
+msgid "Paste &options"
+msgstr ""
+
+#: lazarusidestrconsts.lismppreview
+msgid "&Preview"
+msgstr ""
+
+#: lazarusidestrconsts.lismptextaftereachline
+msgid "Text &after each line"
+msgstr ""
+
+#: lazarusidestrconsts.lismptextbeforeeachline
+msgid "Text &before each line"
+msgstr ""
+
+#: lazarusidestrconsts.lismptrimclipboardcontents
+msgid "&Trim clipboard contents"
+msgstr ""
+
 #: lazarusidestrconsts.lisms
 msgid "(ms)"
 msgstr "(ms)"
@@ -13739,6 +13839,14 @@ msgstr "? (Be)"
 msgid "On break line (i.e. return or enter key)"
 msgstr "Sortöréskor (azaz Return vagy Enter billenyű)"
 
+#: lazarusidestrconsts.lisonlyavailableonwindowsrunthetoolhidden
+msgid "Only available on Windows. Run the tool hidden."
+msgstr ""
+
+#: lazarusidestrconsts.lisonlyavailableonwindowsruntoolinanewconsole
+msgid "Only available on Windows. Run tool in a new console."
+msgstr ""
+
 #: lazarusidestrconsts.lisonlymessagesfittingthisregularexpression
 msgid "Only messages fitting this regular expression:"
 msgstr "Csak ezen reguláris kifejezéshez illeszkedő üzenetek:"
@@ -14010,7 +14118,10 @@ msgid "paste clipboard"
 msgstr "vágólap beillesztése"
 
 #: lazarusidestrconsts.lispastefromclipboard
-msgid "Paste from clipboard"
+#, fuzzy
+#| msgid "Paste from clipboard"
+msgctxt "lazarusidestrconsts.lispastefromclipboard"
+msgid "Paste from clipboard."
 msgstr "Beillesztés a vágólapról"
 
 #: lazarusidestrconsts.lispastelcolors
@@ -16059,8 +16170,33 @@ msgstr "Újraindítás"
 msgid "Result:"
 msgstr "Eredmény:"
 
+#: lazarusidestrconsts.lisreturnparameterindexedword
+msgid ""
+"Return parameter-indexed word from the current line preceding cursor position.\n"
+"\n"
+"Words in a line are numbered 1,2,3,... from left to right, but the last word\n"
+"which is always a macro command to be expanded has number 0, thus $PrevWord(0)\n"
+"is always the current macro.\n"
+"\n"
+"Example line:\n"
+"i 0 count-1 forb|\n"
+"Here $PrevWord(0)=forb, $PrevWord(1)=i, $PrevWord(2)=0, $PrevWord(3)=count-1\n"
+"\n"
+"In the end of your template use $PrevWord(-1) which expands to an empty string, but performs an importaint operation of wiping off all of the $PrevWords found. In addition here is a regexp that is used to detect words for this macro: [\\w\\-+*\\(\\)\\[\\].^@]+\n"
+msgstr ""
+
 #: lazarusidestrconsts.lisreturnslistofallvaluesofcasevariableinfrontofvaria
-msgid "returns list of all values of case variable in front of variable"
+#, fuzzy
+#| msgid ""
+#| "returns list of all values of case variable in front of variable\n"
+#| "\n"
+#| "Optional Parameters (comma separated):\n"
+#| "WithoutExtraIndent    // the case list will be generated without extra indentation\n"
+msgid ""
+"Return the list of all values of case variable in front of variable.\n"
+"\n"
+"Optional Parameters (comma separated):\n"
+"WithoutExtraIndent    // the case list will be generated without extra indentation\n"
 msgstr "a \"case\" változó összes értékének listáját adja vissza a változó elé"
 
 #: lazarusidestrconsts.lisrevertfailed
@@ -16508,6 +16644,10 @@ msgstr "\"%s\" absztrakt metódusainak megjelenítése"
 #: lazarusidestrconsts.lisshowcomponenttreeinobjectinspector
 msgid "Show component tree"
 msgstr "Komponensfa megjelenítése"
+
+#: lazarusidestrconsts.lisshowconsole
+msgid "Show console"
+msgstr ""
 
 #: lazarusidestrconsts.lisshowdeclarationhints
 msgid "Show declaration hints"
@@ -17010,7 +17150,9 @@ msgid "Editable Cell"
 msgstr "Szerkeszthető cella"
 
 #: lazarusidestrconsts.listemplateeditparamcellhelp
-msgid "Inserts an editable Cell. Cells can be navigated using the tab key.%0:sThe \"param\" macro takes a list of comma separated arguments.%0:sThe first argument is the default value.%0:sThe 2nd argument (optional) can be used to link the cell to another cell (syncro edit)%0:s%0:s  while param(\"foo\") do param(foo);%0:sInserts 2 independent cells, both with the default text \"foo\"%0:sThe quotes are optional%0:s%0:s  if param(\"foo\") > 0 and param(\"foo\",sync=1) < 99 then%0:sInserts 2 linked cells, editing either one, will change the other one too%0:sThe value \"1\" refers to the position of the other \"param()\", so if there are more params:%0:s  if param(\"bar\") and param(foo) > 0 and param(foo,sync=2) < 99 then%0:sThe 2nd and third are linked. (the 3rd refers to \"2\") %0:s%0:s\"sync can be shortened to \"s\":%0:s  if param(\"foo\") > 0 and param(\"foo\",s=1) < 99 then%0:s%0:s  if param(\"bar\") and param(\"foo\") > 0 and param(\"foo\",sync) < 99 then%0:sThe 2nd and third are linked.%0:sNote: \"Sync has no position and no \"=\", so it syncs to the previous cell with the same default (in this case \"foo\")"
+#, fuzzy
+#| msgid "Insert an editable Cell. Cells can be navigated using the tab key.%0:sThe \"param\" macro takes a list of comma separated arguments.%0:sThe first argument is the default value.%0:sThe 2nd argument (optional) can be used to link the cell to another cell (syncro edit)%0:s%0:s  while param(\"foo\") do param(foo);%0:sInserts 2 independent cells, both with the default text \"foo\"%0:sThe quotes are optional%0:s%0:s  if param(\"foo\") > 0 and param(\"foo\",sync=1) < 99 then%0:sInserts 2 linked cells, editing either one, will change the other one too%0:sThe value \"1\" refers to the position of the other \"param()\", so if there are more params:%0:s  if param(\"bar\") and param(foo) > 0 and param(foo,sync=2) < 99 then%0:sThe 2nd and third are linked. (the 3rd refers to \"2\") %0:s%0:s\"sync can be shortened to \"s\":%0:s  if param(\"foo\") > 0 and param(\"foo\",s=1) < 99 then%0:s%0:s  if param(\"bar\") and param(\"foo\") > 0 and param(\"foo\",sync) < 99 then%0:sThe 2nd and third are linked.%0:sNote: \"Sync\" has no position and no \"=\", so it syncs to the previous cell with the same default (in this case \"foo\")"
+msgid "Insert an editable Cell. Cells can be navigated using the tab key.%0:sThe \"param\" macro takes a list of comma separated arguments.%0:sThe first argument is the default value.%0:sThe 2nd argument (optional) can be used to link the cell to another cell (syncro edit).%0:s%0:s  while param(\"foo\") do param(foo);%0:sInserts 2 independent cells, both with the default text \"foo\".%0:sThe quotes are optional.%0:s%0:s  if param(\"foo\") > 0 and param(\"foo\",sync=1) < 99 then%0:sInserts 2 linked cells, editing either one, will change the other one too.%0:sThe value \"1\" refers to the position of the other \"param()\", so if there are more params:%0:s  if param(\"bar\") and param(foo) > 0 and param(foo,sync=2) < 99 then%0:sThe 2nd and third are linked (the 3rd refers to \"2\").%0:s%0:s\"Sync\" can be shortened to \"s\":%0:s  if param(\"foo\") > 0 and param(\"foo\",s=1) < 99 then%0:s%0:s  if param(\"bar\") and param(\"foo\") > 0 and param(\"foo\",sync) < 99 then%0:sThe 2nd and third are linked.%0:sNote: \"Sync\" has no position and no \"=\", so it syncs to the previous cell with the same default (in this case \"foo\")."
 msgstr "Szerkeszthető cella beszúrása. A cellák között a TAB billenytűvel lehet navigálni.%0:sA \"param\" makró vesszővel elválasztott argumentumlistát igényel.%0:sAz első argumentum az alapértelmezett érték.%0:sA második argumentum (esetleges) használatával egy egy másik cellához csatolható (szinkronszerkesztés)%0:s%0:s  while param(\"foo\") do param(foo);%0:sKét különálló cellát szúr be, mindkettő alapértelmezett szövege \"foo\" lesz%0:sAz idézőjel tetszőleges%0:s%0:s  if param(\"foo\") > 0 and param(\"foo\",sync=1) < 99 then%0:sKét csatolt cellát szúr be, az egyik szerkesztése a másikat is megváltoztatja%0:sAz \"1\" érték a másik \"param()\" helyzetére hivatkozik, ezért ha több \"param\" is van:%0:s  if param(\"bar\") and param(foo) > 0 and param(foo,sync=2) < 99 then%0:sA második és a harmadik csatolva van egymáshoz. (a harmadik a \"2\"-ra hivatkozik) %0:s%0:sA \"sync\" lerövidíthető \"s\"-re:%0:s  if param(\"foo\") > 0 and param(\"foo\",s=1) < 99 then%0:s%0:s  if param(\"bar\") and param(\"foo\") > 0 and param(\"foo\",sync) < 99 then%0:sA második és a harmadik csatolva van egymáshoz.%0:sMegjegyzés: A \"sync\" nem található és nincs \"=\" jel sem, ezért a csatolás az előző olyan cellával jön létre, melynek ugyanaz az alapértelmezett szövege (ez esetben \"foo\")"
 
 #: lazarusidestrconsts.listemplatefile
@@ -18395,7 +18537,9 @@ msgid "uppercase string"
 msgstr "nagybetűs karakterlánc"
 
 #: lazarusidestrconsts.lisuppercasestringgivenasparameter
-msgid "Uppercase string given as parameter"
+#, fuzzy
+#| msgid "Uppercase string given as parameter"
+msgid "Uppercase string given as parameter."
 msgstr "Paraméterként megadott nagybetűs karakterlánc"
 
 #: lazarusidestrconsts.lisurlonwikithebaseurlis
@@ -19851,6 +19995,10 @@ msgstr "Lapfül mozgatása jobbra"
 #: lazarusidestrconsts.srkmecmoveeditorrightmost
 msgid "Move editor rightmost"
 msgstr "Lapfül mozgatása a jobb szélre"
+
+#: lazarusidestrconsts.srkmecmultipaste
+msgid "MultiPaste clipboard to current position"
+msgstr ""
 
 #: lazarusidestrconsts.srkmecnextbookmark
 msgid "Next Bookmark"

@@ -27,7 +27,7 @@ uses
   MacOSAll, CocoaAll, Classes, sysutils,
   // LCL
   Controls, StdCtrls, Graphics, LCLType, LMessages, LCLProc, LCLMessageGlue,
-  LazUtf8Classes,
+  LazUtf8Classes, textstrings,
   // Widgetset
   WSStdCtrls, WSLCLClasses, WSControls, WSProc,
   // LCL Cocoa
@@ -115,6 +115,8 @@ type
   { TCocoaWSCustomEdit }
 
   TCocoaWSCustomEdit = class(TWSCustomEdit)
+  public
+    class function GetTextField(AWinControl: TWinControl): TCocoaTextField;
   published
     class function  CreateHandle(const AWinControl: TWinControl; const AParams: TCreateParams): TLCLIntfHandle; override;
 
@@ -130,18 +132,45 @@ type
     class procedure SetSelLength(const ACustomEdit: TCustomEdit; NewLength: integer); override;
   end;
   
+  { TCocoaMemoStrings }
+
+  TCocoaMemoStrings = class(TCustomMemoStrings)
+  private
+    FTextView: NSTextView;
+  public
+    class procedure GetLineStart(const s: AnsiString; LineIndex: Integer; var Offset, LinesSkipped: Integer);
+    class function GetLinesCount(const s: AnsiString): Integer;
+  protected
+    function GetTextStr: string; override;
+    procedure SetTextStr(const Value: string); override;
+    function GetCount: Integer; override;
+    function Get(Index: Integer): string; override;
+  public
+    constructor Create(ATextView: NSTextView);
+    procedure Clear; override;
+    procedure Delete(Index: Integer); override;
+    procedure Insert(Index: Integer; const S: string); override;
+    procedure LoadFromFile(const FileName: string); override;
+    procedure SaveToFile(const FileName: string); override;
+  end;
+
   { TCocoaWSCustomMemo }
 
   TCocoaWSCustomMemo = class(TWSCustomMemo)
+  public
+    class function GetTextView(AWinControl: TWinControl): TCocoaTextView;
+    class function GetScrollView(AWinControl: TWinControl): TCocoaScrollView;
   published
     class function CreateHandle(const AWinControl: TWinControl; const AParams: TCreateParams): TLCLIntfHandle; override;
-    class function GetStrings(const ACustomMemo: TCustomMemo): TStrings; override;
-
+    // WSWinControl functions
+    class procedure SetBounds(const AWinControl: TWinControl; const ALeft, ATop, AWidth, AHeight: Integer); override;
+    // WSEdit functions
     //class function GetCanUndo(const ACustomEdit: TCustomEdit): Boolean; override;
     class function GetCaretPos(const ACustomEdit: TCustomEdit): TPoint; override;
     class function GetSelStart(const ACustomEdit: TCustomEdit): integer; override;
     class function GetSelLength(const ACustomEdit: TCustomEdit): integer; override;
-
+    // WSMemo functions
+    class function GetStrings(const ACustomMemo: TCustomMemo): TStrings; override;
     class procedure AppendText(const ACustomMemo: TCustomMemo; const AText: string); override;
     class procedure SetScrollbars(const ACustomMemo: TCustomMemo; const NewScrollbars: TScrollStyle); override;
     class procedure SetWordWrap(const ACustomMemo: TCustomMemo; const NewWordWrap: boolean); override;
@@ -580,6 +609,22 @@ end;
 
 { TCocoaWSCustomEdit }
 
+class function TCocoaWSCustomEdit.GetTextField(AWinControl: TWinControl): TCocoaTextField;
+begin
+  if not Assigned(AWinControl) or (not AWinControl.HandleAllocated) or (AWinControl.Handle=0) then
+  begin
+    Exit(nil);
+  end;
+
+  if AWinControl is TCustomMemo then
+  begin
+    //raise Exception.Create('[TCocoaWSCustomEdit.GetTextField] Called for TMemo, but TMemo has no text field');
+    Exit(nil);
+  end;
+
+  Result := TCocoaTextField(AWinControl.Handle);
+end;
+
 class function TCocoaWSCustomEdit.CreateHandle(const AWinControl: TWinControl; const AParams: TCreateParams): TLCLIntfHandle;
 var
   field : NSTextField;
@@ -598,7 +643,7 @@ var
   txt   :  NSText;
 begin
   Result:=0;
-  field:=TCocoaTextField(ACustomEdit.Handle);
+  field := GetTextField(ACustomEdit);
   if not Assigned(field) then Exit;
   txt:=NSText(field.currentEditor);
   if not Assigned(txt) then Exit;
@@ -612,7 +657,7 @@ var
   txt   :  NSText;
 begin
   Result:=0;
-  field:=TCocoaTextField(ACustomEdit.Handle);
+  field := GetTextField(ACustomEdit);
   if not Assigned(field) then Exit;
   txt:=NSText(field.currentEditor);
   if not Assigned(txt) then Exit;
@@ -638,7 +683,7 @@ var
   curEditor:  NSText;
   lRange: NSRange;
 begin
-  lHandle := TCocoaTextField(ACustomEdit.Handle);
+  lHandle := GetTextField(ACustomEdit);
   if not Assigned(lHandle) then Exit;
   curEditor := NSText(lHandle.currentEditor);
   if not Assigned(curEditor) then Exit;
@@ -653,7 +698,7 @@ var
   curEditor:  NSText;
   lRange: NSRange;
 begin
-  lHandle := TCocoaTextField(ACustomEdit.Handle);
+  lHandle := GetTextField(ACustomEdit);
   if not Assigned(lHandle) then Exit;
   curEditor := NSText(lHandle.currentEditor);
   if not Assigned(curEditor) then Exit;
@@ -661,27 +706,6 @@ begin
   lRange.length := NewLength;
   curEditor.setSelectedRange(lRange);
 end;
-
-type
-
-  { TCocoaMemoStrings }
-
-  TCocoaMemoStrings = class(TStrings)
-  private
-    FTextView: NSTextView;
-  protected
-    function GetTextStr: string; override;
-    procedure SetTextStr(const Value: string); override;
-    function GetCount: Integer; override;
-    function Get(Index: Integer): string; override;
-  public
-    constructor Create(ATextView: NSTextView);
-    procedure Clear; override;
-    procedure Delete(Index: Integer); override;
-    procedure Insert(Index: Integer; const S: string); override;
-    procedure LoadFromFile(const FileName: string); override;
-    procedure SaveToFile(const FileName: string); override;
-  end;
 
 { TCocoaMemoStrings }
 
@@ -705,7 +729,7 @@ begin
   ns.release;
 end;
 
-procedure GetLineStart(const s: AnsiString; LineIndex: Integer; var Offset, LinesSkipped: Integer);
+class procedure TCocoaMemoStrings.GetLineStart(const s: AnsiString; LineIndex: Integer; var Offset, LinesSkipped: Integer);
 var
   i : Integer;
 begin
@@ -723,7 +747,7 @@ begin
   Offset:=i;
 end;
 
-function GetLinesCount(const s: AnsiString): Integer;
+class function TCocoaMemoStrings.GetLinesCount(const s: AnsiString): Integer;
 var
   ofs : Integer;
 begin
@@ -819,12 +843,27 @@ end;
 
 { TCocoaWSCustomMemo }
 
-function MemoTextView(AWinControl: TWinControl): TCocoaTextView;
+class function TCocoaWSCustomMemo.GetTextView(AWinControl: TWinControl): TCocoaTextView;
+var
+  lScroll: TCocoaScrollView;
 begin
-  if not Assigned(AWinControl) or (AWinControl.Handle=0) then
-    Result := nil
-  else
-    Result := TCocoaTextView(NSScrollView(AWinControl.Handle).documentView);
+  lScroll := GetScrollView(AWinControl);
+  if not Assigned(lScroll) then
+  begin
+    Exit(nil);
+  end;
+
+  Result := TCocoaTextView(lScroll.documentView);
+end;
+
+class function TCocoaWSCustomMemo.GetScrollView(AWinControl: TWinControl): TCocoaScrollView;
+begin
+  if not Assigned(AWinControl) or (not AWinControl.HandleAllocated) or (AWinControl.Handle=0) then
+  begin
+    Exit(nil);
+  end;
+
+  Result := TCocoaScrollView(AWinControl.Handle);
 end;
 
 class function TCocoaWSCustomMemo.CreateHandle(const AWinControl: TWinControl;
@@ -835,6 +874,7 @@ var
   scr: TCocoaScrollView;
   nr:NSRect;
   r:TRect;
+  layoutSize: NSSize;
 begin
   scr := TCocoaScrollView(NSView(TCocoaScrollView.alloc).lclInitWithCreateParams(AParams));
 
@@ -871,15 +911,20 @@ begin
   Result := TLCLIntfHandle(scr);
 end;
 
-class function TCocoaWSCustomMemo.GetStrings(const ACustomMemo: TCustomMemo): TStrings;
+class procedure TCocoaWSCustomMemo.SetBounds(const AWinControl: TWinControl; const ALeft, ATop, AWidth, AHeight: Integer);
 var
+  nr: NSRect;
   txt: TCocoaTextView;
+  lScroll: TCocoaScrollView;
 begin
-  txt := MemoTextView(ACustomMemo);
-  if Assigned(txt) then
-    Result := TCocoaMemoStrings.Create(txt)
-  else
-    Result := nil
+  TCocoaWSWinControl.SetBounds(AWinControl, ALeft, ATop, AWidth, AHeight);
+
+  txt := GetTextView(AWinControl);
+  lScroll := GetScrollView(AWinControl);
+  if (not Assigned(txt)) or (not Assigned(lScroll)) then Exit;
+
+  nr := lScroll.documentVisibleRect;
+  txt.setFrame(nr);
 end;
 
 class function TCocoaWSCustomMemo.GetCaretPos(const ACustomEdit: TCustomEdit): TPoint;
@@ -893,7 +938,7 @@ var
   curLine: Integer = 0;
 begin
   Result := Point(0, 0);
-  txt := MemoTextView(ACustomEdit);
+  txt := GetTextView(ACustomEdit);
   if not Assigned(txt) then Exit;
   lValue := NSValue(txt.selectedRanges.objectAtIndex(0));
   if lValue = nil then Exit;
@@ -928,20 +973,30 @@ class function TCocoaWSCustomMemo.GetSelStart(const ACustomEdit: TCustomEdit): i
 var
   txt: TCocoaTextView;
 begin
-  txt := MemoTextView(ACustomEdit);
+  txt := GetTextView(ACustomEdit);
   if not Assigned(txt) then Exit;
   Result := txt.selectedRange.location;
 end;
 
-class function TCocoaWSCustomMemo.GetSelLength(const ACustomEdit: TCustomEdit
-  ): integer;
+class function TCocoaWSCustomMemo.GetSelLength(const ACustomEdit: TCustomEdit): integer;
 var
   txt: TCocoaTextView;
   ns: NSArray;
 begin
-  txt := MemoTextView(ACustomEdit);
+  txt := GetTextView(ACustomEdit);
   if not Assigned(txt) then Exit;
   Result := txt.selectedRange.length;
+end;
+
+class function TCocoaWSCustomMemo.GetStrings(const ACustomMemo: TCustomMemo): TStrings;
+var
+  txt: TCocoaTextView;
+begin
+  txt := GetTextView(ACustomMemo);
+  if Assigned(txt) then
+    Result := TCocoaMemoStrings.Create(txt)
+  else
+    Result := nil
 end;
 
 class procedure TCocoaWSCustomMemo.AppendText(const ACustomMemo: TCustomMemo;
@@ -955,7 +1010,7 @@ class procedure TCocoaWSCustomMemo.SetReadOnly(const ACustomEdit:TCustomEdit;
 var
   txt: TCocoaTextView;
 begin
-  txt := MemoTextView(ACustomEdit);
+  txt := GetTextView(ACustomEdit);
   if Assigned(txt) then
     txt.setEditable(not NewReadOnly);
 end;
@@ -965,12 +1020,31 @@ begin
   TCocoaScrollView(ACustomMemo.Handle).setHasVerticalScroller(VerticalScrollerVisible[NewScrollbars]);
   TCocoaScrollView(ACustomMemo.Handle).setHasHorizontalScroller(HorizontalScrollerVisible[NewScrollbars]);
   TCocoaScrollView(ACustomMemo.Handle).setAutohidesScrollers(ScrollerAutoHide[NewScrollbars]);
-
 end;
 
 class procedure  TCocoaWSCustomMemo.SetWordWrap(const ACustomMemo: TCustomMemo; const NewWordWrap: boolean);
+var
+  layoutSize: NSSize;
+  txt: TCocoaTextView;
+  lScroll: TCocoaScrollView;
 begin
-  //todo:
+  txt := GetTextView(ACustomMemo);
+  lScroll := GetScrollView(ACustomMemo);
+  if (not Assigned(txt)) or (not Assigned(lScroll)) then Exit;
+
+  if NewWordWrap then
+  begin
+    layoutSize := lScroll.contentSize();
+    layoutSize := GetNSSize(layoutSize.width, CGFloat_Max);
+    txt.textContainer.setContainerSize(layoutSize);
+    txt.textContainer.setWidthTracksTextView(True);
+  end
+  else
+  begin
+    txt.textContainer.setWidthTracksTextView(False);
+    layoutSize := GetNSSize(CGFloat_Max, CGFloat_Max);
+    txt.textContainer.setContainerSize(layoutSize);
+  end;
 end;
 
 class procedure TCocoaWSCustomMemo.SetText(const AWinControl:TWinControl;const AText:String);
@@ -978,7 +1052,7 @@ var
   txt: TCocoaTextView;
   ns: NSString;
 begin
-  txt := MemoTextView(AWinControl);
+  txt := GetTextView(AWinControl);
   if not Assigned(txt) then Exit;
   ns := NSStringUtf8(AText);
   txt.setString(ns);
@@ -989,7 +1063,7 @@ class function TCocoaWSCustomMemo.GetText(const AWinControl: TWinControl; var AT
 var
   txt: TCocoaTextView;
 begin
-  txt := MemoTextView(AWinControl);
+  txt := GetTextView(AWinControl);
   Result := Assigned(txt);
   if Result then
     AText := NSStringToString(txt.string_);
