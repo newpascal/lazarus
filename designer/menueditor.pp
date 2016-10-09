@@ -277,14 +277,16 @@ type
   end;
 
   { TMenuItemsPropertyEditor - property editor for TMenuItem properties.
-    Invokes the parent menu's component editor }
-
+    Invokes the parent menu's component editor.
+    Note: disabled because opening a menu editor window when selecting a menu item
+     in OI is not desired. Menu item properties can be changed in OI directly. }
+{
   TMenuItemsPropertyEditor = class(TClassPropertyEditor)
   public
     procedure Edit; override;
     function GetAttributes: TPropertyAttributes; override;
   end;
-
+}
 procedure ShowMenuEditor(aMenu: TMenu);
 function MenuDesigner: TMenuDesigner;
 
@@ -737,7 +739,7 @@ begin
     GlobalDesignHook.RefreshPropertyValues;
     GlobalDesignHook.Modified(FEditedMenuItem);
     //UpdateBoxLocationsAndSizes;
-    EditedShadow.Repaint;
+    EditedShadow.Invalidate;
     //FDesigner.FGui.UpdateStatistics;
   end;
   EditedShadow.SetFocus;
@@ -962,7 +964,7 @@ begin
     RemoveComponent(sb);
     si:=GetShadowForMenuItem(sb.ParentMenuItem);
     if Assigned(si) then
-      si.Repaint;
+      si.Invalidate;
     FreeAndNil(sb);
   end;
 end;
@@ -1449,32 +1451,20 @@ var
   idx: integer;
   selected: TShadowItem;
 begin
-  if (FSelectedMenuItem <> nil) then begin
-    selected:=SelectedShadowItem;
-    if (FMenu.Images <> nil) then
-    begin
-      idx:=ChooseIconFromImageListDlg(FMenu.Images);
-      if (idx > -1) then begin
-        FSelectedMenuItem.ImageIndex:=idx;
-        selected.Repaint;
-        UpdateActionsEnabledness;
-        FEditorDesigner.PropertyEditorHook.RefreshPropertyValues;
-        FEditorDesigner.Modified;
-      end;
-    end
-    else if (selected.Level > 0) and
-            (FSelectedMenuItem.Parent.SubMenuImages <> nil) then
-      begin
-        idx:=ChooseIconFromImageListDlg(FSelectedMenuItem.Parent.SubMenuImages);
-        if (idx > -1) then begin
-          FSelectedMenuItem.ImageIndex:=idx;
-          selected.Repaint;
-          UpdateActionsEnabledness;
-          FEditorDesigner.PropertyEditorHook.RefreshPropertyValues;
-          FEditorDesigner.Modified;
-        end;
-      end;
-  end;
+  if FSelectedMenuItem = nil then Exit;
+  idx := -1;
+  selected:=SelectedShadowItem;
+  if (FMenu.Images <> nil) then
+    idx := ChooseIconFromImageListDlg(FMenu.Images)
+  else if (selected.Level > 0)
+  and (FSelectedMenuItem.Parent.SubMenuImages <> nil) then
+    idx := ChooseIconFromImageListDlg(FSelectedMenuItem.Parent.SubMenuImages);
+  if idx = -1 then Exit;
+  FSelectedMenuItem.ImageIndex := idx;
+  selected.Invalidate;
+  UpdateActionsEnabledness;
+  FEditorDesigner.PropertyEditorHook.RefreshPropertyValues;
+  FEditorDesigner.Modified;
 end;
 
 procedure TShadowMenu.DeleteTemplate(Sender: TObject);
@@ -1546,7 +1536,7 @@ begin
           UpdateBoxLocationsAndSizes;
           RefreshFakes;
           if (FSelectedMenuItem <> nil) then
-            SelectedShadowItem.Repaint;
+            SelectedShadowItem.Invalidate;
         end;
       end;
     end;
@@ -1579,7 +1569,7 @@ begin
            FDesigner.Shortcuts.UpdateShortcutList(True);
       if (FSelectedMenuItem <> nil) then begin
         RefreshFakes;
-        SelectedShadowItem.Repaint;
+        SelectedShadowItem.Invalidate;
       end;
       FDesigner.FGui.UpdateStatistics;
     end;
@@ -2309,7 +2299,7 @@ procedure TShadowItem.SetState(AValue: TShadowItemDisplayState);
 begin
   if (FState <> AValue) then begin
     FState:=AValue;
-    Repaint;
+    Invalidate;
   end;
 end;
 
@@ -2666,9 +2656,8 @@ end;
 
 procedure TShadowItem.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 begin
-  if (Button = mbLeft) and FRealItem.AutoCheck then begin
-    FRealItem.Checked:=not FRealItem.Checked;
-    FParentBox.Repaint;
+  if Button = mbLeft then begin
+    FRealItem.Click;
     FShadowMenu.FEditorDesigner.PropertyEditorHook.RefreshPropertyValues;
   end;
   if (FState = dsSelected) then
@@ -2682,7 +2671,7 @@ procedure TShadowItem.ShowNormal;
 begin
   if (FState <> dsNormal) then begin
     FState:=dsNormal;
-    Repaint;
+    Invalidate;
   end;
 end;
 
@@ -2690,7 +2679,7 @@ procedure TShadowItem.ShowSelected;
 begin
   if (FState <> dsSelected) then begin
     FState:=dsSelected;
-    Repaint;
+    Invalidate;
   end;
 end;
 
@@ -2698,7 +2687,7 @@ procedure TShadowItem.ShowDisabled;
 begin
   if (FState <> dsDisabled) then begin
     FState:=dsDisabled;
-    Repaint;
+    Invalidate;
   end;
 end;
 
@@ -2802,7 +2791,7 @@ begin
 end;
 
 { TMenuItemsPropertyEditor }
-
+{
 procedure TMenuItemsPropertyEditor.Edit;
 var
   mnu: TMenu;
@@ -2823,10 +2812,10 @@ function TMenuItemsPropertyEditor.GetAttributes: TPropertyAttributes;
 begin
   Result := [paDialog, paRevertable, paReadOnly];
 end;
-
+}
 initialization
   RegisterComponentEditor(TMenu, TMainMenuComponentEditor);
-  RegisterPropertyEditor(TypeInfo(TMenu), TMenu, 'Items', TMenuItemsPropertyEditor);
+  //RegisterPropertyEditor(TypeInfo(TMenu), TMenu, 'Items', TMenuItemsPropertyEditor);
 
 finalization
   FreeAndNil(MenuDesignerSingleton);

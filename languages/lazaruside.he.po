@@ -5870,7 +5870,9 @@ msgid ". Check if package %s is in the dependencies"
 msgstr ""
 
 #: lazarusidestrconsts.lischeckifthenexttokeninsourceisanendandifnotreturnsl
-msgid "check if the next token in source is an end and if not returns lineend + end; + lineend"
+#, fuzzy
+#| msgid "Check if the next token in source is an \"end\" and if not return \"LineEnding + end; + LineEnding\""
+msgid "Check if the next token in source is an \"end\" and if not return \"LineEnding + end; + LineEnding\"."
 msgstr "בדוק אם הסימן הבא בקוד הוא הוא :סוף\" ואם לא החזר linend +end; "
 
 #: lazarusidestrconsts.lischeckoptions
@@ -6152,6 +6154,7 @@ msgid "Close files"
 msgstr "סגור קבצים"
 
 #: lazarusidestrconsts.lisclosealltabshide
+msgctxt "lazarusidestrconsts.lisclosealltabshide"
 msgid "Hide window"
 msgstr "הסתר חלון"
 
@@ -8990,10 +8993,6 @@ msgstr "כלי חוקי צריך לפחות כותרת ושם קובץ."
 msgid "Edit Tool"
 msgstr "ערוך כלי"
 
-#: lazarusidestrconsts.lisedtexttoolhidemainform
-msgid "Hide main form"
-msgstr "הסתר טופס ראשי"
-
 #: lazarusidestrconsts.lisedtexttoolkey
 msgctxt "lazarusidestrconsts.lisedtexttoolkey"
 msgid "Key"
@@ -9013,11 +9012,15 @@ msgid "Program Filename:"
 msgstr "שם התוכנית:"
 
 #: lazarusidestrconsts.lisedtexttoolscanoutputforfreepascalcompilermessages
-msgid "Scan output for Free Pascal Compiler messages"
+#, fuzzy
+#| msgid "Scan output for Free Pascal Compiler messages"
+msgid "Scan output for FPC messages"
 msgstr "סרוק פלט להודעות מהדר של Free Pascal "
 
 #: lazarusidestrconsts.lisedtexttoolscanoutputformakemessages
-msgid "Scan output for make messages"
+#, fuzzy
+#| msgid "Scan output for make messages"
+msgid "Scan output for \"make\" messages"
 msgstr "סרוק פלט להודעות make"
 
 #: lazarusidestrconsts.lisedtexttooltitleandfilenamerequired
@@ -10096,6 +10099,10 @@ msgstr "כללי"
 msgid "get word at current cursor position"
 msgstr "קח את המילה שבמקום הנוכחי של הסמן"
 
+#: lazarusidestrconsts.lisgetwordatcurrentcursorposition2
+msgid "Get word at current cursor position."
+msgstr ""
+
 #: lazarusidestrconsts.lisglobalsettings
 msgid "Global settings"
 msgstr ""
@@ -10222,6 +10229,12 @@ msgstr ""
 #: lazarusidestrconsts.lishidesearch
 msgid "Hide Search"
 msgstr ""
+
+#: lazarusidestrconsts.lishidewindow
+#, fuzzy
+msgctxt "lazarusidestrconsts.lishidewindow"
+msgid "Hide window"
+msgstr "הסתר חלון"
 
 #: lazarusidestrconsts.lishidewithpackageoptionvm
 msgid "Hide with package option (-vm%s)"
@@ -10645,16 +10658,49 @@ msgid "insert date and time"
 msgstr "הכנס תאריך ושעה"
 
 #: lazarusidestrconsts.lisinsertdateandtimeoptionalformatstring
-msgid "Insert date and time. Optional: format string"
+#, fuzzy
+#| msgid "Insert date and time. Optional: format string"
+msgid "Insert date and time. Optional: format string."
 msgstr "הכנס תאריך ושעה. אפשרי: עיצוב המחרוזת"
 
 #: lazarusidestrconsts.lisinsertdateoptionalformatstring
-msgid "Insert date. Optional: format string"
+#, fuzzy
+#| msgid "Insert date. Optional: format string"
+msgid "Insert date. Optional: format string."
 msgstr "הכנס תאריך. אפשרי: עיצוב המחרוזת"
 
 #: lazarusidestrconsts.lisinsertendifneeded
 msgid "insert end if needed"
 msgstr "הכנס סיום אם צריך"
+
+#: lazarusidestrconsts.lisinsertheaderofcurrentprocedure
+msgid ""
+"Insert header of current procedure.\n"
+"\n"
+"Optional Parameters (comma separated):\n"
+"WithStart,          // proc keyword e.g. 'function', 'class procedure'\n"
+"WithoutClassKeyword,// without 'class' proc keyword\n"
+"AddClassName,       // extract/add ClassName.\n"
+"WithoutClassName,   // skip classname\n"
+"WithoutName,        // skip function name\n"
+"WithoutParamList,   // skip param list\n"
+"WithVarModifiers,   // extract 'var', 'out', 'const'\n"
+"WithParameterNames, // extract parameter names\n"
+"WithoutParamTypes,  // skip colon, param types and default values\n"
+"WithDefaultValues,  // extract default values\n"
+"WithResultType,     // extract colon + result type\n"
+"WithOfObject,       // extract 'of object'\n"
+"WithCallingSpecs,   // extract cdecl; inline;\n"
+"WithProcModifiers,  // extract forward; alias; external;\n"
+"WithComments,       // extract comments and spaces\n"
+"InUpperCase,        // turn to uppercase\n"
+"CommentsToSpace,    // replace comments with a single space\n"
+"                      //  (default is to skip unnecessary space,\n"
+"                      //    e.g 'Do   ;' normally becomes 'Do;'\n"
+"                      //    with this option you get 'Do ;')\n"
+"WithoutBrackets,    // skip start- and end-bracket of parameter list\n"
+"WithoutSemicolon,   // skip semicolon at end\n"
+msgstr ""
 
 #: lazarusidestrconsts.lisinsertmacro
 msgctxt "lazarusidestrconsts.lisinsertmacro"
@@ -10662,7 +10708,9 @@ msgid "Insert Macro"
 msgstr "הכנס מאקרו"
 
 #: lazarusidestrconsts.lisinsertnameofcurrentprocedure
-msgid "Insert name of current procedure"
+#, fuzzy
+#| msgid "Insert name of current procedure"
+msgid "Insert name of current procedure."
 msgstr "הכנס את שם הפרוצדורה הנוכחית"
 
 #: lazarusidestrconsts.lisinsertprintshorttag
@@ -10686,7 +10734,9 @@ msgid "insert time"
 msgstr "הכנס שעה"
 
 #: lazarusidestrconsts.lisinserttimeoptionalformatstring
-msgid "Insert time. Optional: format string"
+#, fuzzy
+#| msgid "Insert time. Optional: format string"
+msgid "Insert time. Optional: format string."
 msgstr "הכנס שעה. אפשרי: עיצוב המחרוזת"
 
 #: lazarusidestrconsts.lisinserturltag
@@ -12036,7 +12086,9 @@ msgid "lowercase string"
 msgstr "מחרוזת של אותיות קטנות"
 
 #: lazarusidestrconsts.lislowercasestringgivenasparameter
-msgid "Lowercase string given as parameter"
+#, fuzzy
+#| msgid "Lowercase string given as parameter"
+msgid "Lowercase string given as parameter."
 msgstr "מחרוזת של אותיות קטנות נתונה כפרמטר"
 
 #: lazarusidestrconsts.lislpkhasvanishedondiskusingasalternative
@@ -13260,6 +13312,11 @@ msgstr ""
 msgid "Make Resource String ..."
 msgstr "צור מחרוזת משאבים ..."
 
+#: lazarusidestrconsts.lismenumultipaste
+msgctxt "lazarusidestrconsts.lismenumultipaste"
+msgid "MultiPaste ..."
+msgstr ""
+
 #: lazarusidestrconsts.lismenunewcomponent
 msgctxt "lazarusidestrconsts.lismenunewcomponent"
 msgid "New Component"
@@ -13379,6 +13436,11 @@ msgstr "גרף החבילות ..."
 #| msgid "Package links ..."
 msgid "Package Links ..."
 msgstr "קישורי חבילה ..."
+
+#: lazarusidestrconsts.lismenupastefromclipboard
+msgctxt "lazarusidestrconsts.lismenupastefromclipboard"
+msgid "Paste from clipboard"
+msgstr ""
 
 #: lazarusidestrconsts.lismenupkgnewpackagecomponent
 msgid "New package component"
@@ -14221,6 +14283,43 @@ msgstr ""
 msgid "Moving these units will break their uses sections. See Messages window for details."
 msgstr ""
 
+#: lazarusidestrconsts.lismpcstyle
+msgid "C style: \" => \\\""
+msgstr ""
+
+#: lazarusidestrconsts.lismpescapequotes
+msgid "Escape &quotes"
+msgstr ""
+
+#: lazarusidestrconsts.lismpmultipaste
+msgctxt "lazarusidestrconsts.lismpmultipaste"
+msgid "MultiPaste"
+msgstr ""
+
+#: lazarusidestrconsts.lismppascalstyle
+msgid "Pascal style: ' => ''"
+msgstr ""
+
+#: lazarusidestrconsts.lismppasteoptions
+msgid "Paste &options"
+msgstr ""
+
+#: lazarusidestrconsts.lismppreview
+msgid "&Preview"
+msgstr ""
+
+#: lazarusidestrconsts.lismptextaftereachline
+msgid "Text &after each line"
+msgstr ""
+
+#: lazarusidestrconsts.lismptextbeforeeachline
+msgid "Text &before each line"
+msgstr ""
+
+#: lazarusidestrconsts.lismptrimclipboardcontents
+msgid "&Trim clipboard contents"
+msgstr ""
+
 #: lazarusidestrconsts.lisms
 msgid "(ms)"
 msgstr "(ms)"
@@ -14662,6 +14761,14 @@ msgstr "? (דלוק)"
 msgid "On break line (i.e. return or enter key)"
 msgstr "בסוף השורה (למשל: מקש  return או enter)"
 
+#: lazarusidestrconsts.lisonlyavailableonwindowsrunthetoolhidden
+msgid "Only available on Windows. Run the tool hidden."
+msgstr ""
+
+#: lazarusidestrconsts.lisonlyavailableonwindowsruntoolinanewconsole
+msgid "Only available on Windows. Run tool in a new console."
+msgstr ""
+
 #: lazarusidestrconsts.lisonlymessagesfittingthisregularexpression
 msgid "Only messages fitting this regular expression:"
 msgstr ""
@@ -14947,7 +15054,8 @@ msgid "paste clipboard"
 msgstr "הדבק את מה שבלוח הזמני"
 
 #: lazarusidestrconsts.lispastefromclipboard
-msgid "Paste from clipboard"
+msgctxt "lazarusidestrconsts.lispastefromclipboard"
+msgid "Paste from clipboard."
 msgstr ""
 
 #: lazarusidestrconsts.lispastelcolors
@@ -17220,8 +17328,33 @@ msgstr "אתחל"
 msgid "Result:"
 msgstr "תוצאה:"
 
+#: lazarusidestrconsts.lisreturnparameterindexedword
+msgid ""
+"Return parameter-indexed word from the current line preceding cursor position.\n"
+"\n"
+"Words in a line are numbered 1,2,3,... from left to right, but the last word\n"
+"which is always a macro command to be expanded has number 0, thus $PrevWord(0)\n"
+"is always the current macro.\n"
+"\n"
+"Example line:\n"
+"i 0 count-1 forb|\n"
+"Here $PrevWord(0)=forb, $PrevWord(1)=i, $PrevWord(2)=0, $PrevWord(3)=count-1\n"
+"\n"
+"In the end of your template use $PrevWord(-1) which expands to an empty string, but performs an importaint operation of wiping off all of the $PrevWords found. In addition here is a regexp that is used to detect words for this macro: [\\w\\-+*\\(\\)\\[\\].^@]+\n"
+msgstr ""
+
 #: lazarusidestrconsts.lisreturnslistofallvaluesofcasevariableinfrontofvaria
-msgid "returns list of all values of case variable in front of variable"
+#, fuzzy
+#| msgid ""
+#| "returns list of all values of case variable in front of variable\n"
+#| "\n"
+#| "Optional Parameters (comma separated):\n"
+#| "WithoutExtraIndent    // the case list will be generated without extra indentation\n"
+msgid ""
+"Return the list of all values of case variable in front of variable.\n"
+"\n"
+"Optional Parameters (comma separated):\n"
+"WithoutExtraIndent    // the case list will be generated without extra indentation\n"
 msgstr "מחזיר רשימה של כל הערכים של משתנה case לפני המשתנה"
 
 #: lazarusidestrconsts.lisrevertfailed
@@ -17687,6 +17820,10 @@ msgstr ""
 
 #: lazarusidestrconsts.lisshowcomponenttreeinobjectinspector
 msgid "Show component tree"
+msgstr ""
+
+#: lazarusidestrconsts.lisshowconsole
+msgid "Show console"
 msgstr ""
 
 #: lazarusidestrconsts.lisshowdeclarationhints
@@ -18212,7 +18349,8 @@ msgstr "תא בר עריכה"
 
 #: lazarusidestrconsts.listemplateeditparamcellhelp
 #, fuzzy,badformat
-msgid "Inserts an editable Cell. Cells can be navigated using the tab key.%0:sThe \"param\" macro takes a list of comma separated arguments.%0:sThe first argument is the default value.%0:sThe 2nd argument (optional) can be used to link the cell to another cell (syncro edit)%0:s%0:s  while param(\"foo\") do param(foo);%0:sInserts 2 independent cells, both with the default text \"foo\"%0:sThe quotes are optional%0:s%0:s  if param(\"foo\") > 0 and param(\"foo\",sync=1) < 99 then%0:sInserts 2 linked cells, editing either one, will change the other one too%0:sThe value \"1\" refers to the position of the other \"param()\", so if there are more params:%0:s  if param(\"bar\") and param(foo) > 0 and param(foo,sync=2) < 99 then%0:sThe 2nd and third are linked. (the 3rd refers to \"2\") %0:s%0:s\"sync can be shortened to \"s\":%0:s  if param(\"foo\") > 0 and param(\"foo\",s=1) < 99 then%0:s%0:s  if param(\"bar\") and param(\"foo\") > 0 and param(\"foo\",sync) < 99 then%0:sThe 2nd and third are linked.%0:sNote: \"Sync has no position and no \"=\", so it syncs to the previous cell with the same default (in this case \"foo\")"
+#| msgid "Insert an editable Cell. Cells can be navigated using the tab key.%0:sThe \"param\" macro takes a list of comma separated arguments.%0:sThe first argument is the default value.%0:sThe 2nd argument (optional) can be used to link the cell to another cell (syncro edit)%0:s%0:s  while param(\"foo\") do param(foo);%0:sInserts 2 independent cells, both with the default text \"foo\"%0:sThe quotes are optional%0:s%0:s  if param(\"foo\") > 0 and param(\"foo\",sync=1) < 99 then%0:sInserts 2 linked cells, editing either one, will change the other one too%0:sThe value \"1\" refers to the position of the other \"param()\", so if there are more params:%0:s  if param(\"bar\") and param(foo) > 0 and param(foo,sync=2) < 99 then%0:sThe 2nd and third are linked. (the 3rd refers to \"2\") %0:s%0:s\"sync can be shortened to \"s\":%0:s  if param(\"foo\") > 0 and param(\"foo\",s=1) < 99 then%0:s%0:s  if param(\"bar\") and param(\"foo\") > 0 and param(\"foo\",sync) < 99 then%0:sThe 2nd and third are linked.%0:sNote: \"Sync\" has no position and no \"=\", so it syncs to the previous cell with the same default (in this case \"foo\")"
+msgid "Insert an editable Cell. Cells can be navigated using the tab key.%0:sThe \"param\" macro takes a list of comma separated arguments.%0:sThe first argument is the default value.%0:sThe 2nd argument (optional) can be used to link the cell to another cell (syncro edit).%0:s%0:s  while param(\"foo\") do param(foo);%0:sInserts 2 independent cells, both with the default text \"foo\".%0:sThe quotes are optional.%0:s%0:s  if param(\"foo\") > 0 and param(\"foo\",sync=1) < 99 then%0:sInserts 2 linked cells, editing either one, will change the other one too.%0:sThe value \"1\" refers to the position of the other \"param()\", so if there are more params:%0:s  if param(\"bar\") and param(foo) > 0 and param(foo,sync=2) < 99 then%0:sThe 2nd and third are linked (the 3rd refers to \"2\").%0:s%0:s\"Sync\" can be shortened to \"s\":%0:s  if param(\"foo\") > 0 and param(\"foo\",s=1) < 99 then%0:s%0:s  if param(\"bar\") and param(\"foo\") > 0 and param(\"foo\",sync) < 99 then%0:sThe 2nd and third are linked.%0:sNote: \"Sync\" has no position and no \"=\", so it syncs to the previous cell with the same default (in this case \"foo\")."
 msgstr "מכניס תא בר עריכה, עם ערך ברירת מחדל, (Sync=n (,S=n, לסינכרון עם התא הקודם מ n=1 ועד לתא הקודם הגבוה ביותר. ברירת המחדל היא לסנכרן עם התא הקודם עם אותה ברירת מחדל  "
 
 #: lazarusidestrconsts.listemplatefile
@@ -19788,7 +19926,9 @@ msgid "uppercase string"
 msgstr "מחרוזת באותיות ראשיות"
 
 #: lazarusidestrconsts.lisuppercasestringgivenasparameter
-msgid "Uppercase string given as parameter"
+#, fuzzy
+#| msgid "Uppercase string given as parameter"
+msgid "Uppercase string given as parameter."
 msgstr "מחרוזת באותיות ראשיות ניתנה כפרמטר"
 
 #: lazarusidestrconsts.lisurlonwikithebaseurlis
@@ -21324,6 +21464,10 @@ msgstr "הזז את העורך ימינה"
 #: lazarusidestrconsts.srkmecmoveeditorrightmost
 msgid "Move editor rightmost"
 msgstr "הצמד את העורך ימינה"
+
+#: lazarusidestrconsts.srkmecmultipaste
+msgid "MultiPaste clipboard to current position"
+msgstr ""
 
 #: lazarusidestrconsts.srkmecnextbookmark
 msgid "Next Bookmark"

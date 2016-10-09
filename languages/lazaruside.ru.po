@@ -5,7 +5,7 @@ msgstr ""
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "POT-Creation-Date: \n"
-"PO-Revision-Date: 2016-08-26 01:29+0300\n"
+"PO-Revision-Date: 2016-10-06 01:24+0300\n"
 "Language-Team: \n"
 "MIME-Version: 1.0\n"
 "X-Poedit-Bookmarks: -1,-1,-1,-1,-1,-1,-1,3325,-1,-1\n"
@@ -5510,8 +5510,8 @@ msgid ". Check if package %s is in the dependencies"
 msgstr ". Проверьте, что пакет %s имеется в списке зависимостей"
 
 #: lazarusidestrconsts.lischeckifthenexttokeninsourceisanendandifnotreturnsl
-msgid "check if the next token in source is an end and if not returns lineend + end; + lineend"
-msgstr "Проверить, что следующий элемент исходного кода - слово 'end', и, если нет, возвратить '<символы конца строки> + end; + <символы конца строки>'."
+msgid "Check if the next token in source is an \"end\" and if not return \"LineEnding + end; + LineEnding\"."
+msgstr "Проверить, что следующий элемент исходного кода - слово \"end\", и, если нет, возвратить \"<символы конца строки> + end; + <символы конца строки>\"."
 
 #: lazarusidestrconsts.lischeckoptions
 msgid "Check options"
@@ -5783,6 +5783,7 @@ msgid "Close files"
 msgstr "Закрыть файлы"
 
 #: lazarusidestrconsts.lisclosealltabshide
+msgctxt "lazarusidestrconsts.lisclosealltabshide"
 msgid "Hide window"
 msgstr "Скрыть окно"
 
@@ -8479,10 +8480,6 @@ msgstr "Корректное средство обязательно должн�
 msgid "Edit Tool"
 msgstr "Параметры пользовательского средства"
 
-#: lazarusidestrconsts.lisedtexttoolhidemainform
-msgid "Hide main form"
-msgstr "Скрывать главную форму"
-
 #: lazarusidestrconsts.lisedtexttoolkey
 msgctxt "lazarusidestrconsts.lisedtexttoolkey"
 msgid "Key"
@@ -8502,12 +8499,12 @@ msgid "Program Filename:"
 msgstr "Имя файла программы:"
 
 #: lazarusidestrconsts.lisedtexttoolscanoutputforfreepascalcompilermessages
-msgid "Scan output for Free Pascal Compiler messages"
-msgstr "Поиск сообщений компилятора Free Pascal в выводе"
+msgid "Scan output for FPC messages"
+msgstr "Искать сообщения FPC в выводе"
 
 #: lazarusidestrconsts.lisedtexttoolscanoutputformakemessages
-msgid "Scan output for make messages"
-msgstr "Поиск сообщений make в выводе"
+msgid "Scan output for \"make\" messages"
+msgstr "Искать сообщения \"make\" в выводе"
 
 #: lazarusidestrconsts.lisedtexttooltitleandfilenamerequired
 msgid "Title and Filename required"
@@ -9535,6 +9532,10 @@ msgstr "Общие"
 msgid "get word at current cursor position"
 msgstr "Возвратить слово в текущей позиции курсора"
 
+#: lazarusidestrconsts.lisgetwordatcurrentcursorposition2
+msgid "Get word at current cursor position."
+msgstr "Возвратить слово в текущей позиции курсора."
+
 #: lazarusidestrconsts.lisglobalsettings
 msgid "Global settings"
 msgstr "Глобальные параметры"
@@ -9640,7 +9641,7 @@ msgstr "Элементы справки"
 
 #: lazarusidestrconsts.lishelpselectordialog
 msgid "Help selector"
-msgstr "Выбор справки..."
+msgstr "Выбор справки"
 
 #: lazarusidestrconsts.lishexadecimal
 msgid "Hexadecimal"
@@ -9665,6 +9666,11 @@ msgstr "Скрыть сообщение вставкой директивы IDE 
 #: lazarusidestrconsts.lishidesearch
 msgid "Hide Search"
 msgstr "Скрыть средство поиска"
+
+#: lazarusidestrconsts.lishidewindow
+msgctxt "lazarusidestrconsts.lishidewindow"
+msgid "Hide window"
+msgstr "Скрывать окно"
 
 #: lazarusidestrconsts.lishidewithpackageoptionvm
 msgid "Hide with package option (-vm%s)"
@@ -10078,16 +10084,70 @@ msgid "insert date and time"
 msgstr "Вставить дату и время"
 
 #: lazarusidestrconsts.lisinsertdateandtimeoptionalformatstring
-msgid "Insert date and time. Optional: format string"
+msgid "Insert date and time. Optional: format string."
 msgstr "Вставить дату и время. Возможно форматирование строки."
 
 #: lazarusidestrconsts.lisinsertdateoptionalformatstring
-msgid "Insert date. Optional: format string"
+msgid "Insert date. Optional: format string."
 msgstr "Вставить дату. Возможно форматирование строки."
 
 #: lazarusidestrconsts.lisinsertendifneeded
 msgid "insert end if needed"
 msgstr "Вставить при необходимости слово 'end'"
+
+#: lazarusidestrconsts.lisinsertheaderofcurrentprocedure
+msgid ""
+"Insert header of current procedure.\n"
+"\n"
+"Optional Parameters (comma separated):\n"
+"WithStart,          // proc keyword e.g. 'function', 'class procedure'\n"
+"WithoutClassKeyword,// without 'class' proc keyword\n"
+"AddClassName,       // extract/add ClassName.\n"
+"WithoutClassName,   // skip classname\n"
+"WithoutName,        // skip function name\n"
+"WithoutParamList,   // skip param list\n"
+"WithVarModifiers,   // extract 'var', 'out', 'const'\n"
+"WithParameterNames, // extract parameter names\n"
+"WithoutParamTypes,  // skip colon, param types and default values\n"
+"WithDefaultValues,  // extract default values\n"
+"WithResultType,     // extract colon + result type\n"
+"WithOfObject,       // extract 'of object'\n"
+"WithCallingSpecs,   // extract cdecl; inline;\n"
+"WithProcModifiers,  // extract forward; alias; external;\n"
+"WithComments,       // extract comments and spaces\n"
+"InUpperCase,        // turn to uppercase\n"
+"CommentsToSpace,    // replace comments with a single space\n"
+"                      //  (default is to skip unnecessary space,\n"
+"                      //    e.g 'Do   ;' normally becomes 'Do;'\n"
+"                      //    with this option you get 'Do ;')\n"
+"WithoutBrackets,    // skip start- and end-bracket of parameter list\n"
+"WithoutSemicolon,   // skip semicolon at end\n"
+msgstr ""
+"Вставить заголовок текущей процедуры.\n"
+"\n"
+"Необязательные параметры (разделяются запятыми):\n"
+"WithStart,          // ключевое слово, например, 'function', 'class procedure'\n"
+"WithoutClassKeyword,// опустить ключевое слово 'class'\n"
+"AddClassName,       // извлечь/добавить имя класса\n"
+"WithoutClassName,   // опустить имя класса\n"
+"WithoutName,        // опустить имя функции\n"
+"WithoutParamList,   // опустить список параметров\n"
+"WithVarModifiers,   // извлечь 'var', 'out', 'const'\n"
+"WithParameterNames, // извлечь имена параметров\n"
+"WithoutParamTypes,  // опустить двоеточие, типы параметров и значения по умолчанию\n"
+"WithDefaultValues,  // извлечь значения по умолчанию\n"
+"WithResultType,     // извлечь двоеточие + тип результата\n"
+"WithOfObject,       // извлечь 'of object'\n"
+"WithCallingSpecs,   // извлечь cdecl; inline;\n"
+"WithProcModifiers,  // извлечь forward; alias; external;\n"
+"WithComments,       // извлечь комментарии и пробелы\n"
+"InUpperCase,        // преобразовать в верхний регистр\n"
+"CommentsToSpace,    // заменить комментарии единственным пробелом\n"
+"                      //  (по умолчанию лишние пробелы опускаются,\n"
+"                      //    например, 'Do   ;' обычно преобразуется в 'Do;',\n"
+"                      //    а с этим параметром вы получите 'Do ;')\n"
+"WithoutBrackets,    // опустить открывающую и закрывающую скобки списка параметров\n"
+"WithoutSemicolon,   // опустить точку с запятой в конце\n"
 
 #: lazarusidestrconsts.lisinsertmacro
 msgctxt "lazarusidestrconsts.lisinsertmacro"
@@ -10095,7 +10155,7 @@ msgid "Insert Macro"
 msgstr "Вставить макрос"
 
 #: lazarusidestrconsts.lisinsertnameofcurrentprocedure
-msgid "Insert name of current procedure"
+msgid "Insert name of current procedure."
 msgstr "Вставить имя текущей процедуры."
 
 #: lazarusidestrconsts.lisinsertprintshorttag
@@ -10119,7 +10179,7 @@ msgid "insert time"
 msgstr "Вставить время"
 
 #: lazarusidestrconsts.lisinserttimeoptionalformatstring
-msgid "Insert time. Optional: format string"
+msgid "Insert time. Optional: format string."
 msgstr "Вставить время. Возможно форматирование строки."
 
 #: lazarusidestrconsts.lisinserturltag
@@ -11342,7 +11402,7 @@ msgid "lowercase string"
 msgstr "Преобразовать регистр строки в нижний"
 
 #: lazarusidestrconsts.lislowercasestringgivenasparameter
-msgid "Lowercase string given as parameter"
+msgid "Lowercase string given as parameter."
 msgstr "Преобразовать регистр строки, переданной в качестве параметра, в нижний."
 
 #: lazarusidestrconsts.lislpkhasvanishedondiskusingasalternative
@@ -12451,6 +12511,11 @@ msgstr "Макросы редактора ..."
 msgid "Make Resource String ..."
 msgstr "Создать строку ресурсов ..."
 
+#: lazarusidestrconsts.lismenumultipaste
+msgctxt "lazarusidestrconsts.lismenumultipaste"
+msgid "MultiPaste ..."
+msgstr "Вставить с форматированием ..."
+
 #: lazarusidestrconsts.lismenunewcomponent
 msgctxt "lazarusidestrconsts.lismenunewcomponent"
 msgid "New Component"
@@ -12546,6 +12611,11 @@ msgstr "Диаграмма пакетов"
 #: lazarusidestrconsts.lismenupackagelinks
 msgid "Package Links ..."
 msgstr "Ссылки на пакеты ..."
+
+#: lazarusidestrconsts.lismenupastefromclipboard
+msgctxt "lazarusidestrconsts.lismenupastefromclipboard"
+msgid "Paste from clipboard"
+msgstr "Вставить из буфера обмена"
 
 #: lazarusidestrconsts.lismenupkgnewpackagecomponent
 msgid "New package component"
@@ -13320,6 +13390,43 @@ msgstr "Переместить в: "
 msgid "Moving these units will break their uses sections. See Messages window for details."
 msgstr "Перемещение этих модулей приведёт в негодность их выражения Uses. Подробности смотрите в окне сообщений."
 
+#: lazarusidestrconsts.lismpcstyle
+msgid "C style: \" => \\\""
+msgstr "В стиле C: \" => \\\""
+
+#: lazarusidestrconsts.lismpescapequotes
+msgid "Escape &quotes"
+msgstr "Экранировать &кавычки"
+
+#: lazarusidestrconsts.lismpmultipaste
+msgctxt "lazarusidestrconsts.lismpmultipaste"
+msgid "MultiPaste"
+msgstr "Вставить с форматированием"
+
+#: lazarusidestrconsts.lismppascalstyle
+msgid "Pascal style: ' => ''"
+msgstr "В стиле Паскаля: ' => ''"
+
+#: lazarusidestrconsts.lismppasteoptions
+msgid "Paste &options"
+msgstr "Параметры &вставки"
+
+#: lazarusidestrconsts.lismppreview
+msgid "&Preview"
+msgstr "&Предварительный просмотр"
+
+#: lazarusidestrconsts.lismptextaftereachline
+msgid "Text &after each line"
+msgstr "Текст пос&ле каждой строки"
+
+#: lazarusidestrconsts.lismptextbeforeeachline
+msgid "Text &before each line"
+msgstr "Текст пере&д каждой строкой"
+
+#: lazarusidestrconsts.lismptrimclipboardcontents
+msgid "&Trim clipboard contents"
+msgstr "Обре&зать содержимое буфера обмена"
+
 #: lazarusidestrconsts.lisms
 msgid "(ms)"
 msgstr "(мс)"
@@ -13739,6 +13846,14 @@ msgstr "? (Вкл.)"
 msgid "On break line (i.e. return or enter key)"
 msgstr "При разрыве строки (то есть при нажатии клавиши 'Ввод')"
 
+#: lazarusidestrconsts.lisonlyavailableonwindowsrunthetoolhidden
+msgid "Only available on Windows. Run the tool hidden."
+msgstr "Доступно только в Windows. Запускать средство в скрытом режиме."
+
+#: lazarusidestrconsts.lisonlyavailableonwindowsruntoolinanewconsole
+msgid "Only available on Windows. Run tool in a new console."
+msgstr "Доступно только в Windows. Запускать средство в новой консоли."
+
 #: lazarusidestrconsts.lisonlymessagesfittingthisregularexpression
 msgid "Only messages fitting this regular expression:"
 msgstr "Только сообщения, отвечающие регулярному выражению:"
@@ -14010,8 +14125,9 @@ msgid "paste clipboard"
 msgstr "Вставить из буфера обмена"
 
 #: lazarusidestrconsts.lispastefromclipboard
-msgid "Paste from clipboard"
-msgstr "Вставить из буфера обмена"
+msgctxt "lazarusidestrconsts.lispastefromclipboard"
+msgid "Paste from clipboard."
+msgstr "Вставить из буфера обмена."
 
 #: lazarusidestrconsts.lispastelcolors
 msgid "Pastel Colors"
@@ -16059,9 +16175,43 @@ msgstr "Перезапуск"
 msgid "Result:"
 msgstr "Результат функции:"
 
+#: lazarusidestrconsts.lisreturnparameterindexedword
+msgid ""
+"Return parameter-indexed word from the current line preceding cursor position.\n"
+"\n"
+"Words in a line are numbered 1,2,3,... from left to right, but the last word\n"
+"which is always a macro command to be expanded has number 0, thus $PrevWord(0)\n"
+"is always the current macro.\n"
+"\n"
+"Example line:\n"
+"i 0 count-1 forb|\n"
+"Here $PrevWord(0)=forb, $PrevWord(1)=i, $PrevWord(2)=0, $PrevWord(3)=count-1\n"
+"\n"
+"In the end of your template use $PrevWord(-1) which expands to an empty string, but performs an importaint operation of wiping off all of the $PrevWords found. In addition here is a regexp that is used to detect words for this macro: [\\w\\-+*\\(\\)\\[\\].^@]+\n"
+msgstr ""
+"Возвратить слово, индексированное параметром, из части текущей строки перед курсором.\n"
+"\n"
+"Слова в строке нумеруются 1,2,3,... слева направо, но последнее слово,\n"
+"всегда являющееся раскрываемым макросом, имеет номер 0, поэтому $PrevWord(0)\n"
+"всегда содержит текущий макрос.\n"
+"\n"
+"Пример:\n"
+"i 0 count-1 forb|\n"
+"Здесь $PrevWord(0)=forb, $PrevWord(1)=i, $PrevWord(2)=0, $PrevWord(3)=count-1\n"
+"\n"
+"В конце шаблона используйте $PrevWord(-1), который раскрывается пустой строкой, но при этом производит важную операцию очистки всех найденных $PrevWord. Для справки приводим регулярное выражение, использующееся для обнаружения слов для этого макроса: [\\w\\-+*\\(\\)\\[\\].^@]+\n"
+
 #: lazarusidestrconsts.lisreturnslistofallvaluesofcasevariableinfrontofvaria
-msgid "returns list of all values of case variable in front of variable"
-msgstr "Возвратить список всех значений оператора case перед переменной."
+msgid ""
+"Return the list of all values of case variable in front of variable.\n"
+"\n"
+"Optional Parameters (comma separated):\n"
+"WithoutExtraIndent    // the case list will be generated without extra indentation\n"
+msgstr ""
+"Возвратить список всех значений оператора case перед переменной.\n"
+"\n"
+"Необязательные параметры (разделяются запятыми):\n"
+"WithoutExtraIndent    // список case будет сгенерирован без дополнительных отступов\n"
 
 #: lazarusidestrconsts.lisrevertfailed
 msgid "Revert failed"
@@ -16508,6 +16658,10 @@ msgstr "Показать абстрактные методы в \"%s\""
 #: lazarusidestrconsts.lisshowcomponenttreeinobjectinspector
 msgid "Show component tree"
 msgstr "Показывать дерево компонентов"
+
+#: lazarusidestrconsts.lisshowconsole
+msgid "Show console"
+msgstr "Отображать консоль"
 
 #: lazarusidestrconsts.lisshowdeclarationhints
 msgid "Show declaration hints"
@@ -17010,8 +17164,8 @@ msgid "Editable Cell"
 msgstr "Редактируемое поле"
 
 #: lazarusidestrconsts.listemplateeditparamcellhelp
-msgid "Inserts an editable Cell. Cells can be navigated using the tab key.%0:sThe \"param\" macro takes a list of comma separated arguments.%0:sThe first argument is the default value.%0:sThe 2nd argument (optional) can be used to link the cell to another cell (syncro edit)%0:s%0:s  while param(\"foo\") do param(foo);%0:sInserts 2 independent cells, both with the default text \"foo\"%0:sThe quotes are optional%0:s%0:s  if param(\"foo\") > 0 and param(\"foo\",sync=1) < 99 then%0:sInserts 2 linked cells, editing either one, will change the other one too%0:sThe value \"1\" refers to the position of the other \"param()\", so if there are more params:%0:s  if param(\"bar\") and param(foo) > 0 and param(foo,sync=2) < 99 then%0:sThe 2nd and third are linked. (the 3rd refers to \"2\") %0:s%0:s\"sync can be shortened to \"s\":%0:s  if param(\"foo\") > 0 and param(\"foo\",s=1) < 99 then%0:s%0:s  if param(\"bar\") and param(\"foo\") > 0 and param(\"foo\",sync) < 99 then%0:sThe 2nd and third are linked.%0:sNote: \"Sync has no position and no \"=\", so it syncs to the previous cell with the same default (in this case \"foo\")"
-msgstr "Вставить редактируемое поле. По полям можно перемещаться при помощи клавиши ТАБ.%0:sВходные параметры макроса \"Param\" представляют собой список аргументов, разделённых запятыми.%0:sПервый аргумент - значение по умолчанию.%0:sВторой аргумент (необязательный) может использоваться для связи редактируемых полей (синхронное редактирование).%0:s%0:s  while param(\"foo\") do param(foo);%0:sвставляет два независимых поля, каждое с текстом по умолчанию \"foo\".%0:sКавычки необязательны.%0:s%0:s  if param(\"foo\") > 0 and param(\"foo\",sync=1) < 99 then%0:sвставляет два связанных поля. Редактирование любого из них меняет другое.%0:sЗначение \"1\" содержит позицию другого \"param()\", поэтому выражение (полей больше двух):%0:s  if param(\"bar\") and param(foo) > 0 and param(foo,sync=2) < 99 then%0:sсвязывает второе и третье поле (третье поле ссылается на \"2\").%0:s%0:s\"Sync\" может быть сокращено до \"s\":%0:s  if param(\"foo\") > 0 and param(\"foo\",s=1) < 99 then%0:s%0:s  if param(\"bar\") and param(\"foo\") > 0 and param(\"foo\",sync) < 99 then%0:sсвязывает второе и третье поле.%0:sПримечание: Параметру \"Sync\" не присвоена позиция другого поля, поэтому синхронизация производится с предыдущим полем с тем же значением по умолчанию (в данном случае \"foo\")."
+msgid "Insert an editable Cell. Cells can be navigated using the tab key.%0:sThe \"param\" macro takes a list of comma separated arguments.%0:sThe first argument is the default value.%0:sThe 2nd argument (optional) can be used to link the cell to another cell (syncro edit).%0:s%0:s  while param(\"foo\") do param(foo);%0:sInserts 2 independent cells, both with the default text \"foo\".%0:sThe quotes are optional.%0:s%0:s  if param(\"foo\") > 0 and param(\"foo\",sync=1) < 99 then%0:sInserts 2 linked cells, editing either one, will change the other one too.%0:sThe value \"1\" refers to the position of the other \"param()\", so if there are more params:%0:s  if param(\"bar\") and param(foo) > 0 and param(foo,sync=2) < 99 then%0:sThe 2nd and third are linked (the 3rd refers to \"2\").%0:s%0:s\"Sync\" can be shortened to \"s\":%0:s  if param(\"foo\") > 0 and param(\"foo\",s=1) < 99 then%0:s%0:s  if param(\"bar\") and param(\"foo\") > 0 and param(\"foo\",sync) < 99 then%0:sThe 2nd and third are linked.%0:sNote: \"Sync\" has no position and no \"=\", so it syncs to the previous cell with the same default (in this case \"foo\")."
+msgstr "Вставить редактируемое поле. По полям можно перемещаться при помощи клавиши ТАБ.%0:sВходные параметры макроса \"Param\" представляют собой список аргументов, разделённых запятыми.%0:sПервый аргумент - значение по умолчанию.%0:sВторой аргумент (необязательный) может использоваться для связи редактируемых полей (синхронное редактирование).%0:s%0:s  while param(\"foo\") do param(foo);%0:sвставляет два независимых поля, каждое с текстом по умолчанию \"foo\".%0:sКавычки необязательны.%0:s%0:s  if param(\"foo\") > 0 and param(\"foo\",sync=1) < 99 then%0:sвставляет два связанных поля. Редактирование любого из них меняет другое.%0:sЗначение \"1\" содержит позицию другого \"param()\", поэтому выражение (полей больше двух):%0:s  if param(\"bar\") and param(foo) > 0 and param(foo,sync=2) < 99 then%0:sсвязывает второе и третье поле (третье поле ссылается на \"2\").%0:s%0:s\"Sync\" может быть сокращено до \"s\":%0:s  if param(\"foo\") > 0 and param(\"foo\",s=1) < 99 then%0:s%0:s  if param(\"bar\") and param(\"foo\") > 0 and param(\"foo\",sync) < 99 then%0:sсвязывает второе и третье поле.%0:sПримечание: параметру \"Sync\" не присвоена позиция другого поля, поэтому синхронизация производится с предыдущим полем с тем же значением по умолчанию (в данном случае \"foo\")."
 
 #: lazarusidestrconsts.listemplatefile
 msgid "Template file"
@@ -18395,7 +18549,7 @@ msgid "uppercase string"
 msgstr "Преобразовать регистр строки в верхний"
 
 #: lazarusidestrconsts.lisuppercasestringgivenasparameter
-msgid "Uppercase string given as parameter"
+msgid "Uppercase string given as parameter."
 msgstr "Преобразовать регистр строки, переданной в качестве параметра, в верхний."
 
 #: lazarusidestrconsts.lisurlonwikithebaseurlis
@@ -19852,6 +20006,10 @@ msgstr "Сместить редактор вправо"
 msgid "Move editor rightmost"
 msgstr "Поместить редактор справа"
 
+#: lazarusidestrconsts.srkmecmultipaste
+msgid "MultiPaste clipboard to current position"
+msgstr "Вставить с форматированием из буфера обмена в текущую позицию"
+
 #: lazarusidestrconsts.srkmecnextbookmark
 msgid "Next Bookmark"
 msgstr "Следующая закладка"
@@ -19910,7 +20068,7 @@ msgstr "Переместить курсор вверх на одну стран�
 
 #: lazarusidestrconsts.srkmecpaste
 msgid "Paste clipboard to current position"
-msgstr "Вставить из буфера в текущую позицию"
+msgstr "Вставить из буфера обмена в текущую позицию"
 
 #: lazarusidestrconsts.srkmecpause
 msgid "pause program"
