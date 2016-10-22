@@ -34,25 +34,16 @@ uses
   // LCL
   LCLProc, LCLType, Forms, Controls, Buttons, ExtDlgs, StdCtrls, ExtCtrls,
   Dialogs, ComCtrls, ButtonPanel,
-  ListFilterEdit,
   // LazUtils
   FileUtil, LazFileUtils,
   // IDEIntf
   NewItemIntf, PackageIntf, FormEditingIntf, IDEWindowIntf, ComponentReg, IDEDialogs,
   // IDE
   LazarusIDEStrConsts, InputHistory, IDEDefs, EnvironmentOpts,
-  PackageSystem, PackageDefs, AddDirToPkgDlg;
+  PackageSystem, PackageDefs, AddDirToPkgDlg, ProjPackChecks;
   
 type
-  TAddToPkgType = (
-    d2ptUnit,
-    d2ptVirtualUnit,
-    d2ptNewComponent,
-    d2ptRequiredPkg,
-    d2ptFile,
-    d2ptFiles
-    );
-    
+
   { TAddToPkgResult }
 
   TAddToPkgResult = class
@@ -99,21 +90,12 @@ type
     ComponentUnitFileShortenButton: TButton;
     ComponentUnitNameEdit: TEdit;
     ComponentUnitNameLabel: TLabel;
-    DependMaxVersionEdit: TEdit;
-    DependMaxVersionLabel: TLabel;
-    DependMinVersionEdit: TEdit;
-    DependMinVersionLabel: TLabel;
-    DependPkgNameLabel: TLabel;
     FilesDeleteButton: TBitBtn;
     FilesDirButton: TBitBtn;
     FilesListView: TListView;
     FilesShortenButton: TBitBtn;
     LabelIconInfo: TLabel;
-    DependPkgNameListBox: TListBox;
-    DependPkgNameFilter: TListFilterEdit;
     NewComponentPage: TTabSheet;
-    NewDepPanel: TPanel;
-    NewRequirementPage: TTabSheet;
     PageControl1: TPageControl;
     PalettePageCombobox: TComboBox;
     PalettePageLabel: TLabel;
@@ -129,7 +111,6 @@ type
     procedure ComponentUnitFileBrowseButtonClick(Sender: TObject);
     procedure ComponentUnitFileShortenButtonClick(Sender: TObject);
     procedure ComponentUnitNameEditChange(Sender: TObject);
-    procedure DependPkgNameListBoxSelectionChange(Sender: TObject; {%H-}User: boolean);
     procedure FilesAddButtonClick(Sender: TObject);
     procedure FilesDeleteButtonClick(Sender: TObject);
     procedure FilesDirButtonClick(Sender: TObject);
@@ -140,7 +121,6 @@ type
     procedure FormShow(Sender: TObject);
     procedure NewComponentButtonClick(Sender: TObject);
     procedure NewComponentPageResize(Sender: TObject);
-    procedure NewDependButtonClick(Sender: TObject);
     procedure PageControl1Change(Sender: TObject);
   private
     fLastNewComponentAncestorType: string;
@@ -156,12 +136,9 @@ type
     procedure SetLazPackage(const AValue: TLazPackage);
     procedure SetupComponents;
     procedure SetupNewComponentPage;
-    procedure SetupAddDependencyPage;
     procedure SetupAddFilesPage;
     procedure OnIterateComponentClasses(PkgComponent: TPkgComponent);
-    procedure OnIteratePackages(APackageID: TLazPackageID);
     function CheckNewCompOk: Boolean;
-    function CheckNewReqOk: Boolean;
     function CheckFilesButtonsOk: Boolean;
     procedure AutoCompleteNewComponent;
     procedure AutoCompleteNewComponentUnitName;
@@ -172,7 +149,6 @@ type
     Params: TAddToPkgResult;
     procedure UpdateAvailableAncestorTypes;
     procedure UpdateAvailablePageNames;
-    procedure UpdateAvailableDependencyNames;
   public
     property LazPackage: TLazPackage read FLazPackage write SetLazPackage;
     property OnGetIDEFileInfo: TGetIDEFileStateEvent read FOnGetIDEFileInfo
@@ -186,14 +162,6 @@ function ShowAddToPackageDlg(Pkg: TLazPackage; out Params: TAddToPkgResult;
   OnGetIDEFileInfo: TGetIDEFileStateEvent;
   OnGetUnitRegisterInfo: TOnGetUnitRegisterInfo;
   var Page: TAddToPkgType): TModalResult;
-function CheckAddingUnitFilename(LazPackage: TLazPackage;
-  AddFileType: TAddToPkgType; OnGetIDEFileInfo: TGetIDEFileStateEvent;
-  var AFilename: string): boolean;
-function CheckAddingDependency(LazPackage: TLazPackage;
-  NewDependency: TPkgDependency; Quiet, WarnIfAlreadyThere: boolean
-  ): TModalResult;// mrOk=can be added, mrCancel=do not add, mrIgnore=already there
-function CheckAddingPkgDependency(LazPackage: TLazPackage;
-  RequiredPkg: TLazPackage; Quiet, WarnIfAlreadyThere: boolean): TModalResult;
 
 
 implementation
@@ -228,248 +196,6 @@ begin
     AddDlg.Params:=nil;
   end;
   AddDlg.Free;
-end;
-
-function CheckAddingUnitFilename(LazPackage: TLazPackage;
-  AddFileType: TAddToPkgType; OnGetIDEFileInfo: TGetIDEFileStateEvent;
-  var AFilename: string): boolean;
-var
-  AnUnitName: String;
-  PkgFile: TPkgFile;
-  Msg: String;
-  IDEFileFlags: TIDEFileStateFlags;
-begin
-  Result:=false;
-  PkgFile:=Nil;
-
-  // check if package is readonly
-  if LazPackage.ReadOnly then begin
-    IDEMessageDialog(lisAF2PPackageIsReadOnly,
-      Format(lisAF2PThePackageIsReadOnly, [LazPackage.IDAsString]),
-      mtError,[mbCancel]);
-    exit;
-  end;
-
-  // normalize filename
-  AFilename:=TrimFilename(AFilename);
-  if (AddFileType<>d2ptVirtualUnit) and (not FilenameIsAbsolute(AFilename)) then
-  begin
-    if LazPackage.HasDirectory then
-      AFilename:=LazPackage.Directory+AFilename
-    else begin
-      IDEMessageDialog(lisA2PInvalidFilename,
-        Format(lisA2PTheFilenameIsAmbiguousPleaseSpecifiyAFilename,[AFilename,LineEnding]),
-        mtError,[mbCancel]);
-      exit;
-    end;
-  end;
-
-  // check if file exists
-  if (FilenameIsAbsolute(AFilename)) then begin
-    if (not FileExistsUTF8(AFilename)) then begin
-      if AddFileType=d2ptUnit then begin
-        IDEMessageDialog(lisFileNotFound,
-          Format(lisPkgMangFileNotFound, [AFilename]),
-          mtError, [mbCancel]);
-        exit;
-      end;
-    end;
-  end;
-
-  // check if file already exists in package
-  if FilenameIsAbsolute(AFilename) then begin
-    PkgFile:=LazPackage.FindPkgFile(AFilename,true,false);
-    if PkgFile<>nil then begin
-      Msg:=Format(lisA2PFileAlreadyExistsInThePackage, [AFilename]);
-      if PkgFile.Filename<>AFilename then
-        Msg:=Msg+LineEnding+Format(lisA2PExistingFile2, [PkgFile.Filename]);
-      IDEMessageDialog(lisA2PFileAlreadyExists, Msg, mtError, [mbCancel]);
-      exit;
-    end;
-  end;
-
-  // check if file is part of project
-  if FilenameIsAbsolute(AFilename) then begin
-    if Assigned(OnGetIDEFileInfo) then begin
-      IDEFileFlags:=[];
-      OnGetIDEFileInfo(nil,AFilename,[ifsPartOfProject],IDEFileFlags);
-      if (ifsPartOfProject in IDEFileFlags) then begin
-        IDEMessageDialog(lisA2PFileIsUsed,
-          Format(lisA2PTheFileIsPartOfTheCurrentProjectItIsABadIdea,[AFilename,LineEnding]),
-          mtError,[mbCancel]);
-        exit;
-      end;
-    end;
-  end;
-
-  // check file extension
-  if AddFileType in [d2ptUnit,d2ptNewComponent,d2ptVirtualUnit] then begin
-    if not FilenameIsPascalUnit(AFilename) then begin
-      IDEMessageDialog(lisA2PFileNotUnit,
-        lisA2PPascalUnitsMustHaveTheExtensionPPOrPas,
-        mtWarning,[mbCancel]);
-      exit;
-    end;
-  end;
-
-  // check unitname
-  if AddFileType in [d2ptUnit,d2ptNewComponent,d2ptVirtualUnit] then begin
-    AnUnitName:=ExtractFileNameOnly(AFilename);
-    if not IsValidUnitName(AnUnitName) then begin
-      IDEMessageDialog(lisA2PFileNotUnit,
-        Format(lisA2PisNotAValidUnitName, [AnUnitName]),
-        mtWarning,[mbCancel]);
-      exit;
-    end;
-
-    // check if unitname already exists in package
-    PkgFile:=LazPackage.FindUnit(AnUnitName,true,PkgFile);
-    if PkgFile<>nil then begin
-      // a unit with this name already exists in this package => warn
-      if IDEMessageDialog(lisA2PUnitnameAlreadyExists,
-        Format(lisA2PTheUnitnameAlreadyExistsInThisPackage, [AnUnitName]),
-        mtError,[mbCancel,mbIgnore])<>mrIgnore then exit;
-    end else begin
-      PkgFile:=PackageGraph.FindUnit(LazPackage,AnUnitName,true,true);
-      if (PkgFile<>nil) and (PkgFile.LazPackage<>LazPackage) then begin
-        // there is already a unit with this name in another package => warn
-        if IDEMessageDialog(lisA2PUnitnameAlreadyExists,
-          Format(lisA2PTheUnitnameAlreadyExistsInThePackage,
-                 [AnUnitName, LineEnding, PkgFile.LazPackage.IDAsString]),
-          mtWarning,[mbCancel,mbIgnore])<>mrIgnore then exit;
-      end;
-    end;
-
-    // check if unitname is a componentclass
-    if IDEComponentPalette.FindComponent(AnUnitName)<>nil then begin
-      if IDEMessageDialog(lisA2PAmbiguousUnitName,
-        Format(lisA2PTheUnitNameIsTheSameAsAnRegisteredComponent,
-               [AnUnitName, LineEnding]),
-        mtWarning,[mbCancel,mbIgnore])<>mrIgnore
-      then
-        exit;
-    end;
-  end;
-
-  // ok
-  Result:=true;
-end;
-
-function CheckAddingDependency(LazPackage: TLazPackage;
-  NewDependency: TPkgDependency; Quiet, WarnIfAlreadyThere: boolean): TModalResult;
-var
-  NewPkgName: String;
-  RequiredPackage: TLazPackage;
-  ProvidingAPackage: TLazPackage;
-  ConflictDependency: TPkgDependency;
-  PathList: TFPList;
-  s: String;
-begin
-  Result:=mrCancel;
-
-  NewPkgName:=NewDependency.PackageName;
-
-  // check Max-Min version
-  if (pdfMinVersion in NewDependency.Flags)
-  and (pdfMaxVersion in NewDependency.Flags)
-  and (NewDependency.MaxVersion.Compare(NewDependency.MinVersion)<0) then
-  begin
-    if not Quiet then
-      IDEMessageDialog(lisProjAddInvalidMinMaxVersion,
-        lisA2PTheMaximumVersionIsLowerThanTheMinimimVersion,
-        mtError,[mbCancel]);
-    exit(mrCancel);
-  end;
-
-  // package name is checked earlier
-  Assert(IsValidPkgName(NewPkgName), 'CheckAddingDependency: ' + NewPkgName + ' is not valid.');
-
-  // check if package is already required
-  if (CompareText(NewPkgName,LazPackage.Name)=0)
-  or (PackageGraph.FindDependencyRecursively(
-        LazPackage.FirstRequiredDependency,NewPkgName)<>nil)
-  then begin
-    if WarnIfAlreadyThere then
-      IDEMessageDialog(lisProjAddDependencyAlreadyExists,
-        Format(lisA2PThePackageHasAlreadyADependencyForThe, [NewPkgName]),
-        mtError,[mbCancel]);
-    exit(mrIgnore);
-  end;
-
-  // check if required lpk exists
-  if not PackageGraph.DependencyExists(NewDependency,fpfSearchAllExisting)
-  then begin
-    if not Quiet then
-      IDEMessageDialog(lisProjAddPackageNotFound,
-        Format(lisA2PNoPackageFoundForDependencyPleaseChooseAnExisting,
-               [NewDependency.AsString, LineEnding]),
-        mtError,[mbCancel]);
-    exit(mrCancel);
-  end;
-
-  RequiredPackage:=PackageGraph.FindPackageWithName(NewPkgName,nil);
-  if RequiredPackage<>nil then begin
-    // check if there is a dependency, that requires another version
-    ConflictDependency:=PackageGraph.FindConflictRecursively(
-      LazPackage.FirstRequiredDependency,RequiredPackage);
-    if ConflictDependency<>nil then begin
-      DebugLn(['CheckAddingDependency ',LazPackage.Name,' requiring ',RequiredPackage.IDAsString,' conflicts with ',ConflictDependency.AsString]);
-      if not Quiet then
-        IDEMessageDialog(lisVersionMismatch,
-          Format(lisUnableToAddTheDependencyBecauseThePackageHasAlread, [
-            RequiredPackage.IDAsString, LazPackage.Name, ConflictDependency.
-            AsString]),
-          mtError,[mbCancel]);
-      exit(mrCancel);
-    end;
-
-    // check if there is a cycle
-    PathList:=PackageGraph.FindPath(RequiredPackage,nil,LazPackage.Name);
-    if PathList<>nil then begin
-      try
-        s:=PackagePathToStr(PathList);
-        DebugLn(['CheckAddingDependency ',LazPackage.Name,' requiring ',RequiredPackage.IDAsString,' creates cycles with ',s]);
-        if not Quiet then
-          IDEMessageDialog(lisCircularDependencyDetected,
-            Format(lisUnableToAddTheDependencyBecauseThisWouldCreateA, [
-              RequiredPackage.IDAsString, s]),
-            mtError,[mbCancel]);
-        exit(mrCancel);
-      finally
-        PathList.Free;
-      end;
-    end;
-  end;
-
-  ProvidingAPackage:=PackageGraph.FindPackageProvidingName(
-    LazPackage.FirstRequiredDependency,NewPkgName);
-  if ProvidingAPackage<>nil then
-  begin
-    // package is already provided by another package
-    DebugLn(['CheckAddingDependency ',LazPackage.Name,' requiring ',NewPkgName,', but is already provided by ',ProvidingAPackage.IDAsString]);
-    if WarnIfAlreadyThere then
-      IDEMessageDialog(lisProjAddDependencyAlreadyExists,
-        Format(lisUnableToAddTheDependencyBecauseThePackageHasAlread, [
-          RequiredPackage.IDAsString, LazPackage.Name, ProvidingAPackage.Name]),
-        mtError,[mbCancel]);
-    exit(mrIgnore);
-  end;
-
-  Result:=mrOk;
-end;
-
-function CheckAddingPkgDependency(LazPackage: TLazPackage;
-  RequiredPkg: TLazPackage; Quiet, WarnIfAlreadyThere: boolean): TModalResult;
-var
-  NewDependency: TPkgDependency;
-begin
-  NewDependency:=TPkgDependency.Create;
-  try
-    NewDependency.PackageName:=RequiredPkg.Name;
-    Result:=CheckAddingDependency(LazPackage,NewDependency,Quiet,WarnIfAlreadyThere);
-  finally
-    NewDependency.Free;
-  end;
 end;
 
 { TAddToPackageDlg }
@@ -584,11 +310,6 @@ begin
   CheckNewCompOk;
 end;
 
-procedure TAddToPackageDlg.DependPkgNameListBoxSelectionChange(Sender: TObject; User: boolean);
-begin
-  CheckNewReqOk;
-end;
-
 procedure TAddToPackageDlg.FilesAddButtonClick(Sender: TObject);
 var
   i: Integer;
@@ -630,7 +351,7 @@ begin
         Include(CurParams.PkgFileFlags,pffAddToPkgUsesSection);
 
         // check filename
-        if not CheckAddingUnitFilename(LazPackage,CurParams.AddType,
+        if not CheckAddingPackageUnit(LazPackage,CurParams.AddType,
           OnGetIDEFileInfo,CurParams.UnitFilename)
         then begin
           FilesListView.Items.Delete(i);
@@ -861,7 +582,7 @@ begin
   end;
 
   // check filename
-  if not CheckAddingUnitFilename(LazPackage,Params.AddType,
+  if not CheckAddingPackageUnit(LazPackage,Params.AddType,
     OnGetIDEFileInfo,Params.UnitFilename) then exit;
 
   // create dependency if needed
@@ -892,52 +613,6 @@ begin
   AncestorComboBox.Left:=x+6;
 end;
 
-procedure TAddToPackageDlg.NewDependButtonClick(Sender: TObject);
-var
-  NewDependency: TPkgDependency;
-begin
-  Params.Clear;
-  Params.AddType:=d2ptRequiredPkg;
-  
-  NewDependency:=TPkgDependency.Create;
-  try
-    // check minimum version
-    if DependMinVersionEdit.Text<>'' then begin
-      if not NewDependency.MinVersion.ReadString(DependMinVersionEdit.Text) then
-      begin
-        IDEMessageDialog(lisProjAddInvalidVersion,
-          Format(lisA2PTheMinimumVersionIsInvalidPleaseUseTheFormatMajor,
-                 [DependMinVersionEdit.Text, LineEnding, LineEnding]),
-          mtError,[mbCancel]);
-        exit;
-      end;
-      NewDependency.Flags:=NewDependency.Flags+[pdfMinVersion];
-    end;
-    // check maximum version
-    if DependMaxVersionEdit.Text<>'' then begin
-      if not NewDependency.MaxVersion.ReadString(DependMaxVersionEdit.Text) then
-      begin
-        IDEMessageDialog(lisProjAddInvalidVersion,
-          Format(lisA2PTheMaximumVersionIsInvalidPleaseUseTheFormatMajor,
-                 [DependMaxVersionEdit.Text, LineEnding, LineEnding]),
-          mtError,[mbCancel]);
-        exit;
-      end;
-      NewDependency.Flags:=NewDependency.Flags+[pdfMaxVersion];
-    end;
-    
-    NewDependency.PackageName:=DependPkgNameListBox.Items[DependPkgNameListBox.ItemIndex];
-    ModalResult:=CheckAddingDependency(LazPackage,NewDependency,false,true);
-    if ModalResult<>mrOk then exit;
-
-    // ok
-    Params.Dependency:=NewDependency;
-    NewDependency:=nil;
-  finally
-    NewDependency.Free;
-  end;
-end;
-
 procedure TAddToPackageDlg.SetLazPackage(const AValue: TLazPackage);
 begin
   if FLazPackage=AValue then exit;
@@ -945,29 +620,23 @@ begin
   Params.Pkg:=FLazPackage;
   UpdateAvailableAncestorTypes;
   UpdateAvailablePageNames;
-  UpdateAvailableDependencyNames;
 end;
 
 function TAddToPackageDlg.GetActivatePage: TAddToPkgType;
 begin
   if PageControl1.ActivePage=NewComponentPage then
     Result:=d2ptNewComponent
-  else if PageControl1.ActivePage=NewRequirementPage then
-    Result:=d2ptRequiredPkg
   else {if PageControl1.ActivePage=AddFilesPage then } begin
     Assert(PageControl1.ActivePage=AddFilesPage,
       'TAddToPackageDlg.GetActivatePage: PageControl1.ActivePage <> AddFilesPage');
     Result:=d2ptFiles;
   end;
-  //else
-  //  Result:=d2ptNewFile;
 end;
 
 procedure TAddToPackageDlg.SetActivatePage(AValue: TAddToPkgType);
 begin
   case AValue of
   d2ptNewComponent: PageControl1.ActivePage:=NewComponentPage;
-  d2ptRequiredPkg: PageControl1.ActivePage:=NewRequirementPage;
   d2ptFiles: PageControl1.ActivePage:=AddFilesPage;
   else raise Exception.Create('TAddToPackageDlg.SetActivatePage: invalid value.');
   end;
@@ -979,12 +648,6 @@ begin
   ButtonPanel1.OKButton.Enabled:=Result;
 end;
 
-function TAddToPackageDlg.CheckNewReqOk: Boolean;
-begin
-  Result:=DependPkgNameListBox.ItemIndex>-1;
-  ButtonPanel1.OKButton.Enabled:=Result;
-end;
-
 procedure TAddToPackageDlg.PageControl1Change(Sender: TObject);
 begin
   case PageControl1.PageIndex of
@@ -993,12 +656,7 @@ begin
       ButtonPanel1.OkButton.OnClick:=@NewComponentButtonClick;
       CheckNewCompOk;
     end;
-    1: begin              // New Requirement
-      ButtonPanel1.OkButton.Caption:=lisA2PCreateNewReq;
-      ButtonPanel1.OkButton.OnClick:=@NewDependButtonClick;
-      CheckNewReqOk;
-    end;
-    2: begin              // Add Files
+    1: begin              // Add Files
       ButtonPanel1.OkButton.Caption:=lisA2PAddFilesToPackage;
       ButtonPanel1.OkButton.OnClick:=@FilesAddButtonClick;
       CheckFilesButtonsOk;
@@ -1008,17 +666,12 @@ end;
 
 procedure TAddToPackageDlg.SetupComponents;
 begin
-  //NewFilePage.Caption:=lisA2PNewFile;
   NewComponentPage.Caption:=lisA2PNewComponent;
-  NewRequirementPage.Caption:=lisProjAddNewRequirement;
   AddFilesPage.Caption:=lisA2PAddFiles;
   ButtonPanel1.CancelButton.Caption:=lisCancel;
   PageControl1.PageIndex:=0;
   PageControl1Change(PageControl1);
-
-  //SetupNewFilePage;
   SetupNewComponentPage;
-  SetupAddDependencyPage;
   SetupAddFilesPage;
 end;
 
@@ -1048,15 +701,6 @@ begin
   ComponentIconLabel.Caption:=lisA2PIconAndSize;
   ComponentIconBitBtn.Width:=ComponentPaletteBtnWidth;
   ComponentIconBitBtn.Height:=ComponentPaletteBtnHeight;
-end;
-
-procedure TAddToPackageDlg.SetupAddDependencyPage;
-begin
-  DependPkgNameLabel.Caption:=lisProjAddPackageName;
-  DependMinVersionLabel.Caption:=lisProjAddMinimumVersionOptional;
-  DependMinVersionEdit.Text:='';
-  DependMaxVersionLabel.Caption:=lisProjAddMaximumVersionOptional;
-  DependMaxVersionEdit.Text:='';
 end;
 
 procedure TAddToPackageDlg.SetupAddFilesPage;
@@ -1096,14 +740,6 @@ procedure TAddToPackageDlg.OnIterateComponentClasses(PkgComponent: TPkgComponent
 begin
   if fPkgComponents.Find(PkgComponent)=nil then
     fPkgComponents.Add(PkgComponent);
-end;
-
-procedure TAddToPackageDlg.OnIteratePackages(APackageID: TLazPackageID);
-begin
-  if (APackageID<>LazPackage) and (fPackages.Find(APackageID)=nil) then begin
-    //DebugLn(['TAddToPackageDlg.OnIteratePackages ',APackageID.IDAsString,' ',DbgSName(APackageID)]);
-    fPackages.Add(APackageID);
-  end;
 end;
 
 procedure TAddToPackageDlg.AutoCompleteNewComponent;
@@ -1164,8 +800,7 @@ begin
   ComponentUnitFileEdit.Text:=NewFileName;
 end;
 
-function TAddToPackageDlg.SwitchRelativeAbsoluteFilename(const Filename: string
-  ): string;
+function TAddToPackageDlg.SwitchRelativeAbsoluteFilename(const Filename: string): string;
 begin
   Result:=Filename;
   if (not LazPackage.HasDirectory)
@@ -1274,29 +909,6 @@ begin
   end;
   sl.Sort;
   PalettePageCombobox.Items.Assign(sl);
-  sl.Free;
-end;
-
-procedure TAddToPackageDlg.UpdateAvailableDependencyNames;
-var
-  ANode: TAVLTreeNode;
-  sl: TStringList;
-  PkgName: String;
-  Pkg: TLazPackage;
-begin
-  fPackages.Clear;
-  PackageGraph.IteratePackages(fpfSearchAllExisting,@OnIteratePackages);
-  sl:=TStringList.Create;
-  ANode:=fPackages.FindLowest;
-  while ANode<>nil do begin
-    Pkg:=TLazPackage(ANode.Data);
-    PkgName:=Pkg.Name;
-    if (sl.IndexOf(PkgName)<0) then
-      sl.Add(PkgName);
-    ANode:=fPackages.FindSuccessor(ANode);
-  end;
-  DependPkgNameFilter.Items.Assign(sl);
-  DependPkgNameFilter.InvalidateFilter;
   sl.Free;
 end;
 

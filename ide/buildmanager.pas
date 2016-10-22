@@ -1155,7 +1155,7 @@ begin
   // get main source filename
   if not AProject.IsVirtual then begin
     SrcFilename:=CreateRelativePath(AProject.MainUnitInfo.Filename,
-                                    AProject.ProjectDirectory);
+                                    AProject.Directory);
   end else begin
     SrcFilename:=GetTestUnitFilename(AProject.MainUnitInfo);
   end;
@@ -2149,7 +2149,7 @@ function TBuildManager.MacroFuncProjPath(const Param: string;
   const Data: PtrInt; var Abort: boolean): string;
 begin
   if Project1<>nil then
-    Result:=Project1.ProjectDirectory
+    Result:=Project1.Directory
   else
     Result:='';
 end;
@@ -2689,7 +2689,7 @@ begin
     // the macros were resolved with default values
     // => invalidate macros so they now use the actual values
     IncreaseBuildMacroChangeStamp;
-    if ConsoleVerbosity>0 then
+    if ConsoleVerbosity>1 then
       debugln(['Hint: (lazarus) [TBuildManager.SetBuildTarget] OS=',fTargetOS,' CPU=',fTargetCPU,' CompQueryOptions=',CompQueryOptions,' DefaultOS=',CompilerTargetOS,' DefaultCPU=',CompilerTargetCPU]);
   end;
 

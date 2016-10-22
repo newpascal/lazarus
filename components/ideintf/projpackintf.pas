@@ -32,14 +32,17 @@ type
   {$M+}
   TIDEOwnedFile = class
   protected
+    FUnitName: string;
     function GetFilename: string; virtual; abstract;
     procedure SetFilename(const AValue: string); virtual; abstract;
+    procedure SetUnitName(const AValue: string); virtual; abstract;
   public
     function GetFullFilename: string; virtual; abstract; // if no path, the file was not saved yet
     function GetShortFilename(UseUp: boolean): string; virtual; abstract;
     function GetFileOwner: TObject; virtual; abstract;
     function GetFileOwnerName: string; virtual; abstract;
     property Filename: string read GetFilename write SetFilename;
+    property Unit_Name: string read FUnitName write SetUnitName;
   end;
   {$M-}
 
@@ -50,8 +53,12 @@ type
   protected
     FIDEOptions: TAbstractIDEOptions; //actually TProjectIDEOptions or TPackageIDEOptions;
     FLazCompilerOptions: TLazCompilerOptions;
+    function GetDirectory: string; virtual; abstract;
+    //procedure SetDirectory(AValue: string); virtual; abstract;
+    function HasDirectory: boolean; virtual;
     function GetLazCompilerOptions: TLazCompilerOptions;
   public
+    property Directory: string read GetDirectory;// write SetDirectory; // directory of .lpi or .lpk file
     property LazCompilerOptions: TLazCompilerOptions read GetLazCompilerOptions;
   end;
 
@@ -59,6 +66,11 @@ type
 implementation
 
 { TIDEProjPackBase }
+
+function TIDEProjPackBase.HasDirectory: boolean;
+begin
+  Result := True;
+end;
 
 function TIDEProjPackBase.GetLazCompilerOptions: TLazCompilerOptions;
 begin

@@ -45,28 +45,30 @@ uses
   {$IFDEF IDE_MEM_CHECK}
   MemCheck,
   {$ENDIF}
-  // FCL, LCL
-  TypInfo, math, Classes, SysUtils, LCLProc, LazUTF8, Forms, Controls, Dialogs, Menus,
-  contnrs, StringHashList, Translations, LResources, ComCtrls,
-  // codetools
+  // RTL, FCL
+  TypInfo, math, Classes, SysUtils, contnrs,
+  // LCL
+  LCLProc, Forms, Controls, Dialogs, Menus, ComCtrls, StringHashList,
+  Translations, LResources,
+  // LazUtils
+  LazUTF8, Laz2_XMLCfg, lazutf8classes, LazFileUtils, LazFileCache,
+  // Codetools
   CodeToolsConfig, CodeToolManager, CodeCache, CodeToolsStructs, BasicCodeTools,
-  FileProcs, CodeTree, Laz2_XMLCfg, lazutf8classes, LazFileUtils, LazFileCache,
+  FileProcs, CodeTree,
   // IDE Interface
   SrcEditorIntf, NewItemIntf, ProjPackIntf, ProjectIntf, PackageIntf, CompOptsIntf,
-  MenuIntf, IDEWindowIntf,
-  IDEExternToolIntf,
-  PropEdits, MacroIntf, LazIDEIntf, IDEMsgIntf,
+  MenuIntf, IDEWindowIntf, IDEExternToolIntf, MacroIntf, LazIDEIntf, IDEMsgIntf,
+  ComponentReg, PropEdits, IDEDialogs, UnitResources,
   // IDE
   IDECmdLine, LazarusIDEStrConsts, IDEProcs, ObjectLists, DialogProcs,
   IDECommands, IDEOptionDefs, EnvironmentOpts, MiscOptions, InputHistory,
-  Project, ComponentReg, OldCustomCompDlg, PackageEditor, AddToPackageDlg,
+  Project, OldCustomCompDlg, PackageEditor, AddToPackageDlg,
   PackageDefs, PackageLinks, PackageSystem, OpenInstalledPkgDlg,
   PkgGraphExplorer, BrokenDependenciesDlg, CompilerOptions,
   IDETranslations, TransferMacros, BuildLazDialog, NewDialog, FindInFilesDlg,
-  IDEDialogs, UnitResources, ProjectInspector, SourceEditor,
-  AddFileToAPackageDlg, LazarusPackageIntf, PublishProjectDlg, PkgLinksDlg,
+  ProjectInspector, SourceEditor, ProjPackChecks, AddFileToAPackageDlg,
+  LazarusPackageIntf, PublishProjectDlg, PkgLinksDlg,
   InterPkgConflictFiles, InstallPkgSetDlg, ConfirmPkgListDlg, NewPkgComponentDlg,
-  // bosses
   BaseBuildManager, BasePkgManager, MainBar, MainIntf, MainBase, ModeMatrixOpts;
 
 type
@@ -917,8 +919,7 @@ begin
 end;
 
 procedure TPkgManager.OnPackageEditorGetUnitRegisterInfo(Sender: TObject;
-  const AFilename: string; out TheUnitName: string; out HasRegisterProc: boolean
-  );
+  const AFilename: string; out TheUnitName: string; out HasRegisterProc: boolean);
 begin
   DoGetUnitRegisterInfo(AFilename,TheUnitName,HasRegisterProc,true);
 end;
@@ -1002,8 +1003,7 @@ begin
     PackageGraphExplorer.UpdatePackageAdded(Pkg);
 end;
 
-procedure TPkgManager.PackageGraphEndUpdate(Sender: TObject;
-  GraphChanged: boolean);
+procedure TPkgManager.PackageGraphEndUpdate(Sender: TObject; GraphChanged: boolean);
 begin
   if GraphChanged then IncreaseCompilerParseStamp;
   if PackageGraphExplorer<>nil then begin
@@ -1025,8 +1025,7 @@ begin
   if (Directory<>'') and not FilenameIsAbsolute(Directory) then
     RaiseGDBException(Directory);
   //DebugLn('TPkgManager.PackageGraphFindFPCUnit "',Directory,'"');
-  Filename:=CodeToolBoss.DirectoryCachePool.FindUnitInUnitLinks(Directory,
-                                                                AUnitName);
+  Filename:=CodeToolBoss.DirectoryCachePool.FindUnitInUnitLinks(Directory, AUnitName);
 end;
 
 function TPkgManager.PackageGraphExplorerUninstallPackage(Sender: TObject;
@@ -1088,8 +1087,7 @@ begin
   PackageGraph.CloseUnneededPackages;
 end;
 
-function TPkgManager.DoShowSavePackageAsDialog(
-  APackage: TLazPackage): TModalResult;
+function TPkgManager.DoShowSavePackageAsDialog(APackage: TLazPackage): TModalResult;
 var
   OldPkgFilename: String;
   SaveDialog: TSaveDialog;
@@ -2078,9 +2076,9 @@ var
       // check if two copied/moved files will get the same new file name
       if NewFileToOldOwnedFile.Contains(NewFilename) then begin
         IDEMessageDialog(lisConflictDetected,
-          Format(lisTwoMovedFilesWillHaveTheSameFileNameIn, [#13, aFile
-            .Filename, #13, TIDEOwnedFile(NewFileToOldOwnedFile[NewFilename]).
-            Filename, #13, TargetFilesEdit.FilesOwnerName]), mtError, [mbCancel]);
+          Format(lisTwoMovedFilesWillHaveTheSameFileNameIn,
+                 [#13, aFile.Filename, #13, TIDEOwnedFile(NewFileToOldOwnedFile[NewFilename]).Filename,
+                  #13, TargetFilesEdit.FilesOwnerName]), mtError, [mbCancel]);
         exit;
       end;
       NewFileToOldOwnedFile[NewFilename]:=aFile;
@@ -2381,8 +2379,7 @@ var
       if NewUsedUnitFilename='' then begin
         // at the new position the unit cannot be found
         if PkgName='' then begin
-          Msg:=Format(lisUnitNotFoundAtNewPosition, [AnUnitName, NewUnitFilename
-            ]);
+          Msg:=Format(lisUnitNotFoundAtNewPosition, [AnUnitName, NewUnitFilename]);
         end else begin
           Msg:=Format(lisUnitRequiresPackage, [AnUnitName, PkgName]);
         end;
@@ -2578,7 +2575,7 @@ var
       NewHasRegisterProc:=OldPkgFile.HasRegisterProc;
       NewAddToUses:=OldPkgFile.AddToUsesPkgSection;
     end else begin
-      NewUnitName:=OldProjFile.SrcUnitName;
+      NewUnitName:=OldProjFile.Unit_Name;
       NewFileType:=FileNameToPkgFileType(OldFilename);
       NewCompPrio:=ComponentPriorityNormal;
       NewResourceBaseClass:=OldProjFile.ResourceBaseClass;
@@ -2998,14 +2995,14 @@ end;
 procedure TPkgManager.ConnectMainBarEvents;
 begin
   with MainIDEBar do begin
-    itmPkgNewPackage.OnClick :=@MainIDEitmPkgNewPackageClick;
-    itmPkgOpenLoadedPackage.OnClick :=@MainIDEitmPkgOpenLoadedPackageClicked;
+    itmPkgNewPackage.OnClick:=@MainIDEitmPkgNewPackageClick;
+    itmPkgOpenLoadedPackage.OnClick:=@MainIDEitmPkgOpenLoadedPackageClicked;
     itmPkgOpenPackageFile.OnClick:=@MainIDEitmPkgOpenPackageFileClick;
-    itmPkgOpenPackageOfCurUnit.OnClick :=@MainIDEitmPkgOpenPackageOfCurUnitClicked;
+    itmPkgOpenPackageOfCurUnit.OnClick:=@MainIDEitmPkgOpenPackageOfCurUnitClicked;
     itmPkgAddCurFileToPkg.OnClick:=@MainIDEitmPkgAddCurFileToPkgClick;
     itmPkgAddNewComponentToPkg.OnClick:=@MainIDEitmPkgNewComponentClick;
     itmPkgPkgGraph.OnClick:=@MainIDEitmPkgPkgGraphClick;
-    itmPkgPackageLinks.OnClick := @MainIDEitmPackageLinksClicked;
+    itmPkgPackageLinks.OnClick:=@MainIDEitmPackageLinksClicked;
     itmPkgEditInstallPkgs.OnClick:=@MainIDEitmPkgEditInstallPkgsClick;
     {$IFDEF CustomIDEComps}
     itmCompsConfigCustomComps.OnClick :=@MainIDEitmConfigCustomCompsClicked;
@@ -3055,10 +3052,8 @@ var
   PkgFile: TPkgFile;
 begin
   Result:='';
-  if FilenameIsAbsolute(Filename) then begin
-    Result:=ExtractFilePath(Filename);
-    exit;
-  end;
+  if FilenameIsAbsolute(Filename) then
+    exit(ExtractFilePath(Filename));
   PkgFile:=PackageGraph.FindFileInAllPackages(Filename,true,true);
   if PkgFile=nil then exit;
   APackage:=PkgFile.LazPackage;
@@ -4133,13 +4128,8 @@ end;
 
 function TPkgManager.FindPackageWithName(const PkgName: string;
   IgnorePackage: TIDEPackage): TIDEPackage;
-var
-  Pkg: TLazPackage;
 begin
-  Pkg:=nil;
-  if (IgnorePackage<>nil) then
-    Pkg:=IgnorePackage as TLazPackage;
-  Result:=PackageGraph.FindPackageWithName(PkgName,Pkg);
+  Result:=PackageGraph.FindPackageWithName(PkgName, IgnorePackage as TLazPackage);
 end;
 
 function TPkgManager.RedirectPackageDependency(APackage: TIDEPackage): TIDEPackage;
@@ -4161,7 +4151,7 @@ begin
   if not (pcfDoNotCompileDependencies in Flags) then begin
     Result:=CheckPackageGraphForCompilation(nil,
                                             AProject.FirstRequiredDependency,
-                                            AProject.ProjectDirectory,false);
+                                            AProject.Directory,false);
     if Result<>mrOk then exit;
   end;
   
@@ -4349,7 +4339,7 @@ var
       end else begin
         ClassUnitInfo:=Project1.UnitWithComponentClassName(ComponentClassnames[i]);
         if ClassUnitInfo<>nil then
-          NewUnitName:=ClassUnitInfo.SrcUnitName;
+          NewUnitName:=ClassUnitInfo.Unit_Name;
       end;
       if (NewUnitName<>'') and (UnitNames.IndexOf(NewUnitName)<0) then begin
         // new needed unit
@@ -4767,8 +4757,7 @@ begin
     FreeThenNil(Result);
 end;
 
-function TPkgManager.GetPackageOfCurrentSourceEditor(out APackage: TIDEPackage
-  ): TPkgFile;
+function TPkgManager.GetPackageOfCurrentSourceEditor(out APackage: TIDEPackage): TPkgFile;
 var
   SrcEdit: TSourceEditor;
 begin
@@ -4874,7 +4863,7 @@ begin
       NewDependency:=TPkgDependency.Create;
       try
         NewDependency.PackageName:=APackage.Name;
-        r:=CheckAddingDependency(TLazPackage(Item),NewDependency,false,false);
+        r:=CheckAddingPackageDependency(TLazPackage(Item),NewDependency,false,false);
         if r=mrCancel then exit;
         if (not OnlyTestIfPossible) and (r<>mrIgnore) then begin
           ADependency:=NewDependency;
@@ -5139,8 +5128,7 @@ begin
   end;
 end;
 
-function TPkgManager.WarnAboutMissingPackageFiles(APackage: TLazPackage
-  ): TModalResult;
+function TPkgManager.WarnAboutMissingPackageFiles(APackage: TLazPackage): TModalResult;
 var
   i: Integer;
   AFile: TPkgFile;
@@ -5177,7 +5165,7 @@ begin
   NewDependency:=TPkgDependency.Create;
   try
     NewDependency.PackageName:=ReqPackage;
-    Result:=CheckAddingDependency(APackage,NewDependency,false,false);
+    Result:=CheckAddingPackageDependency(APackage,NewDependency,false,false);
     if Result=mrIgnore then exit(mrOk);
     if Result<>mrOk then exit;
     if not OnlyTestIfPossible then begin
@@ -6226,8 +6214,8 @@ begin
   end;
 end;
 
-procedure TPkgManager.OnProjectInspectorDragDropTreeView(Sender,
-  Source: TObject; X, Y: Integer);
+procedure TPkgManager.OnProjectInspectorDragDropTreeView(Sender, Source: TObject;
+  X, Y: Integer);
 begin
   {$IFDEF VerbosePkgEditDrag}
   debugln(['TPkgManager.OnProjectInspectorDragDropTreeView START']);
@@ -6364,8 +6352,7 @@ begin
     dec(Result);
 end;
 
-function TLazPackageDescriptors.FindByName(const Name: string
-  ): TPackageDescriptor;
+function TLazPackageDescriptors.FindByName(const Name: string): TPackageDescriptor;
 var
   i: LongInt;
 begin
@@ -6376,8 +6363,7 @@ begin
     Result:=nil;
 end;
 
-procedure TLazPackageDescriptors.RegisterDescriptor(
-  Descriptor: TPackageDescriptor);
+procedure TLazPackageDescriptors.RegisterDescriptor(Descriptor: TPackageDescriptor);
 begin
   if Descriptor.Name='' then
     raise Exception.Create('TLazPackageDescriptors.RegisterDescriptor Descriptor.Name empty');
@@ -6385,8 +6371,7 @@ begin
   FItems.Add(Descriptor);
 end;
 
-procedure TLazPackageDescriptors.UnregisterDescriptor(
-  Descriptor: TPackageDescriptor);
+procedure TLazPackageDescriptors.UnregisterDescriptor(Descriptor: TPackageDescriptor);
 var
   i: LongInt;
 begin

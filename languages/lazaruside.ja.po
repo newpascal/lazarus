@@ -1907,6 +1907,14 @@ msgstr ""
 msgid "Foreground"
 msgstr "前景"
 
+#: lazarusidestrconsts.dlgformtitlebarchangesobjectinspector
+msgid "Change Object Inspector contents on clicking form title bar"
+msgstr ""
+
+#: lazarusidestrconsts.dlgformtitlebarchangesobjectinspectorhint
+msgid "Show a form's properties in Object Inspector by clicking on its title bar."
+msgstr ""
+
 #: lazarusidestrconsts.dlgforwardprocsinsertpolicy
 msgid "Procedure insert policy"
 msgstr "手続き挿入ポリシー"
@@ -5623,6 +5631,10 @@ msgstr "オプションをチェック"
 #: lazarusidestrconsts.lischecksearchpathpackagetryacleanrebuildcheckimpleme
 msgctxt "lazarusidestrconsts.lischecksearchpathpackagetryacleanrebuildcheckimpleme"
 msgid ". Check search path of package %s, try a clean rebuild, check implementation uses sections."
+msgstr ""
+
+#: lazarusidestrconsts.lischeckthenexttokeninsourceandaddasemicolonifneeded
+msgid "Check the next token in source and add a semicolon if needed."
 msgstr ""
 
 #: lazarusidestrconsts.lischeckthetargetoscpulclwidgettypemaybeyouhavetoreco
@@ -10352,6 +10364,10 @@ msgstr "手続きのヘッドを挿入"
 msgid "insert procedure name"
 msgstr "手続きの名前を挿入"
 
+#: lazarusidestrconsts.lisinsertsemicolonifneeded
+msgid "Insert semicolon if needed"
+msgstr ""
+
 #: lazarusidestrconsts.lisinserttime
 msgid "insert time"
 msgstr "時刻を挿入"
@@ -14075,6 +14091,10 @@ msgstr "? (On)"
 msgid "On break line (i.e. return or enter key)"
 msgstr "改行キーを押したとき(i.e. return 又は enter キー)"
 
+#: lazarusidestrconsts.lisonly32bit
+msgid "only 32bit"
+msgstr ""
+
 #: lazarusidestrconsts.lisonlyavailableonwindowsrunthetoolhidden
 msgid "Only available on Windows. Run the tool hidden."
 msgstr ""
@@ -16548,7 +16568,7 @@ msgid ""
 "i 0 count-1 forb|\n"
 "Here $PrevWord(0)=forb, $PrevWord(1)=i, $PrevWord(2)=0, $PrevWord(3)=count-1\n"
 "\n"
-"In the end of your template use $PrevWord(-1) which expands to an empty string, but performs an importaint operation of wiping off all of the $PrevWords found. In addition here is a regexp that is used to detect words for this macro: [\\w\\-+*\\(\\)\\[\\].^@]+\n"
+"In the end of your template use $PrevWord(-1) which expands to an empty string, but performs an important operation of wiping off all of the $PrevWords found. In addition here is a regexp that is used to detect words for this macro: [\\w\\-+*\\(\\)\\[\\].^@]+\n"
 msgstr ""
 
 #: lazarusidestrconsts.lisreturnslistofallvaluesofcasevariableinfrontofvaria

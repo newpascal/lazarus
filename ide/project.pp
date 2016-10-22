@@ -55,7 +55,7 @@ uses
   FPCAdds, FileUtil, LazFileUtils, LazFileCache, LazUTF8, Laz2_XMLCfg,
   // IDEIntf
   PropEdits, CompOptsIntf, ProjectIntf, MacroIntf, MacroDefIntf, UnitResources,
-  PackageIntf, SrcEditorIntf, IDEOptionsIntf, IDEDialogs, LazIDEIntf,
+  PackageIntf, SrcEditorIntf, IDEOptionsIntf, IDEDialogs, LazIDEIntf, ProjPackIntf,
   // SynEdit
   SynEdit,
   // IDE
@@ -289,7 +289,6 @@ type
     FRunFileIfActive: boolean;
     FSessionModified: boolean;
     fSource: TCodeBuffer;
-    fSrcUnitName: String;
     fUsageCount: extended;
     fUserReadOnly:  Boolean;
     fSourceChangeStep: LongInt;
@@ -328,7 +327,6 @@ type
     procedure SetRunFileIfActive(const AValue: boolean);
     procedure SetSessionModified(const AValue: boolean);
     procedure SetSource(ABuffer: TCodeBuffer);
-    procedure SetSrcUnitName(const NewUnitName:string);
     procedure SetUserReadOnly(const NewValue: boolean);
   protected
     function GetFileName: string; override;
@@ -336,6 +334,7 @@ type
     procedure SetIsPartOfProject(const AValue: boolean); override;
     procedure UpdateList(ListType: TUnitInfoList; Add: boolean);
     procedure SetInternalFilename(const NewFilename: string);
+    procedure SetUnitName(const AValue: string); override;
 
     procedure UpdateHasCustomHighlighter(aDefaultHighlighter: TLazSyntaxHighlighter);
     procedure UpdatePageIndex;
@@ -470,7 +469,7 @@ type
     property Source: TCodeBuffer read fSource write SetSource;
     property DefaultSyntaxHighlighter: TLazSyntaxHighlighter
                                read FDefaultSyntaxHighlighter write SetDefaultSyntaxHighlighter;
-    property SrcUnitName: String read fSrcUnitName write SetSrcUnitName; // unit name in source
+    property SrcUnitName: String read FUnitName write SetUnitName; deprecated 'Use Unit_Name instead.';
     property UserReadOnly: Boolean read fUserReadOnly write SetUserReadOnly;
     property SourceDirectoryReferenced: boolean read FSourceDirectoryReferenced;
     property AutoReferenceSourceDir: boolean read FAutoReferenceSourceDir
@@ -840,6 +839,7 @@ type
     procedure SaveToSession;
     function DoWrite(Filename: String; IsLpi: Boolean): TModalResult;
   protected
+    function GetDirectory: string; override;
     function GetActiveBuildModeID: string; override;
     function GetDefineTemplates: TProjPackDefineTemplates;
     function GetFiles(Index: integer): TLazProjectFile; override;
@@ -1090,7 +1090,7 @@ type
     property OnSaveUnitSessionInfo: TOnSaveUnitSessionInfoInfo
       read FOnSaveUnitSessionInfo write FOnSaveUnitSessionInfo;
     property POOutputDirectory: string read FPOOutputDirectory write SetPOOutputDirectory;
-    property ProjectDirectory: string read fProjectDirectory;
+    property ProjectDirectory: string read GetDirectory; deprecated 'Use Directory instead.';
     property ProjectInfoFile: string read GetProjectInfoFile write SetProjectInfoFile;
     property PublishOptions: TPublishProjectOptions read FPublishOptions write FPublishOptions;
     property ProjResources: TProjectResources read GetProjResources;
@@ -1602,20 +1602,20 @@ begin
   if Result='' then
     Result:=CodeToolBoss.GetSourceName(fSource,false);
   if Result<>'' then begin
-    // source can be parsed => update SrcUnitName
+    // source can be parsed => update UnitName
     {$IFDEF VerboseIDESrcUnitName}
     if CompareFilenames(ExtractFileNameOnly(Filename),'interpkgconflictfiles')=0 then
       debugln(['TUnitInfo.ReadUnitNameFromSource ',Result]);
     {$ENDIF}
-    fSrcUnitName:=Result;
+    FUnitName:=Result;
   end else begin
     // unable to parse the source
     if FilenameIsPascalSource(Filename) then begin
       // use default: the filename
       Result:=ExtractFileNameOnly(Filename);
-      if CompareText(Result,fSrcUnitName)=0 then begin
+      if CompareText(Result,FUnitName)=0 then begin
         // the last stored unitname has the better case
-        Result:=SrcUnitName;
+        Result:=FUnitName;
       end;
     end;
   end;
@@ -1626,7 +1626,7 @@ begin
   if not FilenameIsPascalUnit(Filename) then
     Result:=''
   else begin
-    Result:=SrcUnitName;
+    Result:=FUnitName;
     if (Result='') or (CompareText(Result,ExtractFileNameOnly(Filename))<>0) then
       Result:=ExtractFileNameOnly(Filename);
   end;
@@ -1634,7 +1634,7 @@ end;
 
 function TUnitInfo.CreateUnitName: string;
 begin
-  Result:=SrcUnitName;
+  Result:=FUnitName;
   if (Result='') and FilenameIsPascalSource(Filename) then
     Result:=ExtractFilenameOnly(Filename);
 end;
@@ -1664,7 +1664,7 @@ begin
   Modified := false;
   SessionModified := false;
   FRunFileIfActive:=false;
-  fSrcUnitName := '';
+  FUnitName := '';
   fUsageCount:=-1;
   fUserReadOnly := false;
   if fSource<>nil then fSource.Clear;
@@ -1742,8 +1742,8 @@ begin
     XMLConfig.SetDeleteValue(Path+'ResourceBaseClass/Value',
                              PFComponentBaseClassNames[FResourceBaseClass],
                              PFComponentBaseClassNames[pfcbcNone]);
-    s:=fSrcUnitName;
-    if (s<>'') and (ExtractFileNameOnly(Filename)=s) then s:=''; // only save if SrcUnitName differ from filename
+    s:=FUnitName;
+    if (s<>'') and (ExtractFileNameOnly(Filename)=s) then s:=''; // only save if UnitName differs from filename
     XMLConfig.SetDeleteValue(Path+'UnitName/Value',s,'');
     // save custom data
     SaveStringToStringTree(XMLConfig,CustomData,Path+'CustomData/');
@@ -1820,15 +1820,15 @@ begin
     if (AFilename<>'') and Assigned(fOnLoadSaveFilename) then
       fOnLoadSaveFilename(AFilename,true);
     if FilenameIsPascalSource(Filename) then begin
-      fSrcUnitName:=XMLConfig.GetValue(Path+'UnitName/Value','');
-      if fSrcUnitName='' then
-        fSrcUnitName:=ExtractFileNameOnly(Filename);
+      FUnitName:=XMLConfig.GetValue(Path+'UnitName/Value','');
+      if FUnitName='' then
+        FUnitName:=ExtractFileNameOnly(Filename);
       {$IFDEF VerboseIDESrcUnitName}
       if CompareFilenames(ExtractFileNameOnly(Filename),'interpkgconflictfiles')=0 then
-        debugln(['TUnitInfo.LoadFromXMLConfig ',fSrcUnitName]);
+        debugln(['TUnitInfo.LoadFromXMLConfig ',FUnitName]);
       {$ENDIF}
     end else
-      fSrcUnitName:='';
+      FUnitName:='';
 
     // save custom data
     LoadStringToStringTree(XMLConfig,CustomData,Path+'CustomData/');
@@ -1865,29 +1865,29 @@ begin
   LoadStringToStringTree(XMLConfig,CustomSessionData,Path+'CustomSessionData/');
 end;
 
-procedure TUnitInfo.SetSrcUnitName(const NewUnitName:string);
+procedure TUnitInfo.SetUnitName(const AValue: string);
 var
   Allowed: boolean;
   OldUnitName: String;
 begin
-  if (fSrcUnitName <> NewUnitName) and (NewUnitName <> '') then
+  if (FUnitName <> AValue) and (AValue <> '') then
   begin
     Allowed := true;
-    OldUnitName := fSrcUnitName;
+    OldUnitName := FUnitName;
     if OldUnitName = '' then
       OldUnitName := ExtractFileNameOnly(Filename);
     if Assigned(FOnUnitNameChange) then
-      FOnUnitNameChange(Self, OldUnitName, NewUnitName, false, Allowed);
+      FOnUnitNameChange(Self, OldUnitName, AValue, false, Allowed);
     // (ignore Allowed)
     if (fSource <> nil) then
     begin
-      CodeToolBoss.RenameSource(fSource,NewUnitName);
+      CodeToolBoss.RenameSource(fSource,AValue);
     end;
     {$IFDEF VerboseIDESrcUnitName}
     if CompareFilenames(ExtractFileNameOnly(Filename),'interpkgconflictfiles')=0 then
-      debugln(['TUnitInfo.SetSrcUnitName ',NewUnitName]);
+      debugln(['TUnitInfo.SetSrcUnitName ',AValue]);
     {$ENDIF}
-    fSrcUnitName := NewUnitName;
+    FUnitName := AValue;
     Modified := true;
     if (Project <> nil) then Project.UnitModified(Self);
   end;
@@ -2011,7 +2011,7 @@ function TUnitInfo.GetDirectory: string;
 begin
   if IsVirtual then begin
     if Project<>nil then
-      Result:=Project.ProjectDirectory
+      Result:=Project.Directory
     else
       Result:='';
   end else  begin
@@ -2884,7 +2884,7 @@ begin
   // load custom data
   LoadStringToStringTree(FXMLConfig,CustomData,Path+'CustomData/');
   {$IFDEF IDE_MEM_CHECK}CheckHeapWrtMemCnt('TProject.ReadProject update ct boss');{$ENDIF}
-  CodeToolBoss.GlobalValues.Variables[ExternalMacroStart+'ProjPath']:=ProjectDirectory;
+  CodeToolBoss.GlobalValues.Variables[ExternalMacroStart+'ProjPath']:=Directory;
   CodeToolBoss.DefineTree.ClearCache;
   // load the dependencies
   LoadPkgDependencyList(FXMLConfig,Path+'RequiredPackages/',
@@ -3157,7 +3157,7 @@ begin
 
   // fpdoc
   FXMLConfig.SetDeleteValue(Path+'LazDoc/Paths',
-     SwitchPathDelims(CreateRelativeSearchPath(FPDocPaths,ProjectDirectory),
+     SwitchPathDelims(CreateRelativeSearchPath(FPDocPaths,Directory),
                       fCurStorePathDelim), '');
   FXMLConfig.SetDeleteValue(Path+'LazDoc/PackageName',FPDocPackageName,'');
 
@@ -3165,7 +3165,7 @@ begin
   FXMLConfig.SetDeleteValue(Path+'i18n/EnableI18N/Value', EnableI18N, false);
   FXMLConfig.SetDeleteValue(Path+'i18n/EnableI18N/LFM', EnableI18NForLFM, true);
   FXMLConfig.SetDeleteValue(Path+'i18n/OutDir/Value',
-     SwitchPathDelims(CreateRelativePath(POOutputDirectory,ProjectDirectory),
+     SwitchPathDelims(CreateRelativePath(POOutputDirectory,Directory),
                       fCurStorePathDelim), '');
   SaveStringList(FXMLConfig, FI18NExcludedIdentifiers, Path+'i18n/ExcludedIdentifiers/');
   SaveStringList(FXMLConfig, FI18NExcludedOriginals, Path+'i18n/ExcludedOriginals/');
@@ -3291,6 +3291,11 @@ begin
     end;
     FXMLConfig:=nil;
   until Result<>mrRetry;
+end;
+
+function TProject.GetDirectory: string;
+begin
+  Result:=fProjectDirectory;
 end;
 
 // Method WriteProject itself
@@ -3529,9 +3534,9 @@ begin
     // remove unit from uses section and from createforms in program file
     if (OldUnitInfo.IsPartOfProject) then begin
       if RemoveFromUsesSection then begin
-        if (OldUnitInfo.SrcUnitName<>'') then begin
+        if (OldUnitInfo.Unit_Name<>'') then begin
           CodeToolBoss.RemoveUnitFromAllUsesSections(MainUnitInfo.Source,
-            OldUnitInfo.SrcUnitName);
+            OldUnitInfo.Unit_Name);
         end;
         if (OldUnitInfo.ComponentName<>'') then begin
           CodeToolBoss.RemoveCreateFormStatement(MainUnitInfo.Source,
@@ -3917,9 +3922,9 @@ begin
     if ((OnlyProjectUnits and Units[Result].IsPartOfProject)
     or (not OnlyProjectUnits))
     and (IgnoreUnit<>Units[Result])
-    and (Units[Result].SrcUnitName<>'')
+    and (Units[Result].Unit_Name<>'')
     then begin
-      if (CompareDottedIdentifiers(PChar(Units[Result].SrcUnitName),PChar(AnUnitName))=0)
+      if (CompareDottedIdentifiers(PChar(Units[Result].Unit_Name),PChar(AnUnitName))=0)
       then
         exit;
     end;
@@ -3993,7 +3998,7 @@ var
   CurPath: String;
 begin
   Result:=Filename;
-  BaseDir:=AppendPathDelim(ProjectDirectory);
+  BaseDir:=AppendPathDelim(Directory);
   if (BaseDir<>'') and FilenameIsAbsolute(BaseDir) and UseUp then
     Result:=CreateRelativePath(Result,BaseDir)
   else begin
@@ -4289,7 +4294,7 @@ begin
   end;
   AFilename:=TrimFilename(AFilename);
   
-  ProjectPath:=AppendPathDelim(ProjectDirectory);
+  ProjectPath:=AppendPathDelim(Directory);
   if ProjectPath<>'' then begin
     if Load then begin
       // make filename absolute
@@ -4320,7 +4325,7 @@ end;
 function TProject.RemoveProjectPathFromFilename(const AFilename: string): string;
 var ProjectPath:string;
 begin
-  ProjectPath:=ProjectDirectory;
+  ProjectPath:=Directory;
   if ProjectPath='' then ProjectPath:=GetCurrentDirUTF8;
   Result:=AFilename;
   ForcePathDelims(Result);
@@ -4337,7 +4342,7 @@ var ProjectDir, FilePath: string;
 begin
   if FilenameIsAbsolute(AFilename) then begin
     if (not IsVirtual) then begin
-      ProjectDir:=ProjectDirectory;
+      ProjectDir:=Directory;
       FilePath:=LeftStr(AFilename,length(ProjectDir));
       Result:=(CompareFileNames(ProjectDir,FilePath)=0);
     end else
@@ -4844,7 +4849,7 @@ function TProject.GetSourceDirs(WithProjectDir, WithoutOutputDir: boolean): stri
 begin
   Result:=SourceDirectories.CreateSearchPathFromAllFiles;
   if WithProjectDir then
-    Result:=MergeSearchPaths(Result,ProjectDirectory);
+    Result:=MergeSearchPaths(Result,Directory);
   if WithoutOutputDir then
     Result:=RemoveSearchPaths(Result,GetOutputDirectory);
 end;
@@ -4863,7 +4868,7 @@ function TProject.GetStateFilename: string;
 begin
   Result:=GetOutputDirectory;
   if (not FilenameIsAbsolute(Result)) and (not IsVirtual) then
-    Result:=ProjectDirectory;
+    Result:=Directory;
   Result:=AppendPathDelim(Result)+ChangeFileExt(GetCompileSourceFilename,'.compiled');
 end;
 
@@ -4893,7 +4898,7 @@ begin
   CurUnitPaths:=CompilerOptions.ParsedOpts.GetParsedValue(pcosUnitPath);
   NewUnitPaths:=RemoveSearchPaths(NewUnitPaths,CurUnitPaths);
   if NewUnitPaths<>'' then begin
-    NewUnitPaths:=CreateRelativeSearchPath(NewUnitPaths,ProjectDirectory);
+    NewUnitPaths:=CreateRelativeSearchPath(NewUnitPaths,Directory);
     r:=IDEMessageDialog(lisExtendUnitPath,
       Format(lisExtendUnitSearchPathOfProjectWith, [#13, NewUnitPaths]),
       mtConfirmation, [mbYes, mbNo, mbCancel]);
@@ -4914,7 +4919,7 @@ begin
   CurIncPaths:=CompilerOptions.ParsedOpts.GetParsedValue(pcosIncludePath);
   NewIncPaths:=RemoveSearchPaths(NewIncPaths,CurIncPaths);
   if NewIncPaths<>'' then begin
-    NewIncPaths:=CreateRelativeSearchPath(NewIncPaths,ProjectDirectory);
+    NewIncPaths:=CreateRelativeSearchPath(NewIncPaths,Directory);
     r:=IDEMessageDialog(lisExtendIncludePath,
       Format(lisExtendIncludeFilesSearchPathOfProjectWith, [#13, NewIncPaths]),
       mtConfirmation, [mbYes, mbNo, mbCancel]);
@@ -5044,7 +5049,7 @@ begin
     debugln(['TProject.GetPOOutDirectory failed POOutputDirectory="',POOutputDirectory,'"']);
   Result:=TrimFilename(Result);
   if not FilenameIsAbsolute(Result) then
-    Result:=TrimFilename(AppendPathDelim(ProjectDirectory)+Result);
+    Result:=TrimFilename(AppendPathDelim(Directory)+Result);
 end;
 
 function TProject.GetAutoCreatedFormsList: TStrings;
@@ -5096,8 +5101,8 @@ begin
       // check if no other project unit has this name
       for i:=0 to UnitCount-1 do begin
         if (Units[i].IsPartOfProject)
-        and (Units[i]<>AnUnitInfo) and (Units[i].SrcUnitName<>'')
-        and (CompareText(Units[i].SrcUnitName,NewUnitName)=0) then begin
+        and (Units[i]<>AnUnitInfo) and (Units[i].Unit_Name<>'')
+        and (CompareText(Units[i].Unit_Name,NewUnitName)=0) then begin
           Allowed:=false;
           exit;
         end;
@@ -5619,7 +5624,7 @@ function TProject.ProjectUnitWithUnitname(const AnUnitName: string): TUnitInfo;
 begin
   Result:=fFirst[uilPartOfProject];
   while Result<>nil do begin
-    if CompareText(AnUnitName,Result.SrcUnitName)=0 then exit;
+    if CompareText(AnUnitName,Result.Unit_Name)=0 then exit;
     Result:=Result.fNext[uilPartOfProject];
   end;
 end;
@@ -6469,7 +6474,7 @@ begin
   if (Owner as TProject).IsVirtual then
     NewProjectDir:=VirtualDirectory
   else
-    NewProjectDir:=(Owner as TProject).ProjectDirectory;
+    NewProjectDir:=(Owner as TProject).Directory;
   if CodeToolBoss.SetGlobalValue(ExternalMacroStart+'ProjPath',NewProjectDir)
   then
     Changed:=true;
@@ -6900,7 +6905,7 @@ begin
   Result:=TProjectBuildMode.Create(Self);
   Result.FIdentifier:=Identifier;
   if LazProject<>nil then
-    Result.CompilerOptions.BaseDirectory:=LazProject.ProjectDirectory;
+    Result.CompilerOptions.BaseDirectory:=LazProject.Directory;
   Result.AddOnChangedHandler(@OnItemChanged);
   fItems.Add(Result);
 end;

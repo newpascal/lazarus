@@ -1440,6 +1440,9 @@ resourcestring
   dlgCheckPackagesOnFormCreate = 'Check packages on form create';
   dlgCheckPackagesOnFormCreateHint = 'The form may require a package to work. '
     +'Install such a package automatically.';
+  dlgFormTitleBarChangesObjectInspector = 'Change Object Inspector contents on clicking form title bar';
+  dlgFormTitleBarChangesObjectInspectorHint = 'Show a form''s properties in Object Inspector '
+    +'by clicking on its title bar.';
 
   dlgEnvGrid = 'Grid';
   dlgEnvLGuideLines = 'Guide lines';
@@ -2123,6 +2126,8 @@ resourcestring
   dlgSkipForwardClassDeclarations = 'Skip forward class declarations';
   dlgJumpToMethodBody = 'Jump directly to method body';
   dlgInsertClassParts = 'Insert class parts';
+  lisNewMethodsAndMembersAreInsertedAlphabeticallyOrAdd = 'New method and '
+    +'member declarations in the class..end sections are inserted alphabetically or added last';
   lisClassCompletion = 'Class Completion';
   dlgAlphabetically = 'Alphabetically';
   dlgCDTLast = 'Last';
@@ -2136,8 +2141,15 @@ resourcestring
   lisFirst = 'First';
   lisInFrontOfRelated = 'In front of related';
   lisBehindRelated = 'Behind related';
-  dlgInsertMethods = 'Insert methods';
+  dlgInsertMethods = 'Insert method implementations';
+  lisNewMethodImplementationsAreInsertedBetweenExisting = 'New method '
+    +'implementations are inserted between existing methods of this class. '
+    +'Either alphabetically, or as last, or in declaration order.';
   dlgCDTClassOrder = 'Class order';
+  lisDefaultSectionOfMethods = 'Default section of methods';
+  lisDefaultClassVisibilitySectionOfNewMethodsForExampl = 'Default class '
+    +'visibility section of new methods. For example code completion on OnShow'
+    +':=';
   dlgKeywordPolicy = 'Keyword policy';
   dlgCDTLower = 'lowercase';
   dlgCDTUPPERCASE = 'UPPERCASE';
@@ -2264,6 +2276,7 @@ resourcestring
   dlgCOTrashVariables = 'Trash variables';
   dlgCOValgrind = 'Generate code for valgrind';
   dlgGPROF = 'Generate code for gprof';
+  lisOnly32bit = 'only 32bit';
   dlgCOStrip = 'Strip symbols from executable';
   dlgExtSymb = 'Use external gdb debug symbols file';
   dlgLinkSmart = 'Link smart';
@@ -5634,6 +5647,9 @@ resourcestring
   lisInsertEndIfNeeded = 'insert end if needed';
   lisCheckIfTheNextTokenInSourceIsAnEndAndIfNotReturnsL = 'Check if the next '
     +'token in source is an "end" and if not return "LineEnding + end; + LineEnding".';
+  lisInsertSemicolonIfNeeded = 'Insert semicolon if needed';
+  lisCheckTheNextTokenInSourceAndAddASemicolonIfNeeded = 'Check the next '
+    +'token in source and add a semicolon if needed.';
   lisListOfAllCaseValues = 'list of all case values';
   lisReturnsListOfAllValuesOfCaseVariableInFrontOfVaria = 'Return the list of '
     +'all values of case variable in front of variable.'#13
@@ -5676,7 +5692,7 @@ resourcestring
                     'i 0 count-1 forb|'+#13+
                     'Here $PrevWord(0)=forb, $PrevWord(1)=i, $PrevWord(2)=0, $PrevWord(3)=count-1'+#13+#13+
                     'In the end of your template use $PrevWord(-1) which expands to an empty string, but performs an '+
-                    'importaint operation of wiping off all of the $PrevWords found. In addition here is a regexp that is used '+
+                    'important operation of wiping off all of the $PrevWords found. In addition here is a regexp that is used '+
                     'to detect words for this macro: [\w\-+*\(\)\[\].^@]+';
   lisForm = 'Form';
   lisInheritedProjectComponent = 'Inherited project component';

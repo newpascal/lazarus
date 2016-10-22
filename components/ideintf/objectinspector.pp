@@ -843,6 +843,9 @@ const
 function dbgs(s: TOIPropertyGridState): string; overload;
 function dbgs(States: TOIPropertyGridStates): string; overload;
 
+function GetChangeParentCandidates(PropertyEditorHook: TPropertyEditorHook;
+  Selection: TPersistentSelectionList): TFPList;
+
 implementation
 
 {$R *.lfm}
@@ -885,6 +888,71 @@ begin
     Result+=dbgs(s);
   end;
   Result:='['+Result+']';
+end;
+
+function GetChangeParentCandidates(PropertyEditorHook: TPropertyEditorHook;
+  Selection: TPersistentSelectionList): TFPList;
+
+  function CanBeParent(Child, Parent: TPersistent): boolean;
+  begin
+    Result:=false;
+    if Child = Parent then exit;
+    if not (Parent is TWinControl) then exit;
+    if not (Child is TControl) then exit;
+    if (Child is TWinControl) and
+       (Child = TWinControl(Parent).Parent) then
+      exit;
+    if not ControlAcceptsStreamableChildComponent(TWinControl(Parent),
+             TComponentClass(Child.ClassType), PropertyEditorHook.LookupRoot)
+    then
+      exit;
+    try
+      TControl(Child).CheckNewParent(TWinControl(Parent));
+    except
+      exit;
+    end;
+    Result:=true;
+  end;
+
+  function CanBeParentOfSelection(Parent: TPersistent): boolean;
+  var
+    i: Integer;
+  begin
+    for i:=0 to Selection.Count-1 do
+      if not CanBeParent(Selection[i],Parent) then exit(false);
+    Result:=true;
+  end;
+
+var
+  i: Integer;
+  Candidate: TWinControl;
+begin
+  Result := TFPList.Create;
+  if not (PropertyEditorHook.LookupRoot is TWinControl) then
+    exit; // only LCL controls are supported at the moment
+
+  // check if any selected control can be moved
+  i := Selection.Count-1;
+  while i >= 0 do
+  begin
+    if (Selection[i] is TControl)
+    and (TControl(Selection[i]).Owner = PropertyEditorHook.LookupRoot)
+    then
+      // this one can be moved
+      break;
+    dec(i);
+  end;
+  if i < 0 then Exit;
+
+  // find possible new parents
+  for i := 0 to TWinControl(PropertyEditorHook.LookupRoot).ComponentCount-1 do
+  begin
+    Candidate := TWinControl(TWinControl(PropertyEditorHook.LookupRoot).Components[i]);
+    if CanBeParentOfSelection(Candidate) then
+      Result.Add(Candidate);
+  end;
+  if CanBeParentOfSelection(PropertyEditorHook.LookupRoot) then
+    Result.Add(PropertyEditorHook.LookupRoot);
 end;
 
 { TOICustomPropertyGrid }
@@ -4287,7 +4355,7 @@ end;
 procedure TObjectInspectorDlg.SetPropertyEditorHook(NewValue:TPropertyEditorHook);
 var
   Page: TObjectInspectorPage;
-  ASelection: TPersistentSelectionList;
+  OldSelection: TPersistentSelectionList;
 begin
   if FPropertyEditorHook=NewValue then exit;
   if FPropertyEditorHook<>nil then begin
@@ -4302,23 +4370,26 @@ begin
     for Page:=Low(TObjectInspectorPage) to High(TObjectInspectorPage) do
       if GridControl[Page]<>nil then
         GridControl[Page].PropertyEditorHook:=FPropertyEditorHook;
-    if EnableHookGetSelection then begin
-      // the propertyeditorhook gets the selection from the OI
-      FPropertyEditorHook.AddHandlerGetSelection(@HookGetSelection);
-      // select root component
-      FSelection.Clear;
-      if (FPropertyEditorHook<>nil) and (FPropertyEditorHook.LookupRoot<>nil)
-      and (FPropertyEditorHook.LookupRoot is TComponent) then
-        FSelection.Add(TComponent(FPropertyEditorHook.LookupRoot));
-    end else begin
-      // the OI gets the selection from the propertyeditorhook
-      ASelection:=TPersistentSelectionList.Create;
-      try
-        FPropertyEditorHook.GetSelection(ASelection);
-        Selection := ASelection;
-      finally
-        ASelection.Free;
+    OldSelection:=TPersistentSelectionList.Create;
+    try
+      FPropertyEditorHook.GetSelection(OldSelection);
+      if EnableHookGetSelection then begin
+        // the propertyeditorhook gets the selection from the OI
+        if OldSelection.Count>0 then
+          FSelection.Assign(OldSelection); // if propertyeditorhook has a selection use that
+        FPropertyEditorHook.AddHandlerGetSelection(@HookGetSelection);
+        if OldSelection.Count=0 then begin
+          // select root component
+          FSelection.Clear;
+          if FPropertyEditorHook.LookupRoot is TComponent then
+            FSelection.Add(TComponent(FPropertyEditorHook.LookupRoot));
+        end;
+      end else begin
+        // the OI gets the selection from the propertyeditorhook
+        Selection := OldSelection;
       end;
+    finally
+      OldSelection.Free;
     end;
     FillComponentList;
     ComponentTree.PropertyEditorHook:=FPropertyEditorHook;
@@ -4523,53 +4594,8 @@ begin
 end;
 
 function TObjectInspectorDlg.GetParentCandidates: TFPList;
-var
-  i, j: Integer;
-  CurSelected: TPersistent;
-  Candidate: TWinControl;
 begin
-  Result := TFPList.Create;
-  if not (FPropertyEditorHook.LookupRoot is TWinControl) then
-    exit; // only LCL controls are supported at the moment
-
-  // check if any selected control can be moved
-  i := Selection.Count-1;
-  while i >= 0 do
-  begin
-    if (Selection[i] is TControl)
-    and (TControl(Selection[i]).Owner = FPropertyEditorHook.LookupRoot)
-    then
-      // this one can be moved
-      break;
-    dec(i);
-  end;
-  if i < 0 then Exit;
-
-  // find possible new parents
-  for i := 0 to TWinControl(FPropertyEditorHook.LookupRoot).ComponentCount-1 do
-  begin
-    Candidate := TWinControl(TWinControl(FPropertyEditorHook.LookupRoot).Components[i]);
-    if not (Candidate is TWinControl) then continue;
-    j := Selection.Count-1;
-    while j >= 0 do
-    begin
-      CurSelected := Selection[j];
-      if CurSelected is TControl then begin
-        if CurSelected = Candidate then break;
-        if (CurSelected is TWinControl) and
-           (TWinControl(CurSelected) = Candidate.Parent) then
-          break;
-        if not ControlAcceptsStreamableChildComponent(Candidate,
-                 TComponentClass(CurSelected.ClassType), FPropertyEditorHook.LookupRoot)
-        then
-          break;
-      end;
-      dec(j);
-    end;
-    if j < 0 then
-      Result.Add(Candidate);
-  end;
-  Result.Add(FPropertyEditorHook.LookupRoot);
+  Result:=GetChangeParentCandidates(FPropertyEditorHook,Selection);
 end;
 
 function TObjectInspectorDlg.HasParentCandidates: Boolean;

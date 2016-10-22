@@ -20,7 +20,7 @@
    ./testcodetools --format=plain --suite=TestFindDeclaration_LazTests --filemask=t*.pp
    ./testcodetools --format=plain --suite=TestFindDeclaration_LazTests --filemask=tdefaultproperty1.pp
 }
-unit FindDeclarationTests;
+unit TestFinddeclaration;
 
 {$mode objfpc}{$H+}
 
@@ -32,7 +32,7 @@ uses
   Classes, SysUtils, CodeToolManager, ExprEval, CodeCache, BasicCodeTools,
   CustomCodeTool, CodeTree, FindDeclarationTool, KeywordFuncLists,
   IdentCompletionTool, FileProcs, LazLogger, LazFileUtils, fpcunit,
-  testregistry;
+  testregistry, TestGlobals;
 
 type
 
@@ -150,7 +150,7 @@ begin
     while (IdentifierStartPos>1) and (IsIdentChar[Src[IdentifierStartPos-1]]) do
       dec(IdentifierStartPos);
 
-    //debugln(['TTestFindDeclaration.FindDeclarations params: ',dbgstr(Tool.Src,p,CommentP-p)]);
+    //debugln(['TTestFindDeclaration.FindDeclarations Marker="',Marker,'" params: ',dbgstr(Tool.Src,p,CommentP-p)]);
     if (Marker='declaration') then begin
       ExpectedPath:=copy(Src,PathPos,CommentP-1-PathPos);
       {$IFDEF VerboseFindDeclarationTests}
@@ -268,47 +268,47 @@ end;
 
 procedure TTestFindDeclaration.TestFindDeclaration_Basic;
 begin
-  FindDeclarations('fdt_basic.pas');
+  FindDeclarations('moduletests/fdt_basic.pas');
 end;
 
 procedure TTestFindDeclaration.TestFindDeclaration_With;
 begin
-  FindDeclarations('fdt_with.pas');
+  FindDeclarations('moduletests/fdt_with.pas');
 end;
 
 procedure TTestFindDeclaration.TestFindDeclaration_ClassOf;
 begin
-  FindDeclarations('fdt_classof.pas');
+  FindDeclarations('moduletests/fdt_classof.pas');
 end;
 
 procedure TTestFindDeclaration.TestFindDeclaration_NestedClasses;
 begin
-  FindDeclarations('fdt_nestedclasses.pas');
+  FindDeclarations('moduletests/fdt_nestedclasses.pas');
 end;
 
 procedure TTestFindDeclaration.TestFindDeclaration_ClassHelper;
 begin
-  FindDeclarations('fdt_classhelper.pas');
+  FindDeclarations('moduletests/fdt_classhelper.pas');
 end;
 
 procedure TTestFindDeclaration.TestFindDeclaration_TypeHelper;
 begin
-  FindDeclarations('fdt_typehelper.pas');
+  FindDeclarations('moduletests/fdt_typehelper.pas');
 end;
 
 procedure TTestFindDeclaration.TestFindDeclaration_ObjCClass;
 begin
-  FindDeclarations('fdt_objcclass.pas');
+  FindDeclarations('moduletests/fdt_objcclass.pas');
 end;
 
 procedure TTestFindDeclaration.TestFindDeclaration_ObjCCategory;
 begin
-  FindDeclarations('fdt_objccategory.pas');
+  FindDeclarations('moduletests/fdt_objccategory.pas');
 end;
 
 procedure TTestFindDeclaration.TestFindDeclaration_Generics;
 begin
-  FindDeclarations('fdt_generics.pas');
+  FindDeclarations('moduletests/fdt_generics.pas');
 end;
 
 procedure TTestFindDeclaration.TestFindDeclaration_FPCTests;
@@ -322,12 +322,6 @@ begin
 end;
 
 initialization
-  GetTestRegistry.TestName := 'All tests';
-  BugsTestSuite := TTestSuite.Create('Bugs');
-  GetTestRegistry.AddTest(BugsTestSuite);
-  FindDeclarationTestSuite := TTestSuite.Create('FindDeclaration');
-  GetTestRegistry.AddTest(FindDeclarationTestSuite);
-
-  FindDeclarationTestSuite.AddTestSuiteFromClass(TTestFindDeclaration);
+  AddToFindDeclarationTestSuite(TTestFindDeclaration);
 end.
 

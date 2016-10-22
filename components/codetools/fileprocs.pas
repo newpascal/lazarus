@@ -233,7 +233,6 @@ function SearchPascalFileInDir(const ShortFilename, BaseDirectory: string;
 function SearchPascalFileInPath(const ShortFilename, BasePath, SearchPath,
                       Delimiter: string; SearchCase: TCTSearchFileCase): string;
 
-// FPC
 function ReadNextFPCParameter(const CmdLine: string; var Position: integer;
     out StartPos: integer): boolean;
 function ExtractFPCParameter(const CmdLine: string; StartPos: integer): string;

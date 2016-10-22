@@ -3,7 +3,7 @@
    ./testcodetools --format=plain --suite=TTestRefactoring
    ./testcodetools --format=plain --suite=TestExplodeWith
 }
-unit RefactoringTests;
+unit TestRefactoring;
 
 {$mode objfpc}{$H+}
 
@@ -12,7 +12,7 @@ interface
 uses
   Classes, SysUtils, CodeToolManager, CodeCache, CodeTree,
   BasicCodeTools, LazLogger, LazFileUtils, fpcunit, testregistry,
-  FindDeclarationTests;
+  TestFinddeclaration;
 
 const
   ExplodeWithMarker = 'explodewith:';
@@ -52,7 +52,7 @@ var
   Filename, OldSource, Src, ID, ExpectedInsertion: String;
   aWith: PWithBlock;
 begin
-  Filename:=ExpandFileNameUTF8('rt_explodewith.pas');
+  Filename:=ExpandFileNameUTF8('moduletests/rt_explodewith.pas');
   Code:=CodeToolBoss.LoadFile(Filename,true,false);
   AssertEquals('Load file error: '+Filename,true,Code<>nil);
   if not CodeToolBoss.Explore(Code,Tool,true) then
