@@ -32,22 +32,23 @@ unit PackageEditor;
 interface
 
 uses
-  // LCL FCL
-  Classes, SysUtils, Forms, Controls, StdCtrls, ComCtrls, Buttons, Graphics,
-  LCLType, LCLProc, Menus, Dialogs, FileUtil, LazFileUtils, LazFileCache, ExtCtrls,
-  contnrs,
-  // IDEIntf CodeTools
-  CodeToolManager,
+  // RTL, FCL
+  Classes, SysUtils, contnrs,
+  // LCL
+  Forms, Controls, StdCtrls, ComCtrls, Buttons, Graphics, Menus, Dialogs,
+  ExtCtrls, LCLType, LCLProc,
   TreeFilterEdit,
+  // LazUtils
+  FileUtil, LazFileUtils, LazFileCache,
+  // IDEIntf
   IDEImagesIntf, MenuIntf, LazIDEIntf, ProjectIntf, CodeToolsStructs,
   FormEditingIntf, PackageIntf, IDEHelpIntf, IDEOptionsIntf,
-  IDEExternToolIntf,
-  NewItemIntf, IDEWindowIntf,
+  NewItemIntf, IDEWindowIntf, IDEDialogs, ComponentReg,
   // IDE
-  IDEDialogs, IDEProcs, LazarusIDEStrConsts, IDEDefs, CompilerOptions,
-  ComponentReg, UnitResources, EnvironmentOpts, DialogProcs, InputHistory,
-  PackageDefs, AddToPackageDlg, PkgVirtualUnitEditor, MissingPkgFilesDlg,
-  PackageSystem, CleanPkgDeps, MainBase;
+  MainBase, IDEProcs, LazarusIDEStrConsts, IDEDefs, CompilerOptions,
+  EnvironmentOpts, DialogProcs, InputHistory,
+  PackageDefs, AddToPackageDlg, AddPkgDependencyDlg, ProjPackChecks,
+  PkgVirtualUnitEditor, MissingPkgFilesDlg, PackageSystem, CleanPkgDeps;
   
 const
   PackageEditorMenuRootName = 'PackageEditor';
@@ -372,6 +373,7 @@ type
     procedure DoSortFiles;
     function DoOpenPkgFile(PkgFile: TPkgFile): TModalResult;
     function ShowAddDialog(var DlgPage: TAddToPkgType): TModalResult;
+    function ShowAddDepDialog: TModalResult;
   public
     // IFilesEditorInterface
     function FilesEditTreeView: TTreeView;
@@ -667,13 +669,13 @@ begin
         PkgFile:=TPkgFile(Item);
         AFilename:=PkgFile.GetFullFilename;
         if PkgFile.FileType in PkgFileRealUnitTypes then begin
-          if not CheckAddingUnitFilename(LazPackage,d2ptUnit,
+          if not CheckAddingPackageUnit(LazPackage,d2ptUnit,
             PackageEditors.OnGetIDEFileInfo,AFilename) then exit;
         end else if PkgFile.FileType=pftVirtualUnit then begin
-          if not CheckAddingUnitFilename(LazPackage,d2ptVirtualUnit,
+          if not CheckAddingPackageUnit(LazPackage,d2ptVirtualUnit,
             PackageEditors.OnGetIDEFileInfo,AFilename) then exit;
         end else begin
-          if not CheckAddingUnitFilename(LazPackage,d2ptFile,
+          if not CheckAddingPackageUnit(LazPackage,d2ptFile,
             PackageEditors.OnGetIDEFileInfo,AFilename) then exit;
         end;
         PkgFile.Filename:=AFilename;
@@ -683,7 +685,7 @@ begin
         Dependency:=TPkgDependency(Item);
         // Re-add dependency
         fForcedFlags:=[pefNeedUpdateRemovedFiles,pefNeedUpdateRequiredPkgs];
-        if CheckAddingDependency(LazPackage,Dependency,false,true)<>mrOk then exit;
+        if CheckAddingPackageDependency(LazPackage,Dependency,false,true)<>mrOk then exit;
         LazPackage.RemoveRemovedDependency(Dependency);
         PackageGraph.AddDependencyToPackage(LazPackage,Dependency);
       end;
@@ -1064,7 +1066,7 @@ end;
 
 procedure TPackageEditorForm.mnuAddNewReqrClick(Sender: TObject);
 begin
-  ShowAddDialogEx(d2ptRequiredPkg);
+  ShowAddDepDialog;
 end;
 
 procedure TPackageEditorForm.mnuAddNewFileClick(Sender: TObject);
@@ -2107,7 +2109,6 @@ begin
   end;
 end;
 
-
 function TPackageEditorForm.ShowAddDialog(var DlgPage: TAddToPkgType): TModalResult;
 var
   IgnoreUnitPaths, IgnoreIncPaths: TFilenameToStringTree;
@@ -2182,16 +2183,6 @@ var
     PackageEditors.CreateNewFile(Self,AddParams);
   end;
 
-  procedure AddRequiredPkg(AddParams: TAddToPkgResult);
-  begin
-    // add dependency
-    fForcedFlags:=[pefNeedUpdateRequiredPkgs];
-    PackageGraph.AddDependencyToPackage(LazPackage,AddParams.Dependency);
-    FreeAndNil(FNextSelectedPart);
-    FNextSelectedPart:=TPENodeData.Create(penDependency,
-                                        AddParams.Dependency.PackageName,false);
-  end;
-
   procedure AddFile(AddParams: TAddToPkgResult);
   begin
     // add file
@@ -2228,7 +2219,6 @@ begin
         d2ptUnit:         AddUnit(AddParams);
         d2ptVirtualUnit:  AddVirtualUnit(AddParams);
         d2ptNewComponent: AddNewComponent(AddParams);
-        d2ptRequiredPkg:  AddRequiredPkg(AddParams);
         d2ptFile:         AddFile(AddParams);
       end;
       OldParams:=AddParams;
@@ -2237,11 +2227,42 @@ begin
       OldParams.Free;
     end;
     AddParams.Free;
-    Assert(LazPackage.Modified, 'ShowAddDialog: LazPackage.Modified = False');
+    Assert(LazPackage.Modified, 'TPackageEditorForm.ShowAddDialog: LazPackage.Modified = False');
   finally
     IgnoreUnitPaths.Free;
     IgnoreIncPaths.Free;
     PackageGraph.EndUpdate;
+  end;
+end;
+
+function TPackageEditorForm.ShowAddDepDialog: TModalResult;
+var
+  Deps: TPkgDependencyList;
+  i: Integer;
+begin
+  if LazPackage.ReadOnly then begin
+    UpdateButtons;
+    exit(mrCancel);
+  end;
+  Result:=ShowAddPkgDependencyDlg(LazPackage, Deps);
+  DebugLn(['TPackageEditorForm.ShowAddDepDialog: Deps.Count=', Deps.Count]);
+  try
+    if (Result<>mrOk) or (Deps.Count=0) then exit;
+    PackageGraph.BeginUpdate(false);
+    try
+      // add all dependencies
+      fForcedFlags := [pefNeedUpdateRequiredPkgs];
+      FreeAndNil(FNextSelectedPart);
+      for i := 0 to Deps.Count-1 do
+        PackageGraph.AddDependencyToPackage(LazPackage, Deps[i]);
+      FNextSelectedPart := TPENodeData.Create(penDependency,
+                                            Deps[Deps.Count-1].PackageName, false);
+      Assert(LazPackage.Modified, 'TPackageEditorForm.ShowAddDepDialog: LazPackage.Modified = False');
+    finally
+      PackageGraph.EndUpdate;
+    end;
+  finally
+    Deps.Free;
   end;
 end;
 

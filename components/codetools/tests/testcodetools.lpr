@@ -20,8 +20,14 @@ program testcodetools;
 {$mode objfpc}{$H+}
 
 uses
-  Classes, sysutils, consoletestrunner, dom, fpcunit, CodeToolManager,
-  CodeToolsConfig, LazLogger, finddeclarationtests, RefactoringTests,
+  Classes, sysutils, consoletestrunner, dom, fpcunit, LazLogger,
+  CodeToolManager, CodeToolsConfig,
+  testglobals,
+  TestBasicCodetools, TestCTRangeScan, TestMethodJumpTool, TestStdCodetools,
+  TestFinddeclaration, TestCompleteBlock, TestRefactoring,
+  // non Pascal
+  TestCfgScript, TestCTH2Pas, TestCTXMLFixFragments,
+  // compile test files to make sure they are valid Pascal
   fdt_classhelper,
   {$IF FPC_FULLVERSION >= 30101}
   fdt_typehelper,
@@ -51,6 +57,7 @@ type
 
     procedure ExtendXmlDocument(Doc: TXMLDocument); override;
   public
+    constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
   end;
 
@@ -120,8 +127,8 @@ var
   var
     n: TDOMElement;
   begin
-    n := Doc.CreateElement(WideString(name));
-    n.AppendChild(Doc.CreateTextNode(WideString(value)));
+    n := Doc.CreateElement(DOMString(name));
+    n.AppendChild(Doc.CreateTextNode(DOMString(value)));
     env.AppendChild(n);
   end;
 begin
@@ -133,6 +140,13 @@ begin
   AddElement('Submitter', FSubmitter);
   AddElement('Machine', FMachine);
   Doc.FirstChild.AppendChild(env);
+end;
+
+constructor TCTTestRunner.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  DefaultFormat:=fPlain;
+  DefaultRunAllTests:=true;
 end;
 
 var

@@ -1910,6 +1910,14 @@ msgstr ""
 msgid "Foreground"
 msgstr "Colore primo piano"
 
+#: lazarusidestrconsts.dlgformtitlebarchangesobjectinspector
+msgid "Change Object Inspector contents on clicking form title bar"
+msgstr ""
+
+#: lazarusidestrconsts.dlgformtitlebarchangesobjectinspectorhint
+msgid "Show a form's properties in Object Inspector by clicking on its title bar."
+msgstr ""
+
 #: lazarusidestrconsts.dlgforwardprocsinsertpolicy
 msgid "Procedure insert policy"
 msgstr "Criterio di inserimento procedure"
@@ -5563,6 +5571,10 @@ msgstr "Controlla opzioni"
 msgctxt "lazarusidestrconsts.lischecksearchpathpackagetryacleanrebuildcheckimpleme"
 msgid ". Check search path of package %s, try a clean rebuild, check implementation uses sections."
 msgstr ". Verifica il percorso di ricerca del pacchetto %s, prova con un pulisci e ricostruisci, verifica la sezione uses in implementation."
+
+#: lazarusidestrconsts.lischeckthenexttokeninsourceandaddasemicolonifneeded
+msgid "Check the next token in source and add a semicolon if needed."
+msgstr ""
 
 #: lazarusidestrconsts.lischeckthetargetoscpulclwidgettypemaybeyouhavetoreco
 msgid "%s Check the target (OS, CPU, LCL widget type). Maybe you have to recompile the package for this target or set another target for the project."
@@ -10222,6 +10234,10 @@ msgstr "inserisci testa della procedura"
 msgid "insert procedure name"
 msgstr "inserisci il nome della procedura"
 
+#: lazarusidestrconsts.lisinsertsemicolonifneeded
+msgid "Insert semicolon if needed"
+msgstr ""
+
 #: lazarusidestrconsts.lisinserttime
 msgid "insert time"
 msgstr "inserisci l'ora"
@@ -13956,6 +13972,10 @@ msgstr "? (Attivato)"
 msgid "On break line (i.e. return or enter key)"
 msgstr "Su riga di break (es. tasto return o enter)"
 
+#: lazarusidestrconsts.lisonly32bit
+msgid "only 32bit"
+msgstr ""
+
 #: lazarusidestrconsts.lisonlyavailableonwindowsrunthetoolhidden
 msgid "Only available on Windows. Run the tool hidden."
 msgstr ""
@@ -16310,7 +16330,7 @@ msgid ""
 "i 0 count-1 forb|\n"
 "Here $PrevWord(0)=forb, $PrevWord(1)=i, $PrevWord(2)=0, $PrevWord(3)=count-1\n"
 "\n"
-"In the end of your template use $PrevWord(-1) which expands to an empty string, but performs an importaint operation of wiping off all of the $PrevWords found. In addition here is a regexp that is used to detect words for this macro: [\\w\\-+*\\(\\)\\[\\].^@]+\n"
+"In the end of your template use $PrevWord(-1) which expands to an empty string, but performs an important operation of wiping off all of the $PrevWords found. In addition here is a regexp that is used to detect words for this macro: [\\w\\-+*\\(\\)\\[\\].^@]+\n"
 msgstr ""
 
 #: lazarusidestrconsts.lisreturnslistofallvaluesofcasevariableinfrontofvaria

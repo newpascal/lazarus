@@ -569,6 +569,7 @@ type
     procedure OnDesignerShowObjectInspector(Sender: TObject);
     procedure OnDesignerShowAnchorEditor(Sender: TObject);
     procedure OnDesignerShowTabOrderEditor(Sender: TObject);
+    procedure OnDesignerChangeParent(Sender: TObject);
 
     // control selection
     procedure OnControlSelectionChanged(Sender: TObject; ForceUpdate: Boolean);
@@ -1584,9 +1585,9 @@ begin
   Screen.AddHandlerActiveFormChanged(@HandleScreenChangedForm);
   Screen.AddHandlerActiveControlChanged(@HandleScreenChangedControl);
   IDEComponentPalette.OnClassSelected := @ComponentPaletteClassSelected;
-  MainIDEBar.SetupHints;
   SetupIDEWindowsLayout;
   RestoreIDEWindows;
+  MainIDEBar.SetupHints;
   MainIDEBar.InitPaletteAndCoolBar;
   IDEWindowCreators.AddLayoutChangedHandler(@HandleLayoutChanged);
   // make sure the main IDE bar is always shown
@@ -3115,7 +3116,7 @@ end;
 procedure TMainIDE.mnuCleanDirectoryClicked(Sender: TObject);
 begin
   if Project1=nil then exit;
-  ShowCleanDirectoryDialog(Project1.ProjectDirectory,GlobalMacroList);
+  ShowCleanDirectoryDialog(Project1.Directory,GlobalMacroList);
 end;
 
 procedure TMainIDE.OnSrcNotebookFileNew(Sender: TObject);
@@ -3490,11 +3491,7 @@ begin
     OnForwardKeyToObjectInspector:=@ForwardKeyToObjectInspector;
     OnShowAnchorEditor:=@OnDesignerShowAnchorEditor;
     OnShowTabOrderEditor:=@OnDesignerShowTabOrderEditor;
-    if Assigned(ObjectInspector1) then
-    begin
-      OnHasParentCandidates:=@ObjectInspector1.HasParentCandidates;
-      OnChangeParent:=@ObjectInspector1.ChangeParent;
-    end;
+    OnChangeParent:=@OnDesignerChangeParent;
     ShowEditorHints:=EnvironmentOptions.ShowEditorHints;
     ShowComponentCaptions:=EnvironmentOptions.ShowComponentCaptions;
   end;
@@ -5527,7 +5524,7 @@ begin
   if Project1.IsVirtual then
     CodeToolBoss.SetGlobalValue(ExternalMacroStart+'ProjPath',VirtualDirectory)
   else
-    CodeToolBoss.SetGlobalValue(ExternalMacroStart+'ProjPath',Project1.ProjectDirectory)
+    CodeToolBoss.SetGlobalValue(ExternalMacroStart+'ProjPath',Project1.Directory)
 end;
 
 function TMainIDE.DoNewFile(NewFileDescriptor: TProjectFileDescriptor;
@@ -6218,7 +6215,7 @@ begin
           if not FileExistsUTF8(ARecentProject) then
             EnvironmentOptions.RemoveFromRecentProjectFiles(ARecentProject)
           else
-            SourceFileMgr.AddRecentProjectFileToEnvironment(ARecentProject);
+            SourceFileMgr.AddRecentProjectFile(ARecentProject);
         end;
       end;
     tpws_examples:
@@ -6233,6 +6230,15 @@ end;
 
 function TMainIDE.DoOpenProjectFile(AFileName: string; Flags: TOpenFlags): TModalResult;
 var
+  OriginalFilename: string;
+
+  procedure RemoveRecentProjectFile;
+  begin
+    EnvironmentOptions.RemoveFromRecentProjectFiles(OriginalFilename);
+    SourceFileMgr.RemoveRecentProjectFile(AFileName);
+  end;
+
+var
   Ext,AText,ACaption: string;
   DiskFilename: String;
   FileReadable: Boolean;
@@ -6242,16 +6248,23 @@ begin
   //debugln('TMainIDE.DoOpenProjectFile A "'+AFileName+'"');
   {$IFDEF IDE_MEM_CHECK}CheckHeapWrtMemCnt('TMainIDE.DoOpenProjectFile A');{$ENDIF}
   if ExtractFileNameOnly(AFileName)='' then exit;
+  OriginalFilename:=AFileName;
   //debugln('TMainIDE.DoOpenProjectFile A1 "'+AFileName+'"');
   AFilename:=ExpandFileNameUTF8(TrimFilename(AFilename));
   //debugln('TMainIDE.DoOpenProjectFile A2 "'+AFileName+'"');
   if not FilenameIsAbsolute(AFilename) then
     RaiseException('TMainIDE.DoOpenProjectFile: buggy ExpandFileNameUTF8');
-  AFilename:=GetPhysicalFilenameCached(AFilename,false);
+  DiskFilename:=GetPhysicalFilenameCached(AFilename,false);
+  if DiskFilename<>AFilename then begin
+    // e.g. encoding changed
+    DebugLn(['Warning: (lazarus) [TMainIDE.DoOpenProjectFile] Fixing file name: ',AFilename,' -> ',DiskFilename]);
+    AFilename:=DiskFilename;
+  end;
 
   // check if it is a directory
   if DirPathExistsCached(AFileName) then begin
     debugln(['Error: (lazarus) [TMainIDE.DoOpenProjectFile] file is a directory']);
+    RemoveRecentProjectFile;
     exit;
   end;
 
@@ -6260,6 +6273,7 @@ begin
     ACaption:=lisFileNotFound;
     AText:=Format(lisPkgMangFileNotFound, [AFilename]);
     Result:=IDEMessageDialog(ACaption, AText, mtError, [mbAbort]);
+    RemoveRecentProjectFile;
     exit;
   end;
 
@@ -6294,7 +6308,7 @@ begin
   end;
 
   if ofAddToRecent in Flags then
-    SourceFileMgr.AddRecentProjectFileToEnvironment(AFileName);
+    SourceFileMgr.AddRecentProjectFile(AFileName);
 
   if not DoResetToolStatus([rfInteractive, rfSuccessOnTrigger]) then exit;
 
@@ -6333,7 +6347,7 @@ begin
   // publish project
   //debugln('TMainIDE.DoPublishProject B');
   Result:=SourceFileMgr.PublishModule(Project1.PublishOptions,
-    Project1.ProjectDirectory, MainBuildBoss.GetProjectPublishDir);
+    Project1.Directory, MainBuildBoss.GetProjectPublishDir);
 end;
 
 procedure TMainIDE.DoShowProjectInspector(State: TIWGetFormState);
@@ -6608,7 +6622,7 @@ begin
 
     // get main source filename
     if not Project1.IsVirtual then begin
-      WorkingDir:=Project1.ProjectDirectory;
+      WorkingDir:=Project1.Directory;
       SrcFilename:=CreateRelativePath(Project1.MainUnitInfo.Filename,WorkingDir);
     end else begin
       WorkingDir:=GetTestBuildDirectory;
@@ -6679,7 +6693,7 @@ begin
                                         Project1.CompilerOptions.ExecuteBefore);
       if (AReason in ToolBefore.CompileReasons) then begin
         Result:=Project1.CompilerOptions.ExecuteBefore.Execute(
-               Project1.ProjectDirectory, lisProject2+lisExecutingCommandBefore,
+               Project1.Directory, lisProject2+lisExecutingCommandBefore,
                aCompileHint);
         if Result<>mrOk then
         begin
@@ -6774,6 +6788,8 @@ begin
           exit;
         end;
 
+        WarnSuspiciousCompilerOptions('Project checks','',CompilerParams);
+
         StartTime:=Now;
         Result:=TheCompiler.Compile(Project1,
                                 WorkingDir,CompilerFilename,CompilerParams,
@@ -6823,7 +6839,7 @@ begin
       // no need to check for mrOk, we are exit if it wasn't
       if (AReason in ToolAfter.CompileReasons) then begin
         Result:=Project1.CompilerOptions.ExecuteAfter.Execute(
-                            Project1.ProjectDirectory,
+                            Project1.Directory,
                             lisProject2+lisExecutingCommandAfter,aCompileHint);
         if Result<>mrOk then
         begin
@@ -7715,7 +7731,7 @@ begin
       BuildFileDialog.RunFileIfActive:=ActiveUnitInfo.RunFileIfActive;
       BuildFileDialog.MacroList:=GlobalMacroList;
       BuildFileDialog.Filename:=
-        CreateRelativePath(ActiveUnitInfo.Filename,Project1.ProjectDirectory);
+        CreateRelativePath(ActiveUnitInfo.Filename,Project1.Directory);
       if BuildFileDialog.ShowModal<>mrOk then begin
         DebugLn(['Error: (lazarus) TMainIDE.DoConfigBuildFile cancelled']);
         Result:=mrCancel;
@@ -9204,8 +9220,8 @@ end;
 procedure TMainIDE.CodeToolBossGetVirtualDirectoryAlias(Sender: TObject;
   var RealDir: string);
 begin
-  if (Project1<>nil) and (Project1.ProjectDirectory<>'') then
-    RealDir:=Project1.ProjectDirectory;
+  if (Project1<>nil) and (Project1.Directory<>'') then
+    RealDir:=Project1.Directory;
 end;
 
 procedure TMainIDE.CodeToolBossGetVirtualDirectoryDefines(DefTree: TDefineTree;
@@ -9846,7 +9862,7 @@ var
         CurFileMask:=ChompPathDelim(CurFileMask);
         if not FilenameIsAbsolute(CurFileMask) then begin
           if Project1.IsVirtual then continue;
-          CurFileMask:=AppendPathDelim(Project1.ProjectDirectory+CurFileMask);
+          CurFileMask:=AppendPathDelim(Project1.Directory+CurFileMask);
         end;
         CurFileMask:=TrimFilename(CurFileMask);
         OnlyPascalSources:=false;
@@ -11078,6 +11094,9 @@ begin
   {$ENDIF}
   DisplayState:= dsForm;
   LastFormActivated := (Sender as TDesigner).Form;
+  if EnvironmentOptions.FormTitleBarChangesObjectInspector
+  and (TheControlSelection.SelectionForm <> LastFormActivated) then
+    TheControlSelection.AssignPersistent(LastFormActivated);
   {$IFDEF VerboseComponentPalette}
   DebugLn('***');
   DebugLn(['** TMainIDE.OnDesignerActivated: Calling UpdateIDEComponentPalette(true)',
@@ -11144,7 +11163,7 @@ var
     ConflictingClass: TClass;
     s: string;
   begin
-    if SysUtils.CompareText(ActiveUnitInfo.SrcUnitName,AName)=0 then
+    if SysUtils.CompareText(ActiveUnitInfo.Unit_Name,AName)=0 then
       raise Exception.Create(Format(
         lisTheUnitItselfHasAlreadyTheNamePascalIdentifiersMus, [AName]));
     if ActiveUnitInfo.IsPartOfProject then begin
@@ -11465,8 +11484,8 @@ begin
     SaveDialog.FileName:=SaveAsFilename;
     // if this is a project file, start in project directory
     if AnUnitInfo.IsPartOfProject and (not Project1.IsVirtual)
-    and (not FileIsInPath(SaveDialog.InitialDir,Project1.ProjectDirectory)) then
-      SaveDialog.InitialDir:=Project1.ProjectDirectory;
+    and (not FileIsInPath(SaveDialog.InitialDir,Project1.Directory)) then
+      SaveDialog.InitialDir:=Project1.Directory;
     // if this is a package file, then start in package directory
     PkgDefaultDirectory:=PkgBoss.GetDefaultSaveDirectoryForFile(AnUnitInfo.Filename);
     if (PkgDefaultDirectory<>'')
@@ -11509,6 +11528,13 @@ end;
 procedure TMainIDE.OnDesignerShowTabOrderEditor(Sender: TObject);
 begin
   DoViewTabOrderEditor;
+end;
+
+procedure TMainIDE.OnDesignerChangeParent(Sender: TObject);
+begin
+  if ObjectInspector1=nil then
+    CreateObjectInspector(false);
+  ObjectInspector1.ChangeParent;
 end;
 
 procedure TMainIDE.OnSrcNoteBookAddJumpPoint(ACaretXY: TPoint;
@@ -11748,6 +11774,7 @@ begin
       ObjectInspector1.DisableAutoSizing{$IFDEF DebugDisableAutoSizing}('TMainIDE.CreateObjectInspector'){$ENDIF};
     exit;
   end;
+
   IDEWindowCreators.CreateForm(ObjectInspector1,TObjectInspectorDlg,
      aDisableAutoSize,OwningComponent);
   ObjectInspector1.Name:=DefaultObjectInspectorName;
@@ -12130,7 +12157,7 @@ begin
     OkToAdd:=SourceFileMgr.CheckDirIsInSearchPath(AnUnitInfo,False,False);
     if (pfMainUnitHasUsesSectionForAllUnits in Project1.Flags) then begin
       AnUnitInfo.ReadUnitNameFromSource(false);
-      ShortUnitName:=AnUnitInfo.SrcUnitName;
+      ShortUnitName:=AnUnitInfo.Unit_Name;
       if (ShortUnitName<>'') then begin
         if CodeToolBoss.AddUnitToMainUsesSectionIfNeeded(
                        Project1.MainUnitInfo.Source,ShortUnitName,'') then begin

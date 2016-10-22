@@ -109,6 +109,7 @@ type
     procedure SetName(const NewName: TComponentName); override;
     procedure UpdateIDAsString;
     procedure VersionChanged(Sender: TObject); virtual;
+    function GetDirectory: string; override;
   public
     procedure AssignOptions(Source: TPersistent); virtual;
     constructor Create; virtual; reintroduce;
@@ -618,6 +619,12 @@ begin
   UpdateIDAsString;
 end;
 
+function TLazPackageID.GetDirectory: string;
+begin
+  raise Exception.Create(''); // just an ID, no file
+  Result:='';
+end;
+
 procedure TLazPackageID.AssignOptions(Source: TPersistent);
 var
   aSource: TLazPackageID;
@@ -634,24 +641,35 @@ end;
 
 function TLazPackageID.StringToID(const s: string): boolean;
 var
-  IdentEndPos: Integer;
-  StartPos: Integer;
+  IdentEndPos: PChar;
+  StartPos: PChar;
+
+  function ReadIdentifier: boolean;
+  begin
+    Result:=false;
+    while IdentEndPos^ in ['a'..'z','A'..'Z','0'..'9','_'] do begin
+      inc(IdentEndPos);
+      Result:=true;
+    end;
+  end;
+
 begin
   Result:=false;
-  IdentEndPos:=1;
-  while (IdentEndPos<=length(s))
-  and (s[IdentEndPos] in ['a'..'z','A'..'Z','0'..'9','_'])
-  do
+  if s='' then exit;
+  IdentEndPos:=PChar(s);
+  repeat
+    if not ReadIdentifier then exit;
+    if IdentEndPos^<>'.' then break;
     inc(IdentEndPos);
-  if IdentEndPos=1 then exit;
-  Name:=copy(s,1,IdentEndPos-1);
+  until false;
+  Name:=copy(s,1,IdentEndPos-PChar(s));
   StartPos:=IdentEndPos;
-  while (StartPos<=length(s)) and (s[StartPos]=' ') do inc(StartPos);
+  while StartPos^=' ' do inc(StartPos);
   if StartPos=IdentEndPos then begin
     Version.Clear;
     Version.Valid:=pvtNone;
   end else begin
-    if not Version.ReadString(copy(s,StartPos,length(s))) then exit;
+    if not Version.ReadString(StartPos) then exit;
   end;
   Result:=true;
 end;

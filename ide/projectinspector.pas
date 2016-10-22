@@ -63,8 +63,9 @@ uses
   PackageIntf,
   // IDE
   LazarusIDEStrConsts, IDEProcs, DialogProcs, IDEOptionDefs, EnvironmentOpts,
-  PackageDefs, Project, PackageEditor, AddToProjectDlg, InputHistory;
-  
+  PackageDefs, Project, PackageEditor, AddToProjectDlg, AddPkgDependencyDlg,
+  InputHistory, ProjPackChecks;
+
 type
   TOnAddUnitToProject =
     function(Sender: TObject; AnUnitInfo: TUnitInfo): TModalresult of object;
@@ -173,6 +174,7 @@ type
     procedure AddMenuItemClick(Sender: TObject);
     function AddOneFile(aFilename: string): TModalResult;
     procedure DoAddMoreDialog(AInitTab: TAddToProjectType);
+    procedure DoAddDepDialog;
     procedure FreeNodeData(Typ: TPENodeType);
     function CreateNodeData(Typ: TPENodeType; aName: string; aRemoved: boolean): TPENodeData;
     procedure SetDependencyDefaultFilename(AsPreferred: boolean);
@@ -340,7 +342,7 @@ begin
   OpenDialog:=TOpenDialog.Create(nil);
   try
     InputHistories.ApplyFileDialogSettings(OpenDialog);
-    ADirectory:=LazProject.ProjectDirectory;
+    ADirectory:=LazProject.Directory;
     if not FilenameIsAbsolute(ADirectory) then ADirectory:='';
     if ADirectory<>'' then
       OpenDialog.InitialDir:=ADirectory;
@@ -373,7 +375,7 @@ end;
 
 procedure TProjectInspectorForm.mnuAddReqClick(Sender: TObject);
 begin
-  DoAddMoreDialog(a2pRequiredPkg);
+  DoAddDepDialog;
 end;
 
 procedure TProjectInspectorForm.MoveDependencyUpClick(Sender: TObject);
@@ -490,22 +492,34 @@ begin
       UpdateAll;
       EndUpdate;
     end;
-
-  a2pRequiredPkg:
-    begin
-      BeginUpdate;
-      if Assigned(OnAddDependency) then
-        OnAddDependency(Self,AddResult.Dependency);
-      FNextSelectedPart:=AddResult.Dependency;
-      UpdateRequiredPackages;
-      EndUpdate;
-    end;
-
   else
     Showmessage('Not implemented');
   end;
 
   AddResult.Free;
+end;
+
+procedure TProjectInspectorForm.DoAddDepDialog;
+var
+  Deps: TPkgDependencyList;
+  i: Integer;
+  Resu: TModalResult;
+begin
+  Resu:=ShowAddPkgDependencyDlg(LazProject, Deps);
+  try
+    if (Resu<>mrOK) or (Deps.Count=0) or (OnAddDependency=nil) then exit;
+    try
+      BeginUpdate;
+      for i := 0 to Deps.Count-1 do
+        OnAddDependency(Self, Deps[i]);
+      FNextSelectedPart:=Deps[Deps.Count-1];
+      UpdateRequiredPackages;
+    finally
+      EndUpdate;
+    end;
+  finally
+    Deps.Free;
+  end;
 end;
 
 procedure TProjectInspectorForm.CopyMoveToDirMenuItemClick(Sender: TObject);
@@ -773,7 +787,7 @@ begin
       if not NodeData.Removed then continue;
       if not (Item is TPkgDependency) then continue;
       Dependency:=TPkgDependency(Item);
-      if not CheckAddingDependency(LazProject,Dependency) then exit;
+      if not CheckAddingProjectDependency(LazProject,Dependency) then exit;
       if Assigned(OnReAddDependency) then
         OnReAddDependency(Self,Dependency);
     end;
@@ -1274,7 +1288,7 @@ end;
 function TProjectInspectorForm.FilesBaseDirectory: string;
 begin
   if LazProject<>nil then
-    Result:=LazProject.ProjectDirectory
+    Result:=LazProject.Directory
   else
     Result:='';
 end;

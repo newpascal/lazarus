@@ -2720,8 +2720,6 @@ begin
         //debugln(['TIdentCompletionTool.GatherIdentifiers FindCollectionContext ',ExprTypeToString(ExprType)]);
 
         GatherContext := ExprType.Context;
-        if GatherContext.Node<>nil then
-          DebugLn('%d:%d', [GatherContext.Node.StartPos, GatherContext.Node.EndPos]);
         // find class and ancestors if existing (needed for protected identifiers)
         if (GatherContext.Tool = Self) or HasInheritedKeyword then
         begin
@@ -2846,6 +2844,7 @@ begin
           // check missing 'do' after 'with'
           if CurrentIdentifierList.StartUpAtomInFrontIs('WITH')
           and (not CurrentIdentifierList.StartUpAtomBehindIs('DO'))
+          and (not CurrentIdentifierList.StartUpAtomBehindIs('AS'))
           and (CurrentIdentifierList.StartBracketLvl=0)
           and (not (CurrentIdentifierList.StartAtomBehind.Flag in
                  [cafComma,cafPoint,cafRoundBracketOpen,cafEdgedBracketOpen]))
