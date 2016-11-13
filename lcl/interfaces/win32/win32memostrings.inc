@@ -19,7 +19,6 @@ type
     procedure SetUpdateState(Updating: Boolean); override;
   public
     constructor Create(Handle: HWND; TheOwner: TWinControl);
-    destructor Destroy; override;
     procedure Assign(Source: TPersistent); override;
     procedure AddStrings(TheStrings: TStrings); override;
     procedure Clear; override;
@@ -93,12 +92,6 @@ begin
   FOwner := TheOwner;
 end;
 
-destructor TWin32MemoStrings.Destroy;
-begin
-  // do nothing
-  inherited Destroy;
-end;
-
 procedure TWin32MemoStrings.Assign(Source: TPersistent);
 var
   S: TStrings absolute Source;
@@ -140,24 +133,25 @@ end;
 
 procedure TWin32MemoStrings.Insert(Index: integer; const S: string);
 var
-  LineStart: Integer;
+  LineStart, RealCount: Integer;
   NewLine: String;
 begin
-  LineStart := GetLineStart(Index);
-  if Index < GetRealCount then
+  RealCount := GetRealCount;
+  if Index < RealCount then
   begin
     //insert with LineEnding
     LineStart := GetLineStart(Index);
     NewLine := S+LineEnding;
     SendMessageW(FHandle, EM_SETSEL, LineStart, LineStart);
-    SendMessageW(FHandle, EM_REPLACESEL, 0, lparam(PWideChar(UTF8ToUTF16(NewLine))))
+    SendMessageW(FHandle, EM_REPLACESEL, 0, lparam(PWideChar(UTF8ToUTF16(NewLine))));
   end
   else
   begin
     //append with a preceding LineEnding
     LineStart := GetLineStart(Index-1)+GetLineLength(Index-1);
     SendMessageW(FHandle, EM_SETSEL, LineStart, LineStart);
-    if GetRealCount = Count then
+    //check if last line is empty
+    if Get(RealCount - 1) <> '' then
       NewLine := LineEnding+S+LineEnding
     else
       NewLine := S+LineEnding;

@@ -2168,7 +2168,9 @@ msgid "Interface"
 msgstr "Interface"
 
 #: lazarusidestrconsts.dlginsertmethods
-msgid "Insert methods"
+#, fuzzy
+#| msgid "Insert methods"
+msgid "Insert method implementations"
 msgstr "Insérer les méthodes"
 
 #: lazarusidestrconsts.dlginsertsection
@@ -2996,9 +2998,25 @@ msgstr "Créer un ensemble application"
 msgid "Load &Default"
 msgstr "Icône par &défaut"
 
-#: lazarusidestrconsts.dlgpodpiaware
-msgid "Enabled DPI Awareness (for Vista+)"
-msgstr "Activer \"DPI Awareness\" (pour Vista+)"
+#: lazarusidestrconsts.dlgpodpiawareness
+msgid "DPI awareness"
+msgstr ""
+
+#: lazarusidestrconsts.dlgpodpiawarenessoff
+msgid "off"
+msgstr ""
+
+#: lazarusidestrconsts.dlgpodpiawarenessoldoffnewpermonitor
+msgid "Vista-8: off, 8.1+: per monitor"
+msgstr ""
+
+#: lazarusidestrconsts.dlgpodpiawarenessoldonnewpermonitor
+msgid "Vista-8: on, 8.1+: per monitor"
+msgstr ""
+
+#: lazarusidestrconsts.dlgpodpiawarenesson
+msgid "on"
+msgstr ""
 
 #: lazarusidestrconsts.dlgpoexecutionlevel
 msgid "Execution Level"
@@ -7877,6 +7895,10 @@ msgctxt "lazarusidestrconsts.lisdefault"
 msgid "Default"
 msgstr "Valeur par défaut"
 
+#: lazarusidestrconsts.lisdefaultclassvisibilitysectionofnewmethodsforexampl
+msgid "Default class visibility section of new methods. For example code completion on OnShow:="
+msgstr ""
+
 #: lazarusidestrconsts.lisdefaultiscomboboxwithtrueandfalse
 msgid "The default is ComboBox with \"True\" and \"False\" selections"
 msgstr "La valeur par défaut est \"ComboBox\" avec les sélections à \"True\" et  \"False\""
@@ -7884,6 +7906,10 @@ msgstr "La valeur par défaut est \"ComboBox\" avec les sélections à \"True\" 
 #: lazarusidestrconsts.lisdefaultplaceholder
 msgid "(default)"
 msgstr "(par défaut)"
+
+#: lazarusidestrconsts.lisdefaultsectionofmethods
+msgid "Default section of methods"
+msgstr ""
 
 #: lazarusidestrconsts.lisdelayforcompletionlonglinehint
 msgid "Delay for long line hints in completion box"
@@ -10465,6 +10491,10 @@ msgstr "Conserver dans la liste d'installation"
 #: lazarusidestrconsts.liskeepname
 msgid "Keep name"
 msgstr "Préserver le nom"
+
+#: lazarusidestrconsts.liskeepopen
+msgid "Keep open"
+msgstr ""
 
 #: lazarusidestrconsts.liskeeprelativeindentationofmultilinetemplate
 msgid "Keep relative indentation of multi line template"
@@ -13318,6 +13348,10 @@ msgstr "Valeur \"%s\""
 msgid "(was \"%s\")"
 msgstr "(valait \"%s\")"
 
+#: lazarusidestrconsts.lismmwidgetsetavailableforlclproject
+msgid "WidgetSet change is available only for LCL projects"
+msgstr ""
+
 #: lazarusidestrconsts.lismode
 msgid ", Mode: %s"
 msgstr "- Mode : %s"
@@ -13558,6 +13592,14 @@ msgstr "Macro %d"
 #: lazarusidestrconsts.lisnewmacroname2
 msgid "New Macroname"
 msgstr "Nouveau nom de macro"
+
+#: lazarusidestrconsts.lisnewmethodimplementationsareinsertedbetweenexisting
+msgid "New method implementations are inserted between existing methods of this class. Either alphabetically, or as last, or in declaration order."
+msgstr ""
+
+#: lazarusidestrconsts.lisnewmethodsandmembersareinsertedalphabeticallyoradd
+msgid "New method and member declarations in the class..end sections are inserted alphabetically or added last."
+msgstr ""
 
 #: lazarusidestrconsts.lisnewpage
 msgid "New page"
@@ -18605,10 +18647,6 @@ msgstr "Message d'utilisation (option \"-h\")"
 #: lazarusidestrconsts.lisuse
 msgid "Use"
 msgstr "Utiliser"
-
-#: lazarusidestrconsts.lisuseandclose
-msgid "Use and close"
-msgstr "Utiliser et fermer"
 
 #: lazarusidestrconsts.lisuseansistrings
 msgctxt "lazarusidestrconsts.lisuseansistrings"

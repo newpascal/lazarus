@@ -211,6 +211,7 @@ resourcestring
   lisSelectionTool = 'Selection tool';
   lisClickToSelectPalettePage = 'Click to Select Palette Page';
   lisTotalPages = 'Total Pages: %s';
+  lisKeepOpen = 'Keep open';
   
   // macros
   lisCursorColumnInCurrentEditor = 'Cursor column in current editor';
@@ -345,7 +346,6 @@ resourcestring
   lisKMSelectLineEnd = 'Select Line End';
   lisKMSelectPageTop = 'Select Page Top';
   lisKMSelectPageBottom = 'Select Page Bottom';
-  lisUseAndClose = 'Use and close';
   lisMenuSelect = 'Select';
   lisMenuMultiPaste = 'MultiPaste ...';
   lisMenuSelectAll = 'Select All';
@@ -2127,7 +2127,7 @@ resourcestring
   dlgJumpToMethodBody = 'Jump directly to method body';
   dlgInsertClassParts = 'Insert class parts';
   lisNewMethodsAndMembersAreInsertedAlphabeticallyOrAdd = 'New method and '
-    +'member declarations in the class..end sections are inserted alphabetically or added last';
+    +'member declarations in the class..end sections are inserted alphabetically or added last.';
   lisClassCompletion = 'Class Completion';
   dlgAlphabetically = 'Alphabetically';
   dlgCDTLast = 'Last';
@@ -2548,7 +2548,11 @@ resourcestring
   dlgPOUseAppBundle = 'Use Application Bundle for running and debugging';
   dlgPOCreateAppBundle = 'Create Application Bundle';
   dlgPOUseManifest = 'Use manifest file to enable themes';
-  dlgPODpiAware = 'Enabled DPI Awareness (for Vista+)';
+  dlgPODpiAwareness = 'DPI awareness';
+  dlgPODpiAwarenessOff = 'off';
+  dlgPODpiAwarenessOn = 'on';
+  dlgPODpiAwarenessOldOffNewPerMonitor = 'Vista-8: off, 8.1+: per monitor';
+  dlgPODpiAwarenessOldOnNewPerMonitor = 'Vista-8: on, 8.1+: per monitor';
   dlgPOUIAccess = 'UI Access (uiAccess)';
   dlgPOAsInvoker = 'as invoker (asInvoker)';
   dlgPOHighestAvailable = 'highest available (highestAvailable)';
@@ -6215,6 +6219,7 @@ resourcestring
   lisMMOverrideOutputDirectory = 'Override output directory (-FU)';
   lisMMUseSystemEncoding = 'Use system encoding';
   lisMMUseSystemEncodingHint = 'Disable support for UTF-8 default string encoding.';
+  lisMMWidgetSetAvailableForLCLProject = 'WidgetSet change is available only for LCL projects';
   lisPriority = 'Priority';
   lisUDScanningUnits = 'Scanning: %s units ...';
   lisUDFile = 'File: %s';

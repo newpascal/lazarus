@@ -79,7 +79,7 @@ uses
   Classes, SysUtils, CodeToolsStrConsts, CodeTree, CodeAtom, CustomCodeTool,
   SourceLog, KeywordFuncLists, BasicCodeTools, LinkScanner, CodeCache,
   DirectoryCacher, AVL_Tree, PascalParserTool,
-  PascalReaderTool, FileProcs, LazFileUtils, LazUtilities,
+  PascalReaderTool, FileProcs, LazFileUtils, LazUtilities, LazUTF8,
   DefineTemplates, FindDeclarationCache;
 
 type
@@ -629,6 +629,7 @@ type
   //----------------------------------------------------------------------------
   // TFindDeclarationTool is source based and can therefore search for more
   // than declarations:
+type
   TFindSmartFlag = (
     fsfIncludeDirective, // search for include file
     fsfFindMainDeclaration, // stop if already on a declaration
@@ -636,7 +637,11 @@ type
     fsfSkipClassForward  // when a forward class was found, jump further to the class
     );
   TFindSmartFlags = set of TFindSmartFlag;
-  
+const
+  DefaultFindSmartFlags = [fsfIncludeDirective];
+  DefaultFindSmartHintFlags = DefaultFindSmartFlags+[fsfFindMainDeclaration];
+
+type
   TFindSrcStartType = (
     fsstIdentifier
     );
@@ -655,9 +660,20 @@ type
     foeEnumeratorCurrentExprType // expression type of 'enumerator Current'
     );
 
+  TFindFileAtCursorFlag = (
+    ffatNone,
+    ffatUsedUnit,
+    ffatIncludeFile,
+    ffatDisabledIncludeFile,
+    ffatResource,
+    ffatDisabledResource,
+    ffatLiteral,
+    ffatComment,
+    ffatUnit // unit by name
+    );
+  TFindFileAtCursorFlags = set of TFindFileAtCursorFlag;
 const
-  DefaultFindSmartFlags = [fsfIncludeDirective];
-  DefaultFindSmartHintFlags = DefaultFindSmartFlags+[fsfFindMainDeclaration];
+  DefaultFindFileAtCursorAllowed = [Low(TFindFileAtCursorFlag)..high(TFindFileAtCursorFlag)];
 
 type
   //----------------------------------------------------------------------------
@@ -707,8 +723,6 @@ type
       const AFilename: string): TCodeTreeNode;
     function FindUnitFileInAllUsesSections(const AFilename: string;
       CheckMain: boolean = true; CheckImplementation: boolean = true): TCodeTreeNode;
-    function IsIncludeDirectiveAtPos(CleanPos, CleanCodePosInFront: integer;
-      var IncludeCode: TCodeBuffer): boolean;
     function FindEnumInContext(Params: TFindDeclarationParams): boolean;
     // sub methods for FindIdentifierInContext
     function DoOnIdentifierFound(Params: TFindDeclarationParams;
@@ -855,7 +869,6 @@ type
     procedure OnFindUsedUnitIdentifier(Sender: TPascalParserTool;
       IdentifierCleanPos: integer; Range: TEPRIRange;
       Node: TCodeTreeNode; Data: Pointer; var {%H-}Abort: boolean);
-  protected
   public
     constructor Create;
     destructor Destroy; override;
@@ -905,7 +918,7 @@ type
     function FindUnitInAllUsesSections(const AnUnitName: string;
           out NamePos, InPos: TAtomPosition): boolean;
     function GetUnitNameForUsesSection(TargetTool: TFindDeclarationTool): string;
-    function GetUnitForUsesSection(TargetTool: TFindDeclarationTool): string; deprecated;
+    function GetUnitForUsesSection(TargetTool: TFindDeclarationTool): string; deprecated 'use GetUnitNameForUsesSection instead';
     function IsHiddenUsedUnit(TheUnitName: PChar): boolean;
 
     function FindCodeToolForUsedUnit(const AnUnitName, AnUnitInFilename: string;
@@ -918,6 +931,13 @@ type
     procedure GatherUnitAndSrcPath(var UnitPath, CompleteSrcPath: string);
     function SearchUnitInUnitLinks(const TheUnitName: string): string; deprecated;
     function SearchUnitInUnitSet(const TheUnitName: string): string;
+
+    function IsIncludeDirectiveAtPos(CleanPos, CleanCodePosInFront: integer;
+      out IncludeCode: TCodeBuffer): boolean;
+    function FindFileAtCursor(const CursorPos: TCodeXYPosition;
+      out Found: TFindFileAtCursorFlag; out FoundFilename: string;
+      SearchFor: TFindFileAtCursorFlags = DefaultFindFileAtCursorAllowed;
+      StartPos: PCodeXYPosition = nil): boolean;
 
     function FindSmartHint(const CursorPos: TCodeXYPosition;
                     Flags: TFindSmartFlags = DefaultFindSmartHintFlags): string;
@@ -2785,6 +2805,8 @@ end;
 
 function TFindDeclarationTool.GetUnitNameForUsesSection(
   TargetTool: TFindDeclarationTool): string;
+// if unit is already used return ''
+// else return nice name
 var
   UsesNode: TCodeTreeNode;
   Alternative: String;
@@ -3448,11 +3470,12 @@ begin
 end;
 
 function TFindDeclarationTool.IsIncludeDirectiveAtPos(CleanPos,
-  CleanCodePosInFront: integer; var IncludeCode: TCodeBuffer): boolean;
+  CleanCodePosInFront: integer; out IncludeCode: TCodeBuffer): boolean;
 var LinkIndex, CommentStart, CommentEnd: integer;
   SrcLink: TSourceLink;
 begin
   Result:=false;
+  IncludeCode:=nil;
   if (Scanner=nil) then exit;
   LinkIndex:=Scanner.LinkIndexAtCleanPos(CleanPos);
   if (LinkIndex<0) or (LinkIndex>=Scanner.LinkCount-1) then exit;
@@ -3466,6 +3489,291 @@ begin
     IncludeCode:=TCodeBuffer(SrcLink.Code);
     Result:=true;
     exit;
+  end;
+end;
+
+function TFindDeclarationTool.FindFileAtCursor(
+  const CursorPos: TCodeXYPosition; out Found: TFindFileAtCursorFlag; out
+  FoundFilename: string; SearchFor: TFindFileAtCursorFlags;
+  StartPos: PCodeXYPosition): boolean;
+var
+  CleanPos: integer;
+
+  function CheckComment(CommentStart, CommentEnd: integer; Enabled: boolean): boolean;
+  var
+    DirectiveName, Param: string;
+    NewCode: TCodeBuffer;
+    MissingIncludeFile: TMissingIncludeFile;
+    NewCodePtr: Pointer;
+  begin
+    Result:=false;
+    // cursor in comment in parsed code
+    {$IFDEF VerboseFindFileAtCursor}
+    debugln(['TFindDeclarationTool.FindFileAtCursor.CheckComment']);
+    {$ENDIF}
+    if ExtractLongParamDirective(Src,CommentStart,DirectiveName,Param) then begin
+      DirectiveName:=lowercase(DirectiveName);
+      if ((Enabled and (ffatIncludeFile in SearchFor))
+      or (not Enabled and (ffatDisabledIncludeFile in SearchFor)))
+        and (DirectiveName='i') or (DirectiveName='include')
+      then begin
+        // include directive
+        if (Param<>'') and (Param[1]<>'%') then begin
+          // include file directive
+          Result:=true;
+          if Enabled then
+            Found:=ffatIncludeFile
+          else
+            Found:=ffatDisabledIncludeFile;
+          if Enabled and IsIncludeDirectiveAtPos(CleanPos,CommentStart,NewCode) then
+          begin
+            FoundFilename:=NewCode.Filename;
+          end else begin
+            FoundFilename:=ResolveDots(GetForcedPathDelims(Param));
+            // search include file
+            MissingIncludeFile:=nil;
+            if Scanner.SearchIncludeFile(FoundFilename,NewCodePtr,
+              MissingIncludeFile)
+            then
+              FoundFilename:=TCodeBuffer(NewCodePtr).Filename;
+          end;
+          exit;
+        end;
+      end else if ((Enabled and (ffatResource in SearchFor))
+      or (not Enabled and (ffatDisabledResource in SearchFor)))
+        and ((DirectiveName='r') or (DirectiveName='resource'))
+      then begin
+        // resource directive
+        Result:=true;
+        if Enabled then
+          Found:=ffatResource
+        else
+          Found:=ffatDisabledResource;
+        FoundFilename:=ResolveDots(GetForcedPathDelims(Param));
+        if (FoundFilename<>'') and (copy(FoundFilename,1,2)='*.') then begin
+          Delete(FoundFilename,1,1);
+          FoundFilename:=ChangeFileExt(MainFilename,FoundFilename);
+        end else if not FilenameIsAbsolute(FoundFilename) then begin
+          FoundFilename:=ResolveDots(ExtractFilePath(MainFilename)+FoundFilename);
+        end;
+        exit;
+      end;
+    end;
+  end;
+
+  function CheckPlainComments(Source: string; CurAbsPos: integer): boolean;
+  var
+    Filename: String;
+    p, EndPos, FileStartPos, FileEndPos, MinPos, MaxPos: Integer;
+  begin
+    // check if cursor in a comment (ignoring directives)
+    Result:=false;
+    CursorPos.Code.LineColToPosition(CursorPos.Y,CursorPos.X,CurAbsPos);
+    Source:=CursorPos.Code.Source;
+    if (CurAbsPos<1) or (CurAbsPos>length(Source)) then exit;
+    p:=1;
+    repeat
+      p:=FindNextComment(Source,p);
+      if p>CurAbsPos then break;
+      EndPos:=FindCommentEnd(Source,p,Scanner.NestedComments);
+      if EndPos>CurAbsPos then begin
+        // cursor in comment
+        MinPos:=p+1;
+        MaxPos:=EndPos-1;
+        if Source[p]<>'{' then begin
+          inc(MinPos);
+          dec(MaxPos);
+        end;
+        FileStartPos:=CurAbsPos;
+        while (FileStartPos>MinPos) and not (Source[FileStartPos-1] in [#0..#32]) do
+          dec(FileStartPos);
+        FileEndPos:=CurAbsPos;
+        while (FileEndPos<MaxPos) and not (Source[FileEndPos] in [#0..#32]) do
+          inc(FileEndPos);
+        Filename:=TrimFilename(copy(Source,FileStartPos,FileEndPos-FileStartPos));
+        if not FilenameIsAbsolute(Filename) then
+          Filename:=ResolveDots(ExtractFilePath(MainFilename)+Filename);
+        if Scanner.OnLoadSource(Scanner,Filename,false)<>nil then begin
+          Found:=ffatComment;
+          FoundFilename:=Filename;
+          exit(true);
+        end;
+        exit;
+      end;
+      p:=EndPos;
+    until false;
+  end;
+
+  function CheckUnitByWordAtCursor(Source: string; CurAbsPos: integer): boolean;
+  // e.g. 'Sy|sUtils.CompareText'
+  var
+    AnUnitName: String;
+    Code: TCodeBuffer;
+    p: Integer;
+  begin
+    Result:=false;
+    p:=FindStartOfAtom(Source,CurAbsPos);
+    if p<1 then exit;
+    AnUnitName:=GetIdentifier(@Source[p]);
+    Code:=FindUnitSource(AnUnitName,'',false);
+    if Code=nil then exit;
+    Found:=ffatUnit;
+    FoundFilename:=Code.Filename;
+    Result:=true;
+  end;
+
+var
+  CommentStart, CommentEnd, Col, StartCol, CurAbsPos: integer;
+  Node: TCodeTreeNode;
+  aUnitName, UnitInFilename, Line, Literal, aSource: string;
+  NewCode: TCodeBuffer;
+  p, StartP: PChar;
+begin
+  Result:=false;
+  Found:=ffatNone;
+  FoundFilename:='';
+  if StartPos<>nil then
+    StartPos^:=CleanCodeXYPosition;
+  if CursorPos.Code.LineColIsOutside(CursorPos.Y,CursorPos.X) then exit;
+  if CursorPos.Code.LineColIsSpace(CursorPos.Y,CursorPos.X) then exit;
+  if (CursorPos.Y<1) or (CursorPos.Y>CursorPos.Code.LineCount) then exit;
+  {$IFDEF VerboseFindFileAtCursor}
+  debugln(['TFindDeclarationTool.FindFileAtCursor START']);
+  {$ENDIF}
+  if [ffatUsedUnit,ffatIncludeFile,ffatDisabledIncludeFile]*SearchFor<>[]
+  then begin
+    try
+      {$IFDEF VerboseFindFileAtCursor}
+      debugln(['TFindDeclarationTool.FindFileAtCursor search in nodes']);
+      {$ENDIF}
+      BuildTreeAndGetCleanPos(trTillCursor,lsrEnd,CursorPos,CleanPos,
+                    [btSetIgnoreErrorPos,btCursorPosOutAllowed]);
+      Node:=FindDeepestNodeAtPos(CleanPos,false);
+      {$IFDEF VerboseFindFileAtCursor}
+      debugln(['TFindDeclarationTool.FindFileAtCursor has node: ',Node<>nil]);
+      {$ENDIF}
+      if Node<>nil then begin
+        {$IFDEF VerboseFindFileAtCursor}
+        debugln(['TFindDeclarationTool.FindFileAtCursor in node "',Node.DescAsString,'"']);
+        {$ENDIF}
+        // cursor in parsed code
+        if CleanPosIsInComment(CleanPos,Node.StartPos,CommentStart,CommentEnd,true)
+        then begin
+          //debugln(['TFindDeclarationTool.FindFileAtCursor Comment="',copy(Src,CommentStart,CommentEnd-CommentStart),'"']);
+          if (CommentEnd-CommentStart>4)
+          and (Src[CommentStart]='{') and (Src[CommentStart+1]=#3) then begin
+            // cursor in disabled code
+            if CleanPosIsInComment(CleanPos,CommentStart+2,CommentStart,CommentEnd,true)
+            then begin
+              // cursor in disabled comment
+              if CheckComment(CommentStart,CommentEnd,false) then
+                exit(true);
+            end;
+          end else begin
+            // cursor in enabled comment
+            if CheckComment(CommentStart,CommentEnd,true) then
+              exit(true);
+          end;
+        end else begin
+          {$IFDEF VerboseFindFileAtCursor}
+          debugln(['TFindDeclarationTool.FindFileAtCursor in parsed code, not in comment']);
+          {$ENDIF}
+          if Node.Desc in [ctnUseUnitClearName,ctnUseUnitNamespace] then begin
+            Node:=Node.Parent;
+            {$IFDEF VerboseFindFileAtCursor}
+            debugln(['TFindDeclarationTool.FindFileAtCursor node="',Node.DescAsString,'"']);
+            {$ENDIF}
+          end;
+          if Node.Desc=ctnUseUnit then begin
+            {$IFDEF VerboseFindFileAtCursor}
+            debugln(['TFindDeclarationTool.FindFileAtCursor in use unit CleanPos=',CleanPos,' Node=',Node.StartPos,'-',Node.EndPos]);
+            {$ENDIF}
+            if (CleanPos>=Node.StartPos) and (CleanPos<Node.EndPos) then begin
+              // cursor on used unit
+              Found:=ffatUsedUnit;
+              if StartPos<>nil then
+                CleanPosToCaret(Node.StartPos,StartPos^);
+              MoveCursorToNodeStart(Node);
+              ReadNextAtom;
+              aUnitName:=ExtractUsedUnitNameAtCursor(@UnitInFilename);
+              NewCode:=FindUnitSource(aUnitName,UnitInFilename,false);
+              {$IFDEF VerboseFindFileAtCursor}
+              debugln(['TFindDeclarationTool.FindFileAtCursor cursor on used unit "',aUnitName,'" in "',UnitInFilename,'" Found=',NewCode<>nil]);
+              {$ENDIF}
+              if NewCode<>nil then begin
+                FoundFilename:=NewCode.Filename;
+                Result:=true;
+              end else begin
+                FoundFilename:=UnitInFilename;
+                Result:=false;
+              end;
+              exit;
+            end;
+          end;
+        end;
+      end;
+    except
+      on ELinkScannerError do ;
+      on ECodeToolError do ;
+    end;
+  end;
+
+  // fallback: ignore parsed code and read the line at cursor directly
+  if (CursorPos.Y<1) or (CursorPos.Y>CursorPos.Code.LineCount) then exit;
+  Line:=CursorPos.Code.GetLine(CursorPos.Y-1,false);
+  {$IFDEF VerboseFindFileAtCursor}
+  debugln(['TFindDeclarationTool.FindFileAtCursor Line="',copy(Line,1,CursorPos.X-1),'|',copy(Line,CursorPos.X,200),'"']);
+  {$ENDIF}
+  if CursorPos.X>length(Line) then exit;
+  if ffatLiteral in SearchFor then begin
+    // check literal
+    p:=PChar(Line);
+    repeat
+      case p^ of
+      #0:
+        break;
+      '''':
+        begin
+          StartCol:=p-PChar(Line)+1;
+          inc(p);
+          StartP:=p;
+          repeat
+            case p^ of
+            #0,'''': break;
+            else inc(p);
+            end;
+          until false;
+          Col:=p-PChar(Line)+1;
+          writeln('TFindDeclarationTool.FindFileAtCursor Col=',Col,' CursorCol=',CursorPos.X,' Literal=',copy(Line,StartCol+1,p-StartP));
+          if (p>StartP) and (CursorPos.X>=StartCol) and (CursorPos.X<=Col) then begin
+            Literal:=copy(Line,StartCol+1,p-StartP);
+            if not FilenameIsAbsolute(Literal) then
+              Literal:=TrimFilename(ExtractFilePath(Scanner.MainFilename)+Literal);
+            Found:=ffatLiteral;
+            FoundFilename:=Literal;
+            exit(true);
+          end;
+          if p^=#0 then break;
+          // p is now on the ending '
+        end;
+      end;
+      inc(p);
+      inc(Col);
+    until false;
+  end;
+
+  // search without node tree with basic tools
+  CursorPos.Code.LineColToPosition(CursorPos.Y,CursorPos.X,CurAbsPos);
+  aSource:=CursorPos.Code.Source;
+  if (CurAbsPos<1) or (CurAbsPos>length(aSource)) then exit;
+
+  if ffatComment in SearchFor then begin
+    // ignore syntax and only read comments
+    if CheckPlainComments(aSource,CurAbsPos) then exit(true);
+  end;
+
+  if ffatUnit in SearchFor then begin
+    if CheckUnitByWordAtCursor(aSource,CurAbsPos) then exit(true);
   end;
 end;
 

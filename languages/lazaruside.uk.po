@@ -2168,7 +2168,9 @@ msgid "Interface"
 msgstr "Інтерфейс"
 
 #: lazarusidestrconsts.dlginsertmethods
-msgid "Insert methods"
+#, fuzzy
+#| msgid "Insert methods"
+msgid "Insert method implementations"
 msgstr "Вставляти методи"
 
 #: lazarusidestrconsts.dlginsertsection
@@ -2996,9 +2998,25 @@ msgstr "Створити пакет застосунків"
 msgid "Load &Default"
 msgstr "Завантажити &типові"
 
-#: lazarusidestrconsts.dlgpodpiaware
-msgid "Enabled DPI Awareness (for Vista+)"
-msgstr "Програма з DPI (для Vista+)"
+#: lazarusidestrconsts.dlgpodpiawareness
+msgid "DPI awareness"
+msgstr ""
+
+#: lazarusidestrconsts.dlgpodpiawarenessoff
+msgid "off"
+msgstr ""
+
+#: lazarusidestrconsts.dlgpodpiawarenessoldoffnewpermonitor
+msgid "Vista-8: off, 8.1+: per monitor"
+msgstr ""
+
+#: lazarusidestrconsts.dlgpodpiawarenessoldonnewpermonitor
+msgid "Vista-8: on, 8.1+: per monitor"
+msgstr ""
+
+#: lazarusidestrconsts.dlgpodpiawarenesson
+msgid "on"
+msgstr ""
 
 #: lazarusidestrconsts.dlgpoexecutionlevel
 msgid "Execution Level"
@@ -7881,6 +7899,10 @@ msgctxt "lazarusidestrconsts.lisdefault"
 msgid "Default"
 msgstr "Типовий"
 
+#: lazarusidestrconsts.lisdefaultclassvisibilitysectionofnewmethodsforexampl
+msgid "Default class visibility section of new methods. For example code completion on OnShow:="
+msgstr ""
+
 #: lazarusidestrconsts.lisdefaultiscomboboxwithtrueandfalse
 msgid "The default is ComboBox with \"True\" and \"False\" selections"
 msgstr "Типово - розкривний список з елементами \"True\" і \"False\""
@@ -7888,6 +7910,10 @@ msgstr "Типово - розкривний список з елементами
 #: lazarusidestrconsts.lisdefaultplaceholder
 msgid "(default)"
 msgstr "(типово)"
+
+#: lazarusidestrconsts.lisdefaultsectionofmethods
+msgid "Default section of methods"
+msgstr ""
 
 #: lazarusidestrconsts.lisdelayforcompletionlonglinehint
 msgid "Delay for long line hints in completion box"
@@ -10457,6 +10483,10 @@ msgstr "Залишити в списку встановлення"
 #: lazarusidestrconsts.liskeepname
 msgid "Keep name"
 msgstr "Залишати назву"
+
+#: lazarusidestrconsts.liskeepopen
+msgid "Keep open"
+msgstr ""
 
 #: lazarusidestrconsts.liskeeprelativeindentationofmultilinetemplate
 msgid "Keep relative indentation of multi line template"
@@ -13360,6 +13390,10 @@ msgstr "Значення \"%s\""
 msgid "(was \"%s\")"
 msgstr "(було \"%s\")"
 
+#: lazarusidestrconsts.lismmwidgetsetavailableforlclproject
+msgid "WidgetSet change is available only for LCL projects"
+msgstr ""
+
 #: lazarusidestrconsts.lismode
 msgid ", Mode: %s"
 msgstr ", Режим: %s"
@@ -13599,6 +13633,14 @@ msgstr "Макрос %d"
 #: lazarusidestrconsts.lisnewmacroname2
 msgid "New Macroname"
 msgstr "Нова назва макросу"
+
+#: lazarusidestrconsts.lisnewmethodimplementationsareinsertedbetweenexisting
+msgid "New method implementations are inserted between existing methods of this class. Either alphabetically, or as last, or in declaration order."
+msgstr ""
+
+#: lazarusidestrconsts.lisnewmethodsandmembersareinsertedalphabeticallyoradd
+msgid "New method and member declarations in the class..end sections are inserted alphabetically or added last."
+msgstr ""
 
 #: lazarusidestrconsts.lisnewpage
 msgid "New page"
@@ -18648,10 +18690,6 @@ msgstr "Повідомлення використання (опція -h)"
 #: lazarusidestrconsts.lisuse
 msgid "Use"
 msgstr "Використати"
-
-#: lazarusidestrconsts.lisuseandclose
-msgid "Use and close"
-msgstr "Використати і закрити"
 
 #: lazarusidestrconsts.lisuseansistrings
 msgctxt "lazarusidestrconsts.lisuseansistrings"

@@ -819,10 +819,10 @@ begin
         Target:=Nil;
         APath:=Format(ARoot+'/Targets/Target%d/',[i]);
         TargetFileName:=XMLConfig.GetValue(APath+'FileName','');
-        TargetFileName:=TrimFilename(SetDirSeparators(TargetFileName));
+        TargetFileName:=TrimFilename(GetForcedPathDelims(TargetFileName));
         if not FilenameIsAbsolute(TargetFileName) then
           TargetFileName:=TrimFilename(BaseDir+TargetFileName);
-        If (TargetFileName<>'') and FileExistsCached(TargetFileName) then begin
+        if (TargetFileName<>'') and FileExistsCached(TargetFileName) then begin
           Target:=TIDECompileTarget(AddTarget(TargetFileName));
           if pgloLoadRecursively in Options then
             Target.LoadTarget(true);
@@ -897,6 +897,7 @@ begin
         if aTarget.Removed then continue;
         APath:=Format(ARoot+'/Targets/Target%d/',[ACount]);
         RelativeFileName:=ExtractRelativepath(TargetPath,aTarget.FileName);
+        StringReplace(RelativeFileName,'\','/',[rfReplaceAll]); // normalize, so that files look the same x-platform, for less svn changes
         XMLConfig.SetDeleteValue(APath+'FileName',RelativeFileName,'');
         aTarget.SaveGroupSettings(XMLConfig,APath);
         Inc(ACount);

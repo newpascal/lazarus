@@ -4355,13 +4355,15 @@ begin
   if bShow then
   begin
     if not HandleAllocated then CreateHandle;
-    if Assigned(FControls) then
-    begin
-      for n := 0 to FControls.Count - 1 do
-        if TObject(FControls[n]) is TWinControl then
-          TWinControl(FControls[n]).UpdateShowing;
-    end;
   end;
+
+  if Assigned(FControls) then
+  begin
+    for n := 0 to FControls.Count - 1 do
+      if TObject(FControls[n]) is TWinControl then
+        TWinControl(FControls[n]).UpdateShowing;
+  end;
+
   if not HandleAllocated then
   begin
     {$IFDEF VerboseShowing}
@@ -6315,6 +6317,7 @@ end;
 procedure TWinControl.RemoveControl(AControl: TControl);
 var
   AWinControl: TWinControl;
+  AGrControl: TGraphicControl;
 begin
   DisableAutoSizing{$IFDEF DebugDisableAutoSizing}('TWinControl.RemoveControl'){$ENDIF};
   try
@@ -6327,8 +6330,16 @@ begin
         AWinControl.DestroyHandle;
     end
     else
+    begin
+      if AControl is TGraphicControl then
+      begin
+        AGrControl := TGraphicControl(AControl);
+        if (AGrControl.Canvas<>nil) then
+          TControlCanvas(AGrControl.Canvas).FreeHandle;
+      end;
       if HandleAllocated then
         AControl.InvalidateControl(AControl.IsVisible, False, True);
+    end;
     Remove(AControl);
     Perform(CM_CONTROLLISTCHANGE, WParam(AControl), LParam(False));
     if not (csDestroying in ComponentState) then

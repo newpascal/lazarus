@@ -711,12 +711,14 @@ type
     FTextHint: TTranslateString;
     FTextHintShowing: Boolean;
     FSettingTextHint: Boolean;
-    FTextHintFontColor: TColor;
-    FTextHintFontStyle: TFontStyles;
+    FTextHintFontColor: TColor;      //Remove in 1.9
+    FTextHintFontStyle: TFontStyles; //Remove in 1.9
     FSavedFontColor: TColor;
     FSavedFontStyle: TFontStyles;
     FSavedParentFont: Boolean;
     FSavedPasswordChar: Char;
+    function GetTextHintFontColor: TColor;       //Remove in 1.9
+    function GetTextHintFontStyle: TFontStyles;  //Remove in 1.9
     procedure ShowTextHint;
     procedure HideTextHint;
     procedure SetAlignment(const AValue: TAlignment);
@@ -754,7 +756,7 @@ type
     procedure SetSelLength(Val: integer); virtual;
     procedure SetSelStart(Val: integer); virtual;
     procedure SetSelText(const Val: string); virtual;
-    procedure SetTextHint(AValue: TTranslateString); virtual;
+    procedure SetTextHint(const AValue: TTranslateString); virtual;
     function ChildClassAllowed(ChildClass: TClass): boolean; override;
     class function GetControlClassDefaultSize: TSize; override;
     procedure MouseUp(Button: TMouseButton; Shift:TShiftState; X, Y: Integer); override;
@@ -799,8 +801,8 @@ type
     property TabStop default true;
     property Text;
     property TextHint: TTranslateString read GetTextHint write SetTextHint;
-    property TextHintFontColor: TColor read FTextHintFontColor write FTextHintFontColor default clGrayText;
-    property TextHintFontStyle: TFontStyles read FTextHintFontStyle write FTextHintFontStyle default [fsItalic];
+    property TextHintFontColor: TColor read GetTextHintFontColor write FTextHintFontColor default clGrayText; deprecated 'Will be removed in the future'; //deprecated in 1.7
+    property TextHintFontStyle: TFontStyles read GetTextHintFontStyle write FTextHintFontStyle default [fsItalic]; deprecated 'Will be removed in the future';
   end;
 
 
@@ -836,6 +838,7 @@ type
     procedure SetVertScrollBar(const AValue: TMemoScrollBar);
   protected
     class procedure WSRegisterClass; override;
+    function CanShowTextHint: Boolean; override;
     procedure CreateParams(var Params: TCreateParams); override;
     procedure InitializeWnd; override;
     procedure FinalizeWnd; override;
@@ -936,8 +939,6 @@ type
     property TabOrder;
     property Text;
     property TextHint;
-    property TextHintFontColor;
-    property TextHintFontStyle;
     property Visible;
   end;
 
@@ -1654,4 +1655,7 @@ end;
 
 {$I customstatictext.inc}
 
+initialization
+  RegisterPropertyToSkip(TCustomEdit, 'TextHintFontColor','Used in a previous version of Lazarus','');
+  RegisterPropertyToSkip(TCustomEdit, 'TextHintFontStyle','Used in a previous version of Lazarus','');
 end.

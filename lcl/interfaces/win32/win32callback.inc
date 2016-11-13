@@ -1208,7 +1208,8 @@ begin
     {$ifndef RedirectDestroyMessages}and (Msg <> WM_NCDESTROY){$endif}
     and not ((Msg >= WM_CUT) and (Msg <= WM_CLEAR))
     and ((Msg < WM_KEYFIRST) or (Msg > WM_KEYLAST))
-    and ((Msg < WM_MOUSEFIRST) or (Msg > WM_MOUSELAST)) then
+    and ((Msg < WM_MOUSEFIRST) or (Msg > WM_MOUSELAST))
+    and (Msg <> WM_CONTEXTMENU) then
   begin
     WinResult := CallDefaultWindowProc(Window, Msg, WParam, LParam);
     Exit(True);
@@ -1955,6 +1956,8 @@ begin
     end;
     IgnoreNextCharWindow := 0;
   end;
+  if IgnoreKeyUp and (Msg = WM_KEYUP) then
+    Exit(1);
 
   case Msg of
     WM_NULL:
@@ -2155,6 +2158,7 @@ begin
       DoMsgKeyDownUp(CN_KEYDOWN, Result);
       WindowInfo^.IMEComposed:=False;
       IgnoreNextCharWindow := Window;
+      IgnoreKeyUp := False;
     end;
     WM_KEYUP:
     begin
@@ -2462,7 +2466,7 @@ begin
 
   // respond to result of LCL handling the message
   case PLMsg^.Msg of
-    LM_ERASEBKGND, LM_SETCURSOR, LM_RBUTTONUP, LM_CONTEXTMENU, LM_MOUSEWHEEL:
+    LM_ERASEBKGND, LM_SETCURSOR, LM_RBUTTONUP, LM_CONTEXTMENU:
       if PLMsg^.Result = 0 then
         WinProcess := True;
 

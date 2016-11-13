@@ -3500,7 +3500,7 @@ begin
     end;
     if (Result = 0) and not (ssoReplaceAll in anOptions) then begin
       ACaption:=lisUENotFound;
-      AText:=Format(lisUESearchStringNotFound, [ValidUTF8String(aFindText)]);
+      AText:=Format(lisUESearchStringNotFound, [Utf8EscapeControlChars(aFindText, emPascal)]);
       if not (Again or OldEntireScope) then begin
         if ssoBackwards in anOptions then
           AText:=AText+' '+lisUESearchStringContinueEnd
@@ -7835,7 +7835,7 @@ end;
 
 procedure TSourceNotebook.OpenAtCursorClicked(Sender: TObject);
 begin
-  if assigned(Manager) and Assigned(Manager.OnOpenFileAtCursorClicked) then
+  if Assigned(Manager) and Assigned(Manager.OnOpenFileAtCursorClicked) then
     Manager.OnOpenFileAtCursorClicked(Sender);
 end;
 
@@ -10062,7 +10062,8 @@ begin
     if FileExistsUTF8(EditorOpts.CodeTemplateFilename) then
       LoadStringsFromFileUTF8(AutoCompleteList,EditorOpts.CodeTemplateFilename)
     else begin
-      Filename:=EnvironmentOptions.GetParsedLazarusDirectory+SetDirSeparators('ide/lazarus.dci');
+      Filename:=EnvironmentOptions.GetParsedLazarusDirectory
+        +GetForcedPathDelims('ide/lazarus.dci');
       if FileExistsUTF8(Filename) then begin
         try
           LoadStringsFromFileUTF8(AutoCompleteList,Filename);
@@ -10996,7 +10997,8 @@ begin
   with FCodeTemplateModul do begin
     DCIFilename:=EditorOpts.CodeTemplateFilename;
     if not FileExistsCached(DCIFilename) then
-      DCIFilename:=EnvironmentOptions.GetParsedLazarusDirectory+SetDirSeparators('ide/lazarus.dci');
+      DCIFilename:=EnvironmentOptions.GetParsedLazarusDirectory
+        +GetForcedPathDelims('ide/lazarus.dci');
     if FileExistsCached(DCIFilename) then
       try
         LoadStringsFromFileUTF8(AutoCompleteList,DCIFilename);

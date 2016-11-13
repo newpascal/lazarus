@@ -2168,7 +2168,9 @@ msgid "Interface"
 msgstr "Rozhraní"
 
 #: lazarusidestrconsts.dlginsertmethods
-msgid "Insert methods"
+#, fuzzy
+#| msgid "Insert methods"
+msgid "Insert method implementations"
 msgstr "Vložit metody"
 
 #: lazarusidestrconsts.dlginsertsection
@@ -3000,9 +3002,25 @@ msgstr "Vytvořit aplikační balík"
 msgid "Load &Default"
 msgstr "Načíst &defaultní"
 
-#: lazarusidestrconsts.dlgpodpiaware
-msgid "Enabled DPI Awareness (for Vista+)"
-msgstr "Zapnuté zohlednění DPI (pro Vista+)"
+#: lazarusidestrconsts.dlgpodpiawareness
+msgid "DPI awareness"
+msgstr ""
+
+#: lazarusidestrconsts.dlgpodpiawarenessoff
+msgid "off"
+msgstr ""
+
+#: lazarusidestrconsts.dlgpodpiawarenessoldoffnewpermonitor
+msgid "Vista-8: off, 8.1+: per monitor"
+msgstr ""
+
+#: lazarusidestrconsts.dlgpodpiawarenessoldonnewpermonitor
+msgid "Vista-8: on, 8.1+: per monitor"
+msgstr ""
+
+#: lazarusidestrconsts.dlgpodpiawarenesson
+msgid "on"
+msgstr ""
 
 #: lazarusidestrconsts.dlgpoexecutionlevel
 msgid "Execution Level"
@@ -7884,6 +7902,10 @@ msgctxt "lazarusidestrconsts.lisdefault"
 msgid "Default"
 msgstr "Výchozí"
 
+#: lazarusidestrconsts.lisdefaultclassvisibilitysectionofnewmethodsforexampl
+msgid "Default class visibility section of new methods. For example code completion on OnShow:="
+msgstr ""
+
 #: lazarusidestrconsts.lisdefaultiscomboboxwithtrueandfalse
 msgid "The default is ComboBox with \"True\" and \"False\" selections"
 msgstr "Výchozí je ComboBox s vybraným \"True\" nebo \"False\""
@@ -7891,6 +7913,10 @@ msgstr "Výchozí je ComboBox s vybraným \"True\" nebo \"False\""
 #: lazarusidestrconsts.lisdefaultplaceholder
 msgid "(default)"
 msgstr "(výchozí)"
+
+#: lazarusidestrconsts.lisdefaultsectionofmethods
+msgid "Default section of methods"
+msgstr ""
 
 #: lazarusidestrconsts.lisdelayforcompletionlonglinehint
 msgid "Delay for long line hints in completion box"
@@ -10457,6 +10483,10 @@ msgstr "Uchovat v seznamu instalovaných"
 #: lazarusidestrconsts.liskeepname
 msgid "Keep name"
 msgstr "Zachovat jméno"
+
+#: lazarusidestrconsts.liskeepopen
+msgid "Keep open"
+msgstr ""
 
 #: lazarusidestrconsts.liskeeprelativeindentationofmultilinetemplate
 msgid "Keep relative indentation of multi line template"
@@ -13358,6 +13388,10 @@ msgstr "Hodnota \"%s\""
 msgid "(was \"%s\")"
 msgstr "(byl \"%s\")"
 
+#: lazarusidestrconsts.lismmwidgetsetavailableforlclproject
+msgid "WidgetSet change is available only for LCL projects"
+msgstr ""
+
 #: lazarusidestrconsts.lismode
 msgid ", Mode: %s"
 msgstr ", Režim: %s"
@@ -13593,6 +13627,14 @@ msgstr "Makro %d"
 #: lazarusidestrconsts.lisnewmacroname2
 msgid "New Macroname"
 msgstr "Nové jméno makra"
+
+#: lazarusidestrconsts.lisnewmethodimplementationsareinsertedbetweenexisting
+msgid "New method implementations are inserted between existing methods of this class. Either alphabetically, or as last, or in declaration order."
+msgstr ""
+
+#: lazarusidestrconsts.lisnewmethodsandmembersareinsertedalphabeticallyoradd
+msgid "New method and member declarations in the class..end sections are inserted alphabetically or added last."
+msgstr ""
 
 #: lazarusidestrconsts.lisnewpage
 msgid "New page"
@@ -18635,10 +18677,6 @@ msgstr "Zpráva o použití (volba -h)"
 #: lazarusidestrconsts.lisuse
 msgid "Use"
 msgstr ""
-
-#: lazarusidestrconsts.lisuseandclose
-msgid "Use and close"
-msgstr "Použít a zavřít"
 
 #: lazarusidestrconsts.lisuseansistrings
 msgctxt "lazarusidestrconsts.lisuseansistrings"

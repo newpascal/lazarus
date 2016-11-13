@@ -1712,6 +1712,7 @@ type
     property OnMouseWheelUp;
     property OnResize;
     property OnSelectItem;
+    property OnShowHint;
     property OnStartDock;
     property OnStartDrag;
     property OnUTF8KeyPress;
@@ -3197,6 +3198,8 @@ const
                             tvoHideSelection, tvoToolTips,
                             tvoKeepCollapsedNodes, tvoAutoItemHeight, tvoThemedDraw];
   DefaultMultiSelectStyle = [msControlSelect];
+  DefaultTreeNodeHeight = 20;
+  DefaultTreeNodeExpandSignSize = 9;
 
 type
   TTreeViewExpandSignType = (
@@ -3440,6 +3443,7 @@ type
     // it off might make things faster
     property AccessibilityOn: Boolean read FAccessibilityOn write FAccessibilityOn default True;
   protected
+    procedure CMShowingChanged(var Message: TLMessage); message CM_SHOWINGCHANGED;
     property AutoExpand: Boolean read GetAutoExpand write SetAutoExpand default False;
     property BorderStyle default bsSingle;
     property HideSelection: Boolean
@@ -3537,10 +3541,12 @@ type
   public
     property BackgroundColor: TColor read GetBackgroundColor write SetBackgroundColor stored IsStoredBackgroundColor;
     property BorderWidth default 0;
-    property Color default clWindow;
     property BottomItem: TTreeNode read GetBottomItem write SetBottomItem;
-    property DefaultItemHeight: integer read FDefItemHeight write SetDefaultItemHeight default 20;
+    property Color default clWindow;
+    property DefaultItemHeight: integer read FDefItemHeight write SetDefaultItemHeight default DefaultTreeNodeHeight;
     property DropTarget: TTreeNode read GetDropTarget write SetDropTarget;
+    property ExpandSignColor: TColor read FExpandSignColor write FExpandSignColor default clWindowFrame;
+    property ExpandSignSize: integer read FExpandSignSize write FExpandSignSize default DefaultTreeNodeExpandSignSize;
     property ExpandSignType: TTreeViewExpandSignType
       read FExpandSignType write SetExpandSignType default tvestTheme;
     property InsertMarkNode: TTreeNode read FInsertMarkNode write SetInsertMarkNode;
@@ -3553,15 +3559,14 @@ type
     property ScrollBars: TScrollStyle read FScrollBars write SetScrollBars default ssBoth;
     property Selected: TTreeNode read GetSelection write SetSelection;
     property SelectionColor: TColor read FSelectedColor write SetSelectedColor default clHighlight;
+    property SelectionCount: Cardinal read GetSelectionCount;
     property SelectionFontColor: TColor read FSelectedFontColor write SetSelectedFontColor default clWhite;
     property SelectionFontColorUsed: boolean read FSelectedFontColorUsed write FSelectedFontColorUsed default False;
-    property SelectionCount: Cardinal read GetSelectionCount;
     property Selections[AIndex: Integer]: TTreeNode read GetSelections;
     property SeparatorColor: TColor read fSeparatorColor write SetSeparatorColor default clGray;
     property TopItem: TTreeNode read GetTopItem write SetTopItem;
     property TreeLineColor: TColor read FTreeLineColor write FTreeLineColor default clWindowFrame;
     property TreeLinePenStyle: TPenStyle read FTreeLinePenStyle write FTreeLinePenStyle default psPattern;
-    property ExpandSignColor: TColor read FExpandSignColor write FExpandSignColor default clWindowFrame;
   published
     property TabStop default true;
   end;
@@ -3587,6 +3592,7 @@ type
     property DragMode;
     property Enabled;
     property ExpandSignColor;
+    property ExpandSignSize;
     property ExpandSignType;
     property Font;
     property HideSelection;
@@ -3845,6 +3851,7 @@ type
     function GetSectionAt(P: TPoint): Integer;
     procedure Paint; override;
     procedure PaintSection(Index: Integer); virtual;
+    procedure ChangeScale(M, D: Integer);override;
   published
     property DragReorder: boolean read FDragReorder write FDragReorder;
     property Images: TCustomImageList read FImages write SetImages;
@@ -3932,7 +3939,6 @@ uses
   InterfaceBase, WSComCtrls, WSFactory;
 
 const
-  ScrollBarWidth = 0;
   AllPanelsParts = [Low(TPanelPart)..High(TPanelPart)];
 
 { TNBBasePages }

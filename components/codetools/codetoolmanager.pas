@@ -470,6 +470,10 @@ type
     function FindDeclarationOfPropertyPath(Code: TCodeBuffer;
           const PropertyPath: string; out NewCode: TCodeBuffer;
           out NewX, NewY, NewTopLine: integer): Boolean;
+    function FindFileAtCursor(Code: TCodeBuffer; X,Y: integer;
+      out Found: TFindFileAtCursorFlag; out FoundFilename: string;
+      Allowed: TFindFileAtCursorFlags = DefaultFindFileAtCursorAllowed;
+      StartPos: PCodeXYPosition = nil): boolean;
 
     // get code context
     function FindCodeContext(Code: TCodeBuffer; X,Y: integer;
@@ -686,9 +690,11 @@ type
     function FindMissingUnits(Code: TCodeBuffer; var MissingUnits: TStrings;
           FixCase: boolean = false; SearchImplementation: boolean = true): boolean;
     function FindDelphiProjectUnits(Code: TCodeBuffer;
-          var FoundInUnits, MissingInUnits, NormalUnits: TStrings): boolean;
+          out FoundInUnits, MissingInUnits, NormalUnits: TStrings;
+          IgnoreNormalUnits: boolean = false): boolean;
     function FindDelphiPackageUnits(Code: TCodeBuffer;
-          var FoundInUnits, MissingInUnits, NormalUnits: TStrings): boolean;
+          var FoundInUnits, MissingInUnits, NormalUnits: TStrings;
+          IgnoreNormalUnits: boolean = false): boolean;
     function CommentUnitsInUsesSections(Code: TCodeBuffer;
           MissingUnits: TStrings): boolean;
     function FindUnitCaseInsensitive(Code: TCodeBuffer;
@@ -2250,6 +2256,31 @@ begin
   end;
   {$IFDEF CTDEBUG}
   DebugLn('TCodeToolManager.FindDeclarationOfPropertyPath END ');
+  {$ENDIF}
+end;
+
+function TCodeToolManager.FindFileAtCursor(Code: TCodeBuffer; X, Y: integer;
+  out Found: TFindFileAtCursorFlag; out FoundFilename: string;
+  Allowed: TFindFileAtCursorFlags; StartPos: PCodeXYPosition): boolean;
+var
+  CursorPos: TCodeXYPosition;
+begin
+  Result:=false;
+  {$IFDEF CTDEBUG}
+  DebugLn('TCodeToolManager.FindFileAtCursor A ',Code.Filename,' x=',dbgs(x),' y=',dbgs(y));
+  {$ENDIF}
+  if not InitCurCodeTool(Code) then exit;
+  CursorPos.X:=X;
+  CursorPos.Y:=Y;
+  CursorPos.Code:=Code;
+  try
+    Result:=FCurCodeTool.FindFileAtCursor(CursorPos,Found,FoundFilename,
+      Allowed,StartPos);
+  except
+    on e: Exception do HandleException(e);
+  end;
+  {$IFDEF CTDEBUG}
+  DebugLn('TCodeToolManager.FindFileAtCursor END ');
   {$ENDIF}
 end;
 
@@ -4995,7 +5026,8 @@ begin
 end;
 
 function TCodeToolManager.FindDelphiProjectUnits(Code: TCodeBuffer;
-  var FoundInUnits, MissingInUnits, NormalUnits: TStrings): boolean;
+  out FoundInUnits, MissingInUnits, NormalUnits: TStrings;
+  IgnoreNormalUnits: boolean): boolean;
 begin
   Result:=false;
   {$IFDEF CTDEBUG}
@@ -5003,15 +5035,16 @@ begin
   {$ENDIF}
   if not InitCurCodeTool(Code) then exit;
   try
-    Result:=FCurCodeTool.FindDelphiProjectUnits(FoundInUnits,
-                                                MissingInUnits, NormalUnits);
+    Result:=FCurCodeTool.FindDelphiProjectUnits(FoundInUnits, MissingInUnits,
+      NormalUnits, false, IgnoreNormalUnits);
   except
     on e: Exception do Result:=HandleException(e);
   end;
 end;
 
 function TCodeToolManager.FindDelphiPackageUnits(Code: TCodeBuffer;
-  var FoundInUnits, MissingInUnits, NormalUnits: TStrings): boolean;
+  var FoundInUnits, MissingInUnits, NormalUnits: TStrings;
+  IgnoreNormalUnits: boolean): boolean;
 begin
   Result:=false;
   {$IFDEF CTDEBUG}
@@ -5020,7 +5053,7 @@ begin
   if not InitCurCodeTool(Code) then exit;
   try
     Result:=FCurCodeTool.FindDelphiProjectUnits(FoundInUnits,
-                                              MissingInUnits, NormalUnits,true);
+                     MissingInUnits,NormalUnits,true,IgnoreNormalUnits);
   except
     on e: Exception do Result:=HandleException(e);
   end;
