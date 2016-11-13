@@ -740,10 +740,10 @@ begin
     if AMenuItem.Count > 0 then
     begin
       SubMenuRect := ARect;
+      SubMenuRect.Top := (SubMenuRect.Top + SubMenuRect.Bottom - Metrics.SubMenuSize.cy) div 2;
+      SubMenuRect.Bottom := SubMenuRect.Top + Metrics.SubMenuSize.cy;
       SubMenuRect.Right := SubMenuRect.Right - Metrics.SubMenuMargins.cxRightWidth + Metrics.SubMenuMargins.cxLeftWidth;
       SubMenuRect.Left := SubMenuRect.Right - Metrics.SubMenuSize.cx;
-      SubMenuRect.Top := SubMenuRect.Top + Metrics.ItemMargins.cyTopHeight;
-      SubMenuRect.Bottom := SubMenuRect.Bottom - Metrics.ItemMargins.cyBottomHeight;
       Tmp := ThemeServices.GetElementDetails(PopupSubmenuStates[AMenuItem.Enabled]);
       Tmp.State := Tmp.State + 2;
       ThemeDrawElement(AHDC, Tmp, SubMenuRect, nil);
@@ -778,6 +778,10 @@ begin
     begin
       Tmp := ThemeServices.GetElementDetails(PopupCheckBgStates[AMenuItem.Enabled]);
       ThemeDrawElement(AHDC, Tmp, CheckRect, nil);
+      CheckRect.Left := CheckRect.Left + Metrics.CheckMargins.cxLeftWidth;
+      CheckRect.Top := CheckRect.Top + Metrics.CheckMargins.cyTopHeight;
+      CheckRect.Right := CheckRect.Left + Metrics.CheckSize.cx;
+      CheckRect.Bottom := CheckRect.Top + Metrics.CheckSize.cy;
       Tmp := ThemeServices.GetElementDetails(PopupCheckStates[AMenuItem.Enabled, AMenuItem.RadioItem]);
       ThemeDrawElement(AHDC, Tmp, CheckRect, nil);
     end;

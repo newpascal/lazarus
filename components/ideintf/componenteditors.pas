@@ -22,7 +22,7 @@ uses
   Classes, SysUtils, LResources, TypInfo, Maps, LCLProc, Forms, Controls, Menus,
   ExtCtrls, CustomTimer, Graphics, Grids, CheckLst, Buttons, ComCtrls, Dialogs,
   LazStringGridEdit, CheckListboxEditorDlg, CheckGroupEditorDlg, GraphType,
-  PropEdits, PropEditUtils,
+  PropEdits, PropEditUtils, ComponentReg,
   ObjInspStrConsts;
 
 type
@@ -87,6 +87,13 @@ type
     function AddUndoAction(const aPersistent: TPersistent; aOpType: TUndoOpType;
       IsSetNewId: boolean; aFieldName: string; const aOldVal, aNewVal: variant): boolean; virtual; abstract;
     function IsUndoLocked: boolean; virtual; abstract;
+    procedure AddComponent(const NewRegisteredComponent: TRegisteredComponent;
+      const NewComponentClass: TComponentClass;
+      const NewParent: TComponent;
+      const NewLeft,NewTop,NewWidth,NewHeight: Integer); virtual; abstract;
+    procedure AddComponentCheckParent(var NewParent: TComponent;
+      const OriginComponent: TComponent; const OriginWinControl: TWinControl;
+      const NewComponentClass: TComponentClass); virtual; abstract;
 
     procedure DrawDesignerItems(OnlyIfNeeded: boolean); virtual; abstract;
     function CreateUniqueComponentName(const AClassName: string
@@ -1017,7 +1024,7 @@ procedure TUntabbedNotebookComponentEditor.DoAddPage;
 begin
   if not HasHook then exit;
   NoteBook.Pages.Add('');
-  AddNewPageToDesigner(NoteBook.Pages.Count-1);
+  AddNewPageToDesigner(NoteBook.PageCount - 1);
 end;
 
 procedure TUntabbedNotebookComponentEditor.DoDeletePage;

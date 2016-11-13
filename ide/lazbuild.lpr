@@ -873,7 +873,8 @@ var
         Error(ErrorBuildFailed,'failed saving statefile of project '+AFilename);
       if TheCompiler.Compile(Project1,
                               WorkingDir,CompilerFilename,CompilerParams,
-                              BuildAll or NeedBuildAllFlag,false,false,CompileHint)<>mrOk
+                              BuildAll or NeedBuildAllFlag,false,false,false,
+                              CompileHint)<>mrOk
       then
         Error(ErrorBuildFailed,'failed compiling of project '+AFilename);
       // compilation succeded -> write state file
@@ -1196,7 +1197,7 @@ begin
       MaxExtToolsInParallel:=MaxProcessCount;
   end;
   if not FileExistsUTF8(EnvironmentOptions.GetParsedLazarusDirectory
-    +SetDirSeparators('packager/registration/fcl.lpk'))
+    +GetForcedPathDelims('packager/registration/fcl.lpk'))
   then begin
     CheckLazarusDirectoryQuality(EnvironmentOptions.GetParsedLazarusDirectory,Note);
     if ConsoleVerbosity>=-1 then

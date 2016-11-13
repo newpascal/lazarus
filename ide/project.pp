@@ -60,7 +60,7 @@ uses
   SynEdit,
   // IDE
   CompOptsModes, ProjectResources, LazConf, W32Manifest, ProjectIcon,
-  LazarusIDEStrConsts, CompilerOptions,
+  IDECmdLine, LazarusIDEStrConsts, CompilerOptions,
   TransferMacros, EditorOptions, IDEProcs, RunParamsOpts, ProjectDefs, ProjPackBase,
   FileReferenceList, EditDefineTree, ModeMatrixOpts, PackageDefs, PackageSystem;
 
@@ -830,6 +830,7 @@ type
     procedure LoadFromSession;
     function DoLoadLPI(Filename: String): TModalResult;
     function DoLoadSession(Filename: String): TModalResult;
+    function DoLoadLPR(Revert: boolean): TModalResult;
     // Methods for WriteProject
     procedure SaveFlags(const Path: string);
     procedure SaveUnits(const Path: string; SaveSession: boolean);
@@ -958,12 +959,17 @@ type
     function FindFile(const AFilename: string;
                       SearchFlags: TProjectFileSearchFlags): TLazProjectFile; override;
 
+    // used units with 'in' modifier
+    function UpdateIsPartOfProjectFromMainUnit: TModalResult;
+
     // Application.CreateForm statements
     function AddCreateFormToProjectFile(const AClassName, AName:string):boolean;
     function RemoveCreateFormFromProjectFile(const {%H-}AClassName,
                                                          AName: string):boolean;
     function FormIsCreatedInProjectFile(const AClassname, AName:string):boolean;
-    
+    function GetAutoCreatedFormsList: TStrings;
+    property TmpAutoCreatedForms: TStrings read FTmpAutoCreatedForms write FTmpAutoCreatedForms;
+
     // resources
     function GetMainResourceFilename(AnUnitInfo: TUnitInfo): string;
     function GetResourceFile(AnUnitInfo: TUnitInfo; Index:integer):TCodeBuffer;
@@ -1029,10 +1035,7 @@ type
     // i18n
     function GetPOOutDirectory: string;
 
-    //auto created forms
-    function GetAutoCreatedFormsList: TStrings;
-    property TmpAutoCreatedForms: TStrings read FTmpAutoCreatedForms write FTmpAutoCreatedForms;
-    // Bookmarks
+    // bookmarks
     function  AddBookmark(X, Y, ID: Integer; AUnitInfo:TUnitInfo):integer;
     procedure DeleteBookmark(ID: Integer);
   public
@@ -1130,7 +1133,7 @@ function dbgs(Flags: TUnitInfoFlags): string; overload;
 implementation
 
 const
-  ProjectInfoFileVersion = 9;
+  ProjectInfoFileVersion = 10;
   ProjOptionsPath = 'ProjectOptions/';
 
 
@@ -3040,6 +3043,23 @@ begin
     LoadDefaultSession;
 end;
 
+function TProject.DoLoadLPR(Revert: boolean): TModalResult;
+// lpr is here the main module, it does not need to have the extension .lpr
+var
+  LPRUnitInfo: TUnitInfo;
+begin
+  Result:=mrOk;
+  if (MainUnitID<0) or (not (pfMainUnitIsPascalSource in Flags)) then
+    exit; // has no lpr
+  LPRUnitInfo:=MainUnitInfo;
+  if (LPRUnitInfo.Source=nil) then begin
+    LPRUnitInfo.Source:=CodeToolBoss.LoadFile(LPRUnitInfo.Filename,true,Revert);
+    if LPRUnitInfo.Source=nil then exit(mrCancel);
+  end;
+
+  UpdateIsPartOfProjectFromMainUnit;
+end;
+
 // Method ReadProject itself
 function TProject.ReadProject(const NewProjectInfoFile: string;
   GlobalMatrixOptions: TBuildMatrixOptions; LoadAllOptions: Boolean): TModalResult;
@@ -3062,6 +3082,10 @@ begin
       Result:=DoLoadSession(ProjectSessionFile);
       if Result<>mrOK then Exit;
     end;
+
+    // load lpr
+    if (pfMainUnitIsPascalSource in Flags) and (MainUnitInfo<>nil) then
+      DoLoadLPR(false); // ignore errors
 
   finally
     EndUpdate;
@@ -5551,6 +5575,51 @@ function TProject.FindFile(const AFilename: string;
   SearchFlags: TProjectFileSearchFlags): TLazProjectFile;
 begin
   Result:=UnitInfoWithFilename(AFilename, SearchFlags);
+end;
+
+function TProject.UpdateIsPartOfProjectFromMainUnit: TModalResult;
+var
+  FoundInUnits, MissingInUnits, NormalUnits: TStrings;
+  i: Integer;
+  Code: TCodeBuffer;
+  CurFilename: String;
+  AnUnitInfo, NewUnitInfo: TUnitInfo;
+begin
+  if (MainUnitID<0) or (MainUnitInfo.Source=nil)
+  or ([pfMainUnitIsPascalSource,pfMainUnitHasUsesSectionForAllUnits]*Flags
+    <>[pfMainUnitIsPascalSource,pfMainUnitHasUsesSectionForAllUnits])
+  then
+    exit(mrOk);
+  try
+    if CodeToolBoss.FindDelphiProjectUnits(MainUnitInfo.Source,FoundInUnits,
+      MissingInUnits, NormalUnits, true)
+    then
+      Result:=mrOk
+    else
+      Result:=mrCancel;
+    if FoundInUnits<>nil then begin
+      for i:=0 to FoundInUnits.Count-1 do begin
+        Code:=FoundInUnits.Objects[i] as TCodeBuffer;
+        CurFilename:=Code.Filename;
+        AnUnitInfo:=UnitInfoWithFilename(CurFilename);
+        if (AnUnitInfo<>nil) and AnUnitInfo.IsPartOfProject then continue;
+        if ConsoleVerbosity>=0 then
+          debugln(['Note: (lazarus) [TProject.UpdateIsPartOfProjectFromMainUnit] used unit ',FoundInUnits[i],' not marked in lpi. Setting IsPartOfProject flag.']);
+        if AnUnitInfo=nil then begin
+          NewUnitInfo:=TUnitInfo.Create(nil);
+          NewUnitInfo.Filename:=CurFilename;
+          NewUnitInfo.IsPartOfProject:=true;
+          NewUnitInfo.Source:=Code;
+          AddFile(NewUnitInfo,false);
+        end else
+          AnUnitInfo.IsPartOfProject:=true;
+      end;
+    end;
+  finally
+    FoundInUnits.Free;
+    MissingInUnits.Free;
+    NormalUnits.Free;
+  end;
 end;
 
 function TProject.IndexOfFilename(const AFilename: string): integer;

@@ -10,6 +10,7 @@
    ./testcodetools --format=plain --suite=TestFindDeclaration_ObjCClass
    ./testcodetools --format=plain --suite=TestFindDeclaration_ObjCCategory
    ./testcodetools --format=plain --suite=TestFindDeclaration_Generics
+   ./testcodetools --format=plain --suite=TestFindDeclaration_FileAtCursor
 
  FPC tests:
    ./testcodetools --format=plain --suite=TestFindDeclaration_FPCTests
@@ -52,6 +53,7 @@ type
     procedure TestFindDeclaration_ObjCClass;
     procedure TestFindDeclaration_ObjCCategory;
     procedure TestFindDeclaration_Generics;
+    procedure TestFindDeclaration_FileAtCursor;
     procedure TestFindDeclaration_FPCTests;
     procedure TestFindDeclaration_LazTests;
   end;
@@ -309,6 +311,127 @@ end;
 procedure TTestFindDeclaration.TestFindDeclaration_Generics;
 begin
   FindDeclarations('moduletests/fdt_generics.pas');
+end;
+
+procedure TTestFindDeclaration.TestFindDeclaration_FileAtCursor;
+var
+  Code, SubUnit2Code, LFMCode: TCodeBuffer;
+  Found: TFindFileAtCursorFlag;
+  FoundFilename: string;
+begin
+  Code:=CodeToolBoss.CreateFile('test1.lpr');
+  Code.Source:='uses unit2 in ''sub/../unit2.pas'';'+LineEnding;
+  SubUnit2Code:=CodeToolBoss.CreateFile('unit2.pas');
+  LFMCode:=CodeToolBoss.CreateFile('test1.lfm');
+  try
+    // --- used unit ---
+    // test cursor on 'unit2'
+    if not CodeToolBoss.FindFileAtCursor(Code,6,1,Found,FoundFilename) then
+      Fail('CodeToolBoss.FindFileAtCursor at uses unit2');
+    AssertEquals('FindFileAtCursor at uses unit2 Found',ord(ffatUsedUnit),ord(Found));
+    AssertEquals('FindFileAtCursor at uses unit2 FoundFilename','unit2.pas',FoundFilename);
+    // test cursor on 'in'
+    if not CodeToolBoss.FindFileAtCursor(Code,12,1,Found,FoundFilename) then
+      Fail('CodeToolBoss.FindFileAtCursor at uses unit2-in');
+    AssertEquals('FindFileAtCursor at uses unit2-in Found',ord(ffatUsedUnit),ord(Found));
+    AssertEquals('FindFileAtCursor at uses unit2-in FoundFilename','unit2.pas',FoundFilename);
+    // test cursor on in-file literal
+    if not CodeToolBoss.FindFileAtCursor(Code,16,1,Found,FoundFilename) then
+      Fail('CodeToolBoss.FindFileAtCursor at uses unit2-in-literal');
+    AssertEquals('FindFileAtCursor at uses unit2-in-lit Found',ord(ffatUsedUnit),ord(Found));
+    AssertEquals('FindFileAtCursor at uses unit2-in-lit FoundFilename','unit2.pas',FoundFilename);
+
+    // --- enabled include directive ---
+    // test cursor on enabled include directive of empty file
+    Code.Source:='program test1;'+LineEnding
+      +'{$i unit2.pas}'+LineEnding;
+    SubUnit2Code.Source:='';
+    if not CodeToolBoss.FindFileAtCursor(Code,1,2,Found,FoundFilename) then
+      Fail('CodeToolBoss.FindFileAtCursor at enabled include directive of empty inc');
+    AssertEquals('FindFileAtCursor at enabled include directive of empty Found',ord(ffatIncludeFile),ord(Found));
+    AssertEquals('FindFileAtCursor at enabled include directive of empty FoundFilename','unit2.pas',FoundFilename);
+
+    SubUnit2Code.Source:='{$define a}';
+    if not CodeToolBoss.FindFileAtCursor(Code,1,2,Found,FoundFilename) then
+      Fail('CodeToolBoss.FindFileAtCursor at enabled include directive of non-empty inc');
+    AssertEquals('FindFileAtCursor at enabled include directive of non-empty Found',ord(ffatIncludeFile),ord(Found));
+    AssertEquals('FindFileAtCursor at enabled include directive of non-empty FoundFilename','unit2.pas',FoundFilename);
+
+    // --- disabled include directive ---
+    // test cursor on disabled include directive
+    Code.Source:='program test1;'+LineEnding
+      +'{$ifdef disabled}'+LineEnding
+      +'{$i unit2.pas}'+LineEnding
+      +'{$endif}'+LineEnding;
+    SubUnit2Code.Source:='';
+    if not CodeToolBoss.FindFileAtCursor(Code,1,3,Found,FoundFilename) then
+      Fail('CodeToolBoss.FindFileAtCursor at disabled include directive');
+    AssertEquals('FindFileAtCursor at disabled include directive Found',ord(ffatDisabledIncludeFile),ord(Found));
+    AssertEquals('FindFileAtCursor at disabled include directive FoundFilename','unit2.pas',FoundFilename);
+
+    // --- enabled resource directive ---
+    Code.Source:='program test1;'+LineEnding
+      +'{$R test1.lfm}'+LineEnding;
+    if not CodeToolBoss.FindFileAtCursor(Code,1,2,Found,FoundFilename) then
+      Fail('CodeToolBoss.FindFileAtCursor at enabled resource directive');
+    AssertEquals('FindFileAtCursor at enabled resource directive Found',ord(ffatResource),ord(Found));
+    AssertEquals('FindFileAtCursor at enabled resource directive FoundFilename','test1.lfm',FoundFilename);
+
+    Code.Source:='program test1;'+LineEnding
+      +'{$R *.lfm}'+LineEnding;
+    if not CodeToolBoss.FindFileAtCursor(Code,1,2,Found,FoundFilename) then
+      Fail('CodeToolBoss.FindFileAtCursor at enabled resource directive');
+    AssertEquals('FindFileAtCursor at enabled resource directive Found',ord(ffatResource),ord(Found));
+    AssertEquals('FindFileAtCursor at enabled resource directive FoundFilename','test1.lfm',FoundFilename);
+
+    // --- disabled resource directive ---
+    Code.Source:='program test1;'+LineEnding
+      +'{$ifdef disabled}'+LineEnding
+      +'{$R test1.lfm}'+LineEnding
+      +'{$endif}'+LineEnding;
+    if not CodeToolBoss.FindFileAtCursor(Code,1,3,Found,FoundFilename) then
+      Fail('CodeToolBoss.FindFileAtCursor at disabled resource directive');
+    AssertEquals('FindFileAtCursor at disabled resource directive Found',ord(ffatDisabledResource),ord(Found));
+    AssertEquals('FindFileAtCursor at disabled resource directive FoundFilename','test1.lfm',FoundFilename);
+
+    // --- literal ---
+    Code.Source:='program test1;'+LineEnding
+      +'const Cfg=''unit2.pas'';'+LineEnding;
+    if not CodeToolBoss.FindFileAtCursor(Code,11,2,Found,FoundFilename) then
+      Fail('CodeToolBoss.FindFileAtCursor in literal');
+    AssertEquals('FindFileAtCursor in literal Found',ord(ffatLiteral),ord(Found));
+    AssertEquals('FindFileAtCursor in literal FoundFilename','unit2.pas',FoundFilename);
+
+    // --- comment ---
+    Code.Source:='program test1;'+LineEnding
+      +'{unit2.pas}'+LineEnding;
+    if not CodeToolBoss.FindFileAtCursor(Code,3,2,Found,FoundFilename) then
+      Fail('CodeToolBoss.FindFileAtCursor in comment');
+    AssertEquals('FindFileAtCursor in comment Found',ord(ffatComment),ord(Found));
+    AssertEquals('FindFileAtCursor in comment FoundFilename','unit2.pas',FoundFilename);
+
+    // --- unit name search in comment ---
+    Code.Source:='program test1;'+LineEnding
+      +'{unit2}'+LineEnding;
+    if not CodeToolBoss.FindFileAtCursor(Code,3,2,Found,FoundFilename) then
+      Fail('CodeToolBoss.FindFileAtCursor in comment');
+    AssertEquals('FindFileAtCursor in comment Found',ord(ffatUnit),ord(Found));
+    AssertEquals('FindFileAtCursor in comment FoundFilename','unit2.pas',FoundFilename);
+
+    // --- unit name search in code ---
+    Code.Source:='program test1;'+LineEnding
+      +'begin'+LineEnding
+      +'  unit2.Test;'+LineEnding;
+    if not CodeToolBoss.FindFileAtCursor(Code,3,3,Found,FoundFilename) then
+      Fail('CodeToolBoss.FindFileAtCursor in comment');
+    AssertEquals('FindFileAtCursor in comment Found',ord(ffatUnit),ord(Found));
+    AssertEquals('FindFileAtCursor in comment FoundFilename','unit2.pas',FoundFilename);
+
+  finally
+    Code.IsDeleted:=true;
+    SubUnit2Code.IsDeleted:=true;
+    LFMCode.IsDeleted:=true;
+  end;
 end;
 
 procedure TTestFindDeclaration.TestFindDeclaration_FPCTests;

@@ -43,6 +43,7 @@ Known Issues:
 unit SynEditExport;
 
 {$I SynEdit.inc}
+{.$define debug_synexport}
 
 interface
 
@@ -50,7 +51,7 @@ uses
   Classes,
   SysUtils,
   SynEditHighlighter, SynEditTextBase, SynEditTextBuffer,
-  FileUtil, LazUTF8, FPCAdds, LCLType,
+  FileUtil, LazUTF8, FPCAdds, LCLType, LCLProc,
   Graphics, Clipbrd;
 
 type
@@ -65,10 +66,14 @@ type
     to track the changes of token attributes, to export to the clipboard or to
     save the output to a file. Descendant classes have to implement only the
     actual formatting of tokens. }
+
+  { TSynCustomExporter }
+
   TSynCustomExporter = class(TComponent)
   private
     fBuffer: TMemoryStream;
     fFirstAttribute: boolean;
+    fImmediateAttrWrite: Boolean;
     procedure AssignFont(Value: TFont);
     procedure SetFont(Value: TFont);
     procedure SetHighlighter(Value: TSynCustomHighlighter);
@@ -115,9 +120,19 @@ type
       ForegroundChanged: boolean; FontStylesChanged: TFontStyles);
       virtual; abstract;
 {end}                                                                           //mh 2000-10-10
+
+    { The Format*Immediate methods apply formatting based entirely on the
+      current token attribute, they do not take the attribute of the previous
+      token into account }
+    procedure FormatBeforeFirstAttributeImmediate(BG, FG: TColor); virtual; abstract;
+    procedure FormatAfterLastAttributeImmediate; virtual; abstract;
+    procedure FormatAttributeInitImmediate(Attri: TSynHighlighterAttributes; IsSpace: Boolean); virtual; abstract;
+    procedure FormatAttributeDoneImmediate(Attri: TSynHighlighterAttributes; IsSpace: Boolean); virtual; abstract;
+
     { Has to be overridden in descendant classes to add the formatted text of
       the actual token text to the output buffer. }
     procedure FormatToken(Token: string); virtual;
+    procedure FormatTokenImmediate(Token: String; Attri: TSynHighlighterAttributes; IsSpace: Boolean);
     { Has to be overridden in descendant classes to add a newline in the output
       format to the output buffer. }
     procedure FormatNewLine; virtual; abstract;
@@ -152,6 +167,7 @@ type
       added to the output buffer. }
     procedure SetTokenAttribute(IsSpace: boolean;
       Attri: TSynHighlighterAttributes); virtual;
+    function ValidatedColor(AColor, ADefColor: TColor): TColor;
   public
     { Creates an instance of the exporter. }
     constructor Create(AOwner: TComponent); override;
@@ -187,6 +203,7 @@ type
     { The highlighter to use for exporting. }
     property Highlighter: TSynCustomHighlighter
       read fHighlighter write SetHighlighter;
+    property ImmediateAttrWrite: Boolean read fImmediateAttrWrite write fImmediateAttrWrite default false;
     { The title to embedd into the output header. }
     property Title: string read fTitle write SetTitle;
     { Use the token attribute background for the exporting. }
@@ -322,6 +339,7 @@ begin
     // export all the lines into fBuffer
     fFirstAttribute := TRUE;
 
+
     for i := Start.Y to Stop.Y do begin
       Highlighter.StartAtLineIndex(i - 1);
       X := 1;
@@ -344,16 +362,28 @@ begin
         end;
 
         Token := ReplaceReservedChars(Token, IsSpace);
-        SetTokenAttribute(IsSpace, Attri);
-        FormatToken(Token);
+        if fImmediateAttrWrite then begin
+           if fFirstAttribute then begin
+             FormatBeforeFirstAttributeImmediate(fBackgroundColor, fFont.Color);
+             fFirstAttribute := False;
+           end;
+           FormatTokenImmediate(Token, Attri ,IsSpace);
+        end else begin
+          SetTokenAttribute(IsSpace, Attri);
+          FormatToken(Token);
+        end;
         Highlighter.Next;
       end;
 
       FormatNewLine;
     end;
 
-    if not fFirstAttribute then
-      FormatAfterLastAttribute;
+    if not fFirstAttribute then begin
+      if fImmediateAttrWrite then
+        FormatAfterLastAttributeImmediate
+      else
+        FormatAfterLastAttribute;
+    end;
     // insert header
     fBuffer.SetSize(integer(fBuffer.Position));
     InsertData(0, GetHeader);
@@ -371,6 +401,17 @@ end;
 procedure TSynCustomExporter.FormatToken(Token: string);
 begin
   AddData(Token);
+end;
+
+procedure TSynCustomExporter.FormatTokenImmediate(Token: String;
+  Attri: TSynHighlighterAttributes; IsSpace: Boolean);
+begin
+  {$ifdef debug_synexport}
+  debugln(['TSynCustomExporter.FormatTokenImmediate: Token = "', Token,'", IsSpace = ',IsSpace]);
+  {$endif}
+  FormatAttributeInitImmediate(Attri, IsSpace);
+  FormatToken(Token);
+  FormatAttributeDoneImmediate(Attri, IsSpace);
 end;
 
 function TSynCustomExporter.GetBufferSize: integer;
@@ -521,14 +562,6 @@ var
   ChangedFG: boolean;
   ChangedStyles: TFontStyles;
 
-  function ValidatedColor(AColor, ADefColor: TColor): TColor;
-  begin
-    if AColor = clNone then
-      Result := ADefColor
-    else
-      Result := AColor;
-  end;
-
 begin
   if fFirstAttribute then begin
     fFirstAttribute := FALSE;
@@ -568,6 +601,14 @@ begin
       FormatAttributeInit(ChangedBG, ChangedFG, ChangedStyles);
     end;
   end;
+end;
+
+function TSynCustomExporter.ValidatedColor(AColor, ADefColor: TColor): TColor;
+begin
+  if AColor = clNone then
+    Result := ADefColor
+  else
+    Result := AColor;
 end;
 
 end.

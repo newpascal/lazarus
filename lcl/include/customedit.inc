@@ -117,7 +117,7 @@ end;
 procedure TCustomEdit.Loaded;
 begin
   inherited Loaded;
-  if (Text = '') then ShowTextHint;
+  if CanShowTextHint then ShowTextHint;
 end;
 
 {------------------------------------------------------------------------------
@@ -408,8 +408,8 @@ end;
 function TCustomEdit.CanShowTextHint: Boolean;
 begin
   Result := (([csDesigning,csLoading] * ComponentState) = []) and
-            (Text = '') and
             (FTextHint <> '') and
+            (Text = '') and
             (not Focused);
 end;
 
@@ -591,7 +591,16 @@ begin
       Change;
     end;
   end;
-  if (Text = '') and (not FTextHintShowing) then ShowTextHint;
+  if FTextHintShowing then
+  begin
+    if not FSettingTextHint and not CanShowTextHint then
+      HideTextHint;
+  end
+  else
+  begin
+    if CanShowTextHint then
+      ShowTextHint;
+  end;
 end;
 
 procedure TCustomEdit.Change;
@@ -616,7 +625,7 @@ procedure TCustomEdit.DoExit;
 begin
   FAutoSelected := False;
   inherited DoExit;
-  if (Text = '') then ShowTextHint;
+  if CanShowTextHint then ShowTextHint;
 end;
 
 {------------------------------------------------------------------------------
@@ -636,7 +645,7 @@ begin
   Result:=fCaretPos;
 end;
 
-procedure TCustomEdit.SetTextHint(AValue: TTranslateString);
+procedure TCustomEdit.SetTextHint(const AValue: TTranslateString);
 begin
   if (FTextHint = AValue) then Exit;
   FTextHint := AValue;
@@ -646,7 +655,7 @@ begin
   end
   else
   begin
-    if (Text = '') then ShowTextHint;
+    if CanShowTextHint then ShowTextHint;
   end;
 end;
 
@@ -654,8 +663,7 @@ procedure TCustomEdit.ShowTextHint;
 var
   OldModified: Boolean;
 begin
-  if not CanShowTextHint then Exit;
-  if not FtextHintShowing then
+  if not FTextHintShowing then
   begin
     FSavedFontColor := Font.Color;
     FSavedFontStyle := Font.Style;
@@ -668,13 +676,23 @@ begin
   try
     //settint Text clears modified flag
     inherited RealSetText(FTextHint);
-    Font.Color := FTextHintFontColor;
-    Font.Style := FTextHintFontStyle;
+    Font.Color := clGrayText; //FTextHintFontColor;
+    Font.Style := [fsItalic]; //FTextHintFontStyle;
     PasswordChar := #0;
   finally
     FSettingTextHint := False;
     Modified := OldModified;
   end;
+end;
+
+function TCustomEdit.GetTextHintFontColor: TColor;
+begin
+  Result := clGrayText;
+end;
+
+function TCustomEdit.GetTextHintFontStyle: TFontStyles;
+begin
+  Result := [fsItalic];
 end;
 
 procedure TCustomEdit.HideTextHint;

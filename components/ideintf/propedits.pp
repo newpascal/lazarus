@@ -36,7 +36,7 @@ uses
   ObjInspStrConsts, PropEditUtils, IDEUtils,
   // Forms with .lfm files
   FrmSelectProps, StringsPropEditDlg, KeyValPropEditDlg, CollectionPropEditForm,
-  FileFilterPropEditor, IDEWindowIntf;
+  FileFilterPropEditor, PagesPropEditDlg, IDEWindowIntf;
 
 const
   MaxIdentLength: Byte = 63;
@@ -300,12 +300,14 @@ type
     FOwnerComponent: TComponent;
     FPropCount: Integer;
     FPropList: PInstPropList;
-    function GetPrivateDirectory: ansistring;
   protected
     // Draw Checkbox for Boolean and Set element editors.
     function DrawCheckbox(ACanvas: TCanvas; const ARect: TRect; IsTrue: Boolean): TRect;
     function DrawCheckValue(ACanvas: TCanvas; const ARect: TRect;
       {%H-}AState: TPropEditDrawState; {%H-}IsTrue: Boolean): TRect;
+    procedure DrawValue(const AValue: string; ACanvas:TCanvas; const ARect:TRect;
+      {%H-}AState:TPropEditDrawState);
+    function GetPrivateDirectory: ansistring;
   public
     constructor Create(Hook:TPropertyEditorHook; APropCount:Integer); virtual;
     destructor Destroy; override;
@@ -354,6 +356,8 @@ type
     function GetVarValueAt(Index: Integer):Variant;
     function GetWideStrValue: WideString;
     function GetWideStrValueAt(Index: Integer): WideString;
+    function GetUnicodeStrValue: UnicodeString;
+    function GetUnicodeStrValueAt(Index: Integer): UnicodeString;
     function GetValue: ansistring; virtual;
     function GetHint({%H-}HintType: TPropEditHint; {%H-}x, {%H-}y: integer): string; virtual;
     function GetDefaultValue: ansistring; virtual;
@@ -373,6 +377,7 @@ type
     procedure SetPtrValue(const NewValue: Pointer);
     procedure SetStrValue(const NewValue: AnsiString);
     procedure SetWideStrValue(const NewValue: WideString);
+    procedure SetUnicodeStrValue(const NewValue: UnicodeString);
     procedure SetVarValue(const NewValue: Variant);
     procedure Modified(PropName: ShortString = '');
     function ValueAvailable: Boolean;
@@ -522,10 +527,40 @@ type
     procedure SetValue(const NewValue: ansistring); override;
   end;
 
+{ TPasswordStringPropertyEditor
+  The default property editor for string passwords}
+
+  TPasswordStringPropertyEditor = class(TStringPropertyEditor)
+  public
+    function GetPassword: string; virtual;
+    procedure PropDrawValue(ACanvas: TCanvas; const ARect: TRect;
+      AState: TPropEditDrawState); override;
+  end;
+
 { TWideStringPropertyEditor
   The default property editor for widestrings}
 
   TWideStringPropertyEditor = class(TPropertyEditor)
+  public
+    function AllEqual: Boolean; override;
+    function GetValue: ansistring; override;
+    procedure SetValue(const NewValue: ansistring); override;
+  end;
+
+{ TPasswordWideStringPropertyEditor
+  The default property editor for widestring passwords}
+
+  TPasswordWideStringPropertyEditor = class(TWideStringPropertyEditor)
+  public
+    function GetPassword: WideString; virtual;
+    procedure PropDrawValue(ACanvas: TCanvas; const ARect: TRect;
+      AState: TPropEditDrawState); override;
+  end;
+
+{ TUnicodeStringPropertyEditor
+  The default property editor for unicodestrings}
+
+  TUnicodeStringPropertyEditor = class(TPropertyEditor)
   public
     function AllEqual: Boolean; override;
     function GetValue: ansistring; override;
@@ -715,6 +750,20 @@ type
   public
     function GetAttributes: TPropertyAttributes; override;
     procedure GetValues(Proc: TGetStrProc); override;
+  end;
+
+  { TPagesPropertyEditor
+    PropertyEditor editor for the TNoteBook.Pages properties.
+    Brings up a dialog with a Memo for entering pages. }
+
+  TPagesPropEditorDlg = class;
+
+  TPagesPropertyEditor = class(TClassPropertyEditor)
+  public
+    procedure AssignItems(OldItmes, NewItems: TStrings);
+    procedure Edit; override;
+    function CreateDlg(s: TStrings): TPagesPropEditorDlg; virtual;
+    function GetAttributes: TPropertyAttributes; override;
   end;
 
 { TComponentNamePropertyEditor
@@ -1531,6 +1580,11 @@ type
     Editor: TPropertyEditor;
   end;
 
+  TPagesPropEditorDlg = class(TPagesPropEditorFrm)
+  public
+    Editor: TPropertyEditor;
+  end;
+
   { TCustomShortCutGrabBox }
 
   TCustomShortCutGrabBox = class(TCustomPanel)
@@ -1713,6 +1767,93 @@ type
     procedure GetSelectableComponents(ARoot: TComponent);
     procedure Gather(Child: TComponent);
   end;
+
+{ TPagesPropertyEditor }
+
+procedure TPagesPropertyEditor.AssignItems(OldItmes, NewItems: TStrings);
+var
+  Unchanged, Index, PageIndex: Integer;
+  DummyNotebook: TNotebook;
+  APage: TPage;
+  PageComponent: TPersistent;
+  NoteBook: TNoteBook;
+begin
+  // search for unchanged pages
+  Unchanged := 0;
+  while (Unchanged < NewItems.Count) and (Unchanged < OldItmes.Count)
+  and (NewItems.Objects[Unchanged] = OldItmes.Objects[Unchanged])
+  and (NewItems[Unchanged] = TPage(OldItmes.Objects[Unchanged]).Name) do
+    Inc(Unchanged);
+  if (Unchanged = OldItmes.Count) and (Unchanged = NewItems.Count) then Exit;
+
+  NoteBook := TNotebook(FOwnerComponent);
+  DummyNotebook := TNotebook.Create(nil);
+  try
+    // move all unused/changed pages to dummy
+    for Index := OldItmes.Count - 1 downto Unchanged do
+    begin
+      APage := TPage(OldItmes.Objects[Index]);
+      APage.Parent := DummyNotebook;
+    end;
+
+    // add NewItems or changed pages to notebook
+    for Index := Unchanged to NewItems.Count - 1 do
+    begin
+      if Assigned(NewItems.Objects[Index]) then begin
+        APage := TPage(NewItems.Objects[Index]);
+      end else begin
+        PageIndex := NoteBook.Pages.Add(NewItems[Index]);
+        APage := TPage(NoteBook.Pages.Objects[PageIndex]);
+      end;
+      APage.Parent := NoteBook;
+      if IsValidIdent(NewItems[Index]) then APage.Name := NewItems[Index];
+      APage.Caption := NewItems[Index];
+      PropertyHook.PersistentAdded(APage, False);
+    end;
+
+    // delete all unused OldItmes pages
+    for Index := DummyNotebook.PageCount - 1 downto 0 do
+    begin
+      APage := TPage(DummyNotebook.Pages.Objects[Index]);
+      APage.Parent := nil;;
+      DummyNotebook.Pages.Delete(Index);
+      PageComponent := TPersistent(APage);
+      PropertyHook.DeletePersistent(PageComponent);
+    end;
+  finally
+    DummyNotebook.Free;
+  end;
+end;
+
+procedure TPagesPropertyEditor.Edit;
+var
+  TheDialog: TPagesPropEditorDlg;
+  Old, New: TStrings;
+begin
+  Old := TStrings(GetObjectValue);
+  TheDialog := CreateDlg(Old);
+  try
+    if (TheDialog.ShowModal = mrOK) then begin
+      New := TheDialog.ListBox.Items;
+      AssignItems(Old, TheDialog.ListBox.Items);
+      SetPtrValue(New);
+    end;
+  finally
+    TheDialog.Free;
+  end;
+end;
+
+function TPagesPropertyEditor.CreateDlg(s: TStrings): TPagesPropEditorDlg;
+begin
+  Result := TPagesPropEditorDlg.Create(Application);
+  Result.Editor := Self;
+  Result.ListBox.Items.Assign(s);
+end;
+
+function TPagesPropertyEditor.GetAttributes: TPropertyAttributes;
+begin
+  Result := [paDialog, paRevertable, paReadOnly];
+end;
 
 { TSelectableComponentEnumerator }
 
@@ -1904,7 +2045,7 @@ const
     nil,                       // tkDynArray
     nil,                       // tkInterfaceRaw,
     nil,                       // tkProcVar
-    nil,                       // tkUString
+    TUnicodeStringPropertyEditor,// tkUString
     nil                        // tkUChar
 {$IF declared(tkHelper)}
     ,nil                       // tkHelper
@@ -2675,6 +2816,26 @@ begin
     Result:=PropertyHook.GetPrivateDirectory;
 end;
 
+procedure TPropertyEditor.DrawValue(const AValue: string; ACanvas: TCanvas;
+  const ARect: TRect; AState: TPropEditDrawState);
+var
+  Style : TTextStyle;
+begin
+  FillChar(Style{%H-},SizeOf(Style),0);
+  With Style do begin
+    Alignment := taLeftJustify;
+    Layout := tlCenter;
+    Opaque := False;
+    Clipping := True;
+    ShowPrefix := False;
+    WordBreak := False;
+    SingleLine := True;
+    ExpandTabs := True;
+    SystemFont := False;
+  end;
+  ACanvas.TextRect(ARect,ARect.Left+3,ARect.Top,AValue, Style);
+end;
+
 procedure TPropertyEditor.GetProperties(Proc:TGetPropEditProc);
 begin
 end;
@@ -2722,6 +2883,16 @@ end;
 function TPropertyEditor.GetWideStrValueAt(Index: Integer): WideString;
 begin
   with FPropList^[Index] do Result:=GetWideStrProp(Instance,PropInfo);
+end;
+
+function TPropertyEditor.GetUnicodeStrValue: UnicodeString;
+begin
+  Result:=GetUnicodeStrValueAt(0);
+end;
+
+function TPropertyEditor.GetUnicodeStrValueAt(Index: Integer): UnicodeString;
+begin
+  with FPropList^[Index] do Result:=GetUnicodeStrProp(Instance,PropInfo);
 end;
 
 function TPropertyEditor.GetValue:ansistring;
@@ -2944,6 +3115,23 @@ begin
     for I:=0 to FPropCount-1 do
       with FPropList^[I] do begin
         SetWideStrProp(Instance,PropInfo,NewValue);
+        Modified(PropInfo^.Name);
+      end;
+end;
+
+procedure TPropertyEditor.SetUnicodeStrValue(const NewValue: UnicodeString);
+var
+  I: Integer;
+  Changed: boolean;
+begin
+  Changed:=false;
+  for I:=0 to FPropCount-1 do
+    with FPropList^[I] do
+      Changed:=Changed or (GetUnicodeStrProp(Instance,PropInfo)<>NewValue);
+  if Changed then
+    for I:=0 to FPropCount-1 do
+      with FPropList^[I] do begin
+        SetUnicodeStrProp(Instance,PropInfo,NewValue);
         Modified(PropInfo^.Name);
       end;
 end;
@@ -3206,22 +3394,8 @@ end;
 
 procedure TPropertyEditor.PropDrawValue(ACanvas:TCanvas; const ARect: TRect;
   AState: TPropEditDrawState);
-var
-  Style : TTextStyle;
 begin
-  FillChar(Style{%H-},SizeOf(Style),0);
-  With Style do begin
-    Alignment := taLeftJustify;
-    Layout := tlCenter;
-    Opaque := False;
-    Clipping := True;
-    ShowPrefix := False;
-    WordBreak := False;
-    SingleLine := True;
-    ExpandTabs := True;
-    SystemFont := False;
-  end;
-  ACanvas.TextRect(ARect,ARect.Left+3,ARect.Top,GetVisualValue, Style);
+  DrawValue(GetVisualValue,ACanvas,ARect,AState);
 end;
 
 procedure TPropertyEditor.UpdateSubProperties;
@@ -3675,6 +3849,22 @@ begin
   SetStrValue(NewValue);
 end;
 
+{ TPasswordStringPropertyEditor }
+
+function TPasswordStringPropertyEditor.GetPassword: string;
+begin
+  if GetVisualValue<>'' then
+    Result:='*****'
+  else
+    Result:='';
+end;
+
+procedure TPasswordStringPropertyEditor.PropDrawValue(ACanvas: TCanvas;
+  const ARect: TRect; AState: TPropEditDrawState);
+begin
+  DrawValue(GetPassword,ACanvas,ARect,AState);
+end;
+
 { TWideStringPropertyEditor }
 
 function TWideStringPropertyEditor.AllEqual: Boolean;
@@ -3699,6 +3889,48 @@ end;
 procedure TWideStringPropertyEditor.SetValue(const NewValue: ansistring);
 begin
   SetWideStrValue(UTF8Decode(NewValue));
+end;
+
+{ TPasswordWideStringPropertyEditor }
+
+function TPasswordWideStringPropertyEditor.GetPassword: WideString;
+begin
+  if GetVisualValue<>'' then
+    Result:='*****'
+  else
+    Result:='';
+end;
+
+procedure TPasswordWideStringPropertyEditor.PropDrawValue(ACanvas: TCanvas;
+  const ARect: TRect; AState: TPropEditDrawState);
+begin
+  DrawValue(UTF8Encode(GetPassword),ACanvas,ARect,AState);
+end;
+
+{ TUnicodeStringPropertyEditor }
+
+function TUnicodeStringPropertyEditor.AllEqual: Boolean;
+var
+  I: Integer;
+  V: UnicodeString;
+begin
+  Result := False;
+  if PropCount > 1 then begin
+    V := GetUnicodeStrValue;
+    for I := 1 to PropCount - 1 do
+      if GetUnicodeStrValueAt(I) <> V then Exit;
+  end;
+  Result := True;
+end;
+
+function TUnicodeStringPropertyEditor.GetValue: ansistring;
+begin
+  Result:=UTF8Encode(GetUnicodeStrValue);
+end;
+
+procedure TUnicodeStringPropertyEditor.SetValue(const NewValue: ansistring);
+begin
+  SetUnicodeStrValue(UTF8Decode(NewValue));
 end;
 
 { TNestedPropertyEditor }
@@ -7553,6 +7785,7 @@ begin
   RegisterPropertyEditor(TypeInfo(AnsiString), TCustomFrame, 'LCLVersion', THiddenPropertyEditor);
   RegisterPropertyEditor(TypeInfo(TCustomPage), TCustomTabControl, 'ActivePage', TNoteBookActiveControlPropertyEditor);
   RegisterPropertyEditor(TypeInfo(TSizeConstraints), TControl, 'Constraints', TConstraintsPropertyEditor);
+  RegisterPropertyEditor(TypeInfo(TStrings), TNoteBook, 'Pages', TPagesPropertyEditor);
 
   // since fpc 2.6.0 WordBool, LongBool and QWordBool only allow 0 and 1
   RegisterPropertyEditor(TypeInfo(WordBool), nil, '', TBoolPropertyEditor);

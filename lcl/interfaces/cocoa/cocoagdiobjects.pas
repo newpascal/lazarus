@@ -620,9 +620,13 @@ begin
   // we could use NSFontTraitsAttribute to request the desired font style (Bold/Italic)
   // but in this case we may get NIL as result. This way is safer.
   if cfs_Italic in Style then
-    FFont := NSFontManager.sharedFontManager.convertFont_toHaveTrait(FFont, NSItalicFontMask);
+    FFont := NSFontManager.sharedFontManager.convertFont_toHaveTrait(FFont, NSItalicFontMask)
+  else
+    FFont := NSFontManager.sharedFontManager.convertFont_toNotHaveTrait(FFont, NSItalicFontMask);
   if cfs_Bold in Style then
-    FFont := NSFontManager.sharedFontManager.convertFont_toHaveTrait(FFont, NSBoldFontMask);
+    FFont := NSFontManager.sharedFontManager.convertFont_toHaveTrait(FFont, NSBoldFontMask)
+  else
+    FFont := NSFontManager.sharedFontManager.convertFont_toNotHaveTrait(FFont, NSBoldFontMask);
   case ALogFont.lfPitchAndFamily and $F of
     FIXED_PITCH, MONO_FONT:
       FFont := NSFontManager.sharedFontManager.convertFont_toHaveTrait(FFont, NSFixedPitchFontMask);
@@ -1659,52 +1663,50 @@ end;
 procedure TCocoaContext.LineTo(X, Y: Integer);
 var
   cg: CGContextRef;
-  //p: array [0..1] of CGPoint;
   deltaX, deltaY, absDeltaX, absDeltaY: Integer;
   clipDeltaX, clipDeltaY: Float32;
-  tx,ty:Float32;
+  tx, ty, bx, by: Float32;
 begin
   cg := CGContext;
   if not Assigned(cg) then Exit;
 
-  deltaX := X - PenPos.x;
-  deltaY := Y - PenPos.y;
+  bx := FPenPos.x;
+  by := FPenPos.y;
+  deltaX := X-FPenPos.x;
+  deltaY := Y-FPenPos.y;
   if (deltaX=0) and (deltaY=0) then Exit;
 
   absDeltaX := Abs(deltaX);
   absDeltaY := Abs(deltaY);
+
   if (absDeltaX<=1) and (absDeltaY<=1) then
   begin
     // special case for 1-pixel lines
-    tx := PenPos.x + 0.55;
-    ty := PenPos.y + 0.55;
+    tx := bx + 0.05;
+    ty := by + 0.05;
   end
   else
   begin
     // exclude the last pixel from the line
     if absDeltaX > absDeltaY then
     begin
-      if deltaX > 0 then clipDeltaX := -1.0 else clipDeltaX := 1.0;
+      if deltaX > 0 then clipDeltaX := -0.5 else clipDeltaX := 0.5;
       clipDeltaY := clipDeltaX * deltaY / deltaX;
     end
     else
     begin
-      if deltaY > 0 then clipDeltaY := -1.0 else clipDeltaY := 1.0;
+      if deltaY > 0 then clipDeltaY := -0.5 else clipDeltaY := 0.5;
       clipDeltaX := clipDeltaY * deltaX / deltaY;
     end;
-    tx := X + clipDeltaX + 0.5;
-    ty := Y + clipDeltaY + 0.5;
+    bx := bx + clipDeltaX;
+    by := by + clipDeltaY;
+    tx := X + clipDeltaX;
+    ty := Y + clipDeltaY;
   end;
 
-  {p[0].x:=PenPos.X+0.5;
-  p[0].y:=PenPos.Y+0.5;
-  p[1].x:=tx;
-  p[1].y:=ty;}
-
   CGContextBeginPath(cg);
-  //CGContextAddLines(cg, @p, 2);
-  CGContextMoveToPoint(cg, PenPos.x + 0.5, PenPos.y + 0.5);
-  CGContextAddLineToPoint(cg, tx, ty);
+  CGContextMoveToPoint(cg, bx + 0.5, by + 0.5);
+  CGContextAddLineToPoint(cg, tx + 0.5, ty + 0.5);
   CGContextStrokePath(cg);
 
   FPenPos.x := X;
@@ -3029,6 +3031,7 @@ var
   AROP2: Integer;
   APatternSpace: CGColorSpaceRef;
   BaseSpace: CGColorSpaceRef;
+  AColor: CGColorRef;
 begin
   if ADC = nil then Exit;
 
@@ -3063,7 +3066,10 @@ begin
     CGContextSetFillPattern(ADC.CGcontext, FCGPattern, @RGBA[0]);
   end
   else
-    CGContextSetRGBFillColor(ADC.CGContext, RGBA[0], RGBA[1], RGBA[2], RGBA[3]);
+  begin
+    AColor := CGColorCreateGenericRGB(RGBA[0], RGBA[1], RGBA[2], RGBA[3]);
+    CGContextSetFillColorWithColor(ADC.CGContext, AColor);
+  end;
 end;
 
 { TCocoaGDIObject }

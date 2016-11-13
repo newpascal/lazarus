@@ -5699,6 +5699,7 @@ var
   UEntry: TViewUnitsEntry;
 begin
   if Project1=nil then exit(mrCancel);
+  Project1.UpdateIsPartOfProjectFromMainUnit;
   UnitList := TViewUnitEntries.Create;
   try
     if SourceFileMgr.SelectProjectItems(UnitList, UseItemType[OnlyForms],
@@ -6101,7 +6102,7 @@ var
   ActiveSrcEdit, OldActiveSrcEdit: TSourceEditor;
 begin
   GetCurrentUnit(OldActiveSrcEdit,OldActiveUnitInfo);
-  Result:=DoOpenEditorFile(AFilename, PageIndex, WindowIndex, Flags);
+  Result:=DoOpenEditorFile(AFilename, PageIndex, WindowIndex, Flags+[ofRegularFile]);
   if Result<>mrOk then exit;
   GetCurrentUnit(ActiveSrcEdit,ActiveUnitInfo);
   if ActiveUnitInfo<>nil then begin
@@ -6795,7 +6796,8 @@ begin
                                 WorkingDir,CompilerFilename,CompilerParams,
                                 (AReason = crBuild) or NeedBuildAllFlag,
                                 pbfSkipLinking in Flags,
-                                pbfSkipAssembler in Flags,aCompileHint);
+                                pbfSkipAssembler in Flags,Project1.IsVirtual,
+                                aCompileHint);
         if ConsoleVerbosity>=0 then
           debugln(['Hint: (lazarus) [TMainIDE.DoBuildProject] compiler time in s: ',(Now-StartTime)*86400]);
         DoCallBuildingFinishedHandler(lihtProjectBuildingFinished, Self, Result=mrOk);

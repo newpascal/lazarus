@@ -40,13 +40,14 @@ Known Issues:
 unit SynExportHTML;
 
 {$I synedit.inc}
+{.$define debug_synexporthtml}
 
 interface
 
 uses
   Classes,
   LCLIntf, LCLType, Graphics, ClipBrd,
-  SynEditExport, LCLProc, LazUtf8;
+  SynEditHighlighter, SynEditExport, LCLProc, LazUtf8;
 
 type
   THTMLFontSize = (fs01, fs02, fs03, fs04, fs05, fs06, fs07, fsDefault);        //eb 2000-10-12
@@ -66,10 +67,11 @@ type
   private
     fOptions: TExportHtmlOptions;
     fFontSize: THTMLFontSize;
-    function ColorToHTML(AColor: TColor): string;
     procedure SetExportHtmlOptions(Value: TExportHtmlOptions);
     function GetCreateHTMLFragment: Boolean;
     procedure SetCreateHTMLFragment(Value: Boolean);
+    function MakeFontSpan(FG, BG: TColor): String;
+    function StyleToHtml(AStyle: TFontStyles; IsSpace, DoSet: Boolean): String;
   protected
     procedure FormatAfterLastAttribute; override;
     procedure FormatAttributeDone(BackgroundChanged, ForegroundChanged: boolean;
@@ -80,6 +82,11 @@ type
     procedure FormatBeforeFirstAttribute(BackgroundChanged,
       ForegroundChanged: boolean; FontStylesChanged: TFontStyles); override;
 {end}                                                                           //mh 2000-10-10
+    procedure FormatBeforeFirstAttributeImmediate(BG, FG: TColor); override;
+    procedure FormatAfterLastAttributeImmediate; override;
+    procedure FormatAttributeInitImmediate(Attri: TSynHighlighterAttributes; IsSpace: Boolean); override;
+    procedure FormatAttributeDoneImmediate(Attri: TSynHighlighterAttributes; IsSpace: Boolean); override;
+
     procedure FormatNewLine; override;
     function GetFooter: string; override;
     function GetFormatName: string; override;
@@ -100,6 +107,8 @@ type
     property UseBackground;
   end;
 
+function ColorToHTML(AColor: TColor): string;
+
 implementation
 
 uses
@@ -115,7 +124,7 @@ const
                   '<head>'+LineEnding+
                   '%s'+LineEnding+
                   '</head>'+LineEnding+
-                  '<body text=%s bgcolor=%s>';
+                  '<body text="%s" bgcolor="%s">';
   DocumentEnd = '</body>'+LineEnding+'</html>';
   CodeStart = '<pre><code>';
   CodeEnd = '</code></pre>';
@@ -129,6 +138,56 @@ const
 
   StartFragmentComment = '<!--StartFragment-->';
   EndFragmentComment = '<!--EndFragment-->';
+
+
+function ColorToHTML(AColor: TColor): string;
+var
+  RGBColor: TColorRef;
+  RGBValue: byte;
+const
+  Digits: array[0..15] of char = '0123456789ABCDEF';
+begin
+  Result := '';
+  case AColor of
+    clRed:     Result := 'red';
+    clGreen:   Result := 'green';
+    clBlue:    Result := 'blue';
+    clPurple:  Result := 'purple';
+    clYellow:  Result := 'yellow';
+    clBlack:   Result := 'black';
+    clWhite:   Result := 'white';
+    clGray:    Result := 'gray';
+    clMaroon:  Result := 'maroon';
+    clFuchsia: Result := 'fuchsia';
+    clLime:    Result := 'lime';
+    clNavy:    Result := 'navy';
+    clAqua:    Result := 'aqua';
+    clTeal:    Result := 'teal';
+    clSilver:  Result := 'silver';
+  end;
+  if (Result <> '') then
+    Exit;
+  RGBColor := ColorToRGB(AColor);
+  Result := '#000000';
+ {****************}
+  RGBValue := GetRValue(RGBColor);
+  if RGBValue > 0 then begin
+    Result[2] := Digits[RGBValue shr  4];
+    Result[3] := Digits[RGBValue and 15];
+  end;
+ {****************}
+  RGBValue := GetGValue(RGBColor);
+  if RGBValue > 0 then begin
+    Result[4] := Digits[RGBValue shr  4];
+    Result[5] := Digits[RGBValue and 15];
+  end;
+ {****************}
+  RGBValue := GetBValue(RGBColor);
+  if RGBValue > 0 then begin
+    Result[6] := Digits[RGBValue shr  4];
+    Result[7] := Digits[RGBValue and 15];
+  end;
+end;
 
 { TSynExporterHTML }
 
@@ -246,34 +305,6 @@ begin
   fReplaceReserved['€'] := '&euro;';}
 end;
 
-function TSynExporterHTML.ColorToHTML(AColor: TColor): string;
-var
-  RGBColor: TColorRef;
-  RGBValue: byte;
-const
-  Digits: array[0..15] of char = '0123456789ABCDEF';
-begin
-  RGBColor := ColorToRGB(AColor);
-  Result := '"#000000"';
- {****************}
-  RGBValue := GetRValue(RGBColor);
-  if RGBValue > 0 then begin
-    Result[3] := Digits[RGBValue shr  4];
-    Result[4] := Digits[RGBValue and 15];
-  end;
- {****************}
-  RGBValue := GetGValue(RGBColor);
-  if RGBValue > 0 then begin
-    Result[5] := Digits[RGBValue shr  4];
-    Result[6] := Digits[RGBValue and 15];
-  end;
- {****************}
-  RGBValue := GetBValue(RGBColor);
-  if RGBValue > 0 then begin
-    Result[7] := Digits[RGBValue shr  4];
-    Result[8] := Digits[RGBValue and 15];
-  end;
-end;
 
 procedure TSynExporterHTML.FormatAfterLastAttribute;
 begin
@@ -316,9 +347,9 @@ procedure TSynExporterHTML.FormatAttributeInit(BackgroundChanged,
 begin
   if BackgroundChanged then
     AddData('<span style="background-color: ' +
-      Copy(ColorToHtml(fLastBG), 2, 9) + '>');
+      ColorToHtml(fLastBG) {Copy(ColorToHtml(fLastBG), 2, 9)} + '>');
   if (BackgroundChanged or ForegroundChanged) and (fLastFG <> fFont.Color) then
-    AddData('<font color=' + ColorToHtml(fLastFG) + '>');
+    AddData('<font color="' + ColorToHtml(fLastFG) + '">');
   if BackgroundChanged or ForegroundChanged or (FontStylesChanged <> []) then
   begin
     if fsBold in fLastStyle then
@@ -338,8 +369,8 @@ procedure TSynExporterHTML.FormatBeforeFirstAttribute(BackgroundChanged,
 begin
   if BackgroundChanged then
     AddData('<span style="background-color: ' +
-      Copy(ColorToHtml(fLastBG), 2, 9) + '>');
-  AddData('<font color=' + ColorToHtml(fLastFG) + '>');
+      ColorToHtml(fLastBG) {Copy(ColorToHtml(fLastBG), 2, 9)} + '>');
+  AddData('<font color="' + ColorToHtml(fLastFG) + '">');
   if FontStylesChanged <> [] then begin
     if fsBold in fLastStyle then
       AddData('<b>');
@@ -351,6 +382,80 @@ begin
       AddData('<strike>');
   end;
 end;
+
+procedure TSynExporterHTML.FormatBeforeFirstAttributeImmediate(BG, FG: TColor);
+var
+  Span: String;
+begin
+  {$ifdef debug_synexporthtml}
+  debugln(['TSynExporterHTML.FormatBeforeFirstAttributeImmediate']);
+  {$endif}
+  // if not heoFragmentOnly this is handled in GetHeader
+  if (heoFragmentOnly in Options) then
+  begin
+    Span := MakeFontSpan(FG, BG);
+    AddData(Span);
+  end;
+end;
+
+procedure TSynExporterHTML.FormatAfterLastAttributeImmediate;
+begin
+  {$ifdef debug_synexporthtml}
+  debugln(['TSynExporterHTML.FormatAfterLastAttributeImmediate']);
+  {$endif}
+  if (heoFragmentOnly in Options) then
+    AddData('</span>');
+end;
+
+procedure TSynExporterHTML.FormatAttributeInitImmediate(
+  Attri: TSynHighlighterAttributes; IsSpace: Boolean);
+var
+  Span, StyleStr: String;
+  FG, BG: TColor;
+begin
+  {$ifdef debug_synexporthtml}
+  debugln(['TSynExporterHTML.FormatAttributeInitImmediate']);
+  {$endif}
+  FG := ValidatedColor(Attri.Foreground, fFont.Color);
+  BG := ValidatedColor(Attri.Background, fBackgroundColor);
+  if (not IsSpace and (FG <> fFont.Color)) or
+     (UseBackGround and (BG <> fbackGroundColor)) then
+  begin
+    Span := MakeFontSpan(FG, BG);
+    AddData(Span);
+  end;
+  if (Attri.Style <> []) then
+  begin
+    StyleStr := StyleToHtml(Attri.Style, IsSpace, True);
+    AddData(StyleStr);
+  end;
+end;
+
+procedure TSynExporterHTML.FormatAttributeDoneImmediate(
+  Attri: TSynHighlighterAttributes; IsSpace: Boolean);
+var
+  FG, BG: TColor;
+  StyleStr: String;
+begin
+  {$ifdef debug_synexporthtml}
+  debugln(['TSynExporterHTML.FormatAttributeDoneImmediate']);
+  {$endif}
+  //reversed order compared to FormatAttributeInitImmediate
+  if (Attri.Style <> []) then
+  begin
+    StyleStr := StyleToHtml(Attri.Style, IsSpace, False);
+    AddData(StyleStr);
+  end;
+  FG := ValidatedColor(Attri.Foreground, fFont.Color);
+  BG := ValidatedColor(Attri.Background, fBackgroundColor);
+  if (not IsSpace and (FG <> fFont.Color)) or
+     (UseBackGround and (BG <> fbackGroundColor)) then
+  begin
+    AddData('</span>');
+  end;
+
+end;
+
 {end}                                                                           //mh 2000-10-10
 
 procedure TSynExporterHTML.FormatNewLine;
@@ -416,11 +521,13 @@ begin
     SFooter := GetFooter;
     FooterLen := Length(SFooter);
 
-    //debugln(['TSynExporterHtml.GetHeader: WinClipHeaderSize=',WinClipHeadersize]);
-    //debugln(['  Footer="',Sfooter,'"']);
-    //debugln(['  FooterLen=',FooterLen]);
-    //debugln(['  BufferSize=',getBufferSize]);
-    //debugln(['  length(docHeader)=',length(docheader)]);
+    {$ifdef debug_synexporthtml}
+    debugln(['TSynExporterHtml.GetHeader: WinClipHeaderSize=',WinClipHeadersize]);
+    debugln(['  Footer="',Sfooter,'"']);
+    debugln(['  FooterLen=',FooterLen]);
+    debugln(['  BufferSize=',getBufferSize]);
+    debugln(['  length(docHeader)=',length(docheader)]);
+    {$endif}
 
     // Described in http://msdn.microsoft.com/library/sdkdoc/htmlclip/htmlclipboard.htm
     WinClipHeader := Format(WinClipHeaderFmt,
@@ -472,6 +579,45 @@ begin
       Options := Options + [heoFragmentOnly]
     else
       Options := Options - [heoFragmentOnly];
+  end;
+end;
+
+function TSynExporterHTML.MakeFontSpan(FG, BG: TColor): String;
+begin
+  Result := '<span style="color: ';
+  FG := ValidatedColor(FG, fFont.Color);
+  Result := Result + ColorToHtml(FG);
+  BG := ValidatedColor(BG, fBackgroundColor);
+  if UseBackGround then
+  begin
+    Result := Result + '; background-color: ' + ColorToHtml(BG);
+  end;
+  Result := Result + ';">';
+end;
+
+function TSynExporterHTML.StyleToHtml(AStyle: TFontStyles; IsSpace, DoSet: Boolean): String;
+begin
+  Result := '';
+  if DoSet then
+  begin
+    if not IsSpace then
+    begin
+      if (fsBold in AStyle) then Result := Result + '<b>';
+      if (fsItalic in AStyle) then Result := Result + '<i>';
+      if (fsUnderline in AStyle) then Result := Result + '<u>';
+    end;
+    //the only style that actually is applied to whitespace in HTML
+    if (fsStrikeOut in AStyle) then Result := Result + '<strike>';
+  end
+  else
+  begin //unset in the opposite order as set
+    if (fsStrikeOut in AStyle) then Result := Result + '</strike>';
+    if not IsSpace then
+    begin
+      if (fsUnderline in AStyle) then Result := Result + '</u>';
+      if (fsItalic in AStyle) then Result := Result + '</i>';
+      if (fsBold in AStyle) then Result := Result + '</b>';
+    end;
   end;
 end;
 

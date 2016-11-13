@@ -5,7 +5,7 @@ msgstr ""
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "POT-Creation-Date: \n"
-"PO-Revision-Date: 2016-10-19 01:42+0300\n"
+"PO-Revision-Date: 2016-11-11 01:34+0300\n"
 "Language-Team: \n"
 "MIME-Version: 1.0\n"
 "X-Poedit-Bookmarks: -1,-1,-1,-1,-1,-1,-1,3325,-1,-1\n"
@@ -2167,8 +2167,8 @@ msgid "Interface"
 msgstr "Interface"
 
 #: lazarusidestrconsts.dlginsertmethods
-msgid "Insert methods"
-msgstr "Вставлять методы"
+msgid "Insert method implementations"
+msgstr "Вставлять реализации методов"
 
 #: lazarusidestrconsts.dlginsertsection
 msgid "Insert into Uses section of"
@@ -2995,9 +2995,25 @@ msgstr "Создать Application Bundle"
 msgid "Load &Default"
 msgstr "Загрузить по &умолчанию"
 
-#: lazarusidestrconsts.dlgpodpiaware
-msgid "Enabled DPI Awareness (for Vista+)"
-msgstr "Поддержка различных DPI (для Vista+)"
+#: lazarusidestrconsts.dlgpodpiawareness
+msgid "DPI awareness"
+msgstr "Поддержка DPI"
+
+#: lazarusidestrconsts.dlgpodpiawarenessoff
+msgid "off"
+msgstr "выключена"
+
+#: lazarusidestrconsts.dlgpodpiawarenessoldoffnewpermonitor
+msgid "Vista-8: off, 8.1+: per monitor"
+msgstr "Vista-8: выключена, 8.1+: отдельно для каждого монитора"
+
+#: lazarusidestrconsts.dlgpodpiawarenessoldonnewpermonitor
+msgid "Vista-8: on, 8.1+: per monitor"
+msgstr "Vista-8: включена, 8.1+: отдельно для каждого монитора"
+
+#: lazarusidestrconsts.dlgpodpiawarenesson
+msgid "on"
+msgstr "включена"
 
 #: lazarusidestrconsts.dlgpoexecutionlevel
 msgid "Execution Level"
@@ -7873,6 +7889,10 @@ msgctxt "lazarusidestrconsts.lisdefault"
 msgid "Default"
 msgstr "По умолчанию"
 
+#: lazarusidestrconsts.lisdefaultclassvisibilitysectionofnewmethodsforexampl
+msgid "Default class visibility section of new methods. For example code completion on OnShow:="
+msgstr "Секция видимости класса, выбираемая по умолчанию для новых методов. Например, используется при завершении кода вида OnShow:="
+
 #: lazarusidestrconsts.lisdefaultiscomboboxwithtrueandfalse
 msgid "The default is ComboBox with \"True\" and \"False\" selections"
 msgstr "По умолчанию отображается раскрывающийся список с элементами \"True\" и \"False\""
@@ -7880,6 +7900,10 @@ msgstr "По умолчанию отображается раскрывающи�
 #: lazarusidestrconsts.lisdefaultplaceholder
 msgid "(default)"
 msgstr "(по умолчанию)"
+
+#: lazarusidestrconsts.lisdefaultsectionofmethods
+msgid "Default section of methods"
+msgstr "Секция по умолчанию для методов"
 
 #: lazarusidestrconsts.lisdelayforcompletionlonglinehint
 msgid "Delay for long line hints in completion box"
@@ -10460,6 +10484,10 @@ msgstr "Оставить в списке на установку"
 #: lazarusidestrconsts.liskeepname
 msgid "Keep name"
 msgstr "Сохранить имя"
+
+#: lazarusidestrconsts.liskeepopen
+msgid "Keep open"
+msgstr "Оставить открытым"
 
 #: lazarusidestrconsts.liskeeprelativeindentationofmultilinetemplate
 msgid "Keep relative indentation of multi line template"
@@ -13310,6 +13338,10 @@ msgstr "Значение \"%s\""
 msgid "(was \"%s\")"
 msgstr "(было \"%s\")"
 
+#: lazarusidestrconsts.lismmwidgetsetavailableforlclproject
+msgid "WidgetSet change is available only for LCL projects"
+msgstr "Изменение библиотеки виджетов доступно только в проектах LCL"
+
 #: lazarusidestrconsts.lismode
 msgid ", Mode: %s"
 msgstr ", режим: %s"
@@ -13549,6 +13581,14 @@ msgstr "Макрос %d"
 #: lazarusidestrconsts.lisnewmacroname2
 msgid "New Macroname"
 msgstr "Новое имя макроса"
+
+#: lazarusidestrconsts.lisnewmethodimplementationsareinsertedbetweenexisting
+msgid "New method implementations are inserted between existing methods of this class. Either alphabetically, or as last, or in declaration order."
+msgstr "Новые реализации методов вставляются между уже существующими для этого класса. Они могут вставляться по алфавиту, последними либо в порядке объявления методов."
+
+#: lazarusidestrconsts.lisnewmethodsandmembersareinsertedalphabeticallyoradd
+msgid "New method and member declarations in the class..end sections are inserted alphabetically or added last."
+msgstr "Объявления новых методов и элементов класса в секциях class..end вставляются по алфавиту либо последними."
 
 #: lazarusidestrconsts.lisnewpage
 msgid "New page"
@@ -18583,10 +18623,6 @@ msgstr "Сообщение со справкой (параметр -h)"
 #: lazarusidestrconsts.lisuse
 msgid "Use"
 msgstr "Использовать"
-
-#: lazarusidestrconsts.lisuseandclose
-msgid "Use and close"
-msgstr "Применить и закрыть"
 
 #: lazarusidestrconsts.lisuseansistrings
 msgctxt "lazarusidestrconsts.lisuseansistrings"
