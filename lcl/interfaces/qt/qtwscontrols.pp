@@ -92,6 +92,7 @@ type
     class procedure ScrollBy(const AWinControl: TWinControl; DeltaX, DeltaY: integer); override;
   end;
 
+
   { TQtWSGraphicControl }
 
   TQtWSGraphicControl = class(TWSGraphicControl)
@@ -619,10 +620,11 @@ begin
   Widget := TQtWidget(AWinControl.Handle);
 
   Widget.BeginUpdate;
-  // issue #28437
+  // issue #28437, #30966 - regression from r53365: when FontChanged() is called
+  // here handle is recreated inside LCL, so we are dead - SEGFAULT.
   if AWinControl.HandleObjectShouldBeVisible and not AWinControl.IsParentFont and
     (AWinControl.Font.Name = 'default') then
-      SetFont(AWinControl, AWinControl.Font);
+      SetFont(AWinControl, AWinControl.Font); {DO NOT TOUCH THIS PLEASE !}
 
   Widget.setVisible(AWinControl.HandleObjectShouldBeVisible);
   Widget.EndUpdate;
