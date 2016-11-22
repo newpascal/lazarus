@@ -256,7 +256,7 @@ procedure CheckList(List: TList; TestListNil, TestDoubles, TestNils: boolean);
 procedure CheckList(List: TFPList; TestListNil, TestDoubles, TestNils: boolean);
 procedure CheckEmptyListCut(List1, List2: TList);
 procedure RemoveDoubles(List: TStrings);
-function UTF8SearchInStringList(List: TStrings; const s: string): integer;
+function SearchInStringListI(List: TStrings; const s: string): integer; // search ASCII case insensitive, not UTF-8
 procedure ReverseList(List: TList);
 procedure ReverseList(List: TFPList);
 procedure FreeListObjects(List: TList; FreeList: boolean);
@@ -330,7 +330,7 @@ end;
   function FindFilesCaseInsensitive(const Directory,
     CaseInsensitiveFilename: string; IgnoreExact: boolean): TStringLists;
 
-  Search case insensitive in Directory for all files
+  Search Pascal case insensitive in Directory for all files
   named CaseInsensitiveFilename
 -------------------------------------------------------------------------------}
 function FindFilesCaseInsensitive(const Directory,
@@ -346,7 +346,7 @@ begin
       // check if special file
       if (FileInfo.Name='.') or (FileInfo.Name='..') or (FileInfo.Name='') then
         continue;
-      if (CompareFilenamesIgnoreCase(CaseInsensitiveFilename,FileInfo.Name)=0)
+      if (CompareText(CaseInsensitiveFilename,FileInfo.Name)=0) // Pascal insensitibity, not UTF-8, thing about Turkish I
       and ((not IgnoreExact)
            or (CompareFilenames(CaseInsensitiveFilename,FileInfo.Name)<>0))
       then begin
@@ -1282,14 +1282,11 @@ begin
   end;
 end;
 
-{-------------------------------------------------------------------------------
-  function UTF8SearchInStringList(List: TStrings; const s: string): integer;
--------------------------------------------------------------------------------}
-function UTF8SearchInStringList(List: TStrings; const s: string): integer;
+function SearchInStringListI(List: TStrings; const s: string): integer;
 begin
   if List=nil then exit(-1);
   Result:=List.Count-1;
-  while (Result>=0) and (UTF8CompareText(List[Result],s)<>0) do dec(Result);
+  while (Result>=0) and (CompareText(List[Result],s)<>0) do dec(Result);
 end;
 
 {-------------------------------------------------------------------------------
