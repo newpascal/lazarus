@@ -116,15 +116,25 @@ procedure TCustomFrame.SetParent(AParent: TWinControl);
     end;
   end;
 
+var
+  ParentForm: TCustomForm;
 begin
   if Parent=AParent then exit;
   if Parent<>nil then
     UpdateActionLists(Self,opRemove);
+
   if (Parent=nil) and HandleAllocated then
     DestroyHandle;
   inherited SetParent(AParent);
   if Parent <> nil then
+  begin
     UpdateActionLists(Self,opInsert);
+
+    ParentForm := GetParentForm(Self);
+    if (ParentForm<>nil) and ParentForm.Scaled
+    and (ParentForm.PixelsPerInch<>PixelsPerInch) then
+      AutoAdjustLayout(lapAutoAdjustForDPI, PixelsPerInch, ParentForm.PixelsPerInch, 0, 0, False);
+  end;
 end;
 
 class function TCustomFrame.GetControlClassDefaultSize: TSize;

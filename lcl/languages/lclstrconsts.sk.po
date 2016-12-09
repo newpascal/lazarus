@@ -365,6 +365,10 @@ msgstr "Rozlišovať veľké a malé písmo"
 msgid "Control of class '%s' can't have control of class '%s' as a child"
 msgstr "Prvok triedy '%s' nemôže mať prvok triedy '%s' ako dieťa"
 
+#: lclstrconsts.rscontrolhasnoparentformorframe
+msgid "Control '%s' has no parent form or frame"
+msgstr ""
+
 #: lclstrconsts.rscontrolhasnoparentwindow
 msgid "Control '%s' has no parent window"
 msgstr "Prvok '%s' nemá rodičovské okno"
@@ -1331,6 +1335,10 @@ msgstr "Žltá"
 #: lclstrconsts.scannotfocus
 msgid "Cannot focus a disabled or invisible window"
 msgstr "Nemôžem zamerať vypnuté alebo neviditeľné okno"
+
+#: lclstrconsts.scannotsetdesigntimeppi
+msgid "Cannot set design time PPI."
+msgstr ""
 
 #: lclstrconsts.sduplicatemenus
 msgid "Duplicate menus"

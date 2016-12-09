@@ -54,6 +54,7 @@ type
                          {%H-}WithThemeSpace: Boolean); override;
   public
     constructor Create(AOwner: TComponent); override;
+    procedure ShouldAutoAdjust(var AWidth, AHeight: Boolean); override;
   published
     property Caption;
     property Align;
@@ -394,6 +395,13 @@ begin
     PreferredHeight := 0;
     PreferredWidth := Max(FTextExtent.cy, FBevelHeight);
   end;
+end;
+
+procedure TDividerBevel.ShouldAutoAdjust(var AWidth,
+  AHeight: Boolean);
+begin
+  AWidth := not (AutoSize and (Orientation = trVertical));
+  AHeight := not (AutoSize and (Orientation = trHorizontal));
 end;
 
 constructor TDividerBevel.Create(AOwner: TComponent);

@@ -157,6 +157,9 @@ type
     function DoHint: Boolean; virtual;
     procedure DrawPanel(Panel: TStatusPanel; const Rect: TRect); virtual;
     procedure LMDrawItem(var Message: TLMDrawItems); message LM_DRAWITEM;
+
+    procedure DoAutoAdjustLayout(const AMode: TLayoutAdjustmentPolicy;
+      const AXProportion, AYProportion: Double; const AScale0Fonts: Boolean); override;
   public
     constructor Create(TheOwner: TComponent); override;
     destructor Destroy; override;
@@ -1480,6 +1483,8 @@ type
     procedure DoInsert(AItem: TListItem); virtual;
     procedure DoItemChecked(AItem: TListItem);
     procedure DoSelectItem(AItem: TListItem; ASelected: Boolean); virtual;
+    procedure DoAutoAdjustLayout(const AMode: TLayoutAdjustmentPolicy;
+      const AXProportion, AYProportion: Double; const AScale0Fonts: Boolean); override;
     procedure DoSetBounds(ALeft, ATop, AWidth, AHeight: integer); override;
 
     procedure DoEndEdit(AItem: TListItem; const AValue: String); virtual;
@@ -2233,6 +2238,8 @@ type
                          out NewWidth, NewHeight: Integer;
                          Simulate: boolean): Boolean;
     procedure CNDropDownClosed(var Message: TLMessage); message CN_DROPDOWNCLOSED;
+    procedure DoAutoAdjustLayout(const AMode: TLayoutAdjustmentPolicy;
+      const AXProportion, AYProportion: Double; const AScale0Fonts: Boolean); override;
   public
     constructor Create(TheOwner: TComponent); override;
     destructor Destroy; override;
@@ -3450,7 +3457,6 @@ type
     property HideSelection: Boolean
       read GetHideSelection write SetHideSelection default True;
     property HotTrack: Boolean read GetHotTrack write SetHotTrack default False;
-    property Images: TCustomImageList read FImages write SetImages;
     property Indent: Integer read FIndent write SetIndent default 15;
     property MultiSelect: Boolean read GetMultiSelect write SetMultiSelect default False;
     property OnAddition: TTVExpandedEvent read FOnAddition write FOnAddition;
@@ -3492,7 +3498,6 @@ type
     property ShowRoot: Boolean read GetShowRoot write SetShowRoot default True;
     property ShowSeparators: Boolean read GetShowSeparators write SetShowSeparators default True;
     property SortType: TSortType read FSortType write SetSortType default stNone;
-    property StateImages: TCustomImageList read FStateImages write SetStateImages;
     property ToolTips: Boolean read GetToolTips write SetToolTips default True;
   public
     constructor Create(AnOwner: TComponent); override;
@@ -3550,6 +3555,7 @@ type
     property ExpandSignSize: integer read FExpandSignSize write FExpandSignSize default DefaultTreeNodeExpandSignSize;
     property ExpandSignType: TTreeViewExpandSignType
       read FExpandSignType write SetExpandSignType default tvestTheme;
+    property Images: TCustomImageList read FImages write SetImages;
     property InsertMarkNode: TTreeNode read FInsertMarkNode write SetInsertMarkNode;
     property InsertMarkType: TTreeViewInsertMarkType read FInsertMarkType write SetInsertMarkType;
     property Items: TTreeNodes read FTreeNodes write SetTreeNodes;
@@ -3565,6 +3571,7 @@ type
     property SelectionFontColorUsed: boolean read FSelectedFontColorUsed write FSelectedFontColorUsed default False;
     property Selections[AIndex: Integer]: TTreeNode read GetSelections;
     property SeparatorColor: TColor read fSeparatorColor write SetSeparatorColor default clGray;
+    property StateImages: TCustomImageList read FStateImages write SetStateImages;
     property TopItem: TTreeNode read GetTopItem write SetTopItem;
     property TreeLineColor: TColor read FTreeLineColor write FTreeLineColor default clWindowFrame;
     property TreeLinePenStyle: TPenStyle read FTreeLinePenStyle write FTreeLinePenStyle default psPattern;
@@ -3681,6 +3688,8 @@ type
   end;
 
 
+  TTVGetNodeText = function(Node: TTreeNode): string of object;
+
   { TTreeNodeExpandedState }
   { class to store and restore the expanded state of a TTreeView
     The nodes are identified by their Text property.
@@ -3695,15 +3704,20 @@ type
    }
 
   TTreeNodeExpandedState = class
+  private
+    FOnGetNodeText: TTVGetNodeText;
+    function DefaultGetNodeText(Node: TTreeNode): string;
+  public
     NodeText: string;
     Children: TAvgLvlTree;
-    constructor Create(FirstTreeNode: TTreeNode);
-    constructor Create(TreeView: TCustomTreeView);
+    constructor Create(FirstTreeNode: TTreeNode; const GetNodeTextEvent: TTVGetNodeText = nil);
+    constructor Create(TreeView: TCustomTreeView; const GetNodeTextEvent: TTVGetNodeText = nil);
     destructor Destroy; override;
     procedure Clear;
     procedure CreateChildNodes(FirstTreeNode: TTreeNode);
     procedure Apply(FirstTreeNode: TTreeNode; CollapseToo: boolean = true);
     procedure Apply(TreeView: TCustomTreeView; CollapseToo: boolean = true);
+    property OnGetNodeText: TTVGetNodeText read FOnGetNodeText write FOnGetNodeText;
   end;
 
 

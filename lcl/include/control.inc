@@ -764,6 +764,38 @@ begin
   end;
 end;
 
+function TControl.ScaleCoord(const ASize: Integer): Integer;
+var
+  ParentForm: TCustomDesignControl;
+begin
+  ParentForm := NeedParentDesignControl(Self);
+  Result := MulDiv(ASize, ParentForm.PixelsPerInch, ParentForm.DesignTimePPI);
+end;
+
+function TControl.ScaleCoord96(const ASize: Integer): Integer;
+var
+  ParentForm: TCustomDesignControl;
+begin
+  ParentForm := NeedParentDesignControl(Self);
+  Result := MulDiv(ASize, ParentForm.PixelsPerInch, 96);
+end;
+
+function TControl.ScaleCoord96Back(const ASize: Integer): Integer;
+var
+  ParentForm: TCustomDesignControl;
+begin
+  ParentForm := NeedParentDesignControl(Self);
+  Result := MulDiv(ASize, 96, ParentForm.PixelsPerInch);
+end;
+
+function TControl.ScaleCoordBack(const ASize: Integer): Integer;
+var
+  ParentForm: TCustomDesignControl;
+begin
+  ParentForm := NeedParentDesignControl(Self);
+  Result := MulDiv(ASize, ParentForm.DesignTimePPI, ParentForm.PixelsPerInch);
+end;
+
 {------------------------------------------------------------------------------
        TControl.ChangeScale
 
@@ -2912,6 +2944,101 @@ begin
   {$ENDIF}
 end;
 
+procedure TControl.DoAutoAdjustLayout(const AMode: TLayoutAdjustmentPolicy;
+  const AXProportion, AYProportion: Double; const AScale0Fonts: Boolean);
+var
+  AAWidth, AAHeight: Boolean;
+  NewLeft, NewTop, NewWidth, NewHeight, OldWidth, OldHeight: Integer;
+  NewRight, NewBottom: Int64;
+begin
+  if (AScale0Fonts or (Font.Height<>0)) and (not ParentFont or (Parent=nil)) then
+    Font.Height := Round(GetFontData(Font.Reference.Handle).Height*AYProportion);
+
+  // Apply the changes
+  if AMode in [lapAutoAdjustWithoutHorizontalScrolling, lapAutoAdjustForDPI] then
+  begin
+
+    // Dimensions
+    AAWidth := False;
+    AAHeight := False;
+    NewLeft := Left;
+    NewTop := Top;
+    NewWidth := Width;
+    NewHeight := Height;
+    OldWidth := Width;
+    OldHeight := Height;
+
+    ShouldAutoAdjust(AAWidth, AAHeight);
+    AAWidth := AAWidth and (Align in [alNone, alLeft, alRight])
+      and not((akLeft in Anchors) and (akRight in Anchors));
+    AAHeight := AAHeight and (Align in [alNone, alTop, alBottom])
+      and not((akTop in Anchors) and (akBottom in Anchors));
+
+    if (Align=alNone) and (akLeft in Anchors) then
+      NewLeft := Round(NewLeft * AXProportion);
+    if (Align=alNone) and (akRight in Anchors) and (Parent<>nil) then
+    begin
+      if not(akLeft in Anchors) then
+      begin
+        NewRight := Round((Parent.ClientWidth-NewLeft-OldWidth) * AXProportion);
+        NewLeft := Parent.ClientWidth-NewRight-OldWidth
+      end else
+      begin
+        NewRight := Round((Parent.ClientWidth-Left-OldWidth) * AXProportion);
+        NewWidth := Parent.ClientWidth-NewLeft-NewRight;
+      end;
+    end;
+
+    if (Align=alNone) and (akTop in Anchors) then
+      NewTop := Round(NewTop * AYProportion);
+    if (Align=alNone) and (akBottom in Anchors) and (Parent<>nil) then
+    begin
+      if not(akTop in Anchors) then
+      begin
+        NewBottom := Round((Parent.ClientHeight-NewTop-OldHeight) * AYProportion);
+        NewTop := Parent.ClientHeight-NewBottom-OldHeight
+      end else
+      begin
+        NewBottom := Round((Parent.ClientHeight-Top-OldHeight) * AYProportion);
+        NewHeight := Parent.ClientHeight-NewTop-NewBottom;
+      end;
+    end;
+
+    // Give a shake at the autosize to recalculate font sizes for example
+    if (not AAWidth or not AAHeight) and AutoSize then
+    begin
+      if AutoSize then AdjustSize();
+      NewWidth := Width;
+      NewHeight := Height;
+    end;
+    if AAWidth then
+      NewWidth := Round(Width * AXProportion);
+    if AAHeight then
+      NewHeight := Round(Height * AYProportion);
+
+    if Anchors*[akLeft, akRight] = [akRight] then
+      NewLeft := NewLeft+Width-NewWidth;
+    if Anchors*[akTop, akBottom] = [akBottom] then
+      NewTop := NewTop+Height-NewHeight;
+
+    if AAWidth then
+    begin
+      if akRight in Anchors then
+        NewLeft := NewLeft-NewWidth+OldWidth;
+    end;
+    if AAHeight then
+    begin
+      if akBottom in Anchors then
+        NewTop := NewTop-NewHeight+OldHeight;
+    end;
+
+    BorderSpacing.AutoAdjustLayout(AXProportion, AYProportion);
+    Constraints.AutoAdjustLayout(AXProportion, AYProportion);
+
+    SetBounds(NewLeft, NewTop, NewWidth, NewHeight);
+  end;
+end;
+
 procedure TControl.AnchorSideChanged(TheAnchorSide: TAnchorSide);
 begin
   //debugln('TControl.AnchorSideChanged ',DbgSName(Self));
@@ -3834,10 +3961,10 @@ begin
 end;
 
 procedure TControl.AutoAdjustLayout(AMode: TLayoutAdjustmentPolicy;
-  const AFromDPI, AToDPI, AOldFormWidth, ANewFormWidth: Integer);
+  const AFromDPI, AToDPI, AOldFormWidth, ANewFormWidth: Integer;
+  const AScale0Fonts: Boolean);
 var
   lXProportion, lYProportion: Double;
-  NewLeft, NewTop, NewHeight, NewWidth: Integer;
   lMode: TLayoutAdjustmentPolicy;
 begin
   // First resolve ladDefault
@@ -3859,45 +3986,14 @@ begin
   if AFromDPI > 0 then lYProportion := AToDPI / AFromDPI
   else lYProportion := 1.0;
 
-  // Apply the changes
-  if lMode in [lapAutoAdjustWithoutHorizontalScrolling, lapAutoAdjustForDPI] then
-  begin
-    if ShouldAutoAdjustLeftAndTop then
-    begin
-      NewLeft := Round(Left * lXProportion);
-      NewTop := Round(Top * lYProportion);
-    end
-    else
-    begin
-      NewLeft := Left;
-      NewTop := Top;
-    end;
-    if ShouldAutoAdjustWidthAndHeight then
-    begin
-      NewWidth := Round(Width * lXProportion);
-      NewHeight := Round(Height * lYProportion);
-    end
-    else
-    begin
-      // Give a shake at the autosize to recalculate font sizes for example
-      if AutoSize then AdjustSize();
-      NewWidth := Width;
-      NewHeight := Height;
-    end;
-    SetBounds(NewLeft, NewTop, NewWidth, NewHeight);
-  end;
+  DoAutoAdjustLayout(lMode, lXProportion, lYProportion, AScale0Fonts);
 end;
 
-// The layout should only be auto-adjusted for controls with the most simple
-// default absolute positioning
-function TControl.ShouldAutoAdjustLeftAndTop: Boolean;
+// Auto-adjust the layout of controls.
+procedure TControl.ShouldAutoAdjust(var AWidth, AHeight: Boolean);
 begin
-  Result := (Align = alNone) and (Anchors = [akTop, akLeft]) and (Parent <> nil);
-end;
-
-function TControl.ShouldAutoAdjustWidthAndHeight: Boolean;
-begin
-  Result := (Align = alNone) and (Anchors = [akTop, akLeft]) and (AutoSize = False);
+  AWidth := not AutoSize;
+  AHeight := not AutoSize;
 end;
 
 procedure TControl.UpdateAnchorRules;
@@ -5304,7 +5400,7 @@ begin
 end;
 
 {------------------------------------------------------------------------------
-  procedure TControl.CNPreferredSizeChanged;
+  procedure TControl.GetSidePosition;
 
   Utility function to retrieve Left,Top,Right and Bottom.
  ------------------------------------------------------------------------------}

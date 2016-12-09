@@ -29,7 +29,8 @@ unit opkman_common;
 interface
 
 uses
-  Classes, SysUtils, Dialogs, Forms, Controls, LazIDEIntf, LazFileUtils, contnrs;
+  Classes, SysUtils, Dialogs, Forms, Controls, LazIDEIntf, LazFileUtils, contnrs,
+  opkman_const;
 
 type
   TPackageAction = (paDownloadTo, paInstall, paUpdate);
@@ -41,31 +42,85 @@ type
     FFullPath: String;
   end;
 
+const
+  MaxCategories = 27;
+  Categories: array[0..MaxCategories - 1] of String = (
+    rsMainFrm_VSTText_PackageCategory0,
+    rsMainFrm_VSTText_PackageCategory1,
+    rsMainFrm_VSTText_PackageCategory2,
+    rsMainFrm_VSTText_PackageCategory3,
+    rsMainFrm_VSTText_PackageCategory4,
+    rsMainFrm_VSTText_PackageCategory5,
+    rsMainFrm_VSTText_PackageCategory6,
+    rsMainFrm_VSTText_PackageCategory7,
+    rsMainFrm_VSTText_PackageCategory8,
+    rsMainFrm_VSTText_PackageCategory9,
+    rsMainFrm_VSTText_PackageCategory10,
+    rsMainFrm_VSTText_PackageCategory11,
+    rsMainFrm_VSTText_PackageCategory12,
+    rsMainFrm_VSTText_PackageCategory13,
+    rsMainFrm_VSTText_PackageCategory14,
+    rsMainFrm_VSTText_PackageCategory15,
+    rsMainFrm_VSTText_PackageCategory16,
+    rsMainFrm_VSTText_PackageCategory17,
+    rsMainFrm_VSTText_PackageCategory18,
+    rsMainFrm_VSTText_PackageCategory19,
+    rsMainFrm_VSTText_PackageCategory20,
+    rsMainFrm_VSTText_PackageCategory21,
+    rsMainFrm_VSTText_PackageCategory22,
+    rsMainFrm_VSTText_PackageCategory23,
+    rsMainFrm_VSTText_PackageCategory24,
+    rsMainFrm_VSTText_PackageCategory25,
+    rsMainFrm_VSTText_PackageCategory26);
+
+  //needed for localized filter, since the JSON contains only english text
+  CategoriesEng: array[0..MaxCategories - 1] of String = (
+    'Charts and Graphs',
+    'Cryptography',
+    'DataControls',
+    'Date and Time',
+    'Dialogs',
+    'Edit and Memos',
+    'Files and Drives',
+    'GUIContainers',
+    'Graphics',
+    'Grids',
+    'Indicators and Gauges',
+    'Labels',
+    'LazIDEPlugins',
+    'List and Combo Boxes',
+    'ListViews and TreeViews',
+    'Menus',
+    'Multimedia',
+    'Networking',
+    'Panels',
+    'Reporting',
+    'Science',
+    'Security',
+    'Shapes',
+    'Sizers and Scrollers',
+    'System',
+    'Tabbed Components',
+    'Other');
+
 var
-  LocalRepository: String;
-  LocalRepositoryArchive: String;
-  LocalRepositoryPackages: String;
-  LocalRepositoryConfig: String;
-  LocalRepositoryUpdate: String;
   LocalRepositoryConfigFile: String;
-  ConfigFile: String;
+  LocalRepositoryUpdatesFile: String;
   PackageAction: TPackageAction;
-  ForceDownload: Boolean = True;
-  ForceExtract: Boolean = True;
   InstallPackageList: TObjectList;
 
 function MessageDlgEx(const AMsg: String; ADlgType: TMsgDlgType;  AButtons:
   TMsgDlgButtons; AParent: TForm): TModalResult;
-function InitLocalRepository: Boolean;
+procedure InitLocalRepository;
 function SecToHourAndMin(const ASec: LongInt): String;
 function FormatSize(Size: Int64): String;
 function FormatSpeed(Speed: LongInt): String;
 function GetDirSize(const ADirName: String; var AFileCnt, ADirCnt: Integer): Int64;
 procedure FindPackages(const ADirName: String; APackageList: TStrings);
 procedure FindAllFilesEx(const ADirName: String; AFileList: TStrings);
+function FixProtocol(const AURL: String): String;
 
 implementation
-uses opkman_const;
 
 function MessageDlgEx(const AMsg: string; ADlgType: TMsgDlgType;
   AButtons: TMsgDlgButtons; AParent: TForm): TModalResult;
@@ -84,28 +139,19 @@ begin
   end;
 end;
 
-function InitLocalRepository: Boolean;
+procedure InitLocalRepository;
+var
+  LocalRepo, LocalRepoConfig: String;
 begin
-  LocalRepository := AppendPathDelim(AppendPathDelim(LazarusIDE.GetPrimaryConfigPath) + cLocalRepository);
-  if not DirectoryExistsUTF8(LocalRepository) then
-    CreateDirUTF8(LocalRepository);
-  LocalRepositoryArchive := AppendPathDelim(LocalRepository + AppendPathDelim(cLocalRepositoryArchive));
-  if not DirectoryExistsUTF8(LocalRepositoryArchive) then
-    CreateDirUTF8(LocalRepositoryArchive);
-  LocalRepositoryUpdate := AppendPathDelim(LocalRepository + AppendPathDelim(cLocalRepositoryUpdate));
-  if not DirectoryExists(LocalRepositoryUpdate) then
-    CreateDir(LocalRepositoryUpdate);
-  LocalRepositoryPackages := AppendPathDelim(LocalRepository + AppendPathDelim(cLocalRepositoryPackages));
-  if not DirectoryExists(LocalRepositoryPackages) then
-    CreateDir(LocalRepositoryPackages);
-  LocalRepositoryConfig := AppendPathDelim(LocalRepository + AppendPathDelim(cLocalRepositoryConfig));
-  if not DirectoryExists(LocalRepositoryConfig) then
-    CreateDir(LocalRepositoryConfig);
-  LocalRepositoryConfigFile := LocalRepositoryConfig + cLocalRepositoryConfigFile;
-  Result := DirectoryExistsUTF8(LocalRepository) and
-            DirectoryExistsUTF8(LocalRepositoryArchive) and
-            DirectoryExistsUTF8(LocalRepositoryConfig) and
-            DirectoryExistsUTF8(LocalRepositoryPackages);
+  LocalRepo := AppendPathDelim(AppendPathDelim(LazarusIDE.GetPrimaryConfigPath) + cLocalRepository);
+  if not DirectoryExistsUTF8(LocalRepo) then
+    CreateDirUTF8(LocalRepo);
+
+  LocalRepoConfig := AppendPathDelim(LocalRepo + cLocalRepositoryConfig);
+  if not DirectoryExists(LocalRepoConfig) then
+    CreateDirUTF8(LocalRepoConfig);
+  LocalRepositoryConfigFile := LocalRepoConfig + cLocalRepositoryConfigFile;
+  LocalRepositoryUpdatesFile := LocalRepoConfig + cLocalRepositoryUpdatesFile;
 end;
 
 function SecToHourAndMin(const ASec: LongInt): String;
@@ -149,7 +195,6 @@ begin
   else
     Result := FormatFloat('#,##0.0 GB/s', Speed / GB);
 end;
-
 
 function GetDirSize(const ADirName: String; var AFileCnt, ADirCnt: Integer): Int64;
 var
@@ -287,6 +332,13 @@ procedure FindAllFilesEx(const ADirName: String; AFileList: TStrings);
 
 begin
   FindFiles(ADirName);
+end;
+
+function FixProtocol(const AURL: String): String;
+begin
+  Result := AURL;
+  if (Pos('http://', Result) = 0) and (Pos('https://', Result) = 0) then
+    Result := 'https://' + Result;
 end;
 
 end.

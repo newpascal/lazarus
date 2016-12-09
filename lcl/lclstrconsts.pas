@@ -217,6 +217,7 @@ resourceString
   sInvalidImageSize = 'Invalid image size';
   sDuplicateMenus = 'Duplicate menus';
   sCannotFocus = 'Cannot focus a disabled or invisible window';
+  sCannotSetDesignTimePPI = 'Cannot set design time PPI.';
   sParentRequired = 'Control "%s" has no parent window.';
   sInvalidCharSet = 'The char set in mask "%s" is not valid!';
   SMaskEditNoMatch = 'The current text does not match the specified mask.';
@@ -245,6 +246,7 @@ resourceString
   rsCreatingGdbCatchableError = 'Creating gdb catchable error:';
   rsAControlCanNotHaveItselfAsParent = 'A control can''t have itself as a parent';
   rsControlHasNoParentWindow = 'Control ''%s'' has no parent window';
+  rsControlHasNoParentFormOrFrame = 'Control ''%s'' has no parent form or frame';
   rsControlIsNotAParent = '''%s'' is not a parent of ''%s''';
   rsControlClassCantContainChildClass = 'Control of class ''%s'' can''t have control of class ''%s'' as a child';
   rsASCannotHaveAsParent = 'Class %s cannot have %s as parent.';

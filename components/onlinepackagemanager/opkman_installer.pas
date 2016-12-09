@@ -160,7 +160,7 @@ function TPackageInstaller.CompilePackage(const AIDEPackage: TIDEPackage;
 begin
   Result := -1;
   {$if declared(lcl_version)}
-   {$if (lcl_major >= 1) and (lcl_minor >= 7)}
+   {$if (lcl_major > 0) and (lcl_minor > 6)}
      //DoCompilePackage function is only available with Laz 1.7 +
      DoOnPackageInstallProgress(imCompilePackage, APackageFile);
      Result := PackageEditingInterface.DoCompilePackage(AIDEPackage, [pcfCleanCompile, pcfDoNotSaveEditorFiles], False);
@@ -206,13 +206,13 @@ var
 begin
   case AInstallMessage of
     imOpenPackageError:
-      ErrMsg := rsInstallErrorOpenPackage;
+      ErrMsg := rsProgressFrm_Error12;
     imCompilePackageError:
-      ErrMsg := rsInstallErrorCompilePackge;
+      ErrMsg := rsProgressFrm_Error13;
     imInstallPackageError:
-      ErrMsg := rsInstallErrorInstallPackage;
+      ErrMsg := rsProgressFrm_Error14;
     imDependencyError:
-      ErrMsg := rsInstallErrorDependency0 + ' "' + FUnresolvedPackageFileName + '" ' + rsInstallErrorDependency1;
+      ErrMsg := rsProgressFrm_Error10 + ' "' + FUnresolvedPackageFileName + '" ' + rsProgressFrm_Error11;
     end;
   APackageFile.PackageStates := APackageFile.PackageStates - [psInstalled];
   APackageFile.PackageStates := APackageFile.PackageStates + [psError];

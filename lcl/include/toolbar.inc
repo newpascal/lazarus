@@ -341,6 +341,27 @@ begin
   if (Sender = DisabledImages) then UpdateVisibleBar;
 end;
 
+procedure TToolBar.DoAutoAdjustLayout(const AMode: TLayoutAdjustmentPolicy;
+  const AXProportion, AYProportion: Double; const AScale0Fonts: Boolean);
+begin
+  inherited DoAutoAdjustLayout(AMode, AXProportion, AYProportion, AScale0Fonts);
+
+  if AMode in [lapAutoAdjustWithoutHorizontalScrolling, lapAutoAdjustForDPI] then
+  begin
+    BeginUpdate;
+    try
+      SetButtonSize(Round(ButtonWidth * AXProportion), Round(ButtonHeight * AYProportion));
+      FThemeButtonDropWidth := Round(FThemeButtonDropWidth * AXProportion);
+      FThemeDropDownWidth := Round(FThemeDropDownWidth * AXProportion);
+      if DropDownWidth<>cDropDownWidth then
+        DropDownWidth := Round(DropDownWidth * AXProportion);
+      FToolBarFlags := FToolBarFlags + [tbfUpdateVisibleBarNeeded];
+    finally
+      EndUpdate;
+    end;
+  end;
+end;
+
 procedure TToolBar.SetDisabledImages(const AValue: TCustomImageList);
 begin
   if FDisabledImages = AValue then Exit;

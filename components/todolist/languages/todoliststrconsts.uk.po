@@ -16,10 +16,6 @@ msgstr ""
 msgid "CSV files"
 msgstr "Файли CSV"
 
-#: todoliststrconsts.dlgfropts
-msgid "Options"
-msgstr "Параметри"
-
 #: todoliststrconsts.dlgunitdeprefresh
 msgid "Refresh"
 msgstr "Оновити"
@@ -28,13 +24,30 @@ msgstr "Оновити"
 msgid "Insert Macro"
 msgstr "Вставити макрос"
 
+#: todoliststrconsts.lisoptions
+msgid "Options"
+msgstr ""
+
+#: todoliststrconsts.lispackages
+msgid "Packages"
+msgstr ""
+
+#: todoliststrconsts.lispackageshint
+msgid "Extends \"%s\" and \"%s\" options by units from used packages"
+msgstr ""
+
 #: todoliststrconsts.lispkgfiletypetext
 msgid "Text"
 msgstr "Текст"
 
-#: todoliststrconsts.lisprint
-msgid "Print"
-msgstr "Друк"
+#: todoliststrconsts.lissourceeditor
+msgid "Editor"
+msgstr ""
+
+#: todoliststrconsts.lissourceeditorhint
+msgctxt "todoliststrconsts.lissourceeditorhint"
+msgid "Add units in source editor"
+msgstr ""
 
 #: todoliststrconsts.listddinserttodo
 msgid "Insert ToDo"
@@ -64,17 +77,17 @@ msgstr "Модуль"
 msgid "ToDo List"
 msgstr "Список ToDo"
 
+#: todoliststrconsts.listodolisted
+msgid "Listed"
+msgstr ""
+
+#: todoliststrconsts.listodolistedhint
+msgid "Add units listed in project inspector/package editor"
+msgstr ""
+
 #: todoliststrconsts.listodolistgotoline
 msgid "Goto selected source line"
 msgstr "Перейти до вибраного рядка сирців"
-
-#: todoliststrconsts.listodolistoptions
-msgid "ToDo options ..."
-msgstr "Параметри ToDo ..."
-
-#: todoliststrconsts.listodolistprintlist
-msgid "Print todo items"
-msgstr "Друкувати елементи ToDo"
 
 #: todoliststrconsts.listodolistrefresh
 msgid "Refresh todo items"
@@ -91,6 +104,14 @@ msgstr "Власник"
 #: todoliststrconsts.listodolpriority
 msgid "Priority"
 msgstr "Пріоритет"
+
+#: todoliststrconsts.listodoused
+msgid "Used"
+msgstr ""
+
+#: todoliststrconsts.listodousedhint
+msgid "Add units used by main source file"
+msgstr ""
 
 #: todoliststrconsts.listtodolcategory
 msgid "Category"

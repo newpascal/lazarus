@@ -294,7 +294,8 @@ begin
     if Self.ItemHeight <> 0 then
       AHeight := Self.ItemHeight
     else
-      AHeight := ItemHeight;
+      AHeight := Canvas.TextHeight('Hg');
+
     MeasureItem(Integer(ItemId), AHeight);
     if AHeight > 0 then
       ItemHeight := AHeight;
@@ -465,6 +466,18 @@ begin
     FCanvas.FillRect(ARect);
     if (Index>=0) and (Index < Items.Count) then
       InternalDrawItem(Self, FCanvas, ARect, Items[Index]);
+  end;
+end;
+
+procedure TCustomListBox.DoAutoAdjustLayout(const AMode: TLayoutAdjustmentPolicy;
+  const AXProportion, AYProportion: Double; const AScale0Fonts: Boolean);
+begin
+  inherited DoAutoAdjustLayout(AMode, AXProportion, AYProportion, AScale0Fonts);
+
+  if AMode in [lapAutoAdjustWithoutHorizontalScrolling, lapAutoAdjustForDPI] then
+  begin
+    if FItemHeight > 0 then
+      ItemHeight := Round(ItemHeight * AYProportion);
   end;
 end;
 

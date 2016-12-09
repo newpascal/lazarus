@@ -147,6 +147,25 @@ begin
   FHandleObjectNeedsUpdate:=false;
 end;
 
+procedure TStatusBar.DoAutoAdjustLayout(const AMode: TLayoutAdjustmentPolicy;
+  const AXProportion, AYProportion: Double; const AScale0Fonts: Boolean);
+var
+  I: Integer;
+begin
+  inherited DoAutoAdjustLayout(AMode, AXProportion, AYProportion, AScale0Fonts);
+
+  if AMode in [lapAutoAdjustWithoutHorizontalScrolling, lapAutoAdjustForDPI] then
+  begin
+    BeginUpdate;
+    try
+      for I := 0 to Panels.Count-1 do
+        Panels[I].Width := Round(Panels[I].Width * AXProportion);
+    finally
+      EndUpdate;
+    end;
+  end;
+end;
+
 procedure TStatusBar.Loaded;
 begin
   inherited Loaded;

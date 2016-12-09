@@ -32,7 +32,7 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, Variants, fpjson, jsonparser, md5, contnrs,
-  PackageIntf;
+  PackageIntf, Laz2_XMLCfg;
 
 
 type
@@ -57,17 +57,6 @@ type
     psInstalled,
     psError);
   TPackageStates = set of TPackageState;
-
-  TPackageCategory = (
-    pcCryptography,
-    pcDataControls,
-    pcGraphics,
-    pcGUIContainers,
-    pcLazIDEPlugins,
-    pcMultimedia,
-    pcNetworking,
-    pcReporting,
-    pcOther);
 
   TChangeType = (ctAdd, ctRemove);
   { TPackageVersion }
@@ -143,6 +132,7 @@ type
     FPackageAbsolutePath: String;
     FInstalledFileName: String;
     FInstalledFileVersion: String;
+    FUpdateVersion: String;
     FVersion: TPackageVersion;
     FVersionAsString: String;
     FDependencies: TPackageDependencies;
@@ -163,6 +153,7 @@ type
     property PackageState: TPackageState read FPackageState write FPackageState;
     property InstalledFileName: String read FInstalledFileName write FInstalledFileName;
     property InstalledFileVersion: String read FInstalledFileVersion write FInstalledFileVersion;
+    property UpdateVersion: String read FUpdateVersion write FUpdateVersion;
     property PackageAbsolutePath: String read FPackageAbsolutePath write FPackageAbsolutePath;
     property Checked: Boolean read FChecked write FChecked;
     property IsInstallable: Boolean read GetInstallable;
@@ -186,7 +177,7 @@ type
   private
     FName: String;
     FDisplayName: String;
-    FCategory: TPackageCategory;
+    FCategory: String;
     FRepositoryFileName: String;
     FRepositoryFileSize: Int64;
     FRepositoryFileHash: String;
@@ -197,6 +188,8 @@ type
     FPackageBaseDir: String;
     FHomePageURL: String;
     FDownloadURL: String;
+    FForceNotify: Boolean;
+    FDownloadZipURL: String;
     FSVNURL: String;
     FUpdateSize: Int64;
     FIsDirZipped: Boolean;
@@ -207,6 +200,7 @@ type
     constructor Create; reintroduce;
     destructor Destroy; override;
     procedure ChangePackageStates(const AChangeType: TChangeType; APackageState: TPackageState);
+    function FindPackageFile(const APackageFileName: String): TPackageFile;
   public
     property PackageStates: TPackageStates read FPackageStates;
     property PackageState: TPackageState read FPackageState;
@@ -214,10 +208,12 @@ type
     property IsExtractable: Boolean read GetExtractable;
     property UpdateSize: Int64 read FUpdateSize write FUpdateSize;
     property IsDirZipped: Boolean read FIsDirZipped write FIsDirZipped;
+    property ForceNotify: Boolean read FForceNotify write FForceNotify;
+    property DownloadZipURL: String read FDownloadZipURL write FDownloadZipURL;
   published
     property Name: String read FName write FName;
     property DisplayName: String read FDisplayName write FDisplayName;
-    property Category: TPackageCategory read FCategory write FCategory;
+    property Category: String read FCategory write FCategory;
     property Checked: Boolean read FChecked write FChecked;
     property RepositoryFileName: String read FRepositoryFileName write FRepositoryFileName;
     property RepositoryFileSize: int64 read FRepositoryFileSize write FRepositoryFileSize;
@@ -237,6 +233,7 @@ type
   private
     FPackages: TCollection;
     FLastError: String;
+    FOnProcessJSON: TNotifyEvent;
     function GetCount: Integer;
     function GetDownloadCount: Integer;
     function GetExtractCount: Integer;
@@ -252,6 +249,7 @@ type
     function IsPackageExtracted(const APackage: TPackage): Boolean;
     function IsPackageInstalled(const APackageFile: TPackageFile; const APackageBaseDir: String): Boolean;
     function IsAtLeastOnePackageFileInstalled(const APackage: TPackage): Boolean;
+    function GetRuntimePackageVersion(const APath: String): String;
   public
     constructor Create;
     destructor Destroy; override;
@@ -271,6 +269,8 @@ type
     function Cleanup: Integer;
     function IsDependencyOk(PackageDependency: TPackageDependency; DependencyPackage: TPackageFile): Boolean;
     function IsInstalledVersionOk(PackageDependency: TPackageDependency; InstalledVersion: String): Boolean;
+    function GetPackageInstallState(const APackage: TPackage): Integer; overload;
+    procedure DeleteDownloadedZipFiles;
   public
     property Count: Integer read GetCount;
     property DownloadCount: Integer read GetDownloadCount;
@@ -278,6 +278,7 @@ type
     property InstallCount: Integer read GetInstallCount;
     property Items[Index: Integer]: TPackage read GetItem write SetItem;
     property LastError: String read FlastError;
+    property OnProcessJSON: TNotifyEvent read FOnProcessJSON write FOnProcessJSON;
   end;
 
 var
@@ -285,7 +286,7 @@ var
 
 
 implementation
-uses opkman_common, opkman_const;
+uses opkman_common, opkman_const, opkman_options;
 
 { TPackageVersion }
 
@@ -569,7 +570,7 @@ begin
       Result := (Checked) and
                 (psRepository in PackageStates) and
                 (not (psError in PackageStates)) and
-                ((ForceDownload) or ((not (psDownloaded in PackageStates)) and (not (psExtracted in PackageStates))));
+                ((Options.ForceDownloadAndExtract) or ((not (psDownloaded in PackageStates)) and (not (psExtracted in PackageStates))));
   end;
 end;
 
@@ -582,7 +583,7 @@ begin
        Result := (Checked) and
                  (psDownloaded in PackageStates) and
                  (not (psError in PackageStates)) and
-                 ((ForceExtract) or ((not (psExtracted in PackageStates)) and (not (psInstalled in PackageStates))));
+                 ((Options.ForceDownloadAndExtract) or ((not (psExtracted in PackageStates)) and (not (psInstalled in PackageStates))));
    end;
 end;
 
@@ -631,6 +632,21 @@ begin
           PackageFile.PackageStates := PackageFile.PackageStates - [APackageState];
         end;
       end;
+  end;
+end;
+
+function TPackage.FindPackageFile(const APackageFileName: String): TPackageFile;
+var
+  I: Integer;
+begin
+  Result := nil;
+  for I := 0 to FPackageFiles.Count - 1 do
+  begin
+    if UpperCase(TPackageFile(FPackageFiles.Items[I]).Name) = UpperCase(APackageFileName) then
+    begin
+      Result := TPackageFile(FPackageFiles.Items[I]);
+      Break;
+    end;
   end;
 end;
 
@@ -750,7 +766,7 @@ begin
   Package := FindPackage(AName, fpbPackageName);
   if Package <> nil then
   begin
-    FLastError := rsMainFrmPackageNameAlreadyExists;
+    FLastError := rsMainFrm_PackageNameAlreadyExists;
     Exit;
   end;
   Result := TPackage(FPackages.Add);
@@ -775,8 +791,8 @@ begin
   for I := 0 to Count - 1 do
   begin
     case AFindPackageBy of
-      fpbPackageName: NeedToBreak := Items[I].Name = AValue;
-      fpbRepositoryFilename: NeedToBreak := Items[I].RepositoryFileName = AValue
+      fpbPackageName: NeedToBreak := UpperCase(Items[I].Name) = UpperCase(AValue);
+      fpbRepositoryFilename: NeedToBreak := UpperCase(Items[I].RepositoryFileName) = UpperCase(AValue)
     end;
     if NeedToBreak then
     begin
@@ -817,7 +833,7 @@ begin
   begin
     for J := 0 to Items[I].FPackageFiles.Count - 1 do
     begin
-      if TPackageFile(Items[I].FPackageFiles.Items[J]).Name = APackageFileName then
+      if UpperCase(TPackageFile(Items[I].FPackageFiles.Items[J]).Name) = UpperCase(APackageFileName) then
       begin
         Result := TPackageFile(Items[I].FPackageFiles.Items[J]);
         Break;
@@ -920,6 +936,8 @@ begin
         begin
           for I := 0 to Data.Count - 1 do
           begin
+            if Assigned(FOnProcessJSON) then
+              FOnProcessJSON(Self);
             if Data.Items[I].JSONType = jtObject then
             begin
               if not JSONToPackageData(Data.Items[I], Package) then
@@ -986,7 +1004,7 @@ function TSerializablePackages.IsPackageDownloaded(const APackage: TPackage): Bo
 var
   FileName: String;
 begin
-  FileName := LocalRepositoryArchive + APackage.RepositoryFileName;
+  FileName := Options.LocalRepositoryArchive + APackage.RepositoryFileName;
   Result := (FileExists(FileName)) and
             (MD5Print(MD5File(FileName)) = APackage.RepositoryFileHash) and
             (FileUtil.FileSize(FileName) = APackage.RepositoryFileSize);
@@ -1001,7 +1019,7 @@ begin
   for I := 0 to APackage.FPackageFiles.Count - 1 do
   begin
     PackageFile := TPackageFile(APackage.FPackageFiles.Items[I]);
-    PackageFile.FPackageAbsolutePath := LocalRepositoryPackages + APackage.PackageBaseDir + PackageFile.FPackageRelativePath + PackageFile.Name;
+    PackageFile.FPackageAbsolutePath := Options.LocalRepositoryPackages + APackage.PackageBaseDir + PackageFile.FPackageRelativePath + PackageFile.Name;
     if not FileExists(PackageFile.FPackageAbsolutePath) then
     begin
       Result := False;
@@ -1009,6 +1027,42 @@ begin
     end;
   end;
 end;
+
+function TSerializablePackages.GetRuntimePackageVersion(const APath: String): String;
+
+  function VersionBound(const AVersion: Integer): Integer;
+  begin
+    if AVersion > 9999 then
+      Result := 9999
+    else if AVersion < 0 then
+      Result := 0
+    else
+      Result := AVersion;
+  end;
+
+  function GetVersion(const AXMLConfig: TXMLConfig; const APath: String): String;
+  var
+    Major, Minor, Release, Build: Integer;
+  begin
+    Major := VersionBound(AXMLConfig.GetValue(APath + '/Major', 0));
+    Minor := VersionBound(AXMLConfig.GetValue(APath + '/Minor', 0));
+    Release := VersionBound(AXMLConfig.GetValue(APath + '/Release', 0));
+    Build := VersionBound(AXMLConfig.GetValue(APath + '/Build', 0));
+    Result := IntToStr(Major) + '.' + IntToStr(Minor) + '.' + IntToStr(Release) + '.' + IntToStr(Build);
+  end;
+
+var
+  XMLConfig: TXMLConfig;
+begin
+  Result := '-';
+  XMLConfig := TXMLConfig.Create(APath);
+  try
+    Result := GetVersion(XMLConfig, 'Package/Version');
+  finally
+    XMLConfig.Free;
+  end;
+end;
+
 
 function TSerializablePackages.IsPackageInstalled(const APackageFile: TPackageFile;
   const APackageBaseDir: String): Boolean;
@@ -1046,11 +1100,11 @@ begin
       begin
         FileName := StringReplace(APackageFile.Name, '.lpk', '.opkman', [rfIgnoreCase]);
         Result := (psExtracted in APackageFile.PackageStates) and
-                  FileExists(LocalRepositoryPackages + APackageBaseDir + APackageFile.PackageRelativePath + FileName);
+                  FileExists(Options.LocalRepositoryPackages + APackageBaseDir + APackageFile.PackageRelativePath + FileName);
         if Result then
         begin
-          APackageFile.InstalledFileName := LocalRepositoryPackages + APackageFile.FPackageRelativePath + APackageFile.Name;
-          APackageFile.InstalledFileVersion := APackageFile.VersionAsString;
+          APackageFile.InstalledFileName := Options.LocalRepositoryPackages + APackageBaseDir + APackageFile.FPackageRelativePath + APackageFile.Name;
+          APackageFile.InstalledFileVersion := GetRuntimePackageVersion(APackageFile.InstalledFileName);
           Result := True;
         end
         else
@@ -1063,6 +1117,29 @@ begin
   end;
 end;
 
+function TSerializablePackages.GetPackageInstallState(const APackage: TPackage): Integer;
+var
+  I: Integer;
+  PackageFile: TPackageFile;
+  InstCnt: Integer;
+begin
+  InstCnt := 0;
+  for I := 0 to APackage.PackageFiles.Count - 1 do
+  begin
+    PackageFile := TPackageFile(APackage.PackageFiles.Items[I]);
+    if IsPackageInstalled(PackageFile, APackage.PackageBaseDir) then
+      Inc(InstCnt);
+  end;
+  case InstCnt of
+    0: Result := 0;
+    1..High(Integer):
+        if InstCnt < APackage.PackageFiles.Count then
+          Result := 2
+        else
+          Result := 1;
+  end;
+end;
+
 function TSerializablePackages.PackageDataToJSON(APackage: TPackage;
  var APackageData: TJSONObject): Boolean;
 begin
@@ -1072,7 +1149,7 @@ begin
     APackageData := TJSONObject.Create;
     APackageData.Add('Name', TPackage(APackage).Name);
     APackageData.Add('DisplayName', APackage.DisplayName);
-    APackageData.Add('Category', Ord(TPackage(APackage).Category));
+    APackageData.Add('Category', TPackage(APackage).Category);
     APackageData.Add('RepositoryFileName', TPackage(APackage).RepositoryFileName);
     APackageData.Add('RepositoryFileSize', TPackage(APackage).RepositoryFileSize);
     APackageData.Add('RepositoryFileHash', TPackage(APackage).RepositoryFileHash);
@@ -1237,7 +1314,7 @@ begin
              (PackageFile.PackageType in [ptRunTime, ptRunTimeOnly]) then
       begin
         FileName := StringReplace(PackageFile.Name, '.lpk', '.opkman', [rfIgnoreCase]);
-        FileCreate(LocalRepositoryPackages + Items[I].PackageBaseDir + PackageFile.PackageRelativePath + FileName);
+        FileCreate(Options.LocalRepositoryPackages + Items[I].PackageBaseDir + PackageFile.PackageRelativePath + FileName);
       end;
     end;
   end;
@@ -1270,15 +1347,37 @@ begin
     begin
       if IsPackageDownloaded(Items[I]) then
       begin
-        if DeleteFile(LocalRepositoryArchive + Items[I].RepositoryFileName) then
+        if DeleteFile(Options.LocalRepositoryArchive + Items[I].RepositoryFileName) then
           Inc(Result);
       end;
       if IsPackageExtracted(Items[I]) then
-        if DirectoryExists(LocalRepositoryPackages + Items[I].PackageBaseDir) then
-          DeleteDirectory(LocalRepositoryPackages + Items[I].PackageBaseDir, False);
+        if DirectoryExists(Options.LocalRepositoryPackages + Items[I].PackageBaseDir) then
+          DeleteDirectory(Options.LocalRepositoryPackages + Items[I].PackageBaseDir, False);
     end;
   end;
 end;
+
+procedure TSerializablePackages.DeleteDownloadedZipFiles;
+var
+  I: Integer;
+begin
+  for I := 0 to Count - 1 do
+  begin
+    case PackageAction of
+      paInstall:
+        begin
+          if IsPackageDownloaded(Items[I]) then
+            DeleteFile(Options.LocalRepositoryArchive + Items[I].RepositoryFileName)
+        end;
+      paUpdate:
+        begin
+          if FileExists(Options.LocalRepositoryUpdate + Items[I].RepositoryFileName) then
+            DeleteFile(Options.LocalRepositoryUpdate + Items[I].RepositoryFileName)
+        end;
+    end;
+  end;
+end;
+
 
 function TSerializablePackages.IsDependencyOk(PackageDependency: TPackageDependency;
   DependencyPackage: TPackageFile): Boolean;

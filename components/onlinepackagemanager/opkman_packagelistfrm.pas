@@ -110,13 +110,13 @@ procedure TPackageListFrm.SetupControls(const ATyp: Integer);
 begin
   FModRes := mrNone;
   case ATyp of
-    0: Caption := rsPackageListFrmCaption0;
-    1: Caption := rsPackageListFrmCaption1;
-    2: Caption := rsPackageListFrmCaption2;
+    0: Caption := rsPackageListFrm_Caption0;
+    1: Caption := rsPackageListFrm_Caption1;
+    2: Caption := rsPackageListFrm_Caption2;
   end;
-  bYes.Caption := rsPackageListFrmbYes;
-  bNo.Caption := rsPackageListFrmbNo;
-  bOk.Caption := rsPackageListFrmbOk;
+  bYes.Caption := rsPackageListFrm_bYes_Caption;
+  bNo.Caption := rsPackageListFrm_bNo_Caption;
+  bOk.Caption := rsPackageListFrm_bOk_Caption;
   bYes.Top := (pnButtons.Height - bYes.Height) div 2;
   bNo.Top := (pnButtons.Height - bNo.Height) div 2;
   bOk.Top := (pnButtons.Height - bOk.Height) div 2;
@@ -145,7 +145,7 @@ begin
         begin
           Node := FVST.AddChild(nil);
           Data := FVST.GetNodeData(Node);
-          Data^.FName := PackageFile.Name + '(' + PackageFile.VersionAsString + ')';
+          Data^.FName := PackageFile.Name + '(' + PackageFile.InstalledFileVersion + ')';
           Data^.FImageIndex := 1;
         end;
       end;
@@ -165,7 +165,8 @@ begin
       if (SerializablePackages.Items[I].Checked) then
       begin
         Inc(ChkCnt);
-        if (Trim(SerializablePackages.Items[I].DownloadURL) = '') then
+        if (Trim(SerializablePackages.Items[I].DownloadZipURL) = '') or
+           (SerializablePackages.GetPackageInstallState(SerializablePackages.Items[I]) = 0) then
         begin
           Inc(InvCnt);
           Node := FVST.AddChild(nil);
@@ -182,7 +183,7 @@ begin
     bYes.Visible := False;
     bNo.Visible := False;
     bOk.Visible := True;
-    lbMessage.Caption := rsMainFrmPackageUpdate1;
+    lbMessage.Caption := rsMainFrm_PackageUpdate1;
   end;
   FVST.SortTree(0, opkman_VirtualTrees.sdAscending);
 end;

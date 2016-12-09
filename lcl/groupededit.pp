@@ -243,6 +243,7 @@ type
     procedure SetAutoSize(AValue: Boolean); override;
     procedure SetColor(AValue: TColor); override;
     procedure SetCursor(AValue: TCursor); override;
+    procedure ShouldAutoAdjust(var AWidth, AHeight: Boolean); override;
 
     property AutoSelect: Boolean read GetAutoSelect write SetAutoSelect default True;
     property AutoSelected: Boolean read GetAutoSelected write SetAutoSelected;
@@ -846,6 +847,12 @@ begin
   FEdit.Cursor := AValue;
 end;
 
+procedure TCustomAbstractGroupedEdit.ShouldAutoAdjust(var AWidth,
+  AHeight: Boolean);
+begin
+  AWidth := True;
+  AHeight := not AutoSize;
+end;
 
 procedure TCustomAbstractGroupedEdit.SetFocus;
 begin

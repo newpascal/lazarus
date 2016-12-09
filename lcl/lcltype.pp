@@ -3035,17 +3035,16 @@ begin
   if nDenominator = 0 then
     Result := -1
   else
+  if nNumerator = nDenominator then
+    Result := nNumber
+  else
     Result := MathRound(int64(nNumber) * int64(nNumerator) / nDenominator);
 end;
 
 function KeyToShortCut(const Key: Word; const Shift: TShiftState): TShortCut;
 begin
+  if (Key and $FF00) <> 0 then exit(0);
   Result := Key;
-  if (Result and $FF00) <> 0 then begin
-    Result:=0;
-    exit;
-  end;
-
   if ssShift in Shift then Inc(Result,scShift);
   if ssCtrl in Shift then Inc(Result,scCtrl);
   if ssAlt in Shift then Inc(Result,scAlt);

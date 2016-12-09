@@ -31,7 +31,7 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, opkman_VirtualTrees, Forms, Controls, Graphics, Dialogs,
-  StdCtrls, ExtCtrls, Spin;
+  StdCtrls, ExtCtrls, Spin, ComCtrls, Buttons, EditBtn, LazFileUtils;
 
 type
 
@@ -40,27 +40,45 @@ type
   TOptionsFrm = class(TForm)
     bCancel: TButton;
     bOk: TButton;
-    bSettings: TButton;
+    bRestore: TButton;
     cbProxy: TCheckBox;
+    cbForceDownloadExtract: TCheckBox;
+    cbDeleteZipAfterInstall: TCheckBox;
+    edLocalRepositoryUpdate: TDirectoryEdit;
+    edLocalRepositoryPackages: TDirectoryEdit;
+    edLocalRepositoryArchive: TDirectoryEdit;
+    edProxyPassword: TEdit;
     edProxyServer: TEdit;
     edProxyUser: TEdit;
-    edProxyPassword: TEdit;
     edRemoteRepository: TEdit;
     gbProxySettings: TGroupBox;
-    Label1: TLabel;
-    Label2: TLabel;
-    Label3: TLabel;
-    Label4: TLabel;
-    Label5: TLabel;
+    lbLocalRepositoryArchive: TLabel;
+    lbLocalRepositoryUpdate: TLabel;
+    lbRemoteRepository: TLabel;
+    lbServer: TLabel;
+    lbLocalRepositoryPackages: TLabel;
+    lbUserName: TLabel;
+    lbPort: TLabel;
+    lbPassword: TLabel;
+    pnExtensions: TPanel;
+    pnFolders: TPanel;
+    pnProxy: TPanel;
+    pnGeneral: TPanel;
+    pgOptions: TPageControl;
     pnBottom: TPanel;
+    SDD: TSelectDirectoryDialog;
     seProxyPort: TSpinEdit;
+    tsFolders: TTabSheet;
+    tsExtensions: TTabSheet;
+    tsGeneral: TTabSheet;
+    tsProxy: TTabSheet;
     procedure bOkClick(Sender: TObject);
+    procedure bRestoreClick(Sender: TObject);
     procedure cbProxyChange(Sender: TObject);
     procedure edRemoteRepositoryKeyPress(Sender: TObject; var Key: char);
   private
-
   public
-
+    procedure SetupControls;
   end;
 
 var
@@ -76,7 +94,7 @@ procedure TOptionsFrm.bOkClick(Sender: TObject);
 begin
   if Trim(edRemoteRepository.Text)  = '' then
   begin
-    MessageDlgEx(rsOptionedRemoteRepository, mtInformation, [mbOk], Self);
+    MessageDlgEx(rsOptions_RemoteRepository_Information, mtInformation, [mbOk], Self);
     edRemoteRepository.SetFocus;
     Exit;
   end;
@@ -85,26 +103,59 @@ begin
   begin
     if Trim(edProxyServer.Text)  = '' then
     begin
-      MessageDlgEx(rsOptionedProxyServer, mtInformation, [mbOk], Self);
+      MessageDlgEx(rsOptions_ProxyServer_Info, mtInformation, [mbOk], Self);
       edProxyServer.SetFocus;
       Exit;
     end;
     if seProxyPort.Value = 0 then
     begin
-      MessageDlgEx(rsOptionedProxyPort, mtInformation, [mbOk], Self);
+      MessageDlgEx(rsOptions_ProxyPort_Info, mtInformation, [mbOk], Self);
       seProxyPort.SetFocus;
       Exit;
     end;
   end;
-  PackageOptions.RemoteRepository := edRemoteRepository.Text;
-  PackageOptions.ProxyEnabled := cbProxy.Checked;
-  PackageOptions.ProxyServer := edProxyServer.Text;
-  PackageOptions.ProxyPort := seProxyPort.Value;
-  PackageOptions.ProxyUser := edProxyUser.Text;
-  PackageOptions.ProxyPassword := edProxyPassword.Text;
 
-  PackageOptions.Save;
+  if Trim(edLocalRepositoryPackages.Text)  = '' then
+  begin
+    MessageDlgEx(rsOptions_InvalidDirectory_Info, mtInformation, [mbOk], Self);
+    edLocalRepositoryPackages.SetFocus;
+    Exit;
+  end;
+  if Trim(edLocalRepositoryArchive.Text)  = '' then
+  begin
+    MessageDlgEx(rsOptions_InvalidDirectory_Info, mtInformation, [mbOk], Self);
+    edLocalRepositoryArchive.SetFocus;
+    Exit;
+  end;
+  if Trim(edLocalRepositoryUpdate.Text)  = '' then
+  begin
+    MessageDlgEx(rsOptions_InvalidDirectory_Info, mtInformation, [mbOk], Self);
+    edLocalRepositoryUpdate.SetFocus;
+    Exit;
+  end;
+  Options.RemoteRepository := edRemoteRepository.Text;
+  Options.ForceDownloadAndExtract := cbForceDownloadExtract.Checked;
+  Options.DeleteZipAfterInstall := cbDeleteZipAfterInstall.Checked;
+  Options.ProxyEnabled := cbProxy.Checked;
+  Options.ProxyServer := edProxyServer.Text;
+  Options.ProxyPort := seProxyPort.Value;
+  Options.ProxyUser := edProxyUser.Text;
+  Options.ProxyPassword := edProxyPassword.Text;
+  Options.LocalRepositoryPackages := AppendPathDelim(edLocalRepositoryPackages.Text);
+  Options.LocalRepositoryArchive := AppendPathDelim(edLocalRepositoryArchive.Text);
+  Options.LocalRepositoryUpdate := AppendPathDelim(edLocalRepositoryUpdate.Text);
+  Options.Save;
   ModalResult := mrOk;
+end;
+
+procedure TOptionsFrm.bRestoreClick(Sender: TObject);
+begin
+  if MessageDlgEx(rsOptions_RestoreDefaults_Conf, mtInformation, [mbYes, mbNo], Self) = mrYes then
+  begin
+    Options.LoadDefault;
+    Options.CreateMissingPaths;
+    SetupControls;
+  end;
 end;
 
 procedure TOptionsFrm.cbProxyChange(Sender: TObject);
@@ -116,6 +167,46 @@ procedure TOptionsFrm.edRemoteRepositoryKeyPress(Sender: TObject; var Key: char)
 begin
   if Key = #13 then
     bOkClick(bOk);
+end;
+
+procedure TOptionsFrm.SetupControls;
+begin
+  pgOptions.ActivePageIndex := 0;
+  Caption := rsOptions_FrmCaption;
+
+  lbRemoteRepository.Caption := rsOptions_lbRemoteRepository_Caption;
+  edRemoteRepository.Text := Options.RemoteRepository;
+  cbForceDownloadExtract.Checked := Options.ForceDownloadAndExtract;
+  cbDeleteZipAfterInstall.Checked := Options.DeleteZipAfterInstall;
+
+  cbForceDownloadExtract.Caption := rsOptions_cbForceDownloadExtract_Caption;
+  cbForceDownloadExtract.Hint := rsOptions_cbForceDownloadExtract_Hint;
+  cbDeleteZipAfterInstall.Caption := rsOptions_cbDelete_Caption;
+  cbDeleteZipAfterInstall.Hint := rsOptions_cbDelete_Hint;
+
+  cbProxy.Caption := rsOptions_cbProxy_Caption;
+  gbProxySettings.Caption := rsOptions_gbProxySettings_Caption;
+  lbServer.Caption := rsOptions_lbServer_Caption;
+  lbPort.Caption := rsOptions_lbPort_Caption;
+  lbUserName.Caption := rsOptions_lbUsername_Caption;
+  lbPassword.Caption := rsOptions_lbPassword_Caption;
+  cbProxy.Checked := Options.ProxyEnabled;
+  gbProxySettings.Enabled := Options.ProxyEnabled;
+  edProxyServer.Text := Options.ProxyServer;
+  seProxyPort.Value := Options.ProxyPort;
+  edProxyUser.Text := Options.ProxyUser;
+  edProxyPassword.Text := Options.ProxyPassword;
+
+  lbLocalRepositoryPackages.Caption := rsOptions_lbLocalRepositoryPackages_Caption;
+  edLocalRepositoryPackages.Hint := rsOptions_edLocalRepositoryPackages_Hint;
+  lbLocalRepositoryArchive.Caption := rsOptions_lbLocalRepositoryArchive_Caption;
+  edLocalRepositoryArchive.Hint := rsOptions_edLocalRepositoryArchive_Hint;
+  lbLocalRepositoryUpdate.Caption := rsOptions_lbLocalRepositoryUpdate_Caption;
+  edLocalRepositoryUpdate.Hint := rsOptions_edLocalRepositoryUpdate_Hint;
+
+  edLocalRepositoryPackages.Text := Options.LocalRepositoryPackages;
+  edLocalRepositoryArchive.Text := Options.LocalRepositoryArchive;
+  edLocalRepositoryUpdate.Text := Options.LocalRepositoryUpdate;
 end;
 
 end.

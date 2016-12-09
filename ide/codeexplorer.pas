@@ -235,6 +235,7 @@ type
     procedure SetMode(AMode: TCodeExplorerMode);
     procedure UpdateMode;
     procedure UpdateCaption;
+    function OnExpandedStateGetNodeText(Node: TTreeNode): string;
   protected
     fLastCodeTool: TCodeTool;
     fCodeSortedForStartPos: TAvgLvlTree;// tree of TTreeNode sorted for TViewNodeData(Node.Data).StartPos, secondary EndPos
@@ -1245,6 +1246,7 @@ var
   ObserverCats: TCEObserverCategories;
   ProcNode: TCodeTreeNode;
   ObsState: TCodeObserverStatementState;
+  TVNode: TTreeNode;
 begin
   CodeNode:=Tool.Tree.Root;
   ObserverCats:=CodeExplorerOptions.ObserverCategories;
@@ -1268,7 +1270,8 @@ begin
             if LineCnt>=CodeExplorerOptions.LongProcLineCount then
             begin
               ProcNode:=CodeNode.Parent;
-              AddCodeNode(cefcLongProcs,ProcNode);
+              TVNode:=AddCodeNode(cefcLongProcs,ProcNode);
+              TVNode.Text:=TVNode.Text+' ['+IntToStr(LineCnt)+']';
             end;
           end;
           if (cefcEmptyProcs in ObserverCats)
@@ -1552,7 +1555,9 @@ begin
     '''','#','0'..'9','$','%':
       begin
         // a constant
-        if (ObserverState.IgnoreConstLevel>=0)
+        if not FindUnnamedConstants then begin
+          // ignore
+        end else if (ObserverState.IgnoreConstLevel>=0)
         and (ObserverState.IgnoreConstLevel>=ObserverState.StackPtr)
         then begin
           // ignore range
@@ -1943,6 +1948,25 @@ begin
     s+=' - ' + ExtractFileName(FCodeFilename);
 end;
 
+function TCodeExplorerView.OnExpandedStateGetNodeText(Node: TTreeNode): string;
+var
+  p: Integer;
+begin
+  Result:=Node.Text;
+  if Result='' then exit;
+  p:=length(Result);
+  if Result[p]=')' then begin
+    dec(p);
+    while (p>1) and (Result[p] in ['+','0'..'9']) do dec(p);
+    if (p>1) and (Result[p]='(') then begin
+      repeat
+        dec(p);
+      until (p=0) or (Result[p]<>' ');
+      SetLength(Result,p);
+    end;
+  end;
+end;
+
 procedure TCodeExplorerView.KeyDown(var Key: Word; Shift: TShiftState);
 begin
   inherited KeyDown(Key, Shift);
@@ -2197,7 +2221,7 @@ begin
       // start updating the CodeTreeView
       CodeTreeview.BeginUpdate;
       if not CurFollowNode then
-        OldExpanded:=TTreeNodeExpandedState.Create(CodeTreeView);
+        OldExpanded:=TTreeNodeExpandedState.Create(CodeTreeView,@OnExpandedStateGetNodeText);
 
       ClearCodeTreeView;
 

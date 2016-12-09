@@ -2548,7 +2548,6 @@ resourcestring
   dlgPOUseAppBundle = 'Use Application Bundle for running and debugging';
   dlgPOCreateAppBundle = 'Create Application Bundle';
   dlgPOUseManifest = 'Use manifest resource (and enable themes)';
-  dlgPOManifestOptions = 'Manifest options';
   dlgPODpiAwareness = 'DPI awareness';
   dlgPODpiAwarenessOff = 'off';
   dlgPODpiAwarenessOn = 'on';
@@ -5150,6 +5149,7 @@ resourcestring
   lisThisWillCreateACircularDependency = 'This will create a circular dependency.';
   lisAnchorEditorNoControlSelected = 'Anchor Editor - no control selected';
   lisAnchorsOfSelectedControls = 'Anchors of selected controls';
+  lisAnchorsOf = 'Anchors of %s';
   lisDebugOptionsFrmAdditionalSearchPath = 'Additional search path';
   lisDebugOptionsFrmDebuggerGeneralOptions = 'Debugger general options';
   lisDebugOptionsFrmShowMessageOnStop = 'Show message on stop';

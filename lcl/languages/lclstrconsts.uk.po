@@ -371,6 +371,10 @@ msgstr "Врахування регістру"
 msgid "Control of class '%s' can't have control of class '%s' as a child"
 msgstr "Елемент управління класу '%s' не може мати наслідником елемент класу '%s'"
 
+#: lclstrconsts.rscontrolhasnoparentformorframe
+msgid "Control '%s' has no parent form or frame"
+msgstr ""
+
 #: lclstrconsts.rscontrolhasnoparentwindow
 msgid "Control '%s' has no parent window"
 msgstr "Елемент управління '%s' не має батьківського вінка"
@@ -1359,6 +1363,10 @@ msgstr "Жовтий"
 #: lclstrconsts.scannotfocus
 msgid "Cannot focus a disabled or invisible window"
 msgstr "Не можна дати фокус вимкненому або невидимому вікну"
+
+#: lclstrconsts.scannotsetdesigntimeppi
+msgid "Cannot set design time PPI."
+msgstr ""
 
 #: lclstrconsts.sduplicatemenus
 msgid "Duplicate menus"

@@ -99,11 +99,12 @@ if [ $(echo $LazVersion | egrep '^[^.]*\.[^.]*$') ]; then
 fi
 LazVersion=$LazVersion$LazVersionPostfix
 
-SrcTGZ=lazarus-$LazVersion-$LazRelease.tar.gz
+PkgName=lazarus-project
+SrcTGZ=$PkgName-$LazVersion-$LazRelease.tar.gz
 CurDir=`pwd`
-TmpDir=~/tmp/lazarus$LazVersion
-LazBuildDir=$TmpDir/lazarus_build
-LazDeb=$CurDir/lazarus_${LazVersion}-${LazRelease}_$Arch.deb
+TmpDir=~/tmp/$PkgName$LazVersion
+LazBuildDir=$TmpDir/${PkgName}_build
+LazDeb=$CurDir/${PkgName}_${LazVersion}-${LazRelease}_$Arch.deb
 DebianSrcDir=$CurDir/debian_lazarus
 EtcSrcDir=$CurDir/linux
 LazSrcDir=../..
@@ -183,6 +184,7 @@ cat $DebianSrcDir/control$LCLWidgetset | \
       -e "s/LAZVERSION/$LazVersion/g" \
       -e "s/ARCH/$Arch/g" \
       -e "s/LAZSIZE/$LazSize/g" \
+      -e "s/PKGNAME/$PkgName/g" \
   > $LazBuildDir/DEBIAN/control
 
 # copyright and changelog files

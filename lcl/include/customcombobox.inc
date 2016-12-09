@@ -622,6 +622,12 @@ begin
     Result := False;
 end;
 
+procedure TCustomComboBox.ShouldAutoAdjust(var AWidth, AHeight: Boolean);
+begin
+  AWidth := True;
+  AHeight := not AutoSize;
+end;
+
 {------------------------------------------------------------------------------
   function TCustomComboBox.GetItemCount: Integer;
 

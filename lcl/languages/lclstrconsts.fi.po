@@ -360,6 +360,10 @@ msgstr "Sama kirjainkoko"
 msgid "Control of class '%s' can't have control of class '%s' as a child"
 msgstr "Luokan '%s' kontrollin lapsi ei voi olla luokan '%s' kontrolli"
 
+#: lclstrconsts.rscontrolhasnoparentformorframe
+msgid "Control '%s' has no parent form or frame"
+msgstr ""
+
 #: lclstrconsts.rscontrolhasnoparentwindow
 msgid "Control '%s' has no parent window"
 msgstr "Kontrolli '%s':lla ei ole emoikkunaa"
@@ -1326,6 +1330,10 @@ msgstr "Keltainen"
 #: lclstrconsts.scannotfocus
 msgid "Cannot focus a disabled or invisible window"
 msgstr "Ei voi fokusoida estettyä tai näkymätöntä ikkunaa"
+
+#: lclstrconsts.scannotsetdesigntimeppi
+msgid "Cannot set design time PPI."
+msgstr ""
 
 #: lclstrconsts.sduplicatemenus
 msgid "Duplicate menus"
