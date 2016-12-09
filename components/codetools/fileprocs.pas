@@ -199,7 +199,7 @@ function SearchFileInPath(const Filename, BasePath, SearchPath, Delimiter: strin
                          SearchCase: TCTSearchFileCase): string; overload; // not thread-safe
 function FindDiskFilename(const Filename: string): string;
 {$IFDEF darwin}
-function GetDarwinSystemFilename(Filename: string): string;
+function GetDarwinSystemFilename(Filename: string): string; inline; deprecated 'Use the function in LazFileUtils unit';
 {$ENDIF}
 function ReadAllLinks(const Filename: string;
                       ExceptionOnError: boolean): string; inline; // if a link is broken returns ''
@@ -366,9 +366,6 @@ implementation
 // to get more detailed error messages consider the os
 {$IFnDEF Windows}
 uses
-  {$IFDEF darwin}
-  MacOSAll,
-  {$ENDIF}
   Unix;
 {$ENDIF}
 
@@ -1027,19 +1024,8 @@ end;
 
 {$IFDEF darwin}
 function GetDarwinSystemFilename(Filename: string): string;
-var
-  s: CFStringRef;
-  l: CFIndex;
 begin
-  if Filename='' then exit('');
-  s:=CFStringCreateWithCString(nil,Pointer(Filename),kCFStringEncodingUTF8);
-  l:=CFStringGetMaximumSizeOfFileSystemRepresentation(s);
-  SetLength(Result,l);
-  if Result<>'' then begin
-    CFStringGetFileSystemRepresentation(s,@Result[1],length(Result));
-    SetLength(Result,StrLen(PChar(Result)));
-  end;
-  CFRelease(s);
+  Result:=LazFileUtils.GetDarwinSystemFilename(Filename);
 end;
 {$ENDIF}
 
@@ -1351,7 +1337,7 @@ begin
 
       ctsfcAllCase:
         // do not use CompareFilenamesIgnoreCase
-        if CompareText(ShortFilename,FileInfo.Name)=0 then begin
+        if SysUtils.CompareText(ShortFilename,FileInfo.Name)=0 then begin
           Result:=FileInfo.Name;
           if ShortFilename=FileInfo.Name then break;
         end;
@@ -1562,7 +1548,7 @@ begin
           if (FileInfo.Name='.') or (FileInfo.Name='..') or (FileInfo.Name='')
           then
             continue;
-          if (CompareText(FileInfo.Name,ShortFile)=0)
+          if (SysUtils.CompareText(FileInfo.Name,ShortFile)=0)
           or (LazFileUtils.CompareFilenamesIgnoreCase(FileInfo.Name,ShortFile)=0) then begin
             if FileInfo.Name=ShortFile then begin
               // file found, with correct name

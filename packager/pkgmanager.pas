@@ -60,9 +60,9 @@ uses
   MenuIntf, IDEWindowIntf, IDEExternToolIntf, MacroIntf, LazIDEIntf, IDEMsgIntf,
   ComponentReg, PropEdits, IDEDialogs, UnitResources,
   // IDE
-  IDECmdLine, LazarusIDEStrConsts, IDEProcs, ObjectLists, DialogProcs,
-  IDECommands, IDEOptionDefs, EnvironmentOpts, MiscOptions, InputHistory,
-  Project, OldCustomCompDlg, PackageEditor, AddToPackageDlg,
+  PkgRegisterBase, IDECmdLine, LazarusIDEStrConsts, IDEProcs, ObjectLists,
+  DialogProcs, IDECommands, IDEOptionDefs, EnvironmentOpts, MiscOptions,
+  InputHistory, Project, OldCustomCompDlg, PackageEditor, AddToPackageDlg,
   PackageDefs, PackageLinks, PackageSystem, OpenInstalledPkgDlg,
   PkgGraphExplorer, BrokenDependenciesDlg, CompilerOptions,
   IDETranslations, TransferMacros, BuildLazDialog, NewDialog, FindInFilesDlg,
@@ -275,9 +275,6 @@ type
                                   OnlyTestIfPossible: boolean = false): TModalResult; override;
     function AddProjectDependency(AProject: TProject;
                                   ADependency: TPkgDependency): TModalResult; override;
-    procedure AddProjectRegCompDependency(AProject: TProject;
-                          ARegisteredComponent: TRegisteredComponent); override;
-    procedure AddProjectLCLDependency(AProject: TProject); override;
     function AddProjectDependencies(AProject: TProject; const Packages: string;
                                   OnlyTestIfPossible: boolean = false): TModalResult; override;
     function OnProjectInspectorAddDependency(Sender: TObject;
@@ -1552,6 +1549,8 @@ begin
   StaticPackages:=LazarusPackageIntf.RegisteredPackages;
   if StaticPackages=nil then exit;
   Quiet:=false;
+
+  // register components in Lazarus packages
   for i:=0 to StaticPackages.Count-1 do begin
     StaticPackage:=PRegisteredPackage(StaticPackages[i]);
 
@@ -1573,9 +1572,13 @@ begin
     // load package
     APackage:=LoadInstalledPackage(StaticPackage^.Name,KeepInstalledPackages,
                                    Quiet);
-    
+
     // register
-    PackageGraph.RegisterStaticPackage(APackage,StaticPackage^.RegisterProc);
+    if APackage=PackageGraph.FCLPackage then
+      // register FCL components used by the IDE itself
+      PackageGraph.RegisterStaticPackage(APackage,@PkgRegisterBase.Register)
+    else
+      PackageGraph.RegisterStaticPackage(APackage,StaticPackage^.RegisterProc);
   end;
   PackageGraph.SortAutoInstallDependencies;
   ClearRegisteredPackages;
@@ -3377,28 +3380,6 @@ begin
     AddUnitToProjectMainUsesSection(AProject,
       ExtractFileNameOnly(ADependency.RequiredPackage.GetCompileSourceFilename),'');
   end;
-end;
-
-procedure TPkgManager.AddProjectRegCompDependency(AProject: TProject;
-  ARegisteredComponent: TRegisteredComponent);
-var
-  PkgFile: TPkgFile;
-  APackage: TLazPackage;
-begin
-  if not (ARegisteredComponent is TPkgComponent) then exit;
-  
-  PkgFile:=TPkgComponent(ARegisteredComponent).PkgFile;
-  if (PkgFile=nil) then exit;
-
-  APackage:=PkgFile.LazPackage;
-  APackage:=TLazPackage(RedirectPackageDependency(APackage));
-
-  AddProjectDependency(AProject,APackage);
-end;
-
-procedure TPkgManager.AddProjectLCLDependency(AProject: TProject);
-begin
-  AddProjectDependency(AProject,PackageGraph.LCLPackage);
 end;
 
 function TPkgManager.AddProjectDependencies(AProject: TProject;

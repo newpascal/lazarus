@@ -12,7 +12,8 @@ uses
   opkman_visualtree, opkman_serializablepackages, opkman_downloader, 
   opkman_common, opkman_progressfrm, opkman_zipper, opkman_timer, 
   opkman_installer, opkman_packagelistfrm, opkman_options, 
-  opkman_createrepositorypackage, LazarusPackageIntf;
+  opkman_createrepositorypackage, opkman_categoriesfrm, 
+  opkman_packagedetailsfrm, opkman_updates, LazarusPackageIntf;
 
 implementation
 

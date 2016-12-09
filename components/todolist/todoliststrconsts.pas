@@ -30,8 +30,6 @@ uses
 resourcestring
   lisTodolistRefresh='Refresh todo items';
   lisTodoListGotoLine='Goto selected source line';
-  lisTodoListPrintList='Print todo items';
-  lisToDoListOptions='ToDo options ...';
   lisCTInsertMacro = 'Insert Macro';
   lisToDoLDone = 'Done';
   lisToDoLDescription = 'Description';
@@ -42,8 +40,15 @@ resourcestring
   listToDoLCategory = 'Category';
   lisToDoGoto = 'Goto';
   lisToDoExport = 'Export';
-  dlgFROpts = 'Options';
-  lisPrint = 'Print';
+  lisOptions = 'Options';
+  lisToDoListed = 'Listed';
+  lisToDoListedHint = 'Add units listed in project inspector/package editor';
+  lisToDoUsed = 'Used';
+  lisToDoUsedHint = 'Add units used by main source file';
+  lisPackages = 'Packages';
+  lisPackagesHint = 'Extends "%s" and "%s" options by units from used packages';
+  lisSourceEditor = 'Editor';
+  lisSourceEditorHint = 'Add units in source editor';
   dlgUnitDepRefresh = 'Refresh';
   lisTDDInsertToDo = 'Insert ToDo';
   lisViewToDoList = 'View ToDo List';

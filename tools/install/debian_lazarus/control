@@ -1,5 +1,5 @@
-Source: lazarus
-Package: lazarus
+Source: PKGNAME
+Package: PKGNAME
 Version: LAZVERSION
 Section: devel
 Priority: optional

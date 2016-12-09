@@ -29,6 +29,7 @@
    Gerard Visent <gerardusmercator@gmail.com>
    Mattias Gaertner
    Alexander du Plessis
+   Silvio Clecio
 
   Abstract:
     List all to do comments of current project and the file
@@ -50,9 +51,6 @@
     
     Sub comments in nested comments are ignored.
 *)
-{#todo options }
-{#todo print an todo report }
-
 
 unit TodoList;
 
@@ -65,9 +63,9 @@ uses
   Classes, SysUtils, Math, LCLProc, Forms, Controls, Dialogs, StrUtils,
   ComCtrls, ActnList, AvgLvlTree, LazUTF8Classes, LCLType, ButtonPanel,
   CodeCache, CodeToolManager, BasicCodeTools, FileProcs, LazFileUtils,
-  LclIntf,
+  LazFileCache, LclIntf, StdCtrls, XMLPropStorage,
   // IDEIntf
-  LazIDEIntf, IDEImagesIntf, PackageIntf, ProjectIntf,
+  LazIDEIntf, IDEImagesIntf, PackageIntf, ProjectIntf, IDEUtils,
   // IDE
   ToDoListStrConsts;
 
@@ -139,18 +137,28 @@ type
     acRefresh: TAction;
     acExport: TAction;
     ActionList: TActionList;
-    ButtonPanel1: TButtonPanel;
+    ButtonPanel: TButtonPanel;
+    chkListed: TCheckBox;
+    chkUsed: TCheckBox;
+    chkPackages: TCheckBox;
+    chkSourceEditor: TCheckBox;
+    grbOptions: TGroupBox;
     lvTodo: TListView;
-    SaveDialog1: TSaveDialog;
+    SaveDialog: TSaveDialog;
     ToolBar: TToolBar;
     tbGoto: TToolButton;
-    tbOptions: TToolButton;
-    tbPrint: TToolButton;
     tbRefresh: TToolButton;
     tbExport: TToolButton;
+    N1: TToolButton;
+    XMLPropStorage: TXMLPropStorage;
     procedure acExportExecute(Sender: TObject);
     procedure acGotoExecute(Sender: TObject);
     procedure acRefreshExecute(Sender: TObject);
+    procedure chkListedChange(Sender: TObject);
+    procedure chkPackagesChange(Sender: TObject);
+    procedure chkSourceEditorChange(Sender: TObject);
+    procedure chkUsedChange(Sender: TObject);
+    procedure FormCloseQuery(Sender: TObject; var CanClose: boolean);
     procedure FormCreate(Sender: TObject);
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift:TShiftState);
     procedure FormShow(Sender: TObject);
@@ -159,12 +167,15 @@ type
     procedure lvTodoColumnClick(Sender : TObject; Column : TListColumn);
     procedure lvTodoCompare(Sender : TObject; Item1, Item2 : TListItem;
       {%H-}Data : Integer; var Compare : Integer);
-    procedure SaveDialog1Show(Sender: TObject);
+    procedure SaveDialogShow(Sender: TObject);
+    procedure XMLPropStorageRestoreProperties(Sender: TObject);
+    procedure XMLPropStorageRestoringProperties(Sender: TObject);
   private
     FBaseDirectory: string;
     fUpdating, fUpdateNeeded: Boolean;
     FIDEItem: string;
     FIdleConnected: boolean;
+    FLoadingOptions: boolean;
     fStartFilename: String;
     FOnOpenFile  : TOnOpenFile;
     fScannedFiles: TAvgLvlTree;// tree of TTLScannedFile
@@ -203,6 +214,9 @@ implementation
 
 {$R *.lfm}
 
+const
+  DefaultTodoListCfgFile = 'todolistoptions.xml';
+
 function CompareTLScannedFiles(Data1, Data2: Pointer): integer;
 begin
   Result:=CompareFilenames(TTLScannedFile(Data1).Filename,
@@ -226,7 +240,7 @@ begin
   acRefresh.ImageIndex := IDEImages.LoadImage(16, 'laz_refresh');
   acExport.ImageIndex := IDEImages.LoadImage(16, 'menu_saveas');
 
-  SaveDialog1.Filter:= dlgFilterCsv+'|*.csv';
+  SaveDialog.Filter:= dlgFilterCsv+'|*.csv';
 end;
 
 destructor TIDETodoWindow.Destroy;
@@ -241,13 +255,15 @@ var
   i: integer;
   St : String;
   CurOwner: TObject;
-  CurProject: TLazProject;
-  CurPackage: TIDEPackage;
-  CurProjFile: TLazProjectFile;
   Node: TAvgLvlTreeNode;
   CurFile: TTLScannedFile;
-  CurPkgFile: TLazPackageFile;
+  Units: TStrings;
+  CurProject: TLazProject;
+  CurPkg: TIDEPackage;
+  Flags: TFindUnitsOfOwnerFlags;
 begin
+  if FLoadingOptions then
+    exit;
   if not Immediately then begin
     fUpdateNeeded:=true;
     IdleConnected:=true;
@@ -263,6 +279,7 @@ begin
 
   Screen.Cursor:=crHourGlass;
   lvTodo.BeginUpdate;
+  Units:=nil;
   try
     fUpdating:=True;
     CodeToolBoss.ActivateWriteLock;
@@ -273,45 +290,29 @@ begin
     if StartFilename<>'' then begin
       // Find a '.todo' file of the main source
       St:=ChangeFileExt(StartFilename,'.todo');
-      if FileExistsUTF8(St) then
+      if FileExistsCached(St) then
         ScanFile(St);
       // Scan main source file
       if FilenameIsPascalUnit(StartFilename) then
         ScanFile(StartFilename);
     end;
 
-    // find project/package
-    ResolveIDEItem(CurOwner,CurProject,CurPackage);
-    if CurOwner=nil then begin
-      CurProject:=LazarusIDE.ActiveProject;
-      CurOwner:=CurProject;
-    end;
+    ResolveIDEItem(CurOwner,CurProject,CurPkg);
 
-    //debugln(['TIDETodoWindow.UpdateTodos Owner=',DbgSName(CurOwner)]);
-    if CurProject<>nil then begin
-      // scan all units of project
-      Caption:=lisToDoList+' - '+ExtractFileName(CurProject.ProjectInfoFile);
-      FBaseDirectory:=ExtractFilePath(CurProject.ProjectInfoFile);
-      if (CurProject.MainFile<>nil) and (pfMainUnitIsPascalSource in CurProject.Flags)
-      then
-        ScanFile(CurProject.MainFile.Filename);
-      for i:=0 to CurProject.FileCount-1 do begin
-        CurProjFile:=CurProject.Files[i];
-        //debugln(['TIDETodoWindow.UpdateTodos ',CurProjFile.IsPartOfProject,' ',CurProjFile.Filename]);
-        if CurProjFile.IsPartOfProject
-        and FilenameIsPascalUnit(CurProjFile.Filename) then
-          ScanFile(CurProjFile.Filename);
-      end;
-    end else if CurPackage<>nil then begin
-      // scan all units of package
-      Caption:=lisToDoList+' - '+ExtractFilename(CurPackage.Filename);
-      FBaseDirectory:=ExtractFilePath(CurPackage.Filename);
-      for i:=0 to CurPackage.FileCount-1 do begin
-        CurPkgFile:=CurPackage.Files[i];
-        if FilenameIsPascalUnit(CurPkgFile.Filename) then
-          ScanFile(CurPkgFile.Filename);
-      end;
-    end;
+    Flags:=[];
+
+    if chkListed.Checked then
+      Include(Flags, fuooListed);
+    if chkUsed.Checked then
+      Include(Flags, fuooUsed);
+    if chkPackages.Checked then
+      Include(Flags, fuooPackages);
+    if chkSourceEditor.Checked then
+      Include(Flags, fuooSourceEditor);
+
+    Units:=LazarusIDE.FindUnitsOfOwner(CurOwner,Flags);
+    for i:=0 to Units.Count-1 do
+      ScanFile(Units[i]);
 
     Node:=fScannedFiles.FindLowest;
     while Node<>nil do begin
@@ -321,6 +322,7 @@ begin
       Node:=fScannedFiles.FindSuccessor(Node);
     end;
   finally
+    Units.Free;
     CodeToolBoss.DeactivateWriteLock;
     lvTodo.EndUpdate;
     Screen.Cursor:=crDefault;
@@ -338,6 +340,7 @@ end;
 procedure TIDETodoWindow.FormShow(Sender: TObject);
 begin
   IdleConnected:=true;
+  UpdateTodos(true);
 end;
 
 procedure TIDETodoWindow.HelpButtonClick(Sender: TObject);
@@ -413,9 +416,20 @@ begin
   if lvTodo.SortDirection = sdDescending then Compare := -Compare;
 end;
 
-procedure TIDETodoWindow.SaveDialog1Show(Sender: TObject);
+procedure TIDETodoWindow.SaveDialogShow(Sender: TObject);
 begin
-  SaveDialog1.InitialDir:=GetCurrentDirUTF8;
+  SaveDialog.InitialDir:=GetCurrentDirUTF8;
+end;
+
+procedure TIDETodoWindow.XMLPropStorageRestoreProperties(Sender: TObject);
+begin
+  FLoadingOptions := False;
+  UpdateTodos;
+end;
+
+procedure TIDETodoWindow.XMLPropStorageRestoringProperties(Sender: TObject);
+begin
+  FLoadingOptions := True;
 end;
 
 //Initialise the todo project and find them
@@ -452,7 +466,7 @@ begin
   CurOwner:=nil;
   CurProject:=nil;
   CurPkg:=nil;
-  if IsValidIdent(IDEItem) then begin
+  if LazIsValidIdent(IDEItem,true) then begin
     // package
     CurPkg:=PackageEditingInterface.FindPackageWithName(IDEItem);
     CurOwner:=CurPkg;
@@ -601,7 +615,7 @@ begin
         else
         begin
           SetItemFields(TodoItem, TempStr);
-          TempStr := '';;
+          TempStr := '';
         end;
         inc(N);
       end;
@@ -625,14 +639,20 @@ begin
 
   acRefresh.Hint := lisTodolistRefresh;
   acGoto.Hint := listodoListGotoLine;
-  tbPrint.Hint := listodoListPrintList;
-  tbOptions.Hint := lisToDoListOptions;
 
-  tbOptions.Caption := dlgFROpts;
-  tbPrint.Caption := lisPrint;
   tbRefresh.Caption := dlgUnitDepRefresh;
   tbGoto.Caption := lisToDoGoto;
   tbExport.Caption := lisToDoExport;
+
+  grbOptions.Caption := lisOptions;
+  chkListed.Caption := lisToDoListed;
+  chkListed.Hint := lisToDoListedHint;
+  chkUsed.Caption := lisToDoUsed;
+  chkUsed.Hint := lisToDoUsedHint;
+  chkPackages.Caption := lisPackages;
+  chkPackages.Hint := Format(lisPackagesHint, [lisToDoListed, lisToDoUsed]);
+  chkSourceEditor.Caption := lisSourceEditor;
+  chkSourceEditor.Hint := lisSourceEditorHint;
 
   with lvTodo do
   begin
@@ -645,6 +665,10 @@ begin
     Column[5].Caption := lisToDoLOwner;
     Column[6].Caption := listToDoLCategory;
   end;
+
+  XMLPropStorage.FileName := Concat(AppendPathDelim(LazarusIDE.GetPrimaryConfigPath),
+    DefaultTodoListCfgFile);
+  XMLPropStorage.Active := True;
 end;
 
 procedure TIDETodoWindow.acGotoExecute(Sender: TObject);
@@ -676,8 +700,8 @@ var
   todoItm  : TTodoItem;
   i        : integer;
 begin
-  SaveDialog1.FileName:='TodoList_'+FormatDateTime('YYYY_MM_DD',now);
-  if SaveDialog1.Execute then
+  SaveDialog.FileName:='TodoList_'+FormatDateTime('YYYY_MM_DD',now);
+  if SaveDialog.Execute then
   begin
     CommaList:=TStringListUTF8.Create;
     try
@@ -696,7 +720,7 @@ begin
         CommaList.Add(s);
         i:=i+1;
       end;
-      CommaList.SaveToFile(SaveDialog1.FileName);
+      CommaList.SaveToFile(SaveDialog.FileName);
     finally
       CommaList.Clear;
       CommaList.Free;
@@ -707,6 +731,31 @@ end;
 procedure TIDETodoWindow.acRefreshExecute(Sender: TObject);
 begin
   UpdateTodos;
+end;
+
+procedure TIDETodoWindow.chkListedChange(Sender: TObject);
+begin
+  UpdateTodos;
+end;
+
+procedure TIDETodoWindow.chkPackagesChange(Sender: TObject);
+begin
+  UpdateTodos;
+end;
+
+procedure TIDETodoWindow.chkSourceEditorChange(Sender: TObject);
+begin
+  UpdateTodos;
+end;
+
+procedure TIDETodoWindow.chkUsedChange(Sender: TObject);
+begin
+  UpdateTodos;
+end;
+
+procedure TIDETodoWindow.FormCloseQuery(Sender: TObject; var CanClose: boolean);
+begin
+  XMLPropStorage.Save;
 end;
 
 procedure TIDETodoWindow.AddListItem(aTodoItem: TTodoItem);

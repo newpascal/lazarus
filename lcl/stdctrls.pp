@@ -345,6 +345,7 @@ type
     procedure UTF8KeyPress(var UTF8Key: TUTF8Char); override;
     procedure MouseUp(Button: TMouseButton; Shift:TShiftState; X, Y: Integer); override;
     function SelectItem(const AnItem: String): Boolean;
+    procedure ShouldAutoAdjust(var AWidth, AHeight: Boolean); override;
 
     property ItemHeight: Integer read GetItemHeight write SetItemHeight;
     property ItemWidth: Integer read GetItemWidth write SetItemWidth default 0;
@@ -543,6 +544,9 @@ type
     procedure SetSorted(Val: boolean); virtual;
     procedure SetStyle(Val: TListBoxStyle); virtual;
     procedure DrawItem(Index: Integer; ARect: TRect; State: TOwnerDrawState); virtual;
+    procedure DoAutoAdjustLayout(const AMode: TLayoutAdjustmentPolicy;
+      const AXProportion, AYProportion: Double; const AScale0Fonts: Boolean);
+      override;
     procedure DoSelectionChange(User: Boolean); virtual;
     procedure SendItemIndex;
   public
@@ -764,6 +768,7 @@ type
     procedure WMChar(var Message: TLMChar); message LM_CHAR;
     procedure CMWantSpecialKey(var Message: TCMWantSpecialKey); message CM_WANTSPECIALKEY;
     procedure WndProc(var Message: TLMessage); override;
+    procedure ShouldAutoAdjust(var AWidth, AHeight: Boolean); override;
 
     property AutoSelect: Boolean read FAutoSelect write FAutoSelect default True;
     property AutoSelected: Boolean read FAutoSelected write FAutoSelected;

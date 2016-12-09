@@ -418,7 +418,7 @@ procedure TMainIDEBar.DoSetMainIDEHeight(const AIDEIsMaximized: Boolean; ANewHei
 begin
   if not Showing then Exit;
 
-  DebugLn(['TMainIDEBar.DoSetMainIDEHeight: IDEStarted=', LazarusIDE.IDEStarted]);
+  //DebugLn(['TMainIDEBar.DoSetMainIDEHeight: IDEStarted=', LazarusIDE.IDEStarted]);
   if Assigned(IDEDockMaster) then
   begin
     if EnvironmentOptions.Desktop.AutoAdjustIDEHeight then
@@ -560,6 +560,7 @@ begin
   // This form has no resource => must be constructed using CreateNew
   inherited CreateNew(TheOwner, 1);
   AllowDropFiles:=true;
+  Scaled:=true;
   OnDropFiles:=@MainIDEBarDropFiles;
   try
     Icon.LoadFromResourceName(HInstance, 'WIN_MAIN');
@@ -714,6 +715,7 @@ begin
     CoolBand.FixedSize := True;
     IDECoolBar.ToolBars[I].UseCurrentOptions;
   end;
+  CoolBar.AutoAdjustLayout(lapAutoAdjustForDPI, 96, PixelsPerInch, 0, 0, False);
   CoolBar.AutosizeBands;
 
   CoolBar.Visible := CoolBarOpts.Visible;
@@ -726,7 +728,7 @@ begin
   if LazarusIDE.IDEStarted then
     case State of
       wsMaximized, wsNormal: begin
-        DebugLn('TMainIDEBar.Resizing: Setting main IDE height');
+        //DebugLn('TMainIDEBar.Resizing: Setting main IDE height');
         DoSetMainIDEHeight(State = wsMaximized);
       end;
     end;

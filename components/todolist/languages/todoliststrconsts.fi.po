@@ -5,10 +5,6 @@ msgstr "Content-Type: text/plain; charset=UTF-8"
 msgid "CSV files"
 msgstr "CSV tiedostot"
 
-#: todoliststrconsts.dlgfropts
-msgid "Options"
-msgstr "Asetukset"
-
 #: todoliststrconsts.dlgunitdeprefresh
 msgid "Refresh"
 msgstr "Päivitä"
@@ -17,13 +13,30 @@ msgstr "Päivitä"
 msgid "Insert Macro"
 msgstr "Lisää Makro"
 
+#: todoliststrconsts.lisoptions
+msgid "Options"
+msgstr ""
+
+#: todoliststrconsts.lispackages
+msgid "Packages"
+msgstr ""
+
+#: todoliststrconsts.lispackageshint
+msgid "Extends \"%s\" and \"%s\" options by units from used packages"
+msgstr ""
+
 #: todoliststrconsts.lispkgfiletypetext
 msgid "Text"
 msgstr "Teksti"
 
-#: todoliststrconsts.lisprint
-msgid "Print"
-msgstr "Tulosta"
+#: todoliststrconsts.lissourceeditor
+msgid "Editor"
+msgstr ""
+
+#: todoliststrconsts.lissourceeditorhint
+msgctxt "todoliststrconsts.lissourceeditorhint"
+msgid "Add units in source editor"
+msgstr ""
 
 #: todoliststrconsts.listddinserttodo
 msgid "Insert ToDo"
@@ -53,17 +66,17 @@ msgstr "Moduuli"
 msgid "ToDo List"
 msgstr "ToDo luettelo"
 
+#: todoliststrconsts.listodolisted
+msgid "Listed"
+msgstr ""
+
+#: todoliststrconsts.listodolistedhint
+msgid "Add units listed in project inspector/package editor"
+msgstr ""
+
 #: todoliststrconsts.listodolistgotoline
 msgid "Goto selected source line"
 msgstr "Mene valitulle lähderiville"
-
-#: todoliststrconsts.listodolistoptions
-msgid "ToDo options ..."
-msgstr "ToDo asetukset ..."
-
-#: todoliststrconsts.listodolistprintlist
-msgid "Print todo items"
-msgstr "Tulosta todo kohdat"
 
 #: todoliststrconsts.listodolistrefresh
 msgid "Refresh todo items"
@@ -80,6 +93,14 @@ msgstr "Omistaja"
 #: todoliststrconsts.listodolpriority
 msgid "Priority"
 msgstr "Tärkeys"
+
+#: todoliststrconsts.listodoused
+msgid "Used"
+msgstr ""
+
+#: todoliststrconsts.listodousedhint
+msgid "Add units used by main source file"
+msgstr ""
 
 #: todoliststrconsts.listtodolcategory
 msgid "Category"

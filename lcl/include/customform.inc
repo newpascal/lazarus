@@ -158,6 +158,10 @@ begin
 
   EndFormUpdate; // the BeginFormUpdate is in CreateNew
   inherited AfterConstruction;
+
+  if Scaled and (Screen.PixelsPerInch<>FPixelsPerInch) then
+    AutoAdjustLayout(lapAutoAdjustForDPI, FPixelsPerInch, Screen.PixelsPerInch,
+      Width, MulDiv(Width, Screen.PixelsPerInch, FPixelsPerInch), False);
 end;
 
 {------------------------------------------------------------------------------
@@ -2039,6 +2043,7 @@ begin
   Include(FFormState,fsFirstShow);
   //DebugLn('[TCustomForm.CreateNew] Class=',Classname);
   BeginFormUpdate;
+  FScaled := DefaultScaled;
   FLastFocusedControl := Self;
   FBorderIcons := [biSystemMenu, biMinimize, biMaximize];
   FDefaultMonitor := dmActiveForm;
@@ -2046,7 +2051,6 @@ begin
   FShowInTaskbar := stDefault;
   FAlphaBlend := False;
   FAlphaBlendValue := 255;
-  FDesignTimeDPI := 96;
   // set border style before handle is allocated
   if not (fsBorderStyleChanged in FFormState) then
     FFormBorderStyle:= bsSizeable;
@@ -2231,6 +2235,19 @@ begin
   Message.Result:= 0;
 end;
 
+procedure TCustomForm.WMDPIChanged(var Msg: TLMessage);
+var
+  NewDpi: integer;
+begin
+  if Parent=nil then
+  begin
+    NewDpi := hi(Msg.wParam);
+    if Scaled and (NewDpi<>PixelsPerInch) then
+      AutoAdjustLayout(lapAutoAdjustForDPI, FPixelsPerInch, NewDpi,
+        Width, MulDiv(Width, NewDpi, FPixelsPerInch), True);
+  end;
+end;
+
 {------------------------------------------------------------------------------
        TCustomForm Method Hide
 ------------------------------------------------------------------------------}
@@ -2304,35 +2321,6 @@ end;
 function TCustomForm.IsIconStored: Boolean;
 begin
   Result := IsForm and (Icon <> nil);
-end;
-
-function TCustomForm.GetPixelsPerInch: Longint;
-var
-  ParentForm: TCustomForm;
-  DC: HDC;
-begin
-  if FPixelsPerInch = 0 then
-  begin
-    if Assigned(Parent) then
-    begin
-      ParentForm := GetParentForm(Self);
-      if Assigned(ParentForm) then
-        FPixelsPerInch := ParentForm.PixelsPerInch;
-    end;
-
-    if FPixelsPerInch <= 0 then
-    begin
-      if HandleAllocated then
-      begin
-        DC := GetDC(Handle);
-        FPixelsPerInch := GetDeviceCaps(DC, LOGPIXELSX);
-        ReleaseDC(Handle, DC);
-      end
-      else
-        FPixelsPerInch := Screen.PixelsPerInch;
-    end;
-  end;
-  Result := FPixelsPerInch;
 end;
 
 function TCustomForm.GetMonitor: TMonitor;
@@ -2634,8 +2622,6 @@ begin
   //DebugLn('TCustomForm.CreateWnd START ',ClassName);
   FFormState := FFormState - [fsBorderStyleChanged, fsFormStyleChanged];
   inherited CreateWnd;
-
-  FPixelsPerInch := 0;
 
   //DebugLn('Trace:[TCustomForm.CreateWnd] FMenu.HandleNeeded');
   UpdateMenu;

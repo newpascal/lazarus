@@ -893,6 +893,7 @@ type
     procedure DoJumpToCodeToolBossError; override;
     function NeedSaveSourceEditorChangesToCodeCache(AEditor: TSourceEditorInterface): boolean; override;
     function SaveSourceEditorChangesToCodeCache(AEditor: TSourceEditorInterface): boolean; override;
+    function FindUnitsOfOwner(TheOwner: TObject; Flags: TFindUnitsOfOwnerFlags): TStrings; override;
     procedure ApplyCodeToolChanges;
     procedure DoJumpToOtherProcedureSection;
     procedure DoFindDeclarationAtCursor;
@@ -1586,11 +1587,11 @@ begin
   Screen.AddHandlerActiveFormChanged(@HandleScreenChangedForm);
   Screen.AddHandlerActiveControlChanged(@HandleScreenChangedControl);
   IDEComponentPalette.OnClassSelected := @ComponentPaletteClassSelected;
+  IDEWindowCreators.AddLayoutChangedHandler(@HandleLayoutChanged);
   SetupIDEWindowsLayout;
   RestoreIDEWindows;
   MainIDEBar.SetupHints;
   MainIDEBar.InitPaletteAndCoolBar;
-  IDEWindowCreators.AddLayoutChangedHandler(@HandleLayoutChanged);
   // make sure the main IDE bar is always shown
   IDEWindowCreators.ShowForm(MainIDEBar,false);
   DebugBoss.UpdateButtonsAndMenuItems; // Disable Stop-button (and some others).
@@ -9471,6 +9472,12 @@ function TMainIDE.SaveSourceEditorChangesToCodeCache(AEditor: TSourceEditorInter
 // save all open sources to code tools cache
 begin
   Result:=SourceFileMgr.SaveSourceEditorChangesToCodeCache(AEditor);
+end;
+
+function TMainIDE.FindUnitsOfOwner(TheOwner: TObject;
+  Flags: TFindUnitsOfOwnerFlags): TStrings;
+begin
+  Result:=SourceFileMgr.FindUnitsOfOwner(TheOwner,Flags);
 end;
 
 function TMainIDE.DoJumpToSourcePosition(const Filename: string; NewX, NewY,

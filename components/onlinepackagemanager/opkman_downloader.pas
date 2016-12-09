@@ -103,7 +103,6 @@ type
     FOnPackageUpdateProgress: TOnPackageUpdateProgress;
     FOnPackageUpdateCompleted: TOnPackageUpdateCompleted;
     function GetUpdateSize(const AURL: String; var AErrMsg: String): Int64;
-    function FixProtocol(const AURL: String): String;
     procedure DoReceivedUpdateSize(Sender: TObject; const ContentLength, {%H-}CurrentPos: int64);
     procedure DoOnTimer(Sender: TObject);
     procedure DoOnJSONProgress;
@@ -274,7 +273,7 @@ begin
   if FDownloadType = dtJSON then
   begin
     FHTTPClient.NeedToBreak := True;
-    FErrMsg := rsMessageError2;
+    FErrMsg := rsMainFrm_rsMessageError2;
     FErrTyp := etTimeOut;
     FTimer.StopTimer;
     Synchronize(@DoOnJSONDownloadCompleted);
@@ -332,7 +331,7 @@ begin
     else
     begin
       FErrTyp := etConfig;
-      FErrMsg := rsMessageNoRepository0 + sLineBreak + rsMessageNoRepository1;
+      FErrMsg := rsMainFrm_rsMessageNoRepository0 + sLineBreak + rsMainFrm_rsMessageNoRepository1;
     end;
     if FTimer.Enabled then
       FTimer.StopTimer;
@@ -348,7 +347,7 @@ begin
       if SerializablePackages.Items[I].IsDownloadable then
       begin
         Inc(FCnt);
-        FFrom := PackageOptions.RemoteRepository + SerializablePackages.Items[I].RepositoryFileName;
+        FFrom := Options.RemoteRepository + SerializablePackages.Items[I].RepositoryFileName;
         FTo := FDownloadTo + SerializablePackages.Items[I].RepositoryFileName;
         FCurSize := SerializablePackages.Items[I].RepositoryFileSize;
         DS := TDownloadStream.Create(TFileStream.Create(FTo, fmCreate));
@@ -388,14 +387,14 @@ begin
     begin
       if FNeedToBreak then
         Break;
-      if (SerializablePackages.Items[I].Checked) and (Trim(SerializablePackages.Items[I].DownloadURL) <> '') then
+      if (SerializablePackages.Items[I].Checked) and (Trim(SerializablePackages.Items[I].DownloadZipURL) <> '') then
       begin
         Inc(FCnt);
         FUpackageName := SerializablePackages.Items[I].Name;
-        FUPackageURL := SerializablePackages.Items[I].DownloadURL;
+        FUPackageURL := SerializablePackages.Items[I].DownloadZipURL;
         FUTyp := 0;
         Synchronize(@DoOnPackageUpdateProgress);
-        UpdateSize := GetUpdateSize(SerializablePackages.Items[I].DownloadURL, FUErrMsg);
+        UpdateSize := GetUpdateSize(SerializablePackages.Items[I].DownloadZipURL, FUErrMsg);
         if UpdateSize > -1 then
         begin
           FUTyp := 1;
@@ -432,11 +431,11 @@ begin
       begin
         if NeedToBreak then
           Break;
-        if (SerializablePackages.Items[I].Checked) and (Trim(SerializablePackages.Items[I].DownloadURL) <> '') and
+        if (SerializablePackages.Items[I].Checked) and (Trim(SerializablePackages.Items[I].DownloadZipURL) <> '') and
            (SerializablePackages.Items[I].UpdateSize > -1) and (not (psError in  SerializablePackages.Items[I].PackageStates)) then
         begin
           Inc(FCnt);
-          FFrom := FixProtocol(SerializablePackages.Items[I].DownloadURL);
+          FFrom := FixProtocol(SerializablePackages.Items[I].DownloadZipURL);
           FTo := FDownloadTo + SerializablePackages.Items[I].RepositoryFileName;
           FCurSize := SerializablePackages.Items[I].UpdateSize;
           DS := TDownloadStream.Create(TFileStream.Create(FTo, fmCreate));
@@ -479,13 +478,13 @@ begin
   FTimer := nil;
   FMS := TMemoryStream.Create;
   FHTTPClient := TFPHTTPClient.Create(nil);
-  if PackageOptions.ProxyEnabled then
-    begin
-      FHTTPClient.Proxy.Host:= PackageOptions.ProxyServer;
-      FHTTPClient.Proxy.Port:= PackageOptions.ProxyPort;
-      FHTTPClient.Proxy.UserName:= PackageOptions.ProxyUser;
-      FHTTPClient.Proxy.Password:= PackageOptions.ProxyPassword;
-    end;
+  if Options.ProxyEnabled then
+  begin
+    FHTTPClient.Proxy.Host:= Options.ProxyServer;
+    FHTTPClient.Proxy.Port:= Options.ProxyPort;
+    FHTTPClient.Proxy.UserName:= Options.ProxyUser;
+    FHTTPClient.Proxy.Password:= Options.ProxyPassword;
+  end;
 end;
 
 destructor TThreadDownload.Destroy;
@@ -500,7 +499,7 @@ end;
 
 procedure TThreadDownload.DownloadJSON(const ATimeOut: Integer = -1);
 begin
-  FRemoteJSONFile := PackageOptions.RemoteRepository + cRemoteJSONFile;
+  FRemoteJSONFile := Options.RemoteRepository + cRemoteJSONFile;
   FDownloadType := dtJSON;
   FTimer := TThreadTimer.Create;
   FTimer.Interval := ATimeOut;
@@ -538,13 +537,6 @@ begin
     Abort;
 end;
 
-function TThreadDownload.FixProtocol(const AURL: String): String;
-begin
-  Result := AURL;
-  if (Pos('http://', Result) = 0) and (Pos('https://', Result) = 0) then
-    Result := 'https://' + Result;
-end;
-
 function TThreadDownload.GetUpdateSize(const AURL: String; var AErrMsg: String): Int64;
 var
   SS: TStringStream;
@@ -557,12 +549,12 @@ begin
   try
     URL := FixProtocol(AURL);
     HttpClient := TFPHTTPClient.Create(nil);
-    if PackageOptions.ProxyEnabled then
+    if Options.ProxyEnabled then
       begin
-        HTTPClient.Proxy.Host:= PackageOptions.ProxyServer;
-        HTTPClient.Proxy.Port:= PackageOptions.ProxyPort;
-        HTTPClient.Proxy.UserName:= PackageOptions.ProxyUser;
-        HTTPClient.Proxy.Password:= PackageOptions.ProxyPassword;
+        HTTPClient.Proxy.Host:= Options.ProxyServer;
+        HTTPClient.Proxy.Port:= Options.ProxyPort;
+        HTTPClient.Proxy.UserName:= Options.ProxyUser;
+        HTTPClient.Proxy.Password:= Options.ProxyPassword;
       end;
 
     try
@@ -597,7 +589,7 @@ begin
   FTotCnt := 0;
   FTotSize := 0;
   for I := 0 to SerializablePackages.Count - 1 do
-    if (SerializablePackages.Items[I].Checked) and (Trim(SerializablePackages.Items[I].DownloadURL) <> '') then
+    if (SerializablePackages.Items[I].Checked) and (Trim(SerializablePackages.Items[I].DownloadZipURL) <> '') then
       Inc(FTotCnt);
   FTimer := TThreadTimer.Create;
   FTimer.OnTimer := @DoOnTimer;

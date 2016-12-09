@@ -1,7 +1,8 @@
-<?xml version="1.0"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <CONFIG>
   <Package Version="4">
     <Name Value="FCL"/>
+    <Type Value="RunAndDesignTime"/>
     <Author Value="Lazarus"/>
     <CompilerOptions>
       <Version Value="11"/>
@@ -10,7 +11,6 @@
       </SearchPaths>
       <Other>
         <CustomOptions Value="$(IDEBuildOptions)"/>
-        <CompilerPath Value="$(CompPath)"/>
       </Other>
     </CompilerOptions>
     <Description Value="The FCL - FreePascal Component Library provides the base classes for object pascal."/>
@@ -23,49 +23,48 @@
         <UnitName Value="LazarusPackageIntf"/>
       </Item1>
       <Item2>
-        <Filename Value="registerfcl.pas"/>
-        <HasRegisterProc Value="True"/>
-        <UnitName Value="RegisterFCL"/>
-      </Item2>
-      <Item3>
         <Filename Value="db.pas"/>
         <Type Value="Virtual Unit"/>
         <UnitName Value="db"/>
-      </Item3>
-      <Item4>
+      </Item2>
+      <Item3>
         <Filename Value="process.pas"/>
         <Type Value="Virtual Unit"/>
         <UnitName Value="process"/>
-      </Item4>
-      <Item5>
+      </Item3>
+      <Item4>
         <Filename Value="simpleipc.pas"/>
         <Type Value="Virtual Unit"/>
         <UnitName Value="simpleipc"/>
-      </Item5>
-      <Item6>
+      </Item4>
+      <Item5>
         <Filename Value="eventlog.pas"/>
         <Type Value="Virtual Unit"/>
         <UnitName Value="eventlog"/>
-      </Item6>
-      <Item7>
+      </Item5>
+      <Item6>
         <Filename Value="XMLConf.pas"/>
         <Type Value="Virtual Unit"/>
         <UnitName Value="XMLConf"/>
-      </Item7>
-      <Item8>
+      </Item6>
+      <Item7>
         <Filename Value="fcllaz.pas"/>
         <Type Value="Main Unit"/>
         <UnitName Value="fcllaz"/>
+      </Item7>
+      <Item8>
+        <Filename Value="servicemanager.pas"/>
+        <Type Value="Virtual Unit"/>
+        <AddToUsesPkgSection Value="False"/>
+        <UnitName Value="ServiceManager"/>
       </Item8>
       <Item9>
-        <Filename Value="servicemanager.pas"/>
-        <AddToUsesPkgSection Value="False"/>
+        <Filename Value="sqldb.pp"/>
         <Type Value="Virtual Unit"/>
-        <UnitName Value="ServiceManager"/>
+        <UnitName Value="sqldb"/>
       </Item9>
     </Files>
     <LazDoc Paths="docs"/>
-    <Type Value="RunAndDesignTime"/>
     <UsageOptions>
       <UnitPath Value="$(PkgOutDir)"/>
     </UsageOptions>

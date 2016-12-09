@@ -952,6 +952,8 @@ type
     function  DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean; override;
     function  DoMouseWheelDown(Shift: TShiftState; MousePos: TPoint): Boolean; override;
     function  DoMouseWheelUp(Shift: TShiftState; MousePos: TPoint): Boolean; override;
+    procedure DoAutoAdjustLayout(const AMode: TLayoutAdjustmentPolicy;
+      const AXProportion, AYProportion: Double; const AScale0Fonts: Boolean); override;
     procedure DoOnChangeBounds; override;
     procedure DoOPDeleteColRow(IsColumn: Boolean; index: Integer);
     procedure DoOPExchangeColRow(IsColumn: Boolean; index, WithIndex: Integer);
@@ -4506,10 +4508,10 @@ begin
         TrySmoothScrollBy(message.Pos-SP.x, 0);
       message.Result := 0;
     end;
-    SB_PAGEUP: TrySmoothScrollBy(-(ClientHeight-FGCache.FixedHeight), 0);
-    SB_PAGEDOWN: TrySmoothScrollBy(ClientHeight-FGCache.FixedHeight, 0);
-    SB_LINEUP: TrySmoothScrollBy(-DefaultRowHeight, 0);
-    SB_LINEDOWN: TrySmoothScrollBy(DefaultRowHeight, 0);
+    SB_PAGELEFT: TrySmoothScrollBy(-(ClientWidth-FGCache.FixedWidth), 0);
+    SB_PAGERIGHT: TrySmoothScrollBy(ClientWidth-FGCache.FixedWidth, 0);
+    SB_LINELEFT: TrySmoothScrollBy(-DefaultColWidth, 0);
+    SB_LINERIGHT: TrySmoothScrollBy(DefaultColWidth, 0);
   end;
 
   if EditorMode then
@@ -6715,6 +6717,38 @@ begin
     Editor.SetFocus;
   InvalidateCell(FCol,FRow,True);
   {$ifdef dbgGrid}DebugLnExit('grid.DoEditorShow [',Editor.ClassName,'] END');{$endif}
+end;
+
+procedure TCustomGrid.DoAutoAdjustLayout(const AMode: TLayoutAdjustmentPolicy;
+  const AXProportion, AYProportion: Double; const AScale0Fonts: Boolean);
+var
+  i: Integer;
+  C: TGridColumn;
+begin
+  inherited DoAutoAdjustLayout(AMode, AXProportion, AYProportion, AScale0Fonts);
+
+  if AMode in [lapAutoAdjustWithoutHorizontalScrolling, lapAutoAdjustForDPI] then
+  begin
+    BeginUpdate;
+    try
+      for i := Columns.Count - 1 downto 0 do
+      begin
+        C := Columns.Items[i];
+        C.MaxSize := Round(C.MaxSize * AXProportion);
+        C.MinSize := Round(C.MinSize * AXProportion);
+        C.Width := Round(C.Width * AXProportion);
+      end;
+
+      for i := RowCount - 1 downto 0 do
+        RowHeights[i] := Round(RowHeights[i] * AYProportion);
+
+      DefaultColWidth := Round(DefaultColWidth * AXProportion);
+      if IsDefRowHeightStored then
+        DefaultRowHeight := Round(DefaultRowHeight * AYProportion);
+    finally
+      EndUpdate;
+    end;
+  end;
 end;
 
 procedure TCustomGrid.DoOnChangeBounds;

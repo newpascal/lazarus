@@ -622,6 +622,7 @@ type
     function EffectiveMaxHeight: integer; virtual;
     function MinMaxWidth(Width: integer): integer;
     function MinMaxHeight(Height: integer): integer;
+    procedure AutoAdjustLayout(const AXProportion, AYProportion: Double);
   public
     property MaxInterfaceHeight: integer read FMaxInterfaceHeight;
     property MaxInterfaceWidth: integer read FMaxInterfaceWidth;
@@ -742,6 +743,7 @@ type
     procedure GetSpaceAround(var SpaceAround: TRect); virtual;
     function GetSideSpace(Kind: TAnchorKind): Integer; // Around+GetSpace
     function GetSpace(Kind: TAnchorKind): Integer; virtual;
+    procedure AutoAdjustLayout(const AXProportion, AYProportion: Double);
   public
     property Control: TControl read FControl;
     property Space[Kind: TAnchorKind]: integer read GetSpace write SetSpace;
@@ -1412,6 +1414,9 @@ type
     procedure SetZOrder(TopMost: Boolean); virtual;
     class function GetControlClassDefaultSize: TSize; virtual;
     function ColorIsStored: boolean; virtual;
+    procedure DoAutoAdjustLayout(const AMode: TLayoutAdjustmentPolicy;
+      const AXProportion, AYProportion: Double;
+      const AScale0Fonts: Boolean); virtual;
   protected
     // actions
     function GetActionLinkClass: TControlActionLinkClass; virtual;
@@ -1472,6 +1477,11 @@ type
     function CreateAccessibleObject: TLazAccessibleObject; virtual;
     function GetSelectedChildAccessibleObject: TLazAccessibleObject; virtual;
     function GetChildAccessibleObjectAtPos(APos: TPoint): TLazAccessibleObject; virtual;
+    //scale support
+    function ScaleCoord(const ASize: Integer): Integer;
+    function ScaleCoordBack(const ASize: Integer): Integer;
+    function ScaleCoord96(const ASize: Integer): Integer;
+    function ScaleCoord96Back(const ASize: Integer): Integer;
   public
     // size
     procedure AdjustSize; virtual;// smart calling DoAutoSize
@@ -1523,9 +1533,9 @@ type
     property BaseParentClientSize: TSize read FBaseParentClientSize;
     procedure WriteLayoutDebugReport(const Prefix: string); virtual;
     procedure AutoAdjustLayout(AMode: TLayoutAdjustmentPolicy;
-      const AFromDPI, AToDPI, AOldFormWidth, ANewFormWidth: Integer); virtual;
-    function ShouldAutoAdjustLeftAndTop: Boolean; virtual;
-    function ShouldAutoAdjustWidthAndHeight: Boolean; virtual;
+      const AFromDPI, AToDPI, AOldFormWidth, ANewFormWidth: Integer;
+      const AScale0Fonts: Boolean); virtual;
+    procedure ShouldAutoAdjust(var AWidth, AHeight: Boolean); virtual;
   public
     constructor Create(TheOwner: TComponent);override;
     destructor Destroy; override;
@@ -2195,8 +2205,9 @@ type
     procedure ScrollBy_WS(DeltaX, DeltaY: Integer);
     procedure ScrollBy(DeltaX, DeltaY: Integer); virtual;
     procedure WriteLayoutDebugReport(const Prefix: string); override;
-    procedure AutoAdjustLayout(AMode: TLayoutAdjustmentPolicy;
-      const AFromDPI, AToDPI, AOldFormWidth, ANewFormWidth: Integer); override;
+    procedure AutoAdjustLayout(AMode: TLayoutAdjustmentPolicy; const AFromDPI,
+      AToDPI, AOldFormWidth, ANewFormWidth: Integer;
+      const AScale0Fonts: Boolean); override;
   public
     constructor Create(TheOwner: TComponent);override;
     constructor CreateParented(AParentWindow: HWND);
@@ -3632,6 +3643,37 @@ end;
 procedure TControlBorderSpacing.AssignTo(Dest: TPersistent);
 begin
   Dest.Assign(Self);
+end;
+
+procedure TControlBorderSpacing.AutoAdjustLayout(const AXProportion,
+  AYProportion: Double);
+
+  procedure Scale(var Value: Integer; const Proportion: Double; var Changed: Boolean);
+  begin
+    if Value<>0 then
+    begin
+      Value := Round(Value * Proportion);
+      Changed := True;
+    end;
+  end;
+var
+  InnerChanged, OuterChanged: Boolean;
+begin
+  InnerChanged := False;
+  OuterChanged := False;
+
+  Scale(FAround, AXProportion, OuterChanged);
+  Scale(FInnerBorder, AXProportion, InnerChanged);
+  Scale(FLeft, AXProportion, OuterChanged);
+  Scale(FTop, AYProportion, OuterChanged);
+  Scale(FRight, AXProportion, OuterChanged);
+  Scale(FBottom, AYProportion, OuterChanged);
+
+  if OuterChanged or InnerChanged then
+  begin
+    if Control<>nil then Control.InvalidatePreferredSize;
+    Change(InnerChanged);
+  end;
 end;
 
 function TControlBorderSpacing.IsEqual(Spacing: TControlBorderSpacing

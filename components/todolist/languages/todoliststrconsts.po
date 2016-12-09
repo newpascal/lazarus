@@ -5,10 +5,6 @@ msgstr "Content-Type: text/plain; charset=UTF-8"
 msgid "CSV files"
 msgstr ""
 
-#: todoliststrconsts.dlgfropts
-msgid "Options"
-msgstr ""
-
 #: todoliststrconsts.dlgunitdeprefresh
 msgid "Refresh"
 msgstr ""
@@ -17,12 +13,29 @@ msgstr ""
 msgid "Insert Macro"
 msgstr ""
 
+#: todoliststrconsts.lisoptions
+msgid "Options"
+msgstr ""
+
+#: todoliststrconsts.lispackages
+msgid "Packages"
+msgstr ""
+
+#: todoliststrconsts.lispackageshint
+msgid "Extends \"%s\" and \"%s\" options by units from used packages"
+msgstr ""
+
 #: todoliststrconsts.lispkgfiletypetext
 msgid "Text"
 msgstr ""
 
-#: todoliststrconsts.lisprint
-msgid "Print"
+#: todoliststrconsts.lissourceeditor
+msgid "Editor"
+msgstr ""
+
+#: todoliststrconsts.lissourceeditorhint
+msgctxt "todoliststrconsts.lissourceeditorhint"
+msgid "Add units in source editor"
 msgstr ""
 
 #: todoliststrconsts.listddinserttodo
@@ -53,16 +66,16 @@ msgstr ""
 msgid "ToDo List"
 msgstr ""
 
+#: todoliststrconsts.listodolisted
+msgid "Listed"
+msgstr ""
+
+#: todoliststrconsts.listodolistedhint
+msgid "Add units listed in project inspector/package editor"
+msgstr ""
+
 #: todoliststrconsts.listodolistgotoline
 msgid "Goto selected source line"
-msgstr ""
-
-#: todoliststrconsts.listodolistoptions
-msgid "ToDo options ..."
-msgstr ""
-
-#: todoliststrconsts.listodolistprintlist
-msgid "Print todo items"
 msgstr ""
 
 #: todoliststrconsts.listodolistrefresh
@@ -79,6 +92,14 @@ msgstr ""
 
 #: todoliststrconsts.listodolpriority
 msgid "Priority"
+msgstr ""
+
+#: todoliststrconsts.listodoused
+msgid "Used"
+msgstr ""
+
+#: todoliststrconsts.listodousedhint
+msgid "Add units used by main source file"
 msgstr ""
 
 #: todoliststrconsts.listtodolcategory

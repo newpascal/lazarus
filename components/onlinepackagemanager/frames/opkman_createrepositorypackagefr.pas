@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, FileUtil, Forms, Controls, ExtCtrls, StdCtrls, Dialogs,
   LazFileUtils, Graphics, Menus, Buttons, Laz2_XMLCfg, opkman_VirtualTrees,
-  md5, fpjson, LCLIntf, opkman_serializablepackages, opkman_zipper;
+  md5, fpjson, LCLIntf, EditBtn, opkman_serializablepackages, opkman_zipper;
 
 type
   PData = ^TData;
@@ -24,7 +24,7 @@ type
     FLicense: String;
     FVersionAsString: String;
     FDependenciesAsString: String;
-    FCategory: Integer;
+    FCategory: String;
     FLazCompatibility: String;
     FFPCCompatibility: String;
     FSupportedWidgetSet: String;
@@ -40,15 +40,15 @@ type
     bCancel: TButton;
     bCreate: TButton;
     Bevel1: TBevel;
-    cbCategory: TComboBox;
     cbOpen: TCheckBox;
+    edCategories: TEdit;
+    edPackageDir: TDirectoryEdit;
     edDownloadURL: TEdit;
     edDisplayName: TEdit;
     edSVNURL: TEdit;
     edFPCCompatibility: TEdit;
     edHomePageURL: TEdit;
     edLazCompatibility: TEdit;
-    edPackageDir: TEdit;
     edSupportedWidgetset: TEdit;
     imTree: TImageList;
     lbCategory: TLabel;
@@ -65,21 +65,23 @@ type
     lbPackagedir: TLabel;
     lbSupportedWidgetSet: TLabel;
     pnButtons: TPanel;
+    pnCategories: TPanel;
     pnPackageData: TPanel;
     pnBrowse: TPanel;
     pnCategory: TPanel;
     pnMessage: TPanel;
-    pnPackageDir: TPanel;
     pnPackages: TPanel;
     pnData: TPanel;
     SDD: TSelectDirectoryDialog;
-    bPackageDir: TSpeedButton;
+    spCategories: TSpeedButton;
     spMain: TSplitter;
     spMain1: TSplitter;
     procedure bCancelClick(Sender: TObject);
     procedure bCreateClick(Sender: TObject);
-    procedure bPackageDirClick(Sender: TObject);
+    procedure edPackageDirAcceptDirectory(Sender: TObject; var Value: String);
+    procedure edPackageDirButtonClick(Sender: TObject);
     procedure pnBrowseResize(Sender: TObject);
+    procedure spCategoriesClick(Sender: TObject);
   private
     FVSTPackages: TVirtualStringTree;
     FVSTPackageData: TVirtualStringTree;
@@ -110,40 +112,32 @@ type
     function LoadPackageData(const APath: String; AData: PData): Boolean;
     procedure ShowHideControls(const AType: Integer);
     procedure SaveExtraInfo(const ANode: PVirtualNode);
+    function TranslateCategories(const AStr: String): String;
   public
     procedure InitializeFrame;
     procedure FinalizeFrame;
   end;
 
 implementation
-uses opkman_const, opkman_common, opkman_options;
+uses opkman_const, opkman_common, opkman_options, opkman_categoriesfrm;
 {$R *.lfm}
 
 { TCreateRepositoryPackagefr }
 
 procedure TCreateRepositoryPackagefr.InitializeFrame;
 begin
-  lbPackagedir.Caption := rsCreateRepositoryPackagelbPackageDir;
-  pnMessage.Caption := rsCreateRepositoryPackagepnMessage;
-  cbOpen.Caption := rsCreateRepositoryPackagecbOpenCaption;
-  cbCategory.Text := '';
-  cbCategory.Items.Add(rsMainFrmVSTTextPackageCategory0);
-  cbCategory.Items.Add(rsMainFrmVSTTextPackageCategory1);
-  cbCategory.Items.Add(rsMainFrmVSTTextPackageCategory2);
-  cbCategory.Items.Add(rsMainFrmVSTTextPackageCategory3);
-  cbCategory.Items.Add(rsMainFrmVSTTextPackageCategory4);
-  cbCategory.Items.Add(rsMainFrmVSTTextPackageCategory5);
-  cbCategory.Items.Add(rsMainFrmVSTTextPackageCategory6);
-  cbCategory.Items.Add(rsMainFrmVSTTextPackageCategory7);
-  cbCategory.Items.Add(rsMainFrmVSTTextPackageCategory8);
-  lbLazCompatibility.Caption := rsCreateRepositoryPackagelbLazCompatibility;
-  lbFPCCompatibility.Caption := rsCreateRepositoryPackagelbFPCCompatibility;
-  lbSupportedWidgetSet.Caption := rsCreateRepositoryPackagelbSupportedWidgetset;
-  lbCategory.Caption := rsCreateRepositoryPackagelbCategory;
-  lbDisplayName.Caption := rsCreateRepositoryPackagelbDisplayName;
-  lbHomePageURL.Caption := rsCreateRepositoryPackagelbHomePageURL;
-  lbDownloadURL.Caption := rsCreateRepositoryPackagelbDownloadURL;
-  lbSVNURL.Caption := rsCreateRepositoryPackagelbSVNURL;
+  lbPackagedir.Caption := rsCreateRepositoryPackageFrm_lbPackageDir_Caption;
+  pnMessage.Caption := rsCreateRepositoryPackageFrm_pnMessage_Caption;
+  cbOpen.Caption := rsCreateRepositoryPackageFrm_cbOpen_Caption;
+  edCategories.Text := '';
+  lbLazCompatibility.Caption := rsCreateRepositoryPackageFrm_lbLazCompatibility_Caption;
+  lbFPCCompatibility.Caption := rsCreateRepositoryPackageFrm_lbFPCCompatibility_Caption;
+  lbSupportedWidgetSet.Caption := rsCreateRepositoryPackageFrm_lbSupportedWidgetset_Caption;
+  lbCategory.Caption := rsCreateRepositoryPackageFrm_lbCategory_Caption;
+  lbDisplayName.Caption := rsCreateRepositoryPackageFrm_lbDisplayName_Caption;
+  lbHomePageURL.Caption := rsCreateRepositoryPackageFrm_lbHomePageURL_Caption;
+  lbDownloadURL.Caption := rsCreateRepositoryPackageFrm_lbDownloadURL_Caption;
+  lbSVNURL.Caption := rsCreateRepositoryPackageFrm_lbSVNURL_Caption;
 
   FVSTPackages := TVirtualStringTree.Create(nil);
   with FVSTPackages do
@@ -163,7 +157,7 @@ begin
     with Header.Columns.Add do begin
       Position := 0;
       Width := 250;
-      Text := rsCreateRepositoryPackagepnCaption0;
+      Text := rsCreateRepositoryPackageFrm_pnCaption_Caption0;
     end;
     Header.Options := [hoAutoResize, hoColumnResize, hoRestrictDrag, hoVisible, hoAutoSpring];
     Header.SortColumn := 0;
@@ -200,12 +194,12 @@ begin
     with Header.Columns.Add do begin
       Position := 0;
       Width := 150;
-      Text := rsCreateRepositoryPackagepnCaption1;
+      Text := rsCreateRepositoryPackageFrm_pnCaption_Caption1;
     end;
     with Header.Columns.Add do begin
       Position := 1;
       Width := 250;
-      Text := rsCreateRepositoryPackagepnCaption2;
+      Text := rsCreateRepositoryPackageFrm_pnCaption_Caption2;
     end;
     Header.Options := [hoAutoResize, hoColumnResize, hoRestrictDrag, hoVisible, hoAutoSpring];
     Header.SortColumn := 0;
@@ -219,7 +213,6 @@ begin
     OnFreeNode := @VSTPackageDataFreeNode;
   end;
   FVSTPackageData.NodeDataSize := SizeOf(TData);
-
   ShowHideControls(0);
 end;
 
@@ -274,9 +267,9 @@ begin
   XMLConfig := TXMLConfig.Create(APath);
   try
     AData^.FPackageType := PackageTypeIdentToType(XMLConfig.GetValue(BasePath + 'Type/Value', PackageTypeIdents[ptRunTime]));
-    AData^.FDescription := XMLConfig.GetValue(BasePath + 'Description/Value', '');
-    AData^.FAuthor := XMLConfig.GetValue(BasePath + 'Author/Value', '');
-    AData^.FLicense := XMLConfig.GetValue(BasePath + 'License/Value', '');
+    AData^.FDescription := String(XMLConfig.GetValue(BasePath + 'Description/Value', ''));
+    AData^.FAuthor := String(XMLConfig.GetValue(BasePath + 'Author/Value', ''));
+    AData^.FLicense := String(XMLConfig.GetValue(BasePath + 'License/Value', ''));
     AData^.FVersionAsString := GetVersion(XMLConfig, BasePath + 'Version');
     DepCount := XMLConfig.GetValue(BasePath + 'RequiredPkgs/Count', 0);
     for I := 0 to DepCount - 1 do
@@ -346,7 +339,14 @@ begin
   end;
 end;
 
-procedure TCreateRepositoryPackagefr.bPackageDirClick(Sender: TObject);
+procedure TCreateRepositoryPackagefr.edPackageDirButtonClick(Sender: TObject);
+begin
+  edPackageDir.DialogTitle := rsCreateRepositoryPackageFrm_SDDTitleSrc;
+  edPackageDir.Directory := Options.LastPackagedirSrc;
+end;
+
+procedure TCreateRepositoryPackagefr.edPackageDirAcceptDirectory(
+  Sender: TObject; var Value: String);
 var
   PackageList: TStringList;
   I: Integer;
@@ -355,85 +355,92 @@ var
   CanGo: Boolean;
 begin
   CanGo := False;
-  SDD.Title := rsCreateRepositorySDDTitleSrc;
-  SDD.InitialDir := PackageOptions.LastPackagedirSrc;
-  if SDD.Execute then
-  begin
-    ShowHideControls(1);
-    Application.ProcessMessages;
+  ShowHideControls(1);
+  Application.ProcessMessages;
+  try
+    FPackageDir := Value;
+    Options.LastPackageDirSrc := FPackageDir;
+    Options.Changed := True;
+    PackageList := TStringList.Create;
     try
-      FPackageDir := AppendPathDelim(SDD.FileName);
-      PackageOptions.LastPackageDirSrc := FPackageDir;
-      PackageOptions.Changed := True;
-      edPackageDir.Text := FPackageDir;
-      PackageList := TStringList.Create;
-      try
-        FindPackages(edPackageDir.Text, PackageList);
-        if PackageList.Count > 0 then
+      FindPackages(FPackageDir, PackageList);
+      if PackageList.Count > 0 then
+      begin
+        FVSTPackages.Clear;
+        FVSTPackages.NodeDataSize := SizeOf(TData);
+        FVSTPackageData.Clear;
+        FVSTPackageData.NodeDataSize := SizeOf(TData);
+        RootNode := FVSTPackages.AddChild(nil);
+        RootNode^.CheckType := ctTriStateCheckBox;
+        RootData := FVSTPackages.GetNodeData(RootNode);
+        RootData^.FName := TPackageData(PackageList.Objects[0]).FPackageBaseDir;
+        RootData^.FCategory := '';
+        RootData^.FDisplayName := '';
+        RootData^.FHomePageURL := '';
+        RootData^.FDownloadURL := '';
+        RootData^.FSVNURL := '';
+        FPackageName := RootData^.FName;
+        for I := 0 to PackageList.Count - 1 do
         begin
-          FVSTPackages.Clear;
-          FVSTPackages.NodeDataSize := SizeOf(TData);
-          FVSTPackageData.Clear;
-          FVSTPackageData.NodeDataSize := SizeOf(TData);
-          RootNode := FVSTPackages.AddChild(nil);
-          RootNode^.CheckType := ctTriStateCheckBox;
-          RootData := FVSTPackages.GetNodeData(RootNode);
-          RootData^.FName := TPackageData(PackageList.Objects[0]).FPackageBaseDir;
-          RootData^.FCategory := -1;
-          RootData^.FDisplayName := '';
-          RootData^.FHomePageURL := '';
-          RootData^.FDownloadURL := '';
-          RootData^.FSVNURL := '';
-          FPackageName := RootData^.FName;
-          for I := 0 to PackageList.Count - 1 do
-          begin
-            Node := FVSTPackages.AddChild(RootNode);
-            Node^.CheckType := ctTriStateCheckBox;
-            Data := FVSTPackages.GetNodeData(Node);
-            Data^.FName := TPackageData(PackageList.Objects[I]).FName;
-            Data^.FPackageBaseDir := TPackageData(PackageList.Objects[I]).FPackageBaseDir;
-            RootData^.FPackageBaseDir := Data^.FPackageBaseDir;
-            Data^.FPackageRelativePath := TPackageData(PackageList.Objects[I]).FPackageRelativePath;
-            Data^.FFullPath := TPackageData(PackageList.Objects[I]).FFullPath;
-            if not LoadPackageData(Data^.FFullPath, Data) then
-              MessageDlgEx(rsCreateRepositoryPackageError0, mtError, [mbOk], TForm(Self.Parent));
-            Data^.FLazCompatibility := '1.6, Trunk';
-            Data^.FFPCCompatibility := '2.6.4, 3.0.0';
-            Data^.FSupportedWidgetSet := 'win32/64, gtk2, carbon';
-          end;
-          FVSTPackages.FullExpand;
-          RootNode := FVSTPackages.GetFirst;
-          if RootNode <> nil then
-          begin
-            FVSTPackages.FocusedNode := RootNode;
-            FVSTPackages.Selected[RootNode] := True;
-            CanGo := True;
-          end;
-        end
-        else
-          MessageDlgEx(rsCreateRepositoryPackageNoPackage, mtInformation, [mbOk], TForm(Self.Parent));
-      finally
-        for I := PackageList.Count - 1 downto 0 do
-          PackageList.Objects[I].Free;
-        PackageList.Free;
-      end;
-    finally
-      if CanGo then
-        ShowHideControls(2)
+          Node := FVSTPackages.AddChild(RootNode);
+          Node^.CheckType := ctTriStateCheckBox;
+          Data := FVSTPackages.GetNodeData(Node);
+          Data^.FName := TPackageData(PackageList.Objects[I]).FName;
+          Data^.FPackageBaseDir := TPackageData(PackageList.Objects[I]).FPackageBaseDir;
+          RootData^.FPackageBaseDir := Data^.FPackageBaseDir;
+          Data^.FPackageRelativePath := TPackageData(PackageList.Objects[I]).FPackageRelativePath;
+          Data^.FFullPath := TPackageData(PackageList.Objects[I]).FFullPath;
+          if not LoadPackageData(Data^.FFullPath, Data) then
+            MessageDlgEx(rsCreateRepositoryPackageFrm_Error0, mtError, [mbOk], TForm(Self.Parent));
+          Data^.FLazCompatibility := '1.6, Trunk';
+          Data^.FFPCCompatibility := '2.6.4, 3.0.0';
+          Data^.FSupportedWidgetSet := 'win32/64, gtk2, carbon';
+        end;
+        FVSTPackages.FullExpand;
+        RootNode := FVSTPackages.GetFirst;
+        if RootNode <> nil then
+        begin
+          FVSTPackages.FocusedNode := RootNode;
+          FVSTPackages.Selected[RootNode] := True;
+          CanGo := True;
+        end;
+      end
       else
-        ShowHideControls(0)
+        MessageDlgEx(rsCreateRepositoryPackageFrm_NoPackage, mtInformation, [mbOk], TForm(Self.Parent));
+    finally
+      for I := PackageList.Count - 1 downto 0 do
+        PackageList.Objects[I].Free;
+      PackageList.Free;
     end;
-  end
+  finally
+    if CanGo then
+      ShowHideControls(2)
+    else
+      ShowHideControls(0)
+  end;
 end;
-
 
 procedure TCreateRepositoryPackagefr.pnBrowseResize(Sender: TObject);
 begin
-  pnPackageDir.Top := (pnBrowse.Height - pnPackageDir.Height) div 2;
+  edPackageDir.Top := (pnBrowse.Height - edPackageDir.Height) div 2;
   lbPackageDir.Left := 100;
-  lbPackageDir.Top := pnPackageDir.Top + (pnPackageDir.Height - lbPackageDir.Height) div 2;
-  pnPackageDir.Left := lbPackagedir.Left + lbPackagedir.Width + 5;
-  pnPackageDir.Width := pnBrowse.Width - pnPackageDir.Left - 120;
+  lbPackageDir.Top := edPackageDir.Top + (edPackageDir.Height - lbPackageDir.Height) div 2;
+  edPackageDir.Left := lbPackagedir.Left + lbPackagedir.Width + 5;
+  edPackageDir.Width := pnBrowse.Width - edPackageDir.Left - 120;
+end;
+
+procedure TCreateRepositoryPackagefr.spCategoriesClick(Sender: TObject);
+begin
+  CategoriesFrm := TCategoriesFrm.Create(Self.Parent);
+  try
+    CategoriesFrm.SetupControls;
+    CategoriesFrm.CategoriesCSV := edCategories.Text;
+    CategoriesFrm.PopulateTree;
+    if CategoriesFrm.ShowModal = mrOK then
+      edCategories.Text := CategoriesFrm.CategoriesCSV;
+  finally
+    CategoriesFrm.Free;
+  end;
 end;
 
 procedure TCreateRepositoryPackagefr.bCreateClick(Sender: TObject);
@@ -459,11 +466,11 @@ begin
     if ((FVSTPackages.CheckState[Node] = csCheckedNormal) or (FVSTPackages.CheckState[Node] = csMixedNormal)) and (FVSTPackages.GetNodeLevel(Node) = 0) then
     begin
       ShowHideControls(2);
-      if Data^.FCategory = -1 then
+      if Data^.FCategory = '' then
       begin
         SelectAndFocusNode(Node);
-        MessageDlgEx(rsCreateRepositoryPackageMessage0 + ' "' + Data^.FName + '".', mtInformation, [mbOk], TForm(Self.Parent));
-        cbCategory.SetFocus;
+        MessageDlgEx(rsCreateRepositoryPackageFrm_Message0 + ' "' + Data^.FName + '".', mtInformation, [mbOk], TForm(Self.Parent));
+        edCategories.SetFocus;
         Exit;
       end;
     end;
@@ -473,21 +480,21 @@ begin
       if Trim(Data^.FLazCompatibility) = '' then
       begin
         SelectAndFocusNode(Node);
-        MessageDlgEx(rsCreateRepositoryPackageMessage1 + ' "' + Data^.FName + '".', mtInformation, [mbOk], TForm(Self.Parent));
+        MessageDlgEx(rsCreateRepositoryPackageFrm_Message1 + ' "' + Data^.FName + '".', mtInformation, [mbOk], TForm(Self.Parent));
         edLazCompatibility.SetFocus;
         Exit;
       end;
       if Trim(Data^.FFPCCompatibility) = '' then
       begin
         SelectAndFocusNode(Node);
-        MessageDlgEx(rsCreateRepositoryPackageMessage2 + ' "' + Data^.FName + '".', mtInformation, [mbOk], TForm(Self.Parent));
+        MessageDlgEx(rsCreateRepositoryPackageFrm_Message2 + ' "' + Data^.FName + '".', mtInformation, [mbOk], TForm(Self.Parent));
         edFPCCompatibility.SetFocus;
         Exit;
       end;
       if Trim(Data^.FSupportedWidgetSet) = '' then
       begin
         SelectAndFocusNode(Node);
-        MessageDlgEx(rsCreateRepositoryPackageMessage3 + ' "' + Data^.FName + '".', mtInformation, [mbOk], TForm(Self.Parent));
+        MessageDlgEx(rsCreateRepositoryPackageFrm_Message3 + ' "' + Data^.FName + '".', mtInformation, [mbOk], TForm(Self.Parent));
         edSupportedWidgetset.SetFocus;
         Exit;
       end;
@@ -495,19 +502,19 @@ begin
     Node := FVSTPackages.GetNext(Node);
   end;
 
-  SDD.Title := rsCreateRepositorySDDTitleDst;
-  SDD.InitialDir := PackageOptions.LastPackagedirDst;
+  SDD.Title := rsCreateRepositoryPackageFrm_SDDTitleDst;
+  SDD.InitialDir := Options.LastPackagedirDst;
   if SDD.Execute then
   begin
     fPackageZipper := TPackageZipper.Create;
     fPackageZipper.OnZipError := @DoOnZippError;
     fPackageZipper.OnZipCompleted := @DoOnZipCompleted;
     FDestDir := AppendPathDelim(SDD.FileName);
-    PackageOptions.LastPackagedirDst := FDestDir;
-    PackageOptions.Changed := True;
+    Options.LastPackagedirDst := SDD.FileName;
+    Options.Changed := True;
     FPackageName := StringReplace(FPackageName, ' ', '', [rfReplaceAll]);
     FPackageFile := FDestDir + FPackageName + '.zip';
-    pnMessage.Caption := rsCreateRepositoryPackageMessage4;
+    pnMessage.Caption := rsCreateRepositoryPackageFrm_Message4;
     ShowHideControls(1);
     bCreate.Enabled := False;
     pnBrowse.Enabled := False;
@@ -549,7 +556,7 @@ begin
   Data := FVSTPackages.GetNodeData(ANode);
   case FVSTPackages.GetNodeLevel(ANode) of
     0: begin
-         Data^.FCategory := cbCategory.ItemIndex;
+         Data^.FCategory := edCategories.Text;
          Data^.FDisplayName := edDisplayName.Text;
          Data^.FHomePageURL := edHomePageURL.Text;
          Data^.FDownloadURL := edDownloadURL.Text;
@@ -570,7 +577,7 @@ begin
   if (OldNode = nil) or (NewNode = nil) or (OldNode = NewNode) then
     Exit;
   SaveExtraInfo(OldNode);
-  cbCategory.ItemIndex := -1;
+  edCategories.Text := '';
   edLazCompatibility.Text := '';
   edFPCCompatibility.Text := '';
   edSupportedWidgetset.Text := '';
@@ -595,56 +602,48 @@ begin
   Data := FVSTPackages.GetNodeData(Node);
   if Level = 0 then
   begin
-    //category
-    if Data^.FCategory <> -1 then
-      cbCategory.ItemIndex := Data^.FCategory;
-    //displayname
+    edCategories.Text := Data^.FCategory;
     edDisplayName.Text := Data^.FDisplayName;
-    //homepageURL
     edHomePageURL.Text := Data^.FHomePageURL;
-    //downloadURL
     edDownloadURL.Text := Data^.FDownloadURL;
-    //SVNURL
     edSVNURL.Text := Data^.FSVNURL;
   end
   else if Level = 1 then
   begin
     FVSTPackageData.Clear;
-    //dependencies
+
     PDNode := FVSTPackageData.AddChild(nil);
     PDData := FVSTPackageData.GetNodeData(PDNode);
     PDData^.FVersionAsString := Data^.FVersionAsString;
     PDData^.FDataType := 2;
-    //description
+
     PDNode := FVSTPackageData.AddChild(nil);
     PDData := FVSTPackageData.GetNodeData(PDNode);
     PDData^.FDescription := Trim(Data^.FDescription);
     PDData^.FDataType := 3;
-    //author
+
     PDNode := FVSTPackageData.AddChild(nil);
     PDData := FVSTPackageData.GetNodeData(PDNode);
     PDData^.FAuthor := Data^.FAuthor;
     PDData^.FDataType := 4;
-    //packagetype
+
     PDNode := FVSTPackageData.AddChild(nil);
     PDData := FVSTPackageData.GetNodeData(PDNode);
     PDData^.FPackageType := Data^.FPackageType;
     PDData^.FDataType := 5;
-    //dependencies
+
     PDNode := FVSTPackageData.AddChild(nil);
     PDData := FVSTPackageData.GetNodeData(PDNode);
     PDData^.FDependenciesAsString := Data^.FDependenciesAsString;
     PDData^.FDataType := 6;
-    //license
+
     PDNode := FVSTPackageData.AddChild(nil);
     PDData := FVSTPackageData.GetNodeData(PDNode);
     PDData^.FLicense := Trim(Data^.FLicense);
     PDData^.FDataType := 7;
-    //lazcompatibility
+
     edLazCompatibility.Text := Data^.FLazCompatibility;
-    //fpccompatibility
     edFPCCompatibility.Text := Data^.FFPCCompatibility;
-    //supportedwidgetset
     edSupportedWidgetset.Text := Data^.FSupportedWidgetSet;
   end;
   ShowHideControls(2);
@@ -674,22 +673,22 @@ begin
   Data := FVSTPackageData.GetNodeData(Node);
   case Column of
     0: case Data^.FDataType of
-         2: CellText := rsMainFrmVSTTextVersion;
-         3: CellText := rsMainFrmVSTTextDescription;
-         4: CellText := rsMainFrmVSTTextAuthor;
-         5: CellText := rsMainFrmVSTTextPackagetype;
-         6: CellText := rsMainFrmVSTTextDependecies;
-         7: CellText := rsMainFrmVSTTextLicense;
+         2: CellText := rsMainFrm_VSTText_Version;
+         3: CellText := rsMainFrm_VSTText_Description;
+         4: CellText := rsMainFrm_VSTText_Author;
+         5: CellText := rsMainFrm_VSTText_Packagetype;
+         6: CellText := rsMainFrm_VSTText_Dependecies;
+         7: CellText := rsMainFrm_VSTText_License;
        end;
     1: case Data^.FDataType of
          2: CellText := Data^.FVersionAsString;
          3: CellText := Data^.FDescription;
          4: CellText := Data^.FAuthor;
          5: case Data^.FPackageType of
-              ptRunAndDesignTime: CellText := rsMainFrmVSTTextPackageType0;
-              ptDesignTime:       CellText := rsMainFrmVSTTextPackageType1;
-              ptRunTime:          CellText := rsMainFrmVSTTextPackageType2;
-              ptRunTimeOnly:      CellText := rsMainFrmVSTTextPackageType3;
+              ptRunAndDesignTime: CellText := rsMainFrm_VSTText_PackageType0;
+              ptDesignTime:       CellText := rsMainFrm_VSTText_PackageType1;
+              ptRunTime:          CellText := rsMainFrm_VSTText_PackageType2;
+              ptRunTimeOnly:      CellText := rsMainFrm_VSTText_PackageType3;
             end;
          6: CellText := Data^.FDependenciesAsString;
          7: CellText := Data^.FLicense;
@@ -722,11 +721,50 @@ end;
 procedure TCreateRepositoryPackagefr.DoOnZippError(Sender: TObject;
   AZipFile: String; const AErrMsg: String);
 begin
-   MessageDlgEx(rsCreateRepositoryPackageError1 + ' "' + AZipFile + '". ' + rsProgressFrmError1 + sLineBreak +
+   MessageDlgEx(rsCreateRepositoryPackageFrm_Error1 + ' "' + AZipFile + '". ' + rsProgressFrm_Error1 + sLineBreak +
                 AErrMsg, mtError, [mbOk], TForm(Self.Parent));
    ShowHideControls(2);
    bCreate.Enabled := True;
    pnBrowse.Enabled := True;
+end;
+
+function TCreateRepositoryPackagefr.TranslateCategories(const AStr: String): String;
+var
+  SL: TStringList;
+  I, J: Integer;
+  Str: String;
+begin
+  if Categories[0] = CategoriesEng[0] then
+  begin
+    Result := AStr;
+    Exit;
+  end;
+  Result := '';
+  SL := TStringList.Create;
+  try
+    SL.Delimiter := ',';
+    SL.StrictDelimiter := True;
+    SL.DelimitedText := AStr;
+    for I := 0 to SL.Count - 1 do
+    begin
+      Str := Trim(SL.Strings[I]);
+      for J := 0 to MaxCategories - 1 do
+      begin
+        if Str = Categories[J] then
+        begin
+          if Result = '' then
+            Result := CategoriesEng[J]
+          else
+            Result := Result + ', ' + CategoriesEng[J];
+          Break;
+        end;
+      end;
+    end;
+  finally
+    SL.Free;
+  end;
+  if Result = '' then
+    Result := AStr;
 end;
 
 procedure TCreateRepositoryPackagefr.DoOnZipCompleted(Sender: TObject);
@@ -739,7 +777,7 @@ var
   JSON: TJSONStringType;
   MS: TMemoryStream;
 begin
-  pnMessage.Caption := rsCreateRepositoryPackageMessage5;
+  pnMessage.Caption := rsCreateRepositoryPackageFrm_Message5;
   pnMessage.Invalidate;
   Sleep(2000);
 
@@ -750,7 +788,7 @@ begin
     begin
       RootData := FVSTPackages.GetNodeData(RootNode);
       Package := SerializablePackages.AddPackage(RootData^.FName);
-      Package.Category := TPackageCategory(RootData^.FCategory);
+      Package.Category := TranslateCategories(RootData^.FCategory);
       Package.RepositoryFileName := ExtractFileName(FPackageFile);
       Package.RepositoryFileSize := FileUtil.FileSize(FPackageFile);
       Package.RepositoryFileHash := MD5Print(MD5File(FPackageFile));
@@ -802,13 +840,13 @@ begin
           MS.SaveToFile(FDestDir + FPackageName + '.json');
           if cbOpen.Checked then
             OpenDocument(FDestDir);
-          MessageDlgEx(rsCreateRepositoryPackageMessage6, mtInformation, [mbOk], TForm(Self.Parent));
+          MessageDlgEx(rsCreateRepositoryPackageFrm_Message6, mtInformation, [mbOk], TForm(Self.Parent));
         finally
           MS.Free;
         end;
       end
       else
-       MessageDlgEx(rsCreateRepositoryPackageError2 + sLineBreak + SerializablePackages.LastError, mtInformation, [mbOk], TForm(Self.Parent));
+       MessageDlgEx(rsCreateRepositoryPackageFrm_Error2 + sLineBreak + SerializablePackages.LastError, mtInformation, [mbOk], TForm(Self.Parent));
     end;
     ShowHideControls(2);
   finally
