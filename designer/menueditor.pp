@@ -922,9 +922,9 @@ begin
       anExistingSI.Parent:=nil;
       box.RemoveComponent(anExistingSI);
       FreeAndNil(anExistingSI);
-      FEditorDesigner.PropertyEditorHook.PersistentDeleting(TPersistent(mi));
+      FEditorDesigner.PropertyEditorHook.DeletePersistent(TPersistent(mi));
+      FEditorDesigner.PropertyEditorHook.Modified(mi);
       FreeAndNil(mi);
-      FEditorDesigner.PropertyEditorHook.PersistentDeleted;
       FEditorDesigner.Modified;
 
       if (box.ShadowCount = 0) then
@@ -1853,7 +1853,7 @@ begin
   FInitialSelectedMenuItem := aSelect;
   SetInitialBounds(0, 0, aWidth, aHeight);
   Name := 'ShadowMenu';
-  DisableAutoSizing;
+  DisableAutoSizing{$IFDEF DebugDisableAutoSizing}('TShadowMenu.Create'){$ENDIF};
   try
     FItemsPopupMenu := TPopupMenu.Create(Self);
     FItemsPopupMenu.Name := 'ItemsPopupMenu';
@@ -1888,12 +1888,16 @@ begin
     AutoSize := False;
     Align := alClient;
   finally
-    EnableAutoSizing;
+    EnableAutoSizing{$IFDEF DebugDisableAutoSizing}('TShadowMenu.Create'){$ENDIF};
   end;
 end;
 
 destructor TShadowMenu.Destroy;
 begin
+  Parent := nil;
+  GlobalDesignHook.RemoveHandlerRefreshPropertyValues(@OnDesignerRefreshPropertyValues);
+  GlobalDesignHook.RemoveHandlerModified(@OnDesignerModified);
+  GlobalDesignHook.RemoveHandlerObjectPropertyChanged(@OnObjectPropertyChanged);
   inherited Destroy;
 end;
 
@@ -2022,6 +2026,7 @@ begin
   GlobalDesignHook.PersistentAdded(newMI, not isSeparator);
   //GlobalDesignHook.Modified(newMI);
   FShadowMenu.FDesigner.FGui.AddingItem := False;
+  FShadowMenu.SetSelectedMenuItem(newMI, False, False);
   if not isSeparator then
     FShadowMenu.FDesigner.FGui.UpdateStatistics;
   FShadowMenu.UpdateActionsEnabledness;

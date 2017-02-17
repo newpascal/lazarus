@@ -42,7 +42,7 @@
  *   A copy of the GNU General Public License is available on the World    *
  *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
  *   obtain it by writing to the Free Software Foundation,                 *
- *   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.        *
+ *   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
  *                                                                         *
  ***************************************************************************
 }
@@ -61,8 +61,9 @@ uses
   // fpc packages
   Math, Classes, SysUtils, TypInfo, types, strutils, AVL_Tree,
   // LCL
-  LCLProc, LCLType, LCLIntf, LResources, ComCtrls, HelpIntfs, InterfaceBase,
-  Forms, Buttons, Menus, Controls, GraphType, Graphics, ExtCtrls, Dialogs, LclStrConsts,
+  LCLProc, LCLType, LCLIntf, LResources, HelpIntfs, InterfaceBase, LCLPlatformDef,
+  ComCtrls, Forms, Buttons, Menus, Controls, GraphType, Graphics, ExtCtrls,
+  Dialogs, LclStrConsts,
   // CodeTools
   FileProcs, FindDeclarationTool, LinkScanner, BasicCodeTools, CodeToolsStructs,
   CodeToolManager, CodeCache, DefineTemplates, KeywordFuncLists, CodeTree,
@@ -74,7 +75,7 @@ uses
   // SynEdit
   SynEdit, AllSynEdit, SynEditKeyCmds, SynEditMarks, SynEditHighlighter,
   // IDE interface
-  IDEIntf, ObjectInspector, PropEdits, PropEditUtils,
+  IDEIntf, ObjectInspector, PropEdits, PropEditUtils, EditorSyntaxHighlighterDef,
   MacroIntf, IDECommands, IDEWindowIntf, ComponentReg,
   SrcEditorIntf, NewItemIntf, IDEExternToolIntf, IDEMsgIntf,
   PackageIntf, ProjectIntf, CompOptsIntf, MenuIntf, LazIDEIntf, IDEDialogs,
@@ -145,7 +146,7 @@ uses
   KeyMapping, IDETranslations, IDEProcs, ExtToolDialog, ExtToolEditDlg,
   JumpHistoryView, DesktopManager, ExampleManager,
   BuildLazDialog, BuildProfileManager, BuildManager, CheckCompOptsForNewUnitDlg,
-  MiscOptions, InputHistory, UnitDependencies,
+  MiscOptions, InputHistory, InputhistoryWithSearchOpt, UnitDependencies,
   IDEFPCInfo, IDEInfoDlg, IDEInfoNeedBuild, ProcessList, InitialSetupDlgs,
   InitialSetupProc, NewDialog, MakeResStrDlg, DialogProcs, FindReplaceDialog,
   FindInFilesDlg, CodeExplorer, BuildFileDlg, ProcedureList, ExtractProcDlg,
@@ -1333,6 +1334,7 @@ begin
   EditorOpts.Load;
 
   ExternalUserTools:=TExternalUserTools(EnvironmentOptions.ExternalToolMenuItems);
+  Assert(Assigned(ExternalUserTools), 'TMainIDE.LoadGlobalOptions: ExternalUserTools=Nil.');
   ExternalUserTools.LoadShortCuts(EditorOpts.KeyMap);
 
   MiscellaneousOptions := TMiscellaneousOptions.Create;
@@ -1352,10 +1354,12 @@ begin
 
   DebuggerOptions := TDebuggerOptions.Create;
 
-  MainBuildBoss.SetupInputHistories;
+  Assert(InputHistories = nil, 'TMainIDE.LoadGlobalOptions: InputHistories is already assigned.');
+  InputHistoriesSO := TInputHistoriesWithSearchOpt.Create;
+  InputHistories := InputHistoriesSO;
+  MainBuildBoss.SetupInputHistories(InputHistories);
 
   CreateDirUTF8(GetProjectSessionsConfigPath);
-
   RunBootHandlers(libhEnvironmentOptionsLoaded);
 end;
 
@@ -1444,7 +1448,7 @@ begin
   CodeToolBoss.SetGlobalValue(
     ExternalMacroStart+'ProjPath',VirtualDirectory);
   CodeToolBoss.SetGlobalValue(
-    ExternalMacroStart+'LCLWidgetType',LCLPlatformDirNames[GetDefaultLCLWidgetType]);
+    ExternalMacroStart+'LCLWidgetType',GetLCLWidgetTypeName);
   CodeToolBoss.SetGlobalValue(
     ExternalMacroStart+'FPCSrcDir',EnvironmentOptions.GetParsedFPCSourceDirectory);
 end;
@@ -2925,7 +2929,11 @@ begin
   try
     InputHistories.ApplyFileDialogSettings(OpenDialog);
     OpenDialog.Title:=lisOpenFile;
-    OpenDialog.Options:=OpenDialog.Options+[ofAllowMultiSelect];
+
+    OpenDialog.Options:=OpenDialog.Options+[
+      ofAllowMultiSelect,
+      ofNoDereferenceLinks // Note: do not always resolve symlinked files, some links are resolved later
+      ];
 
     // set InitialDir to
     GetCurrentUnit(ASrcEdit,AnUnitInfo);
@@ -3833,7 +3841,8 @@ procedure TMainIDE.UpdateProjectCommands(Sender: TObject);
 var
   ASrcEdit: TSourceEditor;
   AUnitInfo: TUnitInfo;
-  xCmd: TIDECommand;
+  ACmd: TIDECommand;
+  ABuildHint: string;
 begin
   GetCurrentUnit(ASrcEdit,AUnitInfo);
   if not UpdateProjectCommandsStamp.Changed(AUnitInfo) then
@@ -3842,14 +3851,18 @@ begin
   IDECommandList.FindIDECommand(ecAddCurUnitToProj).Enabled:=Assigned(AUnitInfo) and not AUnitInfo.IsPartOfProject;
   IDECommandList.FindIDECommand(ecBuildManyModes).Enabled:=(Project1<>nil) and (Project1.BuildModes.Count>1);
 
-  xCmd := IDECommandList.FindIDECommand(ecProjectChangeBuildMode);
+  ACmd := IDECommandList.FindIDECommand(ecProjectChangeBuildMode);
   if Assigned(Project1) then
-    xCmd.Hint :=
-      Trim(lisChangeBuildMode + ' ' + KeyValuesToCaptionStr(xCmd.ShortcutA, xCmd.ShortcutB, '(')) + sLineBreak +
+    ABuildHint :=
+      Trim(lisChangeBuildMode + ' ' + KeyValuesToCaptionStr(ACmd.ShortcutA, ACmd.ShortcutB, '(')) + sLineBreak +
       Format('[%s]', [Project1.ActiveBuildMode.GetCaption])
   else
-    xCmd.Hint :=
-      Trim(lisChangeBuildMode + ' ' + KeyValuesToCaptionStr(xCmd.ShortcutA, xCmd.ShortcutB, '('));
+    ABuildHint :=
+      Trim(lisChangeBuildMode + ' ' + KeyValuesToCaptionStr(ACmd.ShortcutA, ACmd.ShortcutB, '('));
+
+  ACmd.Hint := ABuildHint;
+  if ProjInspector<>nil then
+    ProjInspector.OptionsBitBtn.Hint := ABuildHint;
 end;
 
 procedure TMainIDE.UpdatePackageCommands(Sender: TObject);
@@ -6186,6 +6199,10 @@ begin
   // create new project
   Project1:=CreateProjectObject(ProjectDesc,ProjectDescriptorProgram);
   Result:=SourceFileMgr.InitNewProject(ProjectDesc);
+
+  {$push}{$overflowchecks off}
+  Inc(BookmarksStamp);
+  {$pop}
 end;
 
 function TMainIDE.DoSaveProject(Flags: TSaveFlags):TModalResult;
@@ -6328,6 +6345,10 @@ begin
   Project1:=CreateProjectObject(ProjectDescriptorProgram,
                                 ProjectDescriptorProgram);
   Result:=SourceFileMgr.InitOpenedProjectFile(AFileName, Flags);
+
+  {$push}{$overflowchecks off}
+  Inc(BookmarksStamp);
+  {$pop}
 end;
 
 function TMainIDE.DoPublishProject(Flags: TSaveFlags; ShowDialog: boolean): TModalResult;
@@ -8971,8 +8992,8 @@ begin
   {$IFDEF IDE_DEBUG}
   debugln('[TMainIDE.OnControlSelectionChanged]');
   {$ENDIF}
-  if (TheControlSelection = nil) or (FormEditor1 = nil) then Exit;
-
+  Assert(Assigned(TheControlSelection), 'TMainIDE.OnControlSelectionChanged: TheControlSelection=Nil.');
+  if FormEditor1 = nil then Exit;
   NewSelection := TPersistentSelectionList.Create;
   NewSelection.ForceUpdate := ForceUpdate;
   for i := 0 to TheControlSelection.Count - 1 do
@@ -8986,7 +9007,8 @@ end;
 
 procedure TMainIDE.OnControlSelectionPropsChanged(Sender: TObject);
 begin
-  if (TheControlSelection=nil) or (FormEditor1=nil) or (ObjectInspector1=nil) then exit;
+  Assert(Assigned(TheControlSelection), 'TMainIDE.OnControlSelectionPropsChanged: TheControlSelection=Nil.');
+  if (FormEditor1=nil) or (ObjectInspector1=nil) then exit;
   ObjectInspector1.SaveChanges; // Save in any case, PropEditor value may have changed
   ObjectInspector1.RefreshPropertyValues;
 end;
@@ -8994,7 +9016,8 @@ end;
 procedure TMainIDE.OnControlSelectionFormChanged(Sender: TObject; OldForm,
   NewForm: TCustomForm);
 begin
-  if (TheControlSelection=nil) or (FormEditor1=nil) then exit;
+  Assert(Assigned(TheControlSelection), 'TMainIDE.OnControlSelectionFormChanged: TheControlSelection=Nil.');
+  if FormEditor1=nil then exit;
   if OldForm<>nil then
     OldForm.Invalidate;
   if TheControlSelection.LookupRoot<>nil then
@@ -9088,7 +9111,7 @@ begin
   with CodeToolBoss.GlobalValues do begin
     Variables[ExternalMacroStart+'LazarusDir']:=EnvironmentOptions.GetParsedLazarusDirectory;
     Variables[ExternalMacroStart+'ProjPath']:=VirtualDirectory;
-    Variables[ExternalMacroStart+'LCLWidgetType']:=LCLPlatformDirNames[GetDefaultLCLWidgetType];
+    Variables[ExternalMacroStart+'LCLWidgetType']:=GetLCLWidgetTypeName;
     Variables[ExternalMacroStart+'FPCSrcDir']:=EnvironmentOptions.GetParsedFPCSourceDirectory;
   end;
 
@@ -9702,8 +9725,7 @@ begin
   if CodeToolBoss.JumpToMethod(ActiveUnitInfo.Source,
     LogCaret.X,LogCaret.Y,NewSource,NewX,NewY,NewTopLine,RevertableJump) then
   begin
-    Flags := [jfFocusEditor];
-    if not RevertableJump then include(Flags, jfAddJumpPoint);
+    Flags := [jfFocusEditor, jfAddJumpPoint];
     DoJumpToCodePosition(ActiveSrcEdit, ActiveUnitInfo,
       NewSource, NewX, NewY, NewTopLine, Flags);
   end else begin
@@ -10700,6 +10722,10 @@ begin
         UInfo.DeleteBookmark(Id);
     end;
   end;
+
+  {$push}{$overflowchecks off}
+  Inc(BookmarksStamp);
+  {$pop}
 end;
 
 procedure TMainIDE.OnSrcNotebookEditorDoSetBookmark(Sender: TObject; ID: Integer; Toggle: Boolean);
@@ -10735,7 +10761,7 @@ Begin
   if SetMark then
     ActEdit.EditorComponent.SetBookMark(ID,NewXY.X,NewXY.Y);
 
-  {$push}{$R-}  // range check off
+  {$push}{$overflowchecks off}
   Inc(BookmarksStamp);
   {$pop}
 end;
@@ -13286,7 +13312,7 @@ begin
     GetCurrentUnit(ActiveSourceEditor,ActiveUnitInfo);
     if Assigned(ActiveSourceEditor) then begin
       ActiveSourceEditor.DoEditorExecuteCommand(EditorCommand); // pass the command
-      if FocusEditor then
+      if FocusEditor and ActiveSourceEditor.EditorControl.CanFocus then
         ActiveSourceEditor.EditorControl.SetFocus;
     end;
   end;

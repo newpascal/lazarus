@@ -267,6 +267,7 @@ type
     property ButtonHint;
     property ButtonOnlyWhenFocused;
     property ButtonWidth;
+    property Constraints;
     property DirectInput;
     property NumGlyphs;
     property Flat;
@@ -379,6 +380,7 @@ type
     property ButtonHint;
     property ButtonOnlyWhenFocused;
     property ButtonWidth;
+    property Constraints;
     property DirectInput;
     property Glyph;
     property NumGlyphs;
@@ -474,6 +476,7 @@ type
     property ButtonHint;
     property ButtonOnlyWhenFocused;
     property ButtonWidth;
+    property Constraints;
     property DirectInput;
     property Glyph;
     property NumGlyphs;
@@ -565,9 +568,11 @@ type
     function GetDefaultGlyphName: String; override;
     procedure ButtonClick; override;
     procedure EditDblClick; override;
+    procedure EditEditingDone; override;
     procedure SetDirectInput(AValue: Boolean); override;
     procedure RealSetText(const AValue: TCaption); override;
     procedure SetDateMask; virtual;
+    procedure Loaded; override;
   public
     constructor Create(AOwner: TComponent); override;
     function GetDateFormat: string;
@@ -685,6 +690,9 @@ type
       property OnAcceptTime: TAcceptTimeEvent read FOnAcceptTime write FOnAcceptTime;
       property OnCustomTime: TCustomTimeEvent read FOnCustomTime write FOnCustomTime;
       property ReadOnly;
+      property ButtonCaption;
+      property ButtonCursor;
+      property ButtonHint;
       property ButtonOnlyWhenFocused;
       property ButtonWidth;
       property Action;
@@ -784,6 +792,7 @@ type
     property ButtonHint;
     property ButtonOnlyWhenFocused;
     property ButtonWidth;
+    property Constraints;
     property DialogPosition: TPosition read FDialogPosition write FDialogPosition default poScreenCenter;
     property DialogTop: Integer read FDialogTop write FDialogTop;
     property DialogLeft: Integer read FDialogLeft write FDialogLeft;
@@ -1073,6 +1082,7 @@ begin
   inherited Create(AOwner);
   FButtonOnlyWhenFocused := False;
   FocusOnButtonClick := False;
+  Edit.TabStop := False;
 
   SetInitialBounds(0, 0, GetControlClassDefaultSize.CX, GetControlClassDefaultSize.CY);
 
@@ -1625,6 +1635,7 @@ begin
   if FocusOnButtonClick then FocusAndMaybeSelectAll;
 end;
 
+
 procedure TDateEdit.EditDblClick;
 begin
   inherited EditDblClick;
@@ -1632,14 +1643,29 @@ begin
     ButtonClick;
 end;
 
+procedure TDateEdit.EditEditingDone;
+var
+  AText: String;
+begin
+  inherited EditEditingDone;
+  if DirectInput then
+  begin
+    AText := DateToText(GetDate);
+    if AText <> Text then //avoid unneccesary recalculation FDate
+      Text := AText;
+  end;
+end;
+
 procedure TDateEdit.SetDirectInput(AValue: Boolean);
 var
   Def: TDateTime;
 begin
   inherited SetDirectInput(AValue);
-  //Synchronize FDate and force valid text
+  //Synchronize FDate
   FDate := TextToDate(Text, NullDate);
-  SetDate(FDate);
+  //Force a valid date in the control, but not if Text was empty in designmode
+  if not ((csDesigning in ComponentState) and FDefaultToday and (FDate = NullDate)) then
+    SetDate(FDate);
 end;
 
 procedure TDateEdit.RealSetText(const AValue: TCaption);
@@ -1691,6 +1717,14 @@ begin
   D:=GetDate;
   EditMask:=S;
   SetDate(D);
+end;
+
+procedure TDateEdit.Loaded;
+begin
+  inherited Loaded;
+  //Forces a valid Text in the control
+  if not (csDesigning in ComponentState) then
+    SetDate(FDate);
 end;
 
 Function ParseDate(S : String; Order : TDateOrder; Def: TDateTime) : TDateTime;
@@ -1967,10 +2001,20 @@ begin
     Def := FDate;
   ADate := Trim(Text);
   //if not DirectInput then FDate matches the Text, so no need to parse it
-  if (ADate <> '') and DirectInput then
+  if {(ADate <> '') and} DirectInput then
   begin
-    Result := TextToDate(ADate, Def);
-    FDate := Result;
+    if (ADate = '') then
+    begin
+      if FDefaultToday then
+        Result := SysUtils.Date
+      else
+        Result := NullDate;
+    end
+    else
+    begin
+      Result := TextToDate(ADate, Def);
+      FDate := Result;
+    end;
   end
   else
     Result := Def;
@@ -2048,7 +2092,11 @@ end;
 { TTimeEdit }
 
 function TTimeEdit.GetTime: TDateTime;
+var
+  TmpResult: TDateTime;
 begin
+  if DirectInput and TryParseInput(Text, TmpResult) then
+    FTime := TmpResult;
   Result := FTime;
   if IsEmptyTime then begin
     if FDefaultNow then

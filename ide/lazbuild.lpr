@@ -30,7 +30,8 @@ uses
   {$ENDIF}
   Classes, SysUtils, math, CustApp,
   Interfaces, // this includes the NoGUI widgetset
-  LCLProc, Dialogs, Forms, Controls, InterfaceBase,
+  // LCL
+  LCLPlatformDef, LCLProc, Controls, Dialogs, Forms,
   // codetools
   CodeCache, CodeToolManager, DefineTemplates, FileProcs,
   // IDEIntf
@@ -44,7 +45,7 @@ uses
   IDECmdLine, MiscOptions, Project, LazConf, PackageDefs,
   PackageLinks, PackageSystem, InterPkgConflictFiles, BuildLazDialog,
   BuildProfileManager, BuildManager, BaseBuildManager, ModeMatrixOpts;
-  
+
 type
   TPkgAction = (
     lpaBuild, // build package, default
@@ -555,7 +556,7 @@ begin
   if WidgetSetOverride<>'' then
     CurProf.TargetPlatform:=DirNameToLCLPlatform(WidgetSetOverride)
   else
-    CurProf.TargetPlatform:=GetDefaultLCLWidgetType;
+    CurProf.TargetPlatform:=GetBuildLCLWidgetType;
   if BuildIDEOptions<>'' then
   begin
     s:=CurProf.ExtraOptions;
@@ -1302,10 +1303,8 @@ Var
   NeedArg: Boolean;
 
   Function FindLongOpt(S : String) : boolean;
-
   Var
     I : integer;
-
   begin
     If CaseSensitiveOptions then
       begin
@@ -1818,7 +1817,7 @@ begin
   writeln('or --ws=<widgetset>');
   writeln(LongToConsole(Format(
     lisOverrideTheProjectWidgetsetEGGtkGtk2QtWin32CarbonD, [space,
-    LCLPlatformDirNames[LazConf.GetDefaultLCLWidgetType]])));
+    LCLPlatformDirNames[GetBuildLCLWidgetType]])));
   writeln('');
   writeln('--cpu=<cpu>');
   writeln(LongToConsole(Format(

@@ -361,15 +361,10 @@ type
     nboShowCloseButtons, nboMultiLine, nboHidePageListPopup,
     nboKeyboardTabSwitch, nboShowAddTabButton, nboDoChangeOnSetIndex);
   TCTabControlOptions = set of TCTabControlOption;
-  TCTabControlCapability = (nbcShowCloseButtons, nbcMultiLine, nbcPageListPopup, nbcShowAddTabButton);
+  TCTabControlCapability = (
+    nbcShowCloseButtons, nbcMultiLine, nbcPageListPopup, nbcShowAddTabButton,
+    nbcTabsSizeable);
   TCTabControlCapabilities = set of TCTabControlCapability;
-  // Don't use anymore the old names of these types
-  // TNotebook is unrelated to CustomTabControl, so the types were renamed to
-  // better names
-  TNoteBookOption = TCTabControlOption deprecated;
-  TNoteBookOptions = TCTabControlOptions deprecated;
-  TNoteBookCapability = TCTabControlCapability deprecated;
-  TNoteBookCapabilities = TCTabControlCapabilities deprecated;
 
   TDrawTabEvent = procedure(Control: TCustomTabControl; TabIndex: Integer;
     const Rect: TRect; AActive: Boolean) of object;
@@ -401,6 +396,7 @@ type
     procedure DoSendPageIndex;
     procedure DoSendShowTabs;
     procedure DoSendTabPosition;
+    procedure DoSendTabSize;
     procedure DoImageListChange(Sender: TObject);
     function GetActivePage: String;
     function GetActivePageComponent: TCustomPage;
@@ -419,7 +415,9 @@ type
     procedure SetPageIndex(AValue: Integer);
     procedure SetPages(AValue: TStrings);
     procedure SetShowTabs(AValue: Boolean);
+    procedure SetTabHeight(AValue: Smallint);
     procedure SetTabPosition(tabPos: TTabPosition); virtual;
+    procedure SetTabWidth(AValue: Smallint);
     procedure ShowCurrentPage;
     procedure UpdateAllDesignerFlags;
     procedure UpdateDesignerFlags(APageIndex: integer);
@@ -441,6 +439,10 @@ type
     function  DialogChar(var Message: TLMKey): boolean; override;
     procedure InternalSetPageIndex(AValue: Integer); // No OnChange
     procedure ShowControl(APage: TControl); override;
+    function IndexOfTabAt(X, Y: Integer): Integer; virtual; overload;
+    function IndexOfTabAt(P: TPoint): Integer; virtual; overload;
+    function IndexOfPageAt(X, Y: Integer): Integer; virtual; overload;
+    function IndexOfPageAt(P: TPoint): Integer; virtual; overload;
     procedure UpdateTabProperties; virtual;
     class function GetControlClassDefaultSize: TSize; override;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
@@ -463,15 +465,13 @@ type
     property ScrollOpposite: Boolean read FScrollOpposite write FScrollOpposite default False;
     property Style: TTabStyle read FStyle write SetStyle default tsTabs;
     property Tabs: TStrings read FAccess write SetPages;
-    property TabHeight: Smallint read FTabHeight write FTabHeight default 0;
     property TabIndex: Integer read FPageIndex write SetPageIndex default -1;
-    property TabWidth: Smallint read FTabWidth write FTabWidth default 0;
     property OnChange: TNotifyEvent read FOnPageChanged write FOnPageChanged;
     property OnDrawTab: TDrawTabEvent read FOnDrawTab write FOnDrawTab; deprecated 'Will be deleted in Lazarus 1.8';
   public
     constructor Create(TheOwner: TComponent); override;
     destructor Destroy; override;
-    function TabIndexAtClientPos(ClientPos: TPoint): integer;
+    function TabIndexAtClientPos(ClientPos: TPoint): integer; deprecated 'Will be deleted in next major Lazarus release, use IndexOfPageAt';
     function TabRect(AIndex: Integer): TRect;
     function GetImageIndex(ThePageIndex: Integer): Integer; virtual;
     function IndexOf(APage: TPersistent): integer; virtual;
@@ -479,10 +479,9 @@ type
     function CanChangePageIndex: boolean; virtual;
     function GetMinimumTabWidth: integer; virtual;
     function GetMinimumTabHeight: integer; virtual;
-    function GetCapabilities: TNoteBookCapabilities; virtual;
+    function GetCapabilities: TCTabControlCapabilities; virtual;
     function TabToPageIndex(AIndex: integer): integer;
     function PageToTabIndex(AIndex: integer): integer;
-    function IndexOfTabAt(X, Y: Integer): Integer;
   public
     procedure DoCloseTabClicked(APage: TCustomPage); virtual;
     property Images: TCustomImageList read FImages write SetImages;
@@ -499,7 +498,9 @@ type
     //property PageList: TList read FPageList; - iff paged
     property Pages: TStrings read FAccess write SetPages;
     property ShowTabs: Boolean read FShowTabs write SetShowTabs default True;
+    property TabHeight: Smallint read FTabHeight write SetTabHeight default 0;
     property TabPosition: TTabPosition read FTabPosition write SetTabPosition default tpTop;
+    property TabWidth: Smallint read FTabWidth write SetTabWidth default 0;
   published
     property TabStop default true;
   end;
@@ -586,6 +587,10 @@ type
                           GoForward, CheckTabVisible: Boolean): TTabSheet;
     procedure SelectNextPage(GoForward: Boolean);
     procedure SelectNextPage(GoForward: Boolean; CheckTabVisible: Boolean);
+    function IndexOfTabAt(X, Y: Integer): Integer; override;
+    function IndexOfTabAt(P: TPoint): Integer; override;
+    function IndexOfPageAt(X, Y: Integer): Integer; override;
+    function IndexOfPageAt(P: TPoint): Integer; override;
     function AddTabSheet: TTabSheet;
     property ActivePageIndex: Integer read GetActivePageIndex
                                       write SetActivePageIndex;
@@ -618,12 +623,12 @@ type
     property ShowHint;
     property ShowTabs;
     //property Style;
-    //property TabHeight;
+    property TabHeight;
     property TabIndex;
     property TabOrder;
     property TabPosition;
     property TabStop;
-    //property TabWidth;
+    property TabWidth;
     property Visible;
     property OnChange;
     property OnChanging;
@@ -669,8 +674,6 @@ type
     FRaggedRight: Boolean;
     FScrollOpposite: Boolean;
     FTabControl: TTabControl;
-    FTabHeight: Smallint;
-    FTabWidth: Smallint;
     FUpdateCount: integer;
   protected
     function GetTabIndex: integer; virtual; abstract;
@@ -681,9 +684,7 @@ type
     procedure SetOwnerDraw(const AValue: Boolean); virtual;
     procedure SetRaggedRight(const AValue: Boolean); virtual;
     procedure SetScrollOpposite(const AValue: Boolean); virtual;
-    procedure SetTabHeight(const AValue: Smallint); virtual;
     procedure SetTabIndex(const AValue: integer); virtual; abstract;
-    procedure SetTabWidth(const AValue: Smallint); virtual;
   public
     constructor Create(TheTabControl: TTabControl); virtual;
     function GetHitTestInfoAt(X, Y: Integer): THitTests; virtual;
@@ -709,8 +710,6 @@ type
     property RaggedRight: Boolean read FRaggedRight write SetRaggedRight;
     property ScrollOpposite: Boolean read FScrollOpposite
                                      write SetScrollOpposite;
-    property TabHeight: Smallint read FTabHeight write SetTabHeight;
-    property TabWidth: Smallint read FTabWidth write SetTabWidth;
   end;
 
   { TNoteBookStringsTabControl }
@@ -719,6 +718,15 @@ type
   protected
     FHandleCreated: TNotifyEvent;
     procedure CreateHandle; override;
+    procedure DoStartDrag(var DragObject: TDragObject); override;
+    procedure DragDrop(Source: TObject; X, Y: Integer); override;
+    procedure DragOver(Source: TObject; X,Y: Integer; State: TDragState;
+                       var Accept: Boolean); override;
+    procedure MouseDown(Button: TMouseButton; Shift:TShiftState; X,Y:Integer); override;
+    procedure MouseMove(Shift: TShiftState; X,Y: Integer); override;
+    procedure MouseUp(Button: TMouseButton; Shift:TShiftState; X,Y:Integer); override;
+    procedure MouseEnter; override;
+    procedure MouseLeave; override;
     class procedure WSRegisterClass; override;
   end;
   TNoteBookStringsTabControlClass = class of TNoteBookStringsTabControl;
@@ -749,9 +757,7 @@ type
     procedure SetMultiLine(const AValue: Boolean); override;
     procedure SetTabIndex(const AValue: integer); override;
     procedure SetUpdateState(Updating: Boolean); override;
-    procedure SetTabHeight(const AValue: Smallint); override;
     procedure SetTabPosition(AValue: TTabPosition);
-    procedure SetTabWidth(const AValue: Smallint); override;
   public
     constructor Create(TheTabControl: TTabControl); override;
     destructor Destroy; override;
@@ -789,11 +795,9 @@ type
     function GetOwnerDraw: Boolean;
     function GetRaggedRight: Boolean;
     function GetScrollOpposite: Boolean;
-    function GetTabHeight: Smallint;
     function GetTabIndex: Integer;
     function GetTabRectWithBorder: TRect;
     function GetTabStop: Boolean;
-    function GetTabWidth: Smallint;
     procedure SetHotTrack(const AValue: Boolean);
     procedure SetImages(const AValue: TCustomImageList);
     procedure SetMultiLine(const AValue: Boolean);
@@ -802,11 +806,11 @@ type
     procedure SetRaggedRight(const AValue: Boolean);
     procedure SetScrollOpposite(const AValue: Boolean);
     procedure SetStyle(AValue: TTabStyle); override;
-    procedure SetTabHeight(const AValue: Smallint);
+    procedure SetTabHeight(AValue: Smallint);
     procedure SetTabPosition(AValue: TTabPosition); override;
     procedure SetTabs(const AValue: TStrings);
     procedure SetTabStop(const AValue: Boolean);
-    procedure SetTabWidth(const AValue: Smallint);
+    procedure SetTabWidth(AValue: Smallint);
   protected
     procedure SetOptions(const AValue: TCTabControlOptions); override;
     procedure AddRemovePageHandle(APage: TCustomPage); override;
@@ -816,6 +820,7 @@ type
     procedure CreateWnd; override;
     procedure DestroyHandle; override;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+    procedure SetDragMode(Value: TDragMode); override;
     procedure SetTabIndex(Value: Integer); virtual;
     procedure UpdateTabImages;
     procedure ImageListChange(Sender: TObject);
@@ -829,7 +834,8 @@ type
   public
     constructor Create(TheOwner: TComponent); override;
     destructor Destroy; override;
-    function IndexOfTabAt(X, Y: Integer): Integer;
+    function IndexOfTabAt(X, Y: Integer): Integer; override;
+    function IndexOfTabAt(P: TPoint): Integer; override;
     function GetHitTestInfoAt(X, Y: Integer): THitTests;
     function GetImageIndex(ATabIndex: Integer): Integer; override;
     function IndexOfTabWithCaption(const TabCaption: string): Integer;
@@ -855,12 +861,12 @@ type
     property ScrollOpposite: Boolean read GetScrollOpposite
                                      write SetScrollOpposite default False;
     property Style default tsTabs;
-    property TabHeight: Smallint read GetTabHeight write SetTabHeight default 0;
     property TabPosition default tpTop;
-    property TabWidth: Smallint read GetTabWidth write SetTabWidth default 0;
+    property TabHeight: Smallint read FTabHeight write SetTabHeight default 0;
     property TabIndex: Integer read GetTabIndex write SetTabIndex default -1;
     property Tabs: TStrings read FTabs write SetTabs;
     property TabStop: Boolean read GetTabStop write SetTabStop default true; // workaround, see #30305
+    property TabWidth: Smallint read FTabWidth write SetTabWidth default 0;
     //
     property Align;
     property Anchors;
@@ -1787,11 +1793,13 @@ type
     property Anchors;
     property BorderSpacing;
     property BorderWidth;
+    property Color;
     property Constraints;
     property DragCursor;
     property DragKind;
     property DragMode;
     property Enabled;
+    property Font;
     property Hint;
     property Max;
     property Min;
@@ -1812,6 +1820,8 @@ type
     property OnStartDock;
     property OnStartDrag;
     property Orientation;
+    property ParentColor;
+    property ParentFont;
     property ParentShowHint;
     property PopupMenu;
     property Position;
@@ -1917,11 +1927,13 @@ type
 
   TUpDown = class(TCustomUpDown)
   published
+    property Align;
     property AlignButton;
     property Anchors;
     property ArrowKeys;
     property Associate;
     property BorderSpacing;
+    property Color;
     property Constraints;
     property Enabled;
     property Hint;
@@ -1944,6 +1956,7 @@ type
     property OnMouseWheelDown;
     property OnMouseWheelUp;
     property Orientation;
+    property ParentColor;
     property ParentShowHint;
     property PopupMenu;
     property Position;
@@ -2686,10 +2699,12 @@ type
     property Align;
     property Anchors;
     property BorderSpacing;
+    property Color;
     property Constraints;
     property DragCursor;
     property DragMode;
     property Enabled;
+    property Font;
     property Frequency;
     property Hint;
     property LineSize;
@@ -2720,6 +2735,8 @@ type
     property OnUTF8KeyPress;
     property Orientation;
     property PageSize;
+    property ParentColor;
+    property ParentFont;
     property ParentShowHint;
     property PopupMenu;
     property Position;
@@ -3382,6 +3399,7 @@ type
     function CanEdit(Node: TTreeNode): Boolean; virtual;
     function CanExpand(Node: TTreeNode): Boolean; virtual;
     function CreateNode: TTreeNode; virtual;
+    function CreateNodes: TTreeNodes; virtual;
     function CustomDraw(const ARect: TRect;
       Stage: TCustomDrawStage): Boolean; virtual;
     function CustomDrawItem(Node: TTreeNode; State: TCustomDrawState;
@@ -3451,7 +3469,6 @@ type
     // it off might make things faster
     property AccessibilityOn: Boolean read FAccessibilityOn write FAccessibilityOn default True;
   protected
-    procedure CMShowingChanged(var Message: TLMessage); message CM_SHOWINGCHANGED;
     property AutoExpand: Boolean read GetAutoExpand write SetAutoExpand default False;
     property BorderStyle default bsSingle;
     property HideSelection: Boolean

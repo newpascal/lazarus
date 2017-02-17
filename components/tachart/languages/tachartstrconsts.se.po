@@ -56,15 +56,60 @@ msgstr ""
 msgid "Box-and-whiskers series"
 msgstr "Box-and-whiskers diagram"
 
+#: tachartstrconsts.rsbsbdiagonal
+msgid "backward-diagonal hatch"
+msgstr ""
+
+#: tachartstrconsts.rsbsclear
+msgctxt "tachartstrconsts.rsbsclear"
+msgid "no fill"
+msgstr ""
+
+#: tachartstrconsts.rsbscross
+msgid "crossed"
+msgstr ""
+
+#: tachartstrconsts.rsbsdiagcross
+msgid "diagonally crossed"
+msgstr ""
+
+#: tachartstrconsts.rsbsfdiagonal
+msgid "forward-diagonal hatch"
+msgstr ""
+
+#: tachartstrconsts.rsbshorizontal
+msgid "horizontally hatched"
+msgstr ""
+
+#: tachartstrconsts.rsbsimage
+msgid "image fill"
+msgstr ""
+
+#: tachartstrconsts.rsbspattern
+msgid "pattern fill"
+msgstr ""
+
 #: tachartstrconsts.rsbsplineseries
 msgid "B-Spline series"
 msgstr "B-Spline diagram"
+
+#: tachartstrconsts.rsbssolid
+msgid "solid fill"
+msgstr ""
+
+#: tachartstrconsts.rsbsvertical
+msgid "vertically hatched"
+msgstr ""
 
 #: tachartstrconsts.rsbubbleseries
 #, fuzzy
 #| msgid "Bubbel series"
 msgid "Bubble series"
 msgstr "Bubbeldiagram"
+
+#: tachartstrconsts.rscirclesymbol
+msgid "Circle"
+msgstr ""
 
 #: tachartstrconsts.rscolormapseries
 msgid "Color map series"
@@ -73,6 +118,10 @@ msgstr "Färglandskap"
 #: tachartstrconsts.rsconstantline
 msgid "Constant line"
 msgstr "Konstant linje"
+
+#: tachartstrconsts.rscrosssymbol
+msgid "Plus"
+msgstr ""
 
 #: tachartstrconsts.rscubicsplineseries
 msgid "Cubic spline series"
@@ -102,20 +151,48 @@ msgstr "Datapunkt tips"
 msgid "Delete"
 msgstr "Radera"
 
+#: tachartstrconsts.rsdiagcrosssymbol
+msgid "Cross"
+msgstr ""
+
+#: tachartstrconsts.rsdiamondsymbol
+msgid "Diamond"
+msgstr ""
+
 #: tachartstrconsts.rsdistancemeasurement
 msgid "Distance measurement"
 msgstr "Avståndsmätning"
 
+#: tachartstrconsts.rsdowntrianglesymbol
+msgid "Down triangle"
+msgstr ""
+
 #: tachartstrconsts.rsfieldseries
 msgid "Vector field series"
+msgstr ""
+
+#: tachartstrconsts.rsfullstarsymbol
+msgid "Star (full)"
 msgstr ""
 
 #: tachartstrconsts.rsfunctionseries
 msgid "Function series"
 msgstr "Funktionskurva"
 
+#: tachartstrconsts.rshexagonsymbol
+msgid "Hexagon"
+msgstr ""
+
 #: tachartstrconsts.rshidden
 msgid "hidden"
+msgstr ""
+
+#: tachartstrconsts.rshighbracketsymbol
+msgid "High bracket"
+msgstr ""
+
+#: tachartstrconsts.rshorbarsymbol
+msgid "Horizontal bar"
 msgstr ""
 
 #: tachartstrconsts.rsinvalidlogbase
@@ -134,6 +211,14 @@ msgstr "Least-squares fit kurva"
 msgid "Left"
 msgstr ""
 
+#: tachartstrconsts.rsleftbracketsymbol
+msgid "Left bracket"
+msgstr ""
+
+#: tachartstrconsts.rslefttrianglesymbol
+msgid "Left triangle"
+msgstr ""
+
 #: tachartstrconsts.rslinear
 msgid "Linear"
 msgstr "Linjär"
@@ -146,6 +231,10 @@ msgstr "Linjediagram"
 msgid "Logarithmic"
 msgstr "Logaritmisk"
 
+#: tachartstrconsts.rslowbracketsymbol
+msgid "Low bracket"
+msgstr ""
+
 #: tachartstrconsts.rsmanhattanplotseries
 msgid "Manhattan plot series"
 msgstr "Manhattan plot"
@@ -157,6 +246,10 @@ msgstr "Ner"
 #: tachartstrconsts.rsmoveup
 msgid "Up"
 msgstr "Upp"
+
+#: tachartstrconsts.rsnosymbol
+msgid "(none)"
+msgstr ""
 
 #: tachartstrconsts.rsopenhighlowcloseseries
 msgid "Open-high-low-close series"
@@ -182,16 +275,73 @@ msgstr "parametrisk kurva"
 msgid "Pie series"
 msgstr "Cirkeldiagram"
 
+#: tachartstrconsts.rspointsymbol
+msgid "Point"
+msgstr ""
+
 #: tachartstrconsts.rspolarseries
 msgid "Polar series"
 msgstr "Polardiagram"
+
+#: tachartstrconsts.rspsclear
+msgctxt "tachartstrconsts.rspsclear"
+msgid "no line"
+msgstr ""
+
+#: tachartstrconsts.rspsdash
+msgid "dashed line"
+msgstr ""
+
+#: tachartstrconsts.rspsdashdot
+msgid "dash-dot"
+msgstr ""
+
+#: tachartstrconsts.rspsdashdotdot
+msgid "dash-dot-dot"
+msgstr ""
+
+#: tachartstrconsts.rspsdot
+msgid "dotted line"
+msgstr ""
+
+#: tachartstrconsts.rspsinsideframe
+msgid "solid (inside frame)"
+msgstr ""
+
+#: tachartstrconsts.rspspattern
+msgid "patterned line"
+msgstr ""
+
+#: tachartstrconsts.rspssolid
+msgid "solid line"
+msgstr ""
+
+#: tachartstrconsts.rsrectanglesymbol
+msgid "Rectangle"
+msgstr ""
 
 #: tachartstrconsts.rsright
 msgid "Right"
 msgstr ""
 
+#: tachartstrconsts.rsrightbracketsymbol
+msgid "Right bracket"
+msgstr ""
+
+#: tachartstrconsts.rsrighttrianglesymbol
+msgid "Right triangle"
+msgstr ""
+
+#: tachartstrconsts.rsstarsymbol
+msgid "Star (lines)"
+msgstr ""
+
 #: tachartstrconsts.rstop
 msgid "Top"
+msgstr ""
+
+#: tachartstrconsts.rstrianglesymbol
+msgid "Triangle"
 msgstr ""
 
 #: tachartstrconsts.rsuserdefined
@@ -208,6 +358,10 @@ msgstr "Användardefinierad"
 #: tachartstrconsts.rsuserdrawnseries
 msgid "User-drawn series"
 msgstr "Användardefinierat diagram"
+
+#: tachartstrconsts.rsvertbarsymbol
+msgid "Vertical bar"
+msgstr ""
 
 #: tachartstrconsts.rszoombyclick
 msgid "Zoom by click"

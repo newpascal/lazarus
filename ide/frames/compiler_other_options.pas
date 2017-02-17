@@ -13,7 +13,7 @@
  *   A copy of the GNU General Public License is available on the World    *
  *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
  *   obtain it by writing to the Free Software Foundation,                 *
- *   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.        *
+ *   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
  *                                                                         *
  ***************************************************************************
 
@@ -28,12 +28,20 @@ unit Compiler_Other_Options;
 interface
 
 uses
-  Classes, SysUtils, math, AVL_Tree, LazLogger, Forms, Controls, Graphics,
-  Dialogs, StdCtrls, ComCtrls, ExtCtrls, Buttons, LCLType, LazUTF8,
-  CodeToolsCfgScript, KeywordFuncLists, LazarusIDEStrConsts,
-  IDEOptionsIntf, CompOptsIntf, IDECommands, PackageDefs,
-  CompilerOptions, Compiler, AllCompilerOptions, DefinesGui,
-  EditorOptions, SynEdit, SynEditKeyCmds, SynCompletion, SourceSynEditor;
+  Classes, SysUtils, math, AVL_Tree,
+  // LCL
+  Forms, Controls, Graphics, Dialogs, StdCtrls, ComCtrls, ExtCtrls, Buttons, LCLType,
+  // LazUtils
+  LazUTF8, LazLogger,
+  // Codetools
+  CodeToolsCfgScript, KeywordFuncLists,
+  // IdeIntf
+  IDEOptionsIntf, CompOptsIntf, IDECommands,
+  // SynEdit
+  SynEdit, SynEditKeyCmds, SynCompletion,
+  // IDE
+  LazarusIDEStrConsts, CompilerOptions, Compiler, AllCompilerOptions, DefinesGui,
+  EditorOptions, PackageDefs, SourceSynEditor;
 
 type
 

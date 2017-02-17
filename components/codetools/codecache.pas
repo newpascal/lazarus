@@ -14,7 +14,7 @@
  *   A copy of the GNU General Public License is available on the World    *
  *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
  *   obtain it by writing to the Free Software Foundation,                 *
- *   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.        *
+ *   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
  *                                                                         *
  ***************************************************************************
 
@@ -1169,14 +1169,21 @@ end;
 procedure TCodeCache.ConsistencyCheck;
 // 0 = ok
 var ANode: TAVLTreeNode;
+  {$IF FPC_FULLVERSION<30101}
   CurResult: LongInt;
+  {$ENDIF}
 begin
+  {$IF FPC_FULLVERSION<30101}
   CurResult:=FItems.ConsistencyCheck;
   if CurResult<>0 then
     RaiseCatchableException(IntToStr(CurResult));
   CurResult:=FIncludeLinks.ConsistencyCheck;
   if CurResult<>0 then
     RaiseCatchableException(IntToStr(CurResult));
+  {$ELSE}
+  FItems.ConsistencyCheck;
+  FIncludeLinks.ConsistencyCheck;
+  {$ENDIF}
   ANode:=FItems.FindLowest;
   while ANode<>nil do begin
     if ANode.Data=nil then

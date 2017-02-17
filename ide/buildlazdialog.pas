@@ -14,7 +14,7 @@
  *   A copy of the GNU General Public License is available on the World    *
  *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
  *   obtain it by writing to the Free Software Foundation,                 *
- *   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.        *
+ *   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
  *                                                                         *
  ***************************************************************************
 
@@ -49,14 +49,18 @@ uses
   Windows,
   {$ENDIF}
   LCLProc, Forms, Controls, LCLType, StdCtrls, ExtCtrls, Buttons, Dialogs,
+  LCLPlatformDef, CheckLst, Menus, ComCtrls,
+  // LazUtils
   FileUtil, LazFileUtils, LazUTF8, LazLogger, lazutf8classes, LazFileCache,
-  InterfaceBase, CheckLst, Menus, ComCtrls, DividerBevel, DefineTemplates,
-  CodeToolManager,
+  // LazControls
+  DividerBevel,
+  // Codetools
+  CodeToolManager, DefineTemplates,
   // IDEIntf
   LazIDEIntf, IDEMsgIntf, IDEHelpIntf, IDEImagesIntf, IDEWindowIntf, IDEDialogs,
-  PackageIntf, IDEExternToolIntf, IDEOptionsIntf,
+  PackageIntf, IDEExternToolIntf,
   // IDE
-  LazarusIDEStrConsts, TransferMacros, LazConf, IDEProcs, DialogProcs,
+  LazarusIDEStrConsts, TransferMacros, LazConf, DialogProcs,
   MainBar, EnvironmentOpts,
   ApplicationBundle, ModeMatrixOpts, CompilerOptions, BuildProfileManager,
   GenericListEditor, GenericCheckList, PackageSystem, PackageDefs;
@@ -1069,6 +1073,7 @@ begin
       Add('watcom');
       Add('netwlibc');
       Add('amiga');
+      Add('aros');
       Add('atari');
       Add('palmos');
       Add('gba');

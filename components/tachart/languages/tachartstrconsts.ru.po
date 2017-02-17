@@ -55,13 +55,58 @@ msgstr "Нижняя"
 msgid "Box-and-whiskers series"
 msgstr "Диаграмма размаха"
 
+#: tachartstrconsts.rsbsbdiagonal
+msgid "backward-diagonal hatch"
+msgstr "обратная диагональная штриховка"
+
+#: tachartstrconsts.rsbsclear
+msgctxt "tachartstrconsts.rsbsclear"
+msgid "no fill"
+msgstr "нет заливки"
+
+#: tachartstrconsts.rsbscross
+msgid "crossed"
+msgstr "перекрёстная штриховка"
+
+#: tachartstrconsts.rsbsdiagcross
+msgid "diagonally crossed"
+msgstr "диагональная перекрёстная штриховка"
+
+#: tachartstrconsts.rsbsfdiagonal
+msgid "forward-diagonal hatch"
+msgstr "прямая диагональная штриховка"
+
+#: tachartstrconsts.rsbshorizontal
+msgid "horizontally hatched"
+msgstr "горизонтальная штриховка"
+
+#: tachartstrconsts.rsbsimage
+msgid "image fill"
+msgstr "заливка изображением"
+
+#: tachartstrconsts.rsbspattern
+msgid "pattern fill"
+msgstr "заливка узором"
+
 #: tachartstrconsts.rsbsplineseries
 msgid "B-Spline series"
 msgstr "Диаграмма с B-сплайнами"
 
+#: tachartstrconsts.rsbssolid
+msgid "solid fill"
+msgstr "сплошная заливка"
+
+#: tachartstrconsts.rsbsvertical
+msgid "vertically hatched"
+msgstr "вертикальная штриховка"
+
 #: tachartstrconsts.rsbubbleseries
 msgid "Bubble series"
 msgstr "Пузырьковая диаграмма"
+
+#: tachartstrconsts.rscirclesymbol
+msgid "Circle"
+msgstr "Круг"
 
 #: tachartstrconsts.rscolormapseries
 msgid "Color map series"
@@ -70,6 +115,10 @@ msgstr "Диаграмма с картой цветов"
 #: tachartstrconsts.rsconstantline
 msgid "Constant line"
 msgstr "Линия постоянной"
+
+#: tachartstrconsts.rscrosssymbol
+msgid "Plus"
+msgstr "Плюс"
 
 #: tachartstrconsts.rscubicsplineseries
 msgid "Cubic spline series"
@@ -99,21 +148,49 @@ msgstr "Всплывающая подсказка для величины"
 msgid "Delete"
 msgstr "Удалить"
 
+#: tachartstrconsts.rsdiagcrosssymbol
+msgid "Cross"
+msgstr "Крест"
+
+#: tachartstrconsts.rsdiamondsymbol
+msgid "Diamond"
+msgstr "Ромб"
+
 #: tachartstrconsts.rsdistancemeasurement
 msgid "Distance measurement"
 msgstr "Измерение расстояния"
+
+#: tachartstrconsts.rsdowntrianglesymbol
+msgid "Down triangle"
+msgstr "Треугольник с вершиной снизу"
 
 #: tachartstrconsts.rsfieldseries
 msgid "Vector field series"
 msgstr "Диаграмма с векторным полем"
 
+#: tachartstrconsts.rsfullstarsymbol
+msgid "Star (full)"
+msgstr "Звезда (полная)"
+
 #: tachartstrconsts.rsfunctionseries
 msgid "Function series"
 msgstr "Диаграмма по функции"
 
+#: tachartstrconsts.rshexagonsymbol
+msgid "Hexagon"
+msgstr "Шестиугольник"
+
 #: tachartstrconsts.rshidden
 msgid "hidden"
 msgstr "скрытая"
+
+#: tachartstrconsts.rshighbracketsymbol
+msgid "High bracket"
+msgstr "Скобка сверху"
+
+#: tachartstrconsts.rshorbarsymbol
+msgid "Horizontal bar"
+msgstr "Горизонтальная черта"
 
 #: tachartstrconsts.rsinvalidlogbase
 msgid "Logarithm base must be > 0 and <> 1."
@@ -131,6 +208,14 @@ msgstr "Диаграмма по методу наименьших квадрат
 msgid "Left"
 msgstr "Левая"
 
+#: tachartstrconsts.rsleftbracketsymbol
+msgid "Left bracket"
+msgstr "Скобка слева"
+
+#: tachartstrconsts.rslefttrianglesymbol
+msgid "Left triangle"
+msgstr "Треугольник с вершиной слева"
+
 #: tachartstrconsts.rslinear
 msgid "Linear"
 msgstr "Линейный масштаб"
@@ -143,6 +228,10 @@ msgstr "График"
 msgid "Logarithmic"
 msgstr "Логарифмический масштаб"
 
+#: tachartstrconsts.rslowbracketsymbol
+msgid "Low bracket"
+msgstr "Скобка снизу"
+
 #: tachartstrconsts.rsmanhattanplotseries
 msgid "Manhattan plot series"
 msgstr "Манхэттенская диаграмма"
@@ -154,6 +243,10 @@ msgstr "Вниз"
 #: tachartstrconsts.rsmoveup
 msgid "Up"
 msgstr "Вверх"
+
+#: tachartstrconsts.rsnosymbol
+msgid "(none)"
+msgstr "(нет)"
 
 #: tachartstrconsts.rsopenhighlowcloseseries
 msgid "Open-high-low-close series"
@@ -179,17 +272,74 @@ msgstr "Диаграмма с параметрическими кривыми"
 msgid "Pie series"
 msgstr "Круговая диаграмма"
 
+#: tachartstrconsts.rspointsymbol
+msgid "Point"
+msgstr "Точка"
+
 #: tachartstrconsts.rspolarseries
 msgid "Polar series"
 msgstr "Лепестковая диаграмма"
+
+#: tachartstrconsts.rspsclear
+msgctxt "tachartstrconsts.rspsclear"
+msgid "no line"
+msgstr "нет линии"
+
+#: tachartstrconsts.rspsdash
+msgid "dashed line"
+msgstr "штриховая линия"
+
+#: tachartstrconsts.rspsdashdot
+msgid "dash-dot"
+msgstr "штрихпунктирная линия"
+
+#: tachartstrconsts.rspsdashdotdot
+msgid "dash-dot-dot"
+msgstr "штрихпунктирная линия с двумя точками"
+
+#: tachartstrconsts.rspsdot
+msgid "dotted line"
+msgstr "пунктирная линия"
+
+#: tachartstrconsts.rspsinsideframe
+msgid "solid (inside frame)"
+msgstr "сплошная линия (внутри рамки)"
+
+#: tachartstrconsts.rspspattern
+msgid "patterned line"
+msgstr "линия с узором"
+
+#: tachartstrconsts.rspssolid
+msgid "solid line"
+msgstr "сплошная линия"
+
+#: tachartstrconsts.rsrectanglesymbol
+msgid "Rectangle"
+msgstr "Прямоугольник"
 
 #: tachartstrconsts.rsright
 msgid "Right"
 msgstr "Правая"
 
+#: tachartstrconsts.rsrightbracketsymbol
+msgid "Right bracket"
+msgstr "Скобка справа"
+
+#: tachartstrconsts.rsrighttrianglesymbol
+msgid "Right triangle"
+msgstr "Треугольник с вершиной справа"
+
+#: tachartstrconsts.rsstarsymbol
+msgid "Star (lines)"
+msgstr "Звезда (из линий)"
+
 #: tachartstrconsts.rstop
 msgid "Top"
 msgstr "Верхняя"
+
+#: tachartstrconsts.rstrianglesymbol
+msgid "Triangle"
+msgstr "Треугольник"
 
 #: tachartstrconsts.rsuserdefined
 msgctxt "tachartstrconsts.rsuserdefined"
@@ -204,6 +354,10 @@ msgstr "Пользовательское средство"
 #: tachartstrconsts.rsuserdrawnseries
 msgid "User-drawn series"
 msgstr "Пользовательская диаграмма"
+
+#: tachartstrconsts.rsvertbarsymbol
+msgid "Vertical bar"
+msgstr "Вертикальная черта"
 
 #: tachartstrconsts.rszoombyclick
 msgid "Zoom by click"

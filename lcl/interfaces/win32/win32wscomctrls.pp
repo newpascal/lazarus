@@ -26,7 +26,7 @@ uses
   CommCtrl, Windows, Classes, SysUtils, Math, Win32Extra,
   // LCL
   ComCtrls, LCLType, Controls, Graphics, Themes,
-  ImgList, StdCtrls, Forms, LCLIntf,
+  ImgList, StdCtrls, Forms, LCLIntf, LCLProc,
   LMessages, LazUTF8, LCLMessageGlue, InterfaceBase,
   // widgetset
   WSComCtrls, WSLCLClasses, WSControls, WSProc,
@@ -69,6 +69,7 @@ type
     class function GetTabRect(const ATabControl: TCustomTabControl; const AIndex: Integer): TRect; override;
     class function GetCapabilities: TCTabControlCapabilities;override;
     class function GetDesignInteractive(const AWinControl: TWinControl; AClientPos: TPoint): Boolean; override;
+    class procedure SetTabSize(const ATabControl: TCustomTabControl; const ATabWidth, ATabHeight: integer); override;
     class procedure SetImageList(const ATabControl: TCustomTabControl; const AImageList: TCustomImageList); override;
     class procedure SetPageIndex(const ATabControl: TCustomTabControl; const AIndex: integer); override;
     class procedure SetTabPosition(const ATabControl: TCustomTabControl; const ATabPosition: TTabPosition); override;
@@ -114,6 +115,7 @@ type
 
   TWin32WSCustomListView = class(TWSCustomListView)
   private
+    class procedure ColumnDoAutosize(const ALV: TCustomListView; const AIndex: Integer);
     class function  GetHeader(const AHandle: THandle): THandle;
     class procedure PositionHeader(const AHandle: THandle);
     class procedure UpdateStyle(const AHandle: THandle; const AMask, AStyle: Integer);
@@ -292,12 +294,19 @@ var
   Parent: HWND;
   PreferredSizeStatusBar: HWND;
   R: TRect;
+  AErrorCode: Cardinal;
 begin
   Flags := WS_CHILD or WS_CLIPSIBLINGS or WS_CLIPCHILDREN;
   Parent := TWin32WidgetSet(WidgetSet).AppHandle;
   PreferredSizeStatusBar := CreateWindowExW(0, STATUSCLASSNAMEW,
     nil, Flags,
     0, 0, 0, 0, Parent, 0, HInstance, nil);
+  if PreferredSizeStatusBar = 0 then
+  begin
+    AErrorCode := GetLastError;
+    DebugLn(['Failed to create win32 control, error: ', AErrorCode, ' : ', GetLastErrorText(AErrorCode)]);
+    raise Exception.Create('Failed to create win32 control, error: ' + IntToStr(AErrorCode) + ' : ' + GetLastErrorText(AErrorCode));
+  end;
   GetWindowRect(PreferredSizeStatusBar, R);
   PreferredStatusBarHeight := R.Bottom - R.Top;
   DestroyWindow(PreferredSizeStatusBar);

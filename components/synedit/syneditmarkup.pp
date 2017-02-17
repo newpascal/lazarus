@@ -73,6 +73,7 @@ type
     procedure SetLinesInWindow(const AValue : Integer); virtual;
     procedure SetCaret(const AValue : TSynEditCaret); virtual;
 
+    function  IsTempDisabled: boolean;
     procedure DoEnabledChanged(Sender: TObject); virtual;
     procedure DoCaretChanged(Sender: TObject); virtual;
     procedure DoTopLineChanged(OldTopLine : Integer); virtual;
@@ -101,6 +102,7 @@ type
     destructor Destroy; override;
     Procedure PrepareMarkupForRow(aRow : Integer); virtual;
     Procedure FinishMarkupForRow(aRow : Integer); virtual;
+    Procedure BeginMarkup; virtual;
     Procedure EndMarkup; virtual;
     Function  GetMarkupAttributeAtRowCol(const aRow: Integer;
                                          const aStartCol: TLazSynDisplayTokenBound;
@@ -167,6 +169,7 @@ type
 
     Procedure PrepareMarkupForRow(aRow : Integer); override;
     Procedure FinishMarkupForRow(aRow : Integer); override;
+    Procedure BeginMarkup; virtual;
     Procedure EndMarkup; override;
     Function  GetMarkupAttributeAtRowCol(const aRow: Integer;
                                          const aStartCol: TLazSynDisplayTokenBound;
@@ -198,7 +201,7 @@ end;
 
 function TSynEditMarkup.GetEnabled: Boolean;
 begin
-  Result := FEnabled and (FTempEnable = 0);
+  Result := FEnabled;
 end;
 
 function TSynEditMarkup.GetFGColor : TColor;
@@ -280,6 +283,11 @@ begin
   FCaret := AValue;
   if r and (FCaret <> nil) then
     FCaret.AddChangeHandler(@DoCaretChanged);
+end;
+
+function TSynEditMarkup.IsTempDisabled: boolean;
+begin
+  Result := FTempEnable > 0;
 end;
 
 procedure TSynEditMarkup.DoEnabledChanged(Sender: TObject);
@@ -422,6 +430,10 @@ procedure TSynEditMarkup.FinishMarkupForRow(aRow: Integer);
 begin
 end;
 
+procedure TSynEditMarkup.BeginMarkup;
+begin
+end;
+
 procedure TSynEditMarkup.EndMarkup;
 begin
 end;
@@ -466,7 +478,7 @@ end;
 
 function TSynEditMarkup.RealEnabled: Boolean;
 begin
-  Result := Enabled and MarkupInfo.IsEnabled;
+  Result := (FTempEnable = 0) and Enabled and MarkupInfo.IsEnabled;
 end;
 
 procedure TSynEditMarkup.PrepareMarkupForRow(aRow: Integer);
@@ -547,6 +559,15 @@ begin
   for i := 0 to fMarkUpList.Count-1 do
     if TSynEditMarkup(fMarkUpList[i]).RealEnabled then
       TSynEditMarkup(fMarkUpList[i]).FinishMarkupForRow(aRow);
+end;
+
+procedure TSynEditMarkupManager.BeginMarkup;
+var
+  i : integer;
+begin
+  for i := 0 to fMarkUpList.Count-1 do
+    if TSynEditMarkup(fMarkUpList[i]).RealEnabled then
+      TSynEditMarkup(fMarkUpList[i]).BeginMarkup;
 end;
 
 procedure TSynEditMarkupManager.EndMarkup;

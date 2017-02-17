@@ -33,10 +33,13 @@ unit Grids;
 interface
 
 uses
-  Types, Classes, SysUtils, TypInfo, Math, Maps, LCLStrConsts, LCLProc, LCLType, LCLIntf,
-  LazFileUtils, FPCanvas, Controls, GraphType, Graphics, Forms, DynamicArray,
+  // RTL + FCL
+  Classes, SysUtils, Types, TypInfo, Math, FPCanvas,
+  // LCL
+  LCLStrConsts, LCLProc, LCLType, LCLIntf, Controls, GraphType, Graphics, Forms,
   LMessages, StdCtrls, LResources, MaskEdit, Buttons, Clipbrd, Themes,
-  LazUTF8, LazUtf8Classes, Laz2_XMLCfg, LCSVUtils
+  // LazUtils
+  LazFileUtils, DynamicArray, Maps, LazUTF8, LazUtf8Classes, Laz2_XMLCfg, LCSVUtils
 {$ifdef WINDOWS}
   ,messages
 {$endif}
@@ -68,9 +71,11 @@ const
   EO_IMPLEMENTED  =   $20;
 
 const
-  DEFCOLWIDTH     = 64;
-  DEFROWHEIGHT    = 20;
-  DEFBUTTONWIDTH  = 25;
+  DEFCOLWIDTH         = 64;
+  DEFROWHEIGHT        = 20;
+  DEFBUTTONWIDTH      = 25;
+  DEFIMAGEPADDING     = 2;
+  DEFAUTOADJPADDING   = 8;
 
 type
   EGridException = class(Exception);
@@ -827,6 +832,8 @@ type
     function  GetColumns: TGridColumns;
     function  GetEditorBorderStyle: TBorderStyle;
     function  GetBorderWidth: Integer;
+    function  GetTitleImageInfo(aColumnIndex:Integer; out aWidth, aHeight: Integer;
+                                  out ImgLayout: TButtonLayout): Integer;
     function  GetRowCount: Integer;
     function  GetRowHeights(Arow: Integer): Integer;
     function  GetSelectedRange(AIndex: Integer): TGridRect;
@@ -1071,6 +1078,7 @@ type
     procedure PrepareCellHints(ACol, ARow: Integer); virtual;
     procedure ResetDefaultColWidths; virtual;
     procedure ResetEditor;
+    procedure ResetLastMove;
     procedure ResetOffset(chkCol, ChkRow: Boolean);
     procedure ResetSizes; virtual;
     procedure ResizeColumn(aCol, aWidth: Integer);
@@ -1191,7 +1199,7 @@ type
 
     property OnAfterSelection: TOnSelectEvent read FOnAfterSelection write FOnAfterSelection;
     property OnBeforeSelection: TOnSelectEvent read FOnBeforeSelection write FOnBeforeSelection;
-    property OnCheckboxToggled: TToggledcheckboxEvent read FOnCheckboxToggled write FOnCheckboxToggled;
+    property OnCheckboxToggled: TToggledCheckboxEvent read FOnCheckboxToggled write FOnCheckboxToggled;
     property OnCompareCells: TOnCompareCells read FOnCompareCells write FOnCompareCells;
     property OnPrepareCanvas: TOnPrepareCanvasEvent read FOnPrepareCanvas write FOnPrepareCanvas;
     property OnDrawCell: TOnDrawCell read FOnDrawCell write FOnDrawCell;
@@ -1204,7 +1212,7 @@ type
     property OnTopLeftChanged: TNotifyEvent read FOnTopLeftChanged write FOnTopLeftChanged;
     property OnUserCheckboxBitmap: TUserCheckboxBitmapEvent read FOnUserCheckboxBitmap write FOnUserCheckboxBitmap;
     property OnValidateEntry: TValidateEntryEvent read FOnValidateEntry write FOnValidateEntry;
-    //Bidi functions
+    // Bidi functions
     function FlipRect(ARect: TRect): TRect;
     function FlipPoint(P: TPoint): TPoint;
     function FlipX(X: Integer): Integer;
@@ -1602,80 +1610,80 @@ type
   { TCustomStringGrid }
 
   TCustomStringGrid = class(TCustomDrawGrid)
-    private
-      FModified: boolean;
-      FColsMap,FRowsMap: TMap;
-      fOnCellProcess: TCellProcessEvent;
-      function  GetCols(index: Integer): TStrings;
-      function  GetObjects(ACol, ARow: Integer): TObject;
-      function  GetRows(index: Integer): TStrings;
-      procedure MapFree(var aMap: TMap);
-      function  MapGetColsRows(IsCols: boolean; Index:Integer; var AMap:TMap):TStrings;
-      procedure ReadCells(Reader: TReader);
-      procedure SetCols(index: Integer; const AValue: TStrings);
-      procedure SetObjects(ACol, ARow: Integer; AValue: TObject);
-      procedure SetRows(index: Integer; const AValue: TStrings);
-      procedure WriteCells(Writer: TWriter);
-      procedure CopyCellRectToClipboard(const R:TRect);
-    protected
-      procedure AssignTo(Dest: TPersistent); override;
-      procedure AutoAdjustColumn(aCol: Integer); override;
-      procedure CalcCellExtent(acol, aRow: Integer; var aRect: TRect); override;
-      procedure DefineProperties(Filer: TFiler); override;
-      procedure DefineCellsProperty(Filer: TFiler); virtual;
-      function  DoCompareCells(Acol,ARow,Bcol,BRow: Integer): Integer; override;
-      procedure DoCopyToClipboard; override;
-      procedure DoCutToClipboard; override;
-      procedure DoPasteFromClipboard; override;
-      procedure DoCellProcess(aCol, aRow: Integer; processType: TCellProcessType; var aValue: string); virtual;
-      procedure DrawTextInCell(aCol,aRow: Integer; aRect: TRect; aState: TGridDrawState); override;
-      procedure DrawCellAutonumbering(aCol,aRow: Integer; aRect: TRect; const aValue: string); override;
-      //procedure EditordoGetValue; override;
-      //procedure EditordoSetValue; override;
-      function  GetCells(ACol, ARow: Integer): string; override;
-      procedure GetCheckBoxState(const aCol, aRow:Integer; var aState:TCheckboxState); override;
-      function  GetEditText(aCol, aRow: Integer): string; override;
-      procedure LoadContent(cfg: TXMLConfig; Version: Integer); override;
-      procedure Loaded; override;
-      procedure SaveContent(cfg: TXMLConfig); override;
-      //procedure DrawInteriorCells; override;
-      //procedure SelectEditor; override;
-      procedure SelectionSetText(TheText: String);
-      procedure SetCells(ACol, ARow: Integer; const AValue: string); virtual;
-      procedure SetCheckboxState(const aCol, aRow:Integer; const aState: TCheckboxState); override;
-      procedure SetEditText(aCol, aRow: Longint; const aValue: string); override;
+  private
+    FModified: boolean;
+    FColsMap,FRowsMap: TMap;
+    fOnCellProcess: TCellProcessEvent;
+    function  GetCols(index: Integer): TStrings;
+    function  GetObjects(ACol, ARow: Integer): TObject;
+    function  GetRows(index: Integer): TStrings;
+    procedure MapFree(var aMap: TMap);
+    function  MapGetColsRows(IsCols: boolean; Index:Integer; var AMap:TMap):TStrings;
+    procedure ReadCells(Reader: TReader);
+    procedure SetCols(index: Integer; const AValue: TStrings);
+    procedure SetObjects(ACol, ARow: Integer; AValue: TObject);
+    procedure SetRows(index: Integer; const AValue: TStrings);
+    procedure WriteCells(Writer: TWriter);
+    procedure CopyCellRectToClipboard(const R:TRect);
+  protected
+    procedure AssignTo(Dest: TPersistent); override;
+    procedure AutoAdjustColumn(aCol: Integer); override;
+    procedure CalcCellExtent(acol, aRow: Integer; var aRect: TRect); override;
+    procedure DefineProperties(Filer: TFiler); override;
+    procedure DefineCellsProperty(Filer: TFiler); virtual;
+    function  DoCompareCells(Acol,ARow,Bcol,BRow: Integer): Integer; override;
+    procedure DoCopyToClipboard; override;
+    procedure DoCutToClipboard; override;
+    procedure DoPasteFromClipboard; override;
+    procedure DoCellProcess(aCol, aRow: Integer; processType: TCellProcessType; var aValue: string); virtual;
+    procedure DrawTextInCell(aCol,aRow: Integer; aRect: TRect; aState: TGridDrawState); override;
+    procedure DrawCellAutonumbering(aCol,aRow: Integer; aRect: TRect; const aValue: string); override;
+    //procedure EditordoGetValue; override;
+    //procedure EditordoSetValue; override;
+    function  GetCells(ACol, ARow: Integer): string; override;
+    procedure GetCheckBoxState(const aCol, aRow:Integer; var aState:TCheckboxState); override;
+    function  GetEditText(aCol, aRow: Integer): string; override;
+    procedure LoadContent(cfg: TXMLConfig; Version: Integer); override;
+    procedure Loaded; override;
+    procedure SaveContent(cfg: TXMLConfig); override;
+    //procedure DrawInteriorCells; override;
+    //procedure SelectEditor; override;
+    procedure SelectionSetText(TheText: String);
+    procedure SetCells(ACol, ARow: Integer; const AValue: string); virtual;
+    procedure SetCheckboxState(const aCol, aRow:Integer; const aState: TCheckboxState); override;
+    procedure SetEditText(aCol, aRow: Longint; const aValue: string); override;
 
-      property Modified: boolean read FModified write FModified;
-      property OnCellProcess: TCellProcessEvent read fOnCellProcess write fOnCellProcess;
+    property Modified: boolean read FModified write FModified;
+    property OnCellProcess: TCellProcessEvent read fOnCellProcess write fOnCellProcess;
 
-    public
-      constructor Create(AOwner: TComponent); override;
-      destructor Destroy; override;
-      procedure AutoSizeColumn(aCol: Integer);
-      procedure AutoSizeColumns;
-      procedure Clean; overload;
-      procedure Clean(CleanOptions: TGridZoneSet); overload;
-      procedure Clean(aRect: TRect; CleanOptions: TGridZoneSet); overload;
-      procedure Clean(StartCol,StartRow,EndCol,EndRow: integer; CleanOptions: TGridZoneSet); overload;
-      procedure CopyToClipboard(AUseSelection: boolean = false);
-      procedure InsertRowWithValues(Index: Integer; Values: array of String);
-      procedure LoadFromCSVStream(AStream: TStream; ADelimiter: Char=',';
-        UseTitles: boolean=true; FromLine: Integer=0; SkipEmptyLines: Boolean=true);
-      procedure LoadFromCSVFile(AFilename: string; ADelimiter: Char=',';
-        UseTitles: boolean=true; FromLine: Integer=0; SkipEmptyLines: Boolean=true);
-      procedure SaveToCSVStream(AStream: TStream; ADelimiter: Char=',';
-        WriteTitles: boolean=true; VisibleColumnsOnly: boolean=false);
-      procedure SaveToCSVFile(AFileName: string; ADelimiter: Char=',';
-        WriteTitles: boolean=true; VisibleColumnsOnly: boolean=false);
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    procedure AutoSizeColumn(aCol: Integer);
+    procedure AutoSizeColumns;
+    procedure Clean; overload;
+    procedure Clean(CleanOptions: TGridZoneSet); overload;
+    procedure Clean(aRect: TRect; CleanOptions: TGridZoneSet); overload;
+    procedure Clean(StartCol,StartRow,EndCol,EndRow: integer; CleanOptions: TGridZoneSet); overload;
+    procedure CopyToClipboard(AUseSelection: boolean = false);
+    procedure InsertRowWithValues(Index: Integer; Values: array of String);
+    procedure LoadFromCSVStream(AStream: TStream; ADelimiter: Char=',';
+      UseTitles: boolean=true; FromLine: Integer=0; SkipEmptyLines: Boolean=true);
+    procedure LoadFromCSVFile(AFilename: string; ADelimiter: Char=',';
+      UseTitles: boolean=true; FromLine: Integer=0; SkipEmptyLines: Boolean=true);
+    procedure SaveToCSVStream(AStream: TStream; ADelimiter: Char=',';
+      WriteTitles: boolean=true; VisibleColumnsOnly: boolean=false);
+    procedure SaveToCSVFile(AFileName: string; ADelimiter: Char=',';
+      WriteTitles: boolean=true; VisibleColumnsOnly: boolean=false);
 
-      property Cells[ACol, ARow: Integer]: string read GetCells write SetCells;
-      property Cols[index: Integer]: TStrings read GetCols write SetCols;
-      property DefaultTextStyle;
-      property EditorMode;
-      property ExtendedSelect;
-      property Objects[ACol, ARow: Integer]: TObject read GetObjects write SetObjects;
-      property Rows[index: Integer]: TStrings read GetRows write SetRows;
-      property UseXORFeatures;
+    property Cells[ACol, ARow: Integer]: string read GetCells write SetCells;
+    property Cols[index: Integer]: TStrings read GetCols write SetCols;
+    property DefaultTextStyle;
+    property EditorMode;
+    property ExtendedSelect;
+    property Objects[ACol, ARow: Integer]: TObject read GetObjects write SetObjects;
+    property Rows[index: Integer]: TStrings read GetRows write SetRows;
+    property UseXORFeatures;
   end;
 
 
@@ -1799,7 +1807,7 @@ type
     property OnValidateEntry;
   end;
 
-procedure DrawRubberRect(Canvas: TCanvas; aRect: TRect; Color: TColor);
+procedure DrawRubberRect(Canvas: TCanvas; aRect: TRect; Color: TColor; DrawBits:Byte=BF_RECT);
 function  GetWorkingCanvas(const Canvas: TCanvas): TCanvas;
 procedure FreeWorkingCanvas(canvas: TCanvas);
 
@@ -1985,7 +1993,10 @@ begin
   AFont.Style:= TFontStyles(cfg.GetValue(AKey + '/style/value', 0));
 end;
 
-procedure DrawRubberRect(Canvas: TCanvas; aRect: TRect; Color: TColor);
+// Draws a dotted rectangle by drawing each enabled side. By default all sides are
+// enabled. The DrawBits parameter set sides to drawn, it has this layout: xxxxBRTL
+procedure DrawRubberRect(Canvas: TCanvas; aRect: TRect; Color: TColor;
+  DrawBits: Byte);
   procedure DrawVertLine(X1,Y1,Y2: integer);
   begin
     if Y2<Y1 then
@@ -2014,10 +2025,10 @@ procedure DrawRubberRect(Canvas: TCanvas; aRect: TRect; Color: TColor);
   end;
 begin
   with aRect do begin
-    DrawHorzLine(Left, Top, Right-1);
-    DrawVertLine(Right-1, Top, Bottom-1);
-    DrawHorzLine(Right-1, Bottom-1, Left);
-    DrawVertLine(Left, Bottom-1, Top);
+    if (DrawBits and BF_TOP = BF_TOP) then DrawHorzLine(Left, Top, Right-1);
+    if (DrawBits and BF_RIGHT = BF_RIGHT) then DrawVertLine(Right-1, Top, Bottom-1);
+    if (DrawBits and BF_BOTTOM = BF_BOTTOM) then DrawHorzLine(Right-1, Bottom-1, Left);
+    if (DrawBits and BF_LEFT = BF_LEFT) then DrawVertLine(Left, Bottom-1, Top);
   end;
 end;
 
@@ -3776,6 +3787,12 @@ begin
     EditorShow(True);
 end;
 
+// Reset the last Row or Col movement
+procedure TCustomGrid.ResetLastMove;
+begin
+  FMoveLast:=Point(-1,-1);
+end;
+
 procedure TCustomGrid.ResetHotCell;
 begin
   with FGCache do begin
@@ -4027,25 +4044,19 @@ end;
 
 procedure TCustomGrid.DrawColumnTitleImage(
   var ARect: TRect; AColumnIndex: Integer);
-const
-  BORDER = 2;
 var
-  c: TGridColumn;
-  w, h, rw, rh: Integer;
+  w, h, rw, rh, ImgIndex: Integer;
   needStretch: Boolean;
   r: TRect;
+  imgLayout: TButtonLayout;
 begin
-  if TitleImageList = nil then exit;
-  c := ColumnFromGridColumn(AColumnIndex);
-  if
-    (c = nil) or
-    not InRange(c.Title.ImageIndex, 0, TitleImageList.Count - 1)
-  then
+
+  ImgIndex := GetTitleImageInfo(AColumnIndex, w, h, imgLayout);
+  if ImgIndex<0 then
     exit;
-  w := TitleImageList.Width;
-  h := TitleImageList.Height;
-  rw := ARect.Right - ARect.Left - BORDER * 2;
-  rh := ARect.Bottom - ARect.Top - BORDER * 2;
+
+  rw := ARect.Right - ARect.Left - DEFIMAGEPADDING * 2;
+  rh := ARect.Bottom - ARect.Top - DEFIMAGEPADDING * 2;
   if rw < w then begin
     w := rw;
     needStretch := true;
@@ -4054,37 +4065,38 @@ begin
     h := rh;
     needStretch := true;
   end;
-  case c.Title.ImageLayout of
+
+  case imgLayout of
     blGlyphRight, blGlyphLeft:
-      r.Top := ARect.Top + (rh - h) div 2 + BORDER;
+      r.Top := ARect.Top + (rh - h) div 2 + DEFIMAGEPADDING;
     blGlyphTop, blGlyphBottom:
-      r.Left := ARect.Left + (rw - w) div 2 + BORDER;
+      r.Left := ARect.Left + (rw - w) div 2 + DEFIMAGEPADDING;
   end;
-  case c.Title.ImageLayout of
+  case imgLayout of
     blGlyphRight: begin
-      Dec(ARect.Right, w + BORDER * 2);
-      r.Left := ARect.Right + BORDER;
+      Dec(ARect.Right, w + DEFIMAGEPADDING * 2);
+      r.Left := ARect.Right + DEFIMAGEPADDING;
     end;
     blGlyphLeft: begin
-      r.Left := ARect.Left + BORDER;
-      Inc(ARect.Left, w + BORDER * 2);
+      r.Left := ARect.Left + DEFIMAGEPADDING;
+      Inc(ARect.Left, w + DEFIMAGEPADDING * 2);
     end;
     blGlyphTop: begin
-      r.Top := ARect.Top + BORDER;
-      Inc(ARect.Top, w + BORDER * 2);
+      r.Top := ARect.Top + DEFIMAGEPADDING;
+      Inc(ARect.Top, w + DEFIMAGEPADDING * 2);
     end;
     blGlyphBottom: begin
-      Dec(ARect.Bottom, w + BORDER * 2);
-      r.Top := ARect.Bottom + BORDER;
+      Dec(ARect.Bottom, w + DEFIMAGEPADDING * 2);
+      r.Top := ARect.Bottom + DEFIMAGEPADDING;
     end;
   end;
   if needStretch then begin
     r.Right := r.Left + w;
     r.Bottom := r.Top + h;
-    TitleImageList.StretchDraw(Canvas, c.Title.ImageIndex, r);
+    TitleImageList.StretchDraw(Canvas, ImgIndex, r);
   end
   else
-    TitleImageList.Draw(Canvas, r.Left, r.Top, c.Title.ImageIndex);
+    TitleImageList.Draw(Canvas, r.Left, r.Top, ImgIndex);
 end;
 
 procedure TCustomGrid.DrawCell(aCol, aRow: Integer; aRect: TRect;
@@ -4134,8 +4146,6 @@ var
   ClipArea: Trect;
 
   procedure DoDrawCell;
-  var
-    Rgn: HRGN;
   begin
     with FGCache do begin
       if (aCol=HotCell.x) and (aRow=HotCell.y) and not IsPushCellActive() then begin
@@ -4149,10 +4159,8 @@ var
 
     Canvas.SaveHandleState;
     try
-      Rgn := CreateRectRgn(R.Left, R.Top, R.Right, R.Bottom);
-      SelectClipRgn(Canvas.Handle, Rgn);
+      InterSectClipRect(Canvas.Handle, R.Left, R.Top, R.Right, R.Bottom);
       DrawCell(aCol, aRow, R, gds);
-      DeleteObject(Rgn);
     finally
       Canvas.RestoreHandleState;
     end;
@@ -5151,6 +5159,25 @@ begin
     Result := 0
 end;
 
+function TCustomGrid.GetTitleImageInfo(aColumnIndex: Integer; out aWidth,
+  aHeight: Integer; out ImgLayout: TButtonLayout): Integer;
+var
+  c: TGridColumn;
+begin
+  result := -1;
+  if TitleImageList = nil then exit;
+  c := ColumnFromGridColumn(AColumnIndex);
+  if
+    (c = nil) or
+    not InRange(c.Title.ImageIndex, 0, TitleImageList.Count - 1)
+  then
+    exit;
+  aWidth := TitleImageList.Width;
+  aHeight := TitleImageList.Height;
+  imgLayout := c.Title.ImageLayout;
+  result := c.Title.ImageIndex;
+end;
+
 function TCustomGrid.GetImageForCheckBox(const aCol,aRow: Integer;
     CheckBoxView: TCheckBoxState): TBitmap;
 begin
@@ -5620,7 +5647,7 @@ begin
 
     if (Abs(ClickMouse.X-X)>FDragDX) and (Cursor<>crMultiDrag) then begin
       ChangeCursor(crMultiDrag);
-      FMoveLast:=Point(-1,-1);
+      ResetLastMove;
     end;
 
     if (Cursor=crMultiDrag) and
@@ -5655,7 +5682,7 @@ begin
 
     if (Cursor<>crMultiDrag) and (Abs(ClickMouse.Y-Y)>FDragDX) then begin
       ChangeCursor(crMultiDrag);
-      FMoveLast:=Point(-1,-1);
+      ResetLastMove;
     end;
 
     if (Cursor=crMultiDrag)and
@@ -6220,7 +6247,7 @@ begin
           // ColMoving or Clicking
           if fGridState<>gsColMoving then begin
             fGridState:=gsColMoving;
-            FMoveLast:=Point(-1,-1);
+            ResetLastMove;
           end;
 
           if ((goHeaderPushedLook in Options) and
@@ -6237,7 +6264,7 @@ begin
       else begin
         // RowMoving or Clicking
         fGridState:=gsRowMoving;
-        FMoveLast:=Point(-1,-1);
+        ResetLastMove;
         if ((goHeaderPushedLook in Options) and
             (FGCache.HotGridZone in FHeaderPushZones)) then
           DoPushCell;
@@ -6517,8 +6544,10 @@ begin
     if (goDblClickAutoSize in Options) then begin
       OldWidth := ColWidths[FSizing.Index];
       AutoAdjustColumn( FSizing.Index );
-      if OldWidth<>ColWidths[FSizing.Index] then
+      if OldWidth<>ColWidths[FSizing.Index] then begin
         ChangeCursor;
+        HeaderSized(True, FSizing.Index);
+      end;
     end {else
       DebugLn('Got Doubleclick on Col Resizing: AutoAdjust?');}
   end else
@@ -6705,7 +6734,7 @@ begin
   EditorSetValue;
   if ParentChanged then
     Editor.Parent:=Self;
-  if FEditor=FStringEditor then
+  if (FEditor = FStringEditor) or (FEditor = FButtonStringEditor) then
   begin
     if FCol-FFixedCols<Columns.Count then
       FStringEditor.Alignment:=Columns[FCol-FFixedCols].Alignment
@@ -6742,9 +6771,9 @@ begin
       for i := RowCount - 1 downto 0 do
         RowHeights[i] := Round(RowHeights[i] * AYProportion);
 
-      DefaultColWidth := Round(DefaultColWidth * AXProportion);
-      if IsDefRowHeightStored then
-        DefaultRowHeight := Round(DefaultRowHeight * AYProportion);
+      FDefColWidth := Round(FDefColWidth * AXProportion);
+      FDefRowHeight := Round(FDefRowHeight * AYProportion);
+      Include(FGridFlags, gfDefRowHeightChanged);
     finally
       EndUpdate;
     end;
@@ -8813,6 +8842,12 @@ begin
     cfg.setValue(cPath + '/title/caption/value', c.Title.Caption);
     if not c.Title.IsDefaultFont then
       CfgSetFontValue(cfg, cPath + '/title/font', c.Title.Font);
+    if c.Title.IsAlignmentStored then
+      cfg.setValue(cPath + '/title/alignment/value', ord(c.Title.Alignment));
+    if c.Title.IsColorStored then
+      cfg.setValue(cPath + '/title/color/value', colortostring(c.Title.Color));
+    if c.Title.IsLayoutStored then
+      cfg.setValue(cPath + '/title/layout/value', ord(c.Title.Layout));
 
     doSaveColumn(self, c, -1, Cfg, Version, cPath);
   end;
@@ -8958,6 +8993,15 @@ begin
     s := cfg.GetValue(cPath + '/title/font/name/value', '');
     if s<>'' then
       cfgGetFontValue(cfg, cPath + '/title/font', c.Title.Font);
+    s := cfg.getValue(cPath + '/title/alignment/value', '');
+    if s<>'' then
+      c.Title.Alignment := TAlignment(StrToIntDef(s, 0));
+    s := cfg.getValue(cPath + '/title/color/value', '');
+    if s<>'' then
+      c.Title.Color := StringToColor(s);
+    s := cfg.GetValue(cPath + 'title/layout/value', '');
+    if s<>'' then
+      c.Title.Layout := TTextLayout(StrToIntDef(s, 0));
 
     doLoadColumn(self, c, -1, cfg, version, cpath);
   end;
@@ -10023,6 +10067,7 @@ procedure TCustomDrawGrid.DrawFocusRect(aCol, aRow: Integer; ARect: TRect);
 var
   OldFocusColor: TColor;
   OldPenMode: TFPPenMode;
+  DrawBits: Byte;
 begin
   // Draw focused cell if we have the focus
   if DefaultDrawing and (Self.Focused or
@@ -10036,7 +10081,10 @@ begin
       OldPenMode:=Canvas.Pen.Mode;
       Canvas.Pen.Mode := pmXOR;
     end;
-    DrawRubberRect(Canvas, aRect, FFocusColor);
+    DrawBits := BF_RECT;
+    if (goRowSelect in Options) and ((fTopLeft.x<>FixedCols) or (FGCache.TLColOff<>0)) then
+      DrawBits := DrawBits and not BF_LEFT;
+    DrawRubberRect(Canvas, aRect, FFocusColor, DrawBits);
     if FUseXORFeatures then begin
       Canvas.Pen.Mode := OldPenMode;
       Canvas.RestoreHandleState;
@@ -10526,8 +10574,7 @@ var
     DoCellProcess(aCol, aRow, cpCopy, s);
     if (pos(#9, s)>0) or
        (pos(#10, s)>0) or
-       (pos(#13, s)>0) or
-       (pos('"', s)>0)
+       (pos(#13, s)>0)
     then
       result := AnsiQuotedStr(s, '"')
     else
@@ -10579,16 +10626,23 @@ end;
 
 procedure TCustomStringGrid.AutoAdjustColumn(aCol: Integer);
 var
-  i,W: Integer;
+  i,W, imgWidth: Integer;
   Ts: TSize;
   TmpCanvas: TCanvas;
   C: TGridColumn;
   aRect: TRect;
   isMultiLine: Boolean;
   aText: string;
+  aLayout: TButtonLayout;
 begin
   if (aCol<0) or (aCol>ColCount-1) then
     Exit;
+
+  i := GetTitleImageInfo(aCol, imgWidth, w, aLayout);
+  if i>=0 then
+    Inc(imgWidth, 2*DEFIMAGEPADDING)
+  else
+    imgWidth := 0;
 
   tmpCanvas := GetWorkingCanvas(Canvas);
 
@@ -10631,10 +10685,11 @@ begin
       FreeWorkingCanvas(tmpCanvas);
   end;
 
+  W := W + imgWidth;
   if W=0 then
     W := DefaultColWidth
   else
-    W := W + 8;
+    W := W + DEFAUTOADJPADDING;
 
   ColWidths[aCol] := W;
 end;

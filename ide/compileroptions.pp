@@ -25,7 +25,7 @@
  *   A copy of the GNU General Public License is available on the World    *
  *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
  *   obtain it by writing to the Free Software Foundation,                 *
- *   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.        *
+ *   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
  *                                                                         *
  ***************************************************************************
 
@@ -1063,7 +1063,7 @@ begin
       else if CompareIdentifiers(PChar(VarName),'SrcOS2')=0 then
         SetCTCSVariableAsString(Value,GetDefaultSrcOS2ForTargetOS(GetCompiledTargetOS))
       else if CompareIdentifiers(PChar(VarName),'LCLWidgetType')=0 then
-        SetCTCSVariableAsString(Value,LCLPlatformDirNames[GetDefaultLCLWidgetType])
+        SetCTCSVariableAsString(Value,GetLCLWidgetTypeName)
       else
         ClearCTCSVariable(Value);
     end else if (CompareIdentifiers(FunctionName,'GetEnv')=0) then

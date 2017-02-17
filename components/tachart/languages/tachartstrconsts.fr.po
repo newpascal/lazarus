@@ -3,13 +3,13 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Project-Id-Version: \n"
 "POT-Creation-Date: 2015-04-14 07:54+0100\n"
-"PO-Revision-Date: 2016-05-14 09:19+0200\n"
+"PO-Revision-Date: 2017-02-10 11:55+0100\n"
 "Last-Translator: Vasseur Gilles <gillesvasseur58@gmail.com>\n"
 "Language-Team: http://lazarus.developpez.com/\n"
 "MIME-Version: 1.0\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Language: fr\n"
-"X-Generator: Poedit 1.8.7\n"
+"X-Generator: Poedit 1.8.11\n"
 
 #: tachartstrconsts.descolor
 msgid "Color"
@@ -49,19 +49,64 @@ msgstr "Séries de barres"
 
 #: tachartstrconsts.rsbottom
 msgid "Bottom"
-msgstr ""
+msgstr "Bas"
 
 #: tachartstrconsts.rsboxandwhiskerseries
 msgid "Box-and-whiskers series"
 msgstr "Séries de boîtes à moustaches"
 
+#: tachartstrconsts.rsbsbdiagonal
+msgid "backward-diagonal hatch"
+msgstr "hachure selon une diagonale en arrière"
+
+#: tachartstrconsts.rsbsclear
+msgctxt "tachartstrconsts.rsbsclear"
+msgid "no fill"
+msgstr "pas de remplissage"
+
+#: tachartstrconsts.rsbscross
+msgid "crossed"
+msgstr "croisé"
+
+#: tachartstrconsts.rsbsdiagcross
+msgid "diagonally crossed"
+msgstr "croisé en diagonale"
+
+#: tachartstrconsts.rsbsfdiagonal
+msgid "forward-diagonal hatch"
+msgstr "hachure selon une diagonale en avant"
+
+#: tachartstrconsts.rsbshorizontal
+msgid "horizontally hatched"
+msgstr "hachuré horizontalement"
+
+#: tachartstrconsts.rsbsimage
+msgid "image fill"
+msgstr "remplissage d'image"
+
+#: tachartstrconsts.rsbspattern
+msgid "pattern fill"
+msgstr "remplissage avec modèle"
+
 #: tachartstrconsts.rsbsplineseries
 msgid "B-Spline series"
 msgstr "Séries de B-Splines"
 
+#: tachartstrconsts.rsbssolid
+msgid "solid fill"
+msgstr "remplissage plein"
+
+#: tachartstrconsts.rsbsvertical
+msgid "vertically hatched"
+msgstr "hachuré verticalment"
+
 #: tachartstrconsts.rsbubbleseries
 msgid "Bubble series"
 msgstr "Séries de bulles"
+
+#: tachartstrconsts.rscirclesymbol
+msgid "Circle"
+msgstr "Cercle"
 
 #: tachartstrconsts.rscolormapseries
 msgid "Color map series"
@@ -70,6 +115,10 @@ msgstr "Séries de cartes de couleur"
 #: tachartstrconsts.rsconstantline
 msgid "Constant line"
 msgstr "Ligne constante"
+
+#: tachartstrconsts.rscrosssymbol
+msgid "Plus"
+msgstr "Plus"
 
 #: tachartstrconsts.rscubicsplineseries
 msgid "Cubic spline series"
@@ -99,21 +148,49 @@ msgstr "Indicateur de point de données"
 msgid "Delete"
 msgstr "Supprimer"
 
+#: tachartstrconsts.rsdiagcrosssymbol
+msgid "Cross"
+msgstr "Croix"
+
+#: tachartstrconsts.rsdiamondsymbol
+msgid "Diamond"
+msgstr "Diamant"
+
 #: tachartstrconsts.rsdistancemeasurement
 msgid "Distance measurement"
 msgstr "Mesure des distances"
+
+#: tachartstrconsts.rsdowntrianglesymbol
+msgid "Down triangle"
+msgstr "Triangle en bas"
 
 #: tachartstrconsts.rsfieldseries
 msgid "Vector field series"
 msgstr "Séries de champs vectoriels"
 
+#: tachartstrconsts.rsfullstarsymbol
+msgid "Star (full)"
+msgstr "Étoile (remplie)"
+
 #: tachartstrconsts.rsfunctionseries
 msgid "Function series"
 msgstr "Séries de fonctions"
 
+#: tachartstrconsts.rshexagonsymbol
+msgid "Hexagon"
+msgstr "Hexagone"
+
 #: tachartstrconsts.rshidden
 msgid "hidden"
-msgstr ""
+msgstr "caché"
+
+#: tachartstrconsts.rshighbracketsymbol
+msgid "High bracket"
+msgstr "Parenthèse haute"
+
+#: tachartstrconsts.rshorbarsymbol
+msgid "Horizontal bar"
+msgstr "Barre horinzontale"
 
 #: tachartstrconsts.rsinvalidlogbase
 msgid "Logarithm base must be > 0 and <> 1."
@@ -121,7 +198,7 @@ msgstr "La base de logarithme doit être > 0 et <>1."
 
 #: tachartstrconsts.rsinverted
 msgid "inverted"
-msgstr ""
+msgstr "inversé"
 
 #: tachartstrconsts.rsleastsquaresfitseries
 msgid "Least-squares fit series"
@@ -129,7 +206,15 @@ msgstr "Séries de moindres carrés ajustés"
 
 #: tachartstrconsts.rsleft
 msgid "Left"
-msgstr ""
+msgstr "Gauche"
+
+#: tachartstrconsts.rsleftbracketsymbol
+msgid "Left bracket"
+msgstr "Parenthèse gauche"
+
+#: tachartstrconsts.rslefttrianglesymbol
+msgid "Left triangle"
+msgstr "Triangle à gauche"
 
 #: tachartstrconsts.rslinear
 msgid "Linear"
@@ -143,6 +228,10 @@ msgstr "Séries de lignes"
 msgid "Logarithmic"
 msgstr "Logarithmique"
 
+#: tachartstrconsts.rslowbracketsymbol
+msgid "Low bracket"
+msgstr "Parenthèse basse"
+
 #: tachartstrconsts.rsmanhattanplotseries
 msgid "Manhattan plot series"
 msgstr "Séries de points de Manhattan"
@@ -154,6 +243,10 @@ msgstr "Bas"
 #: tachartstrconsts.rsmoveup
 msgid "Up"
 msgstr "Haut"
+
+#: tachartstrconsts.rsnosymbol
+msgid "(none)"
+msgstr "(aucun)"
 
 #: tachartstrconsts.rsopenhighlowcloseseries
 msgid "Open-high-low-close series"
@@ -179,17 +272,74 @@ msgstr "Séries de courbes paramétriques"
 msgid "Pie series"
 msgstr "Séries de camemberts"
 
+#: tachartstrconsts.rspointsymbol
+msgid "Point"
+msgstr "Point"
+
 #: tachartstrconsts.rspolarseries
 msgid "Polar series"
 msgstr "Séries polaires"
 
+#: tachartstrconsts.rspsclear
+msgctxt "tachartstrconsts.rspsclear"
+msgid "no line"
+msgstr "pas de Ligne"
+
+#: tachartstrconsts.rspsdash
+msgid "dashed line"
+msgstr "ligne de tirets"
+
+#: tachartstrconsts.rspsdashdot
+msgid "dash-dot"
+msgstr "tiret point"
+
+#: tachartstrconsts.rspsdashdotdot
+msgid "dash-dot-dot"
+msgstr "tiret point point"
+
+#: tachartstrconsts.rspsdot
+msgid "dotted line"
+msgstr "ligne pointillée"
+
+#: tachartstrconsts.rspsinsideframe
+msgid "solid (inside frame)"
+msgstr "plein (à l'intérieur d'un cadre)"
+
+#: tachartstrconsts.rspspattern
+msgid "patterned line"
+msgstr "ligne selon modèle"
+
+#: tachartstrconsts.rspssolid
+msgid "solid line"
+msgstr "ligne pleine"
+
+#: tachartstrconsts.rsrectanglesymbol
+msgid "Rectangle"
+msgstr "Rectangle"
+
 #: tachartstrconsts.rsright
 msgid "Right"
-msgstr ""
+msgstr "Droite"
+
+#: tachartstrconsts.rsrightbracketsymbol
+msgid "Right bracket"
+msgstr "Parenthèse droite"
+
+#: tachartstrconsts.rsrighttrianglesymbol
+msgid "Right triangle"
+msgstr "Triangle à droite"
+
+#: tachartstrconsts.rsstarsymbol
+msgid "Star (lines)"
+msgstr "Étoile (lignes)"
 
 #: tachartstrconsts.rstop
 msgid "Top"
-msgstr ""
+msgstr "Haut"
+
+#: tachartstrconsts.rstrianglesymbol
+msgid "Triangle"
+msgstr "Triangle"
 
 #: tachartstrconsts.rsuserdefined
 msgctxt "tachartstrconsts.rsuserdefined"
@@ -204,6 +354,10 @@ msgstr "Défini par l'utilisateur"
 #: tachartstrconsts.rsuserdrawnseries
 msgid "User-drawn series"
 msgstr "Séries personnalisées"
+
+#: tachartstrconsts.rsvertbarsymbol
+msgid "Vertical bar"
+msgstr "Barre verticale"
 
 #: tachartstrconsts.rszoombyclick
 msgid "Zoom by click"

@@ -14,7 +14,7 @@
  *   A copy of the GNU General Public License is available on the World    *
  *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
  *   obtain it by writing to the Free Software Foundation,                 *
- *   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.        *
+ *   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
  *                                                                         *
  ***************************************************************************
 
@@ -41,11 +41,17 @@ uses
   {$IFDEF IDE_MEM_CHECK}
   MemCheck,
   {$ENDIF}
-  Classes, SysUtils, contnrs, FileUtil, LazUTF8, LCLType, Controls, Forms, Buttons,
-  StdCtrls, Dialogs, ExtCtrls, LCLProc, ButtonPanel, EditBtn,
-  IDEExternToolIntf, IDEHelpIntf, PropEdits, IDEDialogs, IDECommands,
-  FileProcs, LazFileUtils, TransferMacros, LazarusIDEStrConsts, EnvironmentOpts,
-  KeyMapping, IDEProcs, LazConfigStorage, IDEUtils;
+  Classes, SysUtils, contnrs,
+  // LCL
+  LCLType, Controls, Forms, StdCtrls, Dialogs, LCLProc, ButtonPanel, EditBtn,
+  // LazUtils
+  FileUtil, LazFileUtils, LazUTF8, LazConfigStorage,
+  // Codetools
+  FileProcs,
+  // IdeIntf
+  IDEExternToolIntf, IDEHelpIntf, PropEdits, IDEDialogs, IDECommands, IDEUtils,
+  // IDE
+  TransferMacros, LazarusIDEStrConsts, EnvironmentOpts, KeyMapping;
 
 const
   ExternalToolOptionsVersion = 3;
@@ -130,11 +136,9 @@ type
     function Run(Index: integer; {%H-}ShowAbort: boolean): TModalResult;
     // load/save
     function Load(Config: TConfigStorage): TModalResult;
-    function Load(Config: TConfigStorage; const Path: string): TModalResult;
-      override;
+    function Load(Config: TConfigStorage; const Path: string): TModalResult; override;
     function Save(Config: TConfigStorage): TModalResult;
-    function Save(Config: TConfigStorage; const Path: string): TModalResult;
-      override;
+    function Save(Config: TConfigStorage; const Path: string): TModalResult; override;
     procedure LoadShortCuts(KeyCommandRelationList: TKeyCommandRelationList);
     procedure SaveShortCuts(KeyCommandRelationList: TKeyCommandRelationList);
   end;

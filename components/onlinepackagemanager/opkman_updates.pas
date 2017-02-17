@@ -1,3 +1,26 @@
+{
+ ***************************************************************************
+ *                                                                         *
+ *   This source is free software; you can redistribute it and/or modify   *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ *   This code is distributed in the hope that it will be useful, but      *
+ *   WITHOUT ANY WARRANTY; without even the implied warranty of            *
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU     *
+ *   General Public License for more details.                              *
+ *                                                                         *
+ *   A copy of the GNU General Public License is available on the World    *
+ *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
+ *   obtain it by writing to the Free Software Foundation,                 *
+ *   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
+ *                                                                         *
+ ***************************************************************************
+
+ Author: Balázs Székely
+}
+
 unit opkman_updates;
 
 {$mode objfpc}{$H+}
@@ -6,11 +29,10 @@ interface
 
 uses
   Classes, SysUtils, LazIDEIntf, Laz2_XMLCfg, LazFileUtils, fpjson, fpjsonrtti,
-  opkman_httpclient, opkman_timer, opkman_serializablepackages;
+  opkman_httpclient, opkman_timer, opkman_serializablepackages, dateutils;
 
 const
   OpkVersion = 1;
-  UpdateInterval = 6000;
 
 type
 
@@ -52,12 +74,14 @@ type
   private
     FUpdatePackageData: TUpdatePackageData;
     FUpdatePackageFiles: TCollection;
+    FLastError: String;
     procedure Clear;
   public
     constructor Create;
     destructor Destroy; override;
     function LoadFromJSON(const AJSON: TJSONStringType): Boolean;
     function SaveToJSON(var AJSON: TJSONStringType): Boolean;
+    property LastError: String read FLastError;
   published
     property UpdatePackageData: TUpdatePackageData read FUpdatePackageData write FUpdatePackageData;
     property UpdatePackageFiles: TCollection read FUpdatePackageFiles write FUpdatePackageFiles;
@@ -86,6 +110,7 @@ type
     procedure AssignPackageData(APackage: TPackage);
     procedure ResetPackageData(APackage: TPackage);
     procedure CheckForOpenSSL;
+    function IsTimeToUpdate: Boolean;
   protected
     procedure Execute; override;
   public
@@ -145,7 +170,11 @@ begin
       DeStreamer.JSONToObject(AJSON, Self);
       Result := True;
     except
-      Result := False;
+      on E: Exception do
+      begin
+        FLastError := E.Message;
+        Result := False;
+      end;
     end;
   finally
     DeStreamer.Free;
@@ -156,6 +185,7 @@ function TUpdatePackage.SaveToJSON(var AJSON: TJSONStringType): Boolean;
 var
   Streamer: TJSONStreamer;
 begin
+  Result := False;
   Streamer := TJSONStreamer.Create(nil);
   try
     Streamer.Options := Streamer.Options + [jsoUseFormatString];
@@ -163,7 +193,11 @@ begin
       AJSON := Streamer.ObjectToJSONString(Self);
       Result := AJSON <> '';
     except
-      Result := False;
+      on E: Exception do
+      begin
+        FLastError := E.Message;
+        Result := False;
+      end;
     end;
   finally
     Streamer.Free;
@@ -235,6 +269,9 @@ var
   PackageFile: TPackageFile;
   HasUpdate: Boolean;
 begin
+  if (not Assigned(SerializablePackages)) or (SerializablePackages.Count = 0) then
+    Exit;
+
   FVersion := FXML.GetValue('Version/Value', 0);
   PackageCount := FXML.GetValue('Count/Value', 0);
   for I := 0 to PackageCount - 1 do
@@ -247,6 +284,7 @@ begin
       HasUpdate := False;
       Package.DownloadZipURL := FXML.GetValue(Path + 'DownloadZipURL', '');
       Package.DisableInOPM := FXML.GetValue(Path + 'DisableInOPM', False);
+      Package.Rating := FXML.GetValue(Path + 'Rating', 0);
       PackageFileCount := FXML.GetValue(Path + 'Count', 0);
       for J := 0 to PackageFileCount - 1 do
       begin
@@ -281,7 +319,7 @@ var
   Package: TPackage;
   PackageFile: TPackageFile;
 begin
-  if SerializablePackages.Count = 0 then
+  if (not Assigned(SerializablePackages)) or (SerializablePackages.Count = 0) then
     Exit;
   FXML.Clear;
   FXML.SetDeleteValue('Version/Value', OpkVersion, 0);
@@ -293,6 +331,7 @@ begin
     FXML.SetDeleteValue(Path + 'Name', Package.Name, '');
     FXML.SetDeleteValue(Path + 'DownloadZipURL', Package.DownloadZipURL, '');
     FXML.SetDeleteValue(Path + 'DisableInOPM', Package.DisableInOPM, False);
+    FXML.SetDeleteValue(Path + 'Rating', Package.Rating, 0);
     FXML.SetDeleteValue(Path + 'Count', SerializablePackages.Items[I].PackageFiles.Count, 0);
     for J := 0 to SerializablePackages.Items[I].PackageFiles.Count - 1 do
     begin
@@ -369,9 +408,9 @@ begin
                          FileExistsUTF8(ExtractFilePath(ParamStr(0)) + 'ssleay32.dll');
    if not FOpenSSLAvaialable then
    begin
-     ZipFile := ExtractFilePath(ParamStr(0)) + ExtractFileName(OpenSSLURL);
+     ZipFile := ExtractFilePath(ParamStr(0)) + ExtractFileName(cOpenSSLURL);
      try
-       FHTTPClient.Get(OpenSSLURL, ZipFile);
+       FHTTPClient.Get(cOpenSSLURL, ZipFile);
      except
      end;
      if FileExistsUTF8(ZipFile) then
@@ -392,12 +431,26 @@ begin
                              FileExistsUTF8(ExtractFilePath(ParamStr(0)) + 'ssleay32.dll');
      end;
   end;
+  {$ELSE}
+  FOpenSSLAvaialable := True;
   {$ENDIF}
+end;
+
+function TUpdates.IsTimeToUpdate: Boolean;
+begin
+  case Options.CheckForUpdates of
+    0: Result := MinutesBetween(Now, Options.LastUpdate) >= 2;
+    1: Result := HoursBetween(Now, Options.LastUpdate) >= 1;
+    2: Result := DaysBetween(Now, Options.LastUpdate) >= 1;
+    3: Result := WeeksBetween(Now, Options.LastUpdate) >= 1;
+    4: Result := MonthsBetween(Now, Options.LastUpdate) >= 1;
+    5: Result := False;
+  end;
 end;
 
 procedure TUpdates.DoOnTimer(Sender: TObject);
 begin
-  if (FTimer.Enabled) and (not FNeedToBreak) then
+  if (FTimer.Enabled) and (not FNeedToBreak) and (IsTimeToUpdate) then
     FNeedToUpdate := True;
 end;
 
@@ -450,8 +503,10 @@ begin
   CheckForOpenSSL;
   while not Terminated do
   begin
-    if (FNeedToUpdate) and (not FBusyUpdating) and (not FPaused) and (FOpenSSLAvaialable) then
+    if Assigned(SerializablePackages) and (FNeedToUpdate) and (not FBusyUpdating) and (not FPaused) and (FOpenSSLAvaialable) then
     begin
+      Options.LastUpdate := Now;
+      Options.Changed := True;
       FBusyUpdating := True;
       try
         for I := 0 to SerializablePackages.Count - 1  do
@@ -461,7 +516,7 @@ begin
           if (not FNeedToBreak) then
           begin
             JSON := '';
-            if GetUpdateInfo(SerializablePackages.Items[I].DownloadURL, JSON) then
+            if GetUpdateInfo(Trim(SerializablePackages.Items[I].DownloadURL), JSON) then
             begin
               if FUpdatePackage.LoadFromJSON(JSON) then
                 AssignPackageData(SerializablePackages.Items[I])
@@ -481,6 +536,7 @@ begin
         FNeedToUpdate := False;
       end;
     end;
+    Sleep(1000);
   end;
 end;
 
@@ -493,7 +549,7 @@ begin
   FOpenSSLAvaialable := False;
   FStarted := True;
   FTimer := TThreadTimer.Create;
-  FTimer.Interval := UpdateInterval;
+  FTimer.Interval := 5000;
   FTimer.OnTimer := @DoOnTimer;
   FTimer.StartTimer;
   Start;

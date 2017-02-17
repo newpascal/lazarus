@@ -14,7 +14,7 @@
  *   A copy of the GNU General Public License is available on the World    *
  *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
  *   obtain it by writing to the Free Software Foundation,                 *
- *   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.        *
+ *   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
  *                                                                         *
  ***************************************************************************
 
@@ -168,11 +168,10 @@ end;
 procedure TOpenFileFavToolButton.RefreshMenu(Sender: TObject);
 var
   xM, xSep: TMenuItem;
-  xFavoriteFile: string;
+  xFavoriteFile, xExt: string;
   xMI, xAddToFav: TFileNameMenuItem;
   xProj: TLazProject;
   xMIndex: Integer;
-  xExt: RawByteString;
 begin
   if Assigned(FOrigOnPopup) then
     FOrigOnPopup(Sender);

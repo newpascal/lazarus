@@ -14,7 +14,7 @@
  *   A copy of the GNU General Public License is available on the World    *
  *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
  *   obtain it by writing to the Free Software Foundation,                 *
- *   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.        *
+ *   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
  *                                                                         *
  ***************************************************************************
 
@@ -33,6 +33,7 @@ uses
 
 const
   cRemoteRepository = 'http://packages.lazarus-ide.org/';
+  cRemoteRepositoryTitle = 'Lazarus Central Repository';
   cRemoteJSONFile = 'packagelist.json';
   cLocalRepository =  'onlinepackagemanager';
   cLocalRepositoryPackages = 'packages';
@@ -40,16 +41,22 @@ const
   cLocalRepositoryUpdate = 'update';
   cLocalRepositoryConfig = 'config';
   cLocalRepositoryConfigFile = 'options.xml';
-  cLocalRepositoryUpdatesFile = 'updates.xml';
-  cRestrictedExtensionDef = '*.a,*.o,*.ppu,*.compiled,*.bak,*.or,*.rsj,*.~ ';
-  cRestrictedDirectoryDef = 'lib,backup';
+  cLocalRepositoryUpdatesFile = 'updates_%s.xml';
+  cExcludedFilesDef = '*.,*.a,*.o,*.ppu,*.compiled,*.bak,*.or,*.rsj,*.~,*.exe,*.dbg,*.zip,*.json';
+  cExcludedFoldersDef = 'lib,backup,updates,compiled,.git,.svn';
   cHelpPage = 'http://wiki.freepascal.org/Online_Package_Manager';
+  cHelpPage_CreateRepositoryPackage = 'http://wiki.freepascal.org/Online_Package_Manager#Create_repository_package';
+  cHelpPage_CreateExternalJSON = 'http://wiki.freepascal.org/Online_Package_Manager#Create_JSON_for_updates';
   {$ifdef win64}
-  OpenSSLURL = 'http://packages.lazarus-ide.org/openssl-1.0.2j-x64_86-win64.zip';
+  cOpenSSLURL = 'http://packages.lazarus-ide.org/openssl-1.0.2j-x64_86-win64.zip';
   {$endif}
   {$ifdef win32}
-  OpenSSLURL = 'http://packages.lazarus-ide.org/openssl-1.0.2j-i386-win32.zip';
+  cOpenSSLURL = 'http://packages.lazarus-ide.org/openssl-1.0.2j-i386-win32.zip';
   {$endif}
+  cExtractDir = 'ExtractDir';
+  cSubmitURL_Zip =  'aHR0cDovL2xhemFydXNvcG0uMDAwd2ViaG9zdGFwcC5jb20vemlwLnBocA==';
+  cSubmitURL_JSON = 'aHR0cDovL2xhemFydXNvcG0uMDAwd2ViaG9zdGFwcC5jb20vanNvbi5waHA=';
+  cSep = '#@$%^';
 
 resourcestring
   //package manager
@@ -64,6 +71,7 @@ resourcestring
   rsMainFrm_VSTHeaderColumn_Update = 'Update';
   rsMainFrm_VSTHeaderColumn_Data = 'Status/Data';
   rsMainFrm_VSTHeaderColumn_Button = '';
+  rsMainFrm_VSTHeaderColumn_Rating = 'Rating';
   rsMainFrm_VSTText_PackageCategory = 'Package category';
   rsMainFrm_VSTText_PackageStatus = 'Package status';
   rsMainFrm_VSTText_Version = 'Version';
@@ -71,7 +79,7 @@ resourcestring
   rsMainFrm_VSTText_Author = 'Author';
   rsMainFrm_VSTText_LazCompatibility = 'Lazarus compatibility';
   rsMainFrm_VSTText_FPCCompatibility = 'FPC compatibility';
-  rsMainFrm_VSTText_SupportedWidgetsets = 'Supported widget sets';
+  rsMainFrm_VSTText_SupportedWidgetsets = 'Supported widgetsets';
   rsMainFrm_VSTText_Packagetype = 'Package type';
   rsMainFrm_VSTText_Dependecies = 'Dependencies';
   rsMainFrm_VSTText_License = 'License';
@@ -82,7 +90,7 @@ resourcestring
   rsMainFrm_VSTText_RepositoryFileHash = 'Repository filehash';
   rsMainFrm_VSTText_RepositoryFileDate = 'Available since';
   rsMainFrm_VSTText_HomePageURL = 'Home page';
-  rsMainFrm_VSTText_DownloadURL = 'Update link';
+  rsMainFrm_VSTText_DownloadURL = 'Update link (JSON)';
   rsMainFrm_VSTText_SVNURL = 'SVN';
   rsMainFrm_VSTText_Install0 = 'No';
   rsMainFrm_VSTText_Install1 = 'Yes';
@@ -96,7 +104,7 @@ resourcestring
   rsMainFrm_VSTText_PackageState2 = 'Extracted';
   rsMainFrm_VSTText_PackageState3 = 'Installed';
   rsMainFrm_VSTText_PackageState4 = 'Up to date';
-  rsMainFrm_VSTText_PackageState5 = 'New version available(repository)';
+  rsMainFrm_VSTText_PackageState5 = 'New version available (repository)';
   rsMainFrm_VSTText_PackageState6 = 'New updates available';
   rsMainFrm_VSTText_PackageCategory0  = 'Charts and Graphs';
   rsMainFrm_VSTText_PackageCategory1  = 'Cryptography';
@@ -155,29 +163,35 @@ resourcestring
   rsMainFrm_miCreateJSONForUpdates = 'Create JSON for updates';
   rsMainFrm_miJSONShow =  'Show JSON';
   rsMainFrm_miJSONHide = 'Hide JSON';
+  rsMainFrm_miJSONSort = 'Sort';
+  rsMainFrm_miByName = 'By name';
+  rsMainFrm_miByDate = 'By date';
+  rsMainFrm_miAscendent = 'Ascendent';
+  rsMainFrm_miDescendent = 'Descendent';
+  rsMainFrm_miSaveToFile = 'Save to file';
+  rsMainFrm_miCopyToClpBrd = 'Copy to clipboard';
+  rsMainFrm_miResetRating = 'Reset rating';
   rsMainFrm_PackagenameAlreadyExists = 'A package with the same name already exists!';
-  rsMainFrm_FilenameAlreadyExists = 'A package with the same zip file already exists!';
-  rsMainFrm_PackageAlreadyInstalled = 'The following packages are alrady installed. Continue with install?';
-  rsMainFrm_PackageAlreadyDownloaded = 'The following repository packages already exists in the target folder. Continue?';
+  rsMainFrm_PackageAlreadyInstalled = 'The following packages are already installed. Continue anyway?';
+  rsMainFrm_PackageAlreadyDownloaded = 'The following repository packages already exist in the target folder. Continue?';
   rsMainFrm_PackageUpdateWarning = 'Updating packages from external link is not without a risk!' + sLineBreak + 'Only update if you trust the package maintainer. Continue?';
   rsMainFrm_PackageUpdate0 = 'The following repository packages are not installed or don''t have a valid external download link. The packages will be skipped. Continue?';
-  rsMainFrm_PackageUpdate1 = 'None of the checked repository packages are installed or has a valid external download link.';
+  rsMainFrm_PackageUpdate1 = 'None of the checked repository packages is installed or has a valid external download link.';
   rsMainFrm_rsMessageNoPackage = 'No packages to show.';
   rsMainFrm_rsMessageParsingJSON = 'Parsing JSON. Please wait...';
   rsMainFrm_rsMessageDownload = 'Downloading package list. Please wait...';
-  rsMainFrm_rsMessageNoRepository0 = 'Remote package repository not configured.';
-  rsMainFrm_rsMessageNoRepository1 = 'Do you wish to configure it now?';
+  rsMainFrm_rsMessageChangingRepository = 'Changing repository. Please wait...';
+  rsMainFrm_rsMessageNoRepository0 = 'Remote package repository not configured.' + sLineBreak + 'Do you wish to configure it now?';
   rsMainFrm_rsMessageError0 = 'Cannot download package list. Error message:';
   rsMainFrm_rsMessageError1 = 'Invalid JSON file.';
   rsMainFrm_rsMessageError2 = 'Remote server unreachable.';
   rsMainFrm_rsNoPackageToDownload = 'Please check one or more packages!';
   rsMainFrm_rsRepositoryCleanup0 = 'This will delete all non-installed packages from local repository. Continue?';
-  rsMainFrm_rsRepositoryCleanup1 = 'packages deleted!';
-  rsMainFrm_rsPackageDependency0 = 'depends on package:';
-  rsMainFrm_rsPackageDependency1 = 'Resolve dependency?';
-  rsMainFrm_rsPackageDependency2 = 'Not resolving dependencies might lead to install failure!';
-  rsMainFrm_rsPackageDependency3 = 'is in';
-  rsMainFrm_rsPackageDependency4 = 'dependency list. Unchecking it might lead to installing failure. Do you wish to continue?';
+  rsMainFrm_rsRepositoryCleanup1 = '%s packages deleted!';
+  rsMainFrm_rsPackageDependency0 = 'Package "%s" depends on package "%s". '
+    +'Resolve dependency?';
+  rsMainFrm_rsPackageDependency1 = 'Not resolving dependencies might lead to install failure!';
+  rsMainFrm_rsPackageRating = 'Your vote for package "%s" is: %s. Thank you for voting!';
 
   //progress form
   rsProgressFrm_Caption0 = 'Downloading packages';
@@ -201,33 +215,34 @@ resourcestring
   rsProgressFrm_Error1 = 'Error message:';
   rsProgressFrm_Error2 = 'Cannot extract package:';
   rsProgressFrm_Error3 = 'Cannot install package:';
-  rsProgressFrm_Error4 = 'Dependecy';
-  rsProgressFrm_Error5 = 'not found!';
-  rsProgressFrm_Error6 = 'Unknown error.';
-  rsProgressFrm_Error7 = 'Cannot contact download site';
-  rsProgressFrm_Error8 = 'No valid download link found.';
-  rsProgressFrm_Error9 = 'Cannot add package to the IDE.';
-  rsProgressFrm_Error10 = 'Dependecy';
-  rsProgressFrm_Error11 = 'not found!';
-  rsProgressFrm_Error12 = 'Cannot open package file.';
-  rsProgressFrm_Error13 = 'Cannot compile package.';
-  rsProgressFrm_Error14 = 'Cannot install package.';
+  rsProgressFrm_Error4 = 'Dependency "%s" not found!';
+  rsProgressFrm_Error5 = 'Cannot contact download site';
+  rsProgressFrm_Error6 = 'No valid download link found.';
+  rsProgressFrm_Error7 = 'Cannot open package file.';
+  rsProgressFrm_Error8 = 'Cannot compile package.';
+  rsProgressFrm_Error9 = 'Cannot install package.';
   rsProgressFrm_Conf0 = 'Continue with next one?';
   rsProgressFrm_Info0 = 'Installing package:';
   rsProgressFrm_Info1 = 'Success.';
-  rsProgressFrm_Info2 = 'Contacting download site for';
+  rsProgressFrm_Info2 = 'Contacting download site for "%s" (%s)';
   rsProgressFrm_Info3 = 'Preparing to download. Please wait...';
   rsProgressFrm_Info4 = 'Canceling. Please wait...';
   rsProgressFrm_Info5 = 'Opening package:';
-  rsProgressFrm_Info6 = 'Success.';
-  rsProgressFrm_Info7 = 'Compiling package:';
-  rsProgressFrm_Info8 = 'Installing package:';
+  rsProgressFrm_Info6 = 'Compiling package:';
 
   //options form
   rsOptions_FrmCaption = 'Options';
+  rsOptions_tsGeneral_Caption = 'General';
+  rsOptions_tsProxy_Caption = 'Proxy';
+  rsOptions_tsFolders_Caption = 'Folders';
+  rsOptions_tsProfiles_Caption = 'Profiles';
   rsOptions_lbRemoteRepository_Caption = 'Remote repository';
   rsOptions_cbForceDownloadExtract_Caption = 'Always force download and extract';
   rsOptions_cbForceDownloadExtract_Hint = 'If this option is checked the packages are always re-downloaded/extracted before install';
+  rsOptions_lbSelectProfile_Caption = 'Select profile';
+  rsOptions_cbSelectProfile_Item0 = 'Regular user';
+  rsOptions_cbSelectProfile_Item1 = 'Package maintainer';
+  rsOptions_cbSelectProfile_Hint = 'Choose a profile that best fits you';
   rsOptions_cbDelete_Caption = 'Delete downloaded zip files after installation/update';
   rsOptions_cbDelete_Hint = 'If this option is checked the downloaded zip file is always deleted after installation';
   rsOptions_cbProxy_Caption = 'Use proxy';
@@ -245,8 +260,33 @@ resourcestring
   rsOptions_RemoteRepository_Information = 'Please enter the remote repository address!';
   rsOptions_ProxyServer_Info = 'Please enter the proxy server address!';
   rsOptions_ProxyPort_Info = 'Please enter the proxy server port!';
-  rsOptions_InvalidDirectory_Info = 'Please enter a valid directory';
+  rsOptions_InvalidDirectory_Info = 'Please enter a valid directory!';
   rsOptions_RestoreDefaults_Conf = 'This will restore the default settings. Continue?';
+  rsOptions_lbCheckForUpdates_Caption = 'Check for package updates';
+  rsOptions_cbCheckForUpdates_Item0 = 'Every few minutes';
+  rsOptions_cbCheckForUpdates_Item1 = 'Every hour';
+  rsOptions_cbCheckForUpdates_Item2 = 'Once per day';
+  rsOptions_cbCheckForUpdates_Item3 = 'Weekly';
+  rsOptions_cbCheckForUpdates_Item4 = 'Montly';
+  rsOptions_cbCheckForUpdates_Item5 = 'Never';
+  rsOptions_lbLastUpdate_Caption = 'Last update: ';
+  rsOptions_LastUpdate_Never = 'never';
+  rsOptions_lbDaysToShowNewPackages_Caption = 'Show different icon for newly added packages for (days):';
+  rsOptions_lbFilterFiles_Caption = 'Excluded files (packages)';
+  rsOptions_lbFilterDirs_Caption = 'Excluded folders (packages)';
+  rsOptions_bAdd_Caption = 'Add';
+  rsOptions_bEdit_Caption = 'Edit';
+  rsOptions_bDelete_Caption = 'Delete';
+  rsOptions_lbExcludeFiles_Hint = 'These files will be excluded from repository packages (see: "Create repository package")';
+  rsOptions_lbExcludeFolders_Hint = 'These folders will be excluded from repository packages (see: "Create repository package")';
+  rsOptions_InputBox_Caption = 'Add new exclusion';
+  rsOptions_InputBox_Text0 = 'Type the extension name:';
+  rsOptions_InputBox_Text1 = 'Type the folder name:';
+  rsOptions_InputBox_Info0 = 'Please select a file extension!';
+  rsOptions_InputBox_Info1 = 'Please select a folder!';
+  rsOptions_InputBox_Conf0 = 'Delete selected extension ("%s")?';
+  rsOptions_InputBox_Conf1 = 'Delete selected folder ("%s")?';
+
 
   //packagelist form
   rsPackageListFrm_Caption0 = 'Installed package list';
@@ -259,35 +299,49 @@ resourcestring
   //createrepositorypackage form
   rsCreateRepositoryPackageFrm_Caption = 'Create repository package';
   rsCreateRepositoryPackageFrm_pnMessage_Caption = 'Please wait...';
-  rsCreateRepositoryPackageFrm_cbOpen_Caption = 'After create open containing folder';
-  rsCreateRepositoryPackageFrm_lbPackageDir_Caption = 'Select package directory:';
+  rsCreateRepositoryPackageFrm_lbPackageDir_Caption = 'Package directory:';
   rsCreateRepositoryPackageFrm_pnCaption_Caption0 = 'Available packages';
   rsCreateRepositoryPackageFrm_pnCaption_Caption1 = 'Description';
   rsCreateRepositoryPackageFrm_pnCaption_Caption2 = 'Data';
   rsCreateRepositoryPackageFrm_NoPackage = 'No packages found!';
   rsCreateRepositoryPackageFrm_lbCategory_Caption = 'Category:';
-  rsCreateRepositoryPackageFrm_lbDisplayName_Caption = 'Display name';
+  rsCreateRepositoryPackageFrm_lbDisplayName_Caption = 'Display name:';
   rsCreateRepositoryPackageFrm_lbLazCompatibility_Caption = 'Lazarus compatibility:';
   rsCreateRepositoryPackageFrm_lbFPCCompatibility_Caption = 'FPC compatibility:';
-  rsCreateRepositoryPackageFrm_lbSupportedWidgetset_Caption = 'Supported widgetset:';
+  rsCreateRepositoryPackageFrm_lbSupportedWidgetset_Caption = 'Supported widgetsets:';
   rsCreateRepositoryPackageFrm_lbHomePageURL_Caption = 'Home page:';
-  rsCreateRepositoryPackageFrm_lbDownloadURL_Caption = 'Download link:';
-  rsCreateRepositoryPackageFrm_lbSVNURL_Caption = 'SVN';
+  rsCreateRepositoryPackageFrm_lbDownloadURL_Caption = 'Update link (JSON):';
+  rsCreateRepositoryPackageFrm_lbSVNURL_Caption = 'SVN:';
   rsCreateRepositoryPackageFrm_SDDTitleSrc = 'Select package directory';
   rsCreateRepositoryPackageFrm_SDDTitleDst = 'Save repository package to...';
   rsCreateRepositoryPackageFrm_Error0 = 'Error reading package';
   rsCreateRepositoryPackageFrm_Error1 = 'Cannot create zip file:';
   rsCreateRepositoryPackageFrm_Error2 = 'Cannot create JSON file:';
+  rsCreateRepositoryPackageFrm_Error3  = 'Cannot send file: "%s"';
   rsCreateRepositoryPackageFrm_Message0 = 'Please select a category for package:';
-  rsCreateRepositoryPackageFrm_Message1 = 'Please enter supported lazarus versions for package:';
+  rsCreateRepositoryPackageFrm_Message1 = 'Please enter supported Lazarus versions for package:';
   rsCreateRepositoryPackageFrm_Message2 = 'Please enter supported FPC versions for package:';
   rsCreateRepositoryPackageFrm_Message3 = 'Please enter supported widgetsets for package:';
   rsCreateRepositoryPackageFrm_Message4 = 'Compressing package. Please wait...';
   rsCreateRepositoryPackageFrm_Message5 = 'Creating JSON. Please wait...';
-  rsCreateRepositoryPackageFrm_Message6 = 'Repository package successfully created.';
+  rsCreateRepositoryPackageFrm_Message6 = 'Creating JSON for updates. Please wait...';
+  rsCreateRepositoryPackageFrm_Message7 = 'Repository package successfully created.';
+  rsCreateRepositoryPackageFrm_Message8 = 'Sending files ("%s"). Please wait...';
+  rsCreateRepositoryPackageFrm_Message9 = 'Files successfully sent. Thank you for submitting packages!' + sLineBreak + 'Your request will be processed in 24 hours.';
+  rsCreateRepositoryPackageFrm_Message10 = 'Cancelling upload. Please wait...';
+  rsCreateRepositoryPackageFrm_bHelp_Caption = 'Help';
+  rsCreateRepositoryPackageFrm_bHelp_Hint = 'Open help';
+  rsCreateRepositoryPackageFrm_bOptions_Caption = 'Options';
+  rsCreateRepositoryPackageFrm_bOptions_Hint = 'Open options dialog';
+  rsCreateRepositoryPackageFrm_bCreate_Caption = 'Create';
+  rsCreateRepositoryPackageFrm_bCreate_Hint = 'Create files locally';
+  rsCreateRepositoryPackageFrm_bSubmit_Caption = 'Submit';
+  rsCreateRepositoryPackageFrm_bSubmit_Hint = 'Submit files to remote server';
+  rsCreateRepositoryPackageFrm_bCancel_Caption = 'Cancel';
+  rsCreateRepositoryPackageFrm_bCancel_Hint = 'Close this dialog';
 
   //createupdatejson
-  rsCreateJSONForUpdatesFrm_Caption = 'Create update JSON for package: ';
+  rsCreateJSONForUpdatesFrm_Caption = 'Create update JSON for package:';
   rsCreateJSONForUpdatesFrm_bHelp_Caption = 'Help';
   rsCreateJSONForUpdatesFrm_bCreate_Caption = 'Create';
   rsCreateJSONForUpdatesFrm_bClose_Caption = 'Cancel';
@@ -297,11 +351,12 @@ resourcestring
   rsCreateJSONForUpdatesFrm_Column1_Text = 'Version';
   rsCreateJSONForUpdatesFrm_Column2_Text = 'Force notify';
   rsCreateJSONForUpdatesFrm_Column3_Text = 'Internal version';
-  rsCreateJSONForUpdatesFrm_Message0 = 'Please select a repository package!';
-  rsCreateJSONForUpdatesFrm_Message1 = 'Please select only one repository package!';
+  rsCreateJSONForUpdatesFrm_Message0 = 'Please check a repository package!';
+  rsCreateJSONForUpdatesFrm_Message1 = 'Please check only one repository package!';
   rsCreateJSONForUpdatesFrm_Message2 = 'Please enter a valid URL!';
   rsCreateJSONForUpdatesFrm_Message3 = 'Please check at least one package file!';
-
+  rsCreateJSONForUpdatesFrm_Message4 = 'JSON for updates successfully created.';
+  rsCreateJSONForUpdatesFrm_Error1 = 'Cannot create JSON for updates! Error message:';
 
   //categories form
   rsCategoriesFrm_Caption = 'List with categories';
@@ -309,6 +364,18 @@ resourcestring
   rsCategoriesFrm_bYes_Caption = 'OK';
   rsCategoriesFrm_bCancel_Caption = 'Cancel';
 
+  //repositories
+  rsRepositories_Caption = 'Repositories';
+  rsRepositories_VST_HeaderColumn = 'Repository Address';
+  rsRepositories_bAdd_Caption = 'Add';
+  rsRepositories_bEdit_Caption = 'Edit';
+  rsRepositories_bDelete_Caption = 'Delete';
+  rsRepositories_bOk_Caption = 'OK';
+  rsRepositories_bCancel_Caption = 'Cancel';
+  rsRepositories_Confirmation0 = 'Delete selected repository "%s"?';
+  rsRepositories_InputBox_Caption0 = 'Add repository';
+  rsRepositories_InputBox_Caption1 = 'Edit repository';
+  rsRepositories_InputBox_Text = 'Type the repository address:';
 
 implementation
 

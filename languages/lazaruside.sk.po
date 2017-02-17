@@ -2403,6 +2403,10 @@ msgstr "Farba markera"
 msgid "Highlight of Word under Caret"
 msgstr ""
 
+#: lazarusidestrconsts.dlgmarkupoutline
+msgid "Outline (global)"
+msgstr ""
+
 #: lazarusidestrconsts.dlgmarkupuserdefined
 msgctxt "lazarusidestrconsts.dlgmarkupuserdefined"
 msgid "User defined markup"
@@ -2504,6 +2508,10 @@ msgstr ""
 
 #: lazarusidestrconsts.dlgmarkupuserdefinedpagemain
 msgid "Main settings"
+msgstr ""
+
+#: lazarusidestrconsts.dlgmarkupwordbracket
+msgid "Word Brackets on caret (global)"
 msgstr ""
 
 #: lazarusidestrconsts.dlgmarkupwordfulllen
@@ -3047,8 +3055,16 @@ msgstr ""
 msgid "Extended Pascal Keyword Options"
 msgstr ""
 
+#: lazarusidestrconsts.dlgpaskeywordsmarkup
+msgid "Markup (on caret)"
+msgstr ""
+
 #: lazarusidestrconsts.dlgpaskeywordsmatches
 msgid "Matching Keywords"
+msgstr ""
+
+#: lazarusidestrconsts.dlgpaskeywordsoutline
+msgid "Outline"
 msgstr ""
 
 #: lazarusidestrconsts.dlgpassoptslinker
@@ -5047,8 +5063,8 @@ msgstr "Spodné okraje"
 
 #: lazarusidestrconsts.lisbottomsiblingcomboboxhint
 #, fuzzy
-#| msgid "This is the sibling control to which the bottom side is anchored. Leave empty for parent."
-msgid "This is the sibling control to which the bottom side is anchored. Leave empty for anchoring to parent in Delphi style (BorderSpacing and ReferenceSide does not matter)."
+#| msgid "This is the sibling control to which the bottom side is anchored. Leave empty for anchoring to parent in Delphi style (BorderSpacing and ReferenceSide does not matter)."
+msgid "This is the sibling control to which the bottom side is anchored. Leave empty for anchoring to parent in Delphi style (BorderSpacing and ReferenceSide do not matter)."
 msgstr "Toto je súrodenec prvku, ku ktorého spodnej strane je ukotvený. Ponechajte prázdne pre rodiča."
 
 #: lazarusidestrconsts.lisbottomspaceequally
@@ -7096,10 +7112,6 @@ msgstr "Ovládací prvok musí mať rodiča"
 msgid "Add comment after replacement"
 msgstr ""
 
-#: lazarusidestrconsts.lisconvaddedunittousessection
-msgid "Added unit %s to uses section"
-msgstr ""
-
 #: lazarusidestrconsts.lisconvaddingflagforregister
 msgid "Adding flag for \"Register\" procedure in unit %s."
 msgstr ""
@@ -7134,6 +7146,10 @@ msgstr ""
 
 #: lazarusidestrconsts.lisconvdelphiaddedpackagedependency
 msgid "Added Package %s as a dependency."
+msgstr ""
+
+#: lazarusidestrconsts.lisconvdelphiaddedunittousessection
+msgid "Added unit \"%s\" to uses section."
 msgstr ""
 
 #: lazarusidestrconsts.lisconvdelphiallsubdirsscanned
@@ -7233,8 +7249,8 @@ msgstr ""
 msgid "Omitted unit %s from project"
 msgstr ""
 
-#: lazarusidestrconsts.lisconvdelphiremovedunitinusessection
-msgid "Removed unit \"%s\" in uses section."
+#: lazarusidestrconsts.lisconvdelphiremovedunitfromusessection
+msgid "Removed unit \"%s\" from uses section."
 msgstr ""
 
 #: lazarusidestrconsts.lisconvdelphirepairingformfiles
@@ -10003,6 +10019,16 @@ msgstr ""
 
 #: lazarusidestrconsts.lisgplnotice
 #, fuzzy,badformat
+#| msgid ""
+#| "<description>\n"
+#| "\n"
+#| "Copyright (C) <year> <name of author> <contact>\n"
+#| "\n"
+#| "This source is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation; either version 2 of the License, or (at your option) any later version. \n"
+#| "\n"
+#| "This code is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details. \n"
+#| "\n"
+#| "A copy of the GNU General Public License is available on the World Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also obtain it by writing to the Free Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.\n"
 msgid ""
 "<description>\n"
 "\n"
@@ -10012,7 +10038,7 @@ msgid ""
 "\n"
 "This code is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details. \n"
 "\n"
-"A copy of the GNU General Public License is available on the World Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also obtain it by writing to the Free Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.\n"
+"A copy of the GNU General Public License is available on the World Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also obtain it by writing to the Free Software Foundation, Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.\n"
 msgstr "<description>%sCopyright (C) <rok> <meno autora> <kontakt>%sTento zdrojový kód je slobodný softvér; môžete ho rozširovať a/alebo upravovať podľa podmienok GNU Všeobecnej verejnej licencie, tak ako je zverejnené Nadáciou Free Software; verzie 2 licencie alebo (podľa svojho rozhodnutia) akejkoľvek neskoršej verzie. %sTento zdrojový kód je šírený v nádeji, že bude užitočný, ale BEZ AKEJKO2VEK ZÁRUKY; dokonca aj bez zahrnutej záruky PREDAJNOSTI alebo VHDODNOSTI NA PRÍSLUŠNÝ ÚČEL.  Ďalšie detaily si pozrite v GNU Všeobecnej verejnej licencii. %sKópia GNU Všeobecnej verejnej licencie je dostupná cez World Wide Web na <http://www.gnu.org/copyleft/gpl.html>. Môžete ju získaj aj napísaním do Nadácie Free Software, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA."
 
 #: lazarusidestrconsts.lisgroup
@@ -11789,8 +11815,8 @@ msgstr "Ľavé ukotvenie"
 
 #: lazarusidestrconsts.lisleftsiblingcomboboxhint
 #, fuzzy
-#| msgid "This is the sibling control to which the left side is anchored. Leave empty for parent."
-msgid "This is the sibling control to which the left side is anchored. Leave empty for anchoring to parent in Delphi style (BorderSpacing and ReferenceSide does not matter)."
+#| msgid "This is the sibling control to which the left side is anchored. Leave empty for anchoring to parent in Delphi style (BorderSpacing and ReferenceSide does not matter)."
+msgid "This is the sibling control to which the left side is anchored. Leave empty for anchoring to parent in Delphi style (BorderSpacing and ReferenceSide do not matter)."
 msgstr "Toto·je·súrodenec·prvku,·ku·ktorého·ľavej·strane·je·ukotvený.·Ponechajte·prázdne·pre·rodiča"
 
 #: lazarusidestrconsts.lisleftsides
@@ -11828,6 +11854,16 @@ msgstr ""
 
 #: lazarusidestrconsts.lislgplnotice
 #, fuzzy,badformat
+#| msgid ""
+#| "<description>\n"
+#| "\n"
+#| "Copyright (C) <year> <name of author> <contact>\n"
+#| "\n"
+#| "This library is free software; you can redistribute it and/or modify it under the terms of the GNU Library General Public License as published by the Free Software Foundation; either version 2 of the License, or (at your option) any later version. \n"
+#| "\n"
+#| "This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Library General Public License for more details. \n"
+#| "\n"
+#| "You should have received a copy of the GNU Library General Public License along with this library; if not, write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.\n"
 msgid ""
 "<description>\n"
 "\n"
@@ -11837,7 +11873,7 @@ msgid ""
 "\n"
 "This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Library General Public License for more details. \n"
 "\n"
-"You should have received a copy of the GNU Library General Public License along with this library; if not, write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.\n"
+"You should have received a copy of the GNU Library General Public License along with this library; if not, write to the Free Software Foundation, Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.\n"
 msgstr "<popis>%sCopyright (C) <rok> <meno autora> <kontakt>%sToto je slobodný program;môžete ho distribuovať a/alebo upravovať za podmienok GNU Library General Public License, tak ako ju zverejnila Free Software Foundation; buď verzie 2 Licencie alebo (podľa Vašej voľby) akejkoľvek novšej verzie. %sTento program je distribuovaný v nádeji, že bude užitočný, ale BEZ AKEJKOĽVEK ZÁRUKY; dokonca aj bbez záruky MERCHANTABILITY alebo FITNESS FOR A PARTICULAR PURPOSE. Ďalšie podrobnosti hľadajte v GNU Library General Public License. %sKópi GNU Library General Public License máte získať spolu s touto knižnicou, ak nie napíšte Free Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA."
 
 #: lazarusidestrconsts.lislibrarypath
@@ -14016,6 +14052,18 @@ msgstr ""
 
 #: lazarusidestrconsts.lismodifiedlgplnotice
 #, fuzzy,badformat
+#| msgid ""
+#| "<description>\n"
+#| "\n"
+#| "Copyright (C) <year> <name of author> <contact>\n"
+#| "\n"
+#| "This library is free software; you can redistribute it and/or modify it under the terms of the GNU Library General Public License as published by the Free Software Foundation; either version 2 of the License, or (at your option) any later version with the following modification:\n"
+#| "\n"
+#| "As a special exception, the copyright holders of this library give you permission to link this library with independent modules to produce an executable, regardless of the license terms of these independent modules,and to copy and distribute the resulting executable under terms of your choice, provided that you also meet, for each linked independent module, the terms and conditions of the license of that module. An independent module is a module which is not derived from or based on this library. If you modify this library, you may extend this exception to your version of the library, but you are not obligated to do so. If you do not wish to do so, delete this exception statement from your version.\n"
+#| "\n"
+#| "This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Library General Public License for more details. \n"
+#| "\n"
+#| "You should have received a copy of the GNU Library General Public License along with this library; if not, write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.\n"
 msgid ""
 "<description>\n"
 "\n"
@@ -14027,7 +14075,7 @@ msgid ""
 "\n"
 "This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Library General Public License for more details. \n"
 "\n"
-"You should have received a copy of the GNU Library General Public License along with this library; if not, write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.\n"
+"You should have received a copy of the GNU Library General Public License along with this library; if not, write to the Free Software Foundation, Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.\n"
 msgstr "<description>%sCopyright (C) <year> <meno autora> <contact>%sTáto knižnica je slobodný softvér; môžete ju distribuovať a/alebo upravovať podľa ustanovení GNU Library General Public License tak ako ju zverenila Free Software Foundation; buď verzie 2 Licencie alebo (podľa vašej voľby) akoukoľvek novšej verzie s nasledujúcimi úpravami:%sAko špeciálny výnimka, vlastníci autorského práva tejto knižnice Vám dovoľujú prepojiť túto knižnicu s nezávislými modulmi za účelom vytvorenia programov, pričom nezávisí na licencii týchto nezávislých modulov, a kopírovať a distribuovať výsledné programy za podmienok poskytnutých podľa Vášho rozhodnutia, ktoré sa môžu líšiť pre každý nezávislý modul. Nezávislý modul je modul, ktorý nie je odvodený alebo založený na tejto knižnici. Ak upravujete túto knižnicu, môžete rozšíriť túto výnimku pre svoju verziu knižnice, ale nie je to vaša povinnosť. Ak to nechcete urobiť, zmažte túto výnimku zo svojej verzie. %sTento program je distribuovaný v nádeji, že bude užitočný, ale BEZ AKEJKOĽVEK ZÁRUKY; dokonca aj bbez záruky MERCHANTABILITY alebo FITNESS FOR A PARTICULAR PURPOSE. Ďalšie podrobnosti hľadajte v GNU Library General Public License. %sKópi GNU Library General Public License máte získať spolu s touto knižnicou, ak nie napíšte Free Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA."
 
 #: lazarusidestrconsts.lismodify
@@ -17144,8 +17192,8 @@ msgstr "Pravý okraj.·Táto·hodnota·je·pridaná·k·základnému·okraju·a�
 
 #: lazarusidestrconsts.lisrightsiblingcomboboxhint
 #, fuzzy
-#| msgid "This is the sibling control to which the right side is anchored. Leave empty for parent."
-msgid "This is the sibling control to which the right side is anchored. Leave empty for anchoring to parent in Delphi style (BorderSpacing and ReferenceSide does not matter)."
+#| msgid "This is the sibling control to which the right side is anchored. Leave empty for anchoring to parent in Delphi style (BorderSpacing and ReferenceSide does not matter)."
+msgid "This is the sibling control to which the right side is anchored. Leave empty for anchoring to parent in Delphi style (BorderSpacing and ReferenceSide do not matter)."
 msgstr "Toto·je·súrodenec·prvku,·ku·ktorého·pravej·strane·je·ukotvený.·Ponechajte·prázdne·pre·rodiča"
 
 #: lazarusidestrconsts.lisrightsides
@@ -18047,6 +18095,14 @@ msgstr ""
 msgid "Tab Order of %s"
 msgstr "Poradie pre tabulátor"
 
+#: lazarusidestrconsts.listaborderrecursionhint
+msgid "Calculate tab order recursively for child controls"
+msgstr ""
+
+#: lazarusidestrconsts.listaborderrecursively
+msgid "recursively"
+msgstr ""
+
 #: lazarusidestrconsts.listabordersorthint
 msgid "Calculate tab order for controls by their X- and Y- positions"
 msgstr ""
@@ -18891,8 +18947,8 @@ msgstr "Horné okraje"
 
 #: lazarusidestrconsts.listopsiblingcomboboxhint
 #, fuzzy
-#| msgid "This is the sibling control to which the top side is anchored. Leave empty for parent."
-msgid "This is the sibling control to which the top side is anchored. Leave empty for anchoring to parent in Delphi style (BorderSpacing and ReferenceSide does not matter)."
+#| msgid "This is the sibling control to which the top side is anchored. Leave empty for anchoring to parent in Delphi style (BorderSpacing and ReferenceSide does not matter)."
+msgid "This is the sibling control to which the top side is anchored. Leave empty for anchoring to parent in Delphi style (BorderSpacing and ReferenceSide do not matter)."
 msgstr "Toto·je·súrodenec·prvku,·ku·ktorého·hornej·strane·je·ukotvený.·Ponechajte·prázdne·pre·rodiča"
 
 #: lazarusidestrconsts.listopspaceequally

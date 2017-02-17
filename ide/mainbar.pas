@@ -22,7 +22,7 @@
  *   A copy of the GNU General Public License is available on the World    *
  *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
  *   obtain it by writing to the Free Software Foundation,                 *
- *   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.        *
+ *   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
  *                                                                         *
  ***************************************************************************
 }
@@ -453,7 +453,7 @@ begin
 end;
 
 function TMainIDEBar.CalcNonClientHeight: Integer;
-{$IF DEFINED(LCLWin32) OR DEFINED(LCLGtk2) OR DEFINED(LCLQt)}
+{$IF DEFINED(LCLWin32) OR DEFINED(LCLGtk2) OR DEFINED(LCLQt) OR DEFINED(LCLQt5)}
 var
   WindowRect, WindowClientRect: TRect;
 {$ENDIF}
@@ -474,7 +474,7 @@ begin
   if not Showing then
     Exit(0);
 
-  {$IF DEFINED(LCLWin32) OR DEFINED(LCLGtk2) OR DEFINED(LCLQt)}
+  {$IF DEFINED(LCLWin32) OR DEFINED(LCLGtk2) OR DEFINED(LCLQt) OR DEFINED(LCLQt5)}
   //Gtk2 + Win32 + Qt
   //retrieve real main menu height because
   // - Win32: multi-line is possible (SM_CYMENU reflects only single line)
@@ -485,7 +485,7 @@ begin
 
   Result := WindowClientRect.Top - WindowRect.Top;
 
-  {$IFDEF LCLQt}
+  {$IF DEFINED(LCLQt) OR DEFINED(LCLQt5)}
   // ToDo: fix this properly for QT.
   //  Result can be negative (-560) when both Coolbar and Palette are hidden.
   if Result < 0 then
@@ -651,23 +651,18 @@ end;
 
 procedure TMainIDEBar.UpdateIDEComponentPalette(IfFormChanged: boolean);
 var
-  OldLastCompPaletteForm, LastActiveForm: TCustomForm;
-  AResult: Boolean;
+  LastActiveForm: TCustomForm;
 begin
   // Package manager updates the palette initially.
   LastActiveForm := LazarusIDE.LastFormActivated;
   if not LazarusIDE.IDEStarted
   or (IfFormChanged and (LastCompPaletteForm=LastActiveForm)) then
     exit;
-  OldLastCompPaletteForm:=LastCompPaletteForm;
-  LastCompPaletteForm:=LastActiveForm;
-  AResult:=(LastActiveForm<>nil) and (LastActiveForm.Designer<>nil)
+  LastCompPaletteForm := LastActiveForm;
+  IDEComponentPalette.HideControls :=
+    (LastActiveForm<>nil) and (LastActiveForm.Designer<>nil)
     and (LastActiveForm.Designer.LookupRoot<>nil)
     and not (LastActiveForm.Designer.LookupRoot is TControl);
-  IDEComponentPalette.HideControls:=AResult;
-  // Don't update palette at the first time if not hiding controls.
-  if (OldLastCompPaletteForm = Nil) and not IDEComponentPalette.HideControls then
-    exit;
   {$IFDEF VerboseComponentPalette}
   DebugLn(['* TMainIDEBar.UpdateIDEComponentPalette: Updating palette *',
            ', HideControls=', IDEComponentPalette.HideControls]);

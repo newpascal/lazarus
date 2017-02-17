@@ -203,7 +203,10 @@ var
       ScrollMsg := WM_VSCROLL;
     end;
     if Windows.GetScrollInfo(Handle, ScrollBar, ScrollInfo)
-    and (Int64(ScrollInfo.nPage) < Int64(ScrollInfo.nMax)) then
+    and (((MMessage^.WheelDelta < 0)
+        and (Int64(ScrollInfo.nPos) <= Int64(ScrollInfo.nMax) - Int64(ScrollInfo.nPage)))
+      or ((MMessage^.WheelDelta > 0)
+        and (Int64(ScrollInfo.nPos) > Int64(ScrollInfo.nMin)))) then
     begin
       if Mouse.WheelScrollLines < 0 then
         // -1 means, scroll one page
@@ -1874,6 +1877,13 @@ begin
     Result := MultiMon.GetMonitorInfo(hMonitor, LPMonitorInfo(lpmi));
 end;
 
+function TWin32WidgetSet.GetDpiForMonitor(hmonitor: HMONITOR; dpiType: TMonitorDpiType; out dpiX: UINT; out dpiY: UINT): HRESULT;
+begin
+  if WindowsVersion >= wv8_1 then
+    Result := Win32Int.GetDpiForMonitor(hmonitor, dpiType, dpiX, dpiY)
+  else
+    Result := S_FALSE;
+end;
 {------------------------------------------------------------------------------
   Method:  GetObject
   Params:  GDIObj  - handle to graphics object of interest

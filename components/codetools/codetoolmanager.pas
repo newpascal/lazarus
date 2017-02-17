@@ -14,7 +14,7 @@
  *   A copy of the GNU General Public License is available on the World    *
  *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
  *   obtain it by writing to the Free Software Foundation,                 *
- *   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.        *
+ *   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
  *                                                                         *
  ***************************************************************************
 
@@ -130,6 +130,7 @@ type
     FWriteLockCount: integer;// Set/Unset counter
     FWriteLockStep: integer; // current write lock ID
     FHandlers: array[TCodeToolManagerHandler] of TMethodList;
+    FErrorDbgMsg: string;
     procedure DoOnRescanFPCDirectoryCache(Sender: TObject);
     function GetBeautifier: TBeautifyCodeOptions; inline;
     function DoOnScannerGetInitValues(Scanner: TLinkScanner; Code: Pointer;
@@ -277,6 +278,7 @@ type
     property ErrorLine: integer read fErrorLine;
     property ErrorMessage: string read fErrorMsg;
     property ErrorTopLine: integer read fErrorTopLine;
+    property ErrorDbgMsg: string read FErrorDbgMsg;
     property Abortable: boolean read FAbortable write SetAbortable;
     property OnCheckAbort: TOnCodeToolCheckAbort
                                          read FOnCheckAbort write FOnCheckAbort;
@@ -1850,11 +1852,11 @@ end;
 procedure TCodeToolManager.WriteError;
 begin
   if FWriteExceptions then begin
-    DbgOut('### TCodeToolManager.HandleException: "'+ErrorMessage+'"');
-    if ErrorLine>0 then DbgOut(' at Line=',DbgS(ErrorLine));
-    if ErrorColumn>0 then DbgOut(' Col=',DbgS(ErrorColumn));
-    if ErrorCode<>nil then DbgOut(' in "',ErrorCode.Filename,'"');
-    DebugLn('');
+    FErrorDbgMsg:='### TCodeToolManager.HandleException: "'+ErrorMessage+'"';
+    if ErrorLine>0 then FErrorDbgMsg+=' at Line='+DbgS(ErrorLine);
+    if ErrorColumn>0 then FErrorDbgMsg+=' Col='+DbgS(ErrorColumn);
+    if ErrorCode<>nil then FErrorDbgMsg+=' in "'+ErrorCode.Filename+'"';
+    Debugln(FErrorDbgMsg);
     {$IFDEF CTDEBUG}
     WriteDebugReport(true,false,false,false,false,false);
     {$ENDIF}
@@ -6292,8 +6294,10 @@ begin
 end;
 
 procedure TCodeToolManager.ConsistencyCheck;
+{$IF FPC_FULLVERSION<30101}
 var
   CurResult: LongInt;
+{$ENDIF}
 begin
   if FCurCodeTool<>nil then begin
     FCurCodeTool.ConsistencyCheck;
@@ -6303,12 +6307,17 @@ begin
   SourceCache.ConsistencyCheck;
   GlobalValues.ConsistencyCheck;
   SourceChangeCache.ConsistencyCheck;
+  {$IF FPC_FULLVERSION<30101}
   CurResult:=FPascalTools.ConsistencyCheck;
   if CurResult<>0 then
     RaiseCatchableException(IntToStr(CurResult));
   CurResult:=FDirectivesTools.ConsistencyCheck;
   if CurResult<>0 then
     RaiseCatchableException(IntToStr(CurResult));
+  {$ELSE}
+  FPascalTools.ConsistencyCheck;
+  FDirectivesTools.ConsistencyCheck;
+  {$ENDIF}
 end;
 
 procedure TCodeToolManager.WriteDebugReport(WriteTool,

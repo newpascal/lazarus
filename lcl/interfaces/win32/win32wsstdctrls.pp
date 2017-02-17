@@ -50,6 +50,7 @@ type
 
   TWin32WSCustomGroupBox = class(TWSCustomGroupBox)
   published
+    class procedure SetText(const AWinControl: TWinControl; const AText: string); override;
     class function CreateHandle(const AWinControl: TWinControl;
           const AParams: TCreateParams): HWND; override;
     class procedure SetBiDiMode(const AWinControl: TWinControl; UseRightToLeftAlign,
@@ -175,6 +176,7 @@ type
     class procedure SetReadOnly(const ACustomEdit: TCustomEdit; NewReadOnly: boolean); override;
     class procedure SetSelStart(const ACustomEdit: TCustomEdit; NewStart: integer); override;
     class procedure SetSelLength(const ACustomEdit: TCustomEdit; NewLength: integer); override;
+    class procedure SetSelText(const ACustomEdit: TCustomEdit; const NewSelText: string); override;
     class procedure SetText(const AWinControl: TWinControl; const AText: string); override;
     class procedure SetFont(const AWinControl: TWinControl; const AFont: TFont); override;
     class procedure SetTextHint(const ACustomEdit: TCustomEdit; const ATextHint: string); override;
@@ -200,6 +202,7 @@ type
     class procedure SetScrollbars(const ACustomMemo: TCustomMemo; const NewScrollbars: TScrollStyle); override;
     class procedure SetWordWrap(const ACustomMemo: TCustomMemo; const NewWordWrap: boolean); override;
     class procedure ScrollBy(const AWinControl: TWinControl; DeltaX, DeltaY: integer); override;
+    class procedure SetSelText(const ACustomEdit: TCustomEdit; const NewSelText: string); override;
   end;
 
   { TWin32WSEdit }
@@ -498,6 +501,13 @@ end;
 
 function GroupBoxWindowProc(Window: HWnd; Msg: UInt; WParam: Windows.WParam;
     LParam: Windows.LParam): LResult; stdcall;
+var
+  Info: PWin32WindowInfo;
+  DC: HDC;
+  Flags: Cardinal;
+  ARect: TRect;
+  WideBuffer: WideString;
+  GroupBox: TCustomGroupBox;
 begin
   // move groupbox specific code here
   case Msg of
@@ -513,6 +523,39 @@ begin
         // to redraw graphic controls on it (issue 0007877)
         if ThemeServices.ThemesAvailable then
           InvalidateRect(Window, nil, True);
+        Exit;
+      end;
+    WM_PAINT:
+      begin
+        Result := WindowProc(Window, Msg, WParam, LParam);
+        // bug in comctrl32.dll see Mantis #27491, we have to paint a grayed
+        // caption if groupbox is disabled
+        if ThemeServices.ThemesEnabled then
+        begin
+          Info := GetWin32WindowInfo(Window);
+          if Assigned(Info) and (Info^.WinControl is TCustomGroupBox)
+          and not TCustomGroupBox(Info^.WinControl).Enabled then
+          begin
+            GroupBox := TCustomGroupBox(Info^.WinControl);
+            DC := GetDC(Window);
+            SetBkColor(DC, GetSysColor(COLOR_BTNFACE));
+            SetTextColor(DC, GetSysColor(COLOR_GRAYTEXT));
+            SelectObject(DC, GroupBox.Font.Reference.Handle);
+            Flags := 0;
+            ARect := Classes.Rect(0, 0, 0, 0);
+            WideBuffer := UTF8ToUTF16(TCustomGroupBox(Info^.WinControl).Caption);
+            DrawTextW(DC, PWideChar(WideBuffer), Length(WideBuffer), ARect, Flags or DT_CALCRECT);
+            if GroupBox.BiDiMode = bdRightToLeft then
+            begin
+              Flags := Flags or DT_RIGHT;
+              OffsetRect(ARect, GroupBox.Width - ARect.Right - 7, 0);
+            end
+            else
+              OffsetRect(ARect, 9, 0);
+            DrawTextW(DC, PWideChar(WideBuffer), Length(WideBuffer), ARect, Flags);
+            ReleaseDC(Window, DC);
+          end;
+        end;
         Exit;
       end;
   end;
@@ -567,6 +610,14 @@ class procedure TWin32WSCustomGroupBox.SetBiDiMode(
   UseRightToLeftReading, UseRightToLeftScrollBar : Boolean);
 begin
   RecreateWnd(AWinControl);
+end;
+
+class procedure TWin32WSCustomGroupBox.SetText(const AWinControl: TWinControl;
+  const AText: string);
+begin
+  if not WSCheckHandleAllocated(AWinControl, 'SetText') then Exit;
+  TWin32WSWinControl.SetText(AWinControl, AText);
+  AWinControl.Invalidate;
 end;
 
 class procedure TWin32WSCustomGroupBox.GetPreferredSize(
@@ -1031,9 +1082,23 @@ end;
 
 class procedure TWin32WSCustomComboBox.SetDroppedDown(
   const ACustomComboBox: TCustomComboBox; ADroppedDown: Boolean);
+var
+  aSelStart, aSelLength: Integer;
+  aText: string;
 begin
   if WSCheckHandleAllocated(ACustomComboBox, 'TWin32WSCustomComboBox.SetDroppedDown') then
+  begin
+    if not GetText(ACustomComboBox, aText) then
+      aText := ACustomComboBox.Text;
+    aSelStart := GetSelStart(ACustomComboBox);
+    aSelLength := GetSelLength(ACustomComboBox);
+
     SendMessage(ACustomComboBox.Handle, CB_SHOWDROPDOWN, WPARAM(ADroppedDown), 0);
+
+    SetText(ACustomComboBox, aText);
+    SetSelStart(ACustomComboBox, aSelStart);
+    SetSelLength(ACustomComboBox, aSelLength);
+  end;
 end;
 
 class procedure TWin32WSCustomComboBox.SetSelStart(const ACustomComboBox: TCustomComboBox; NewStart: integer);
@@ -1298,6 +1363,12 @@ begin
   EditSetSelLength(ACustomEdit.Handle, NewLength);
 end;
 
+class procedure TWin32WSCustomEdit.SetSelText(const ACustomEdit: TCustomEdit;
+  const NewSelText: string);
+begin
+  SendMessageW(ACustomEdit.Handle, EM_REPLACESEL, WPARAM(1), LPARAM(PWideChar(UTF8ToUTF16(NewSelText))));
+end;
+
 class procedure TWin32WSCustomEdit.SetText(const AWinControl: TWinControl;
   const AText: string);
 var
@@ -1313,7 +1384,7 @@ class procedure TWin32WSCustomEdit.SetTextHint(const ACustomEdit: TCustomEdit;
   const ATextHint: string);
 begin
   if not WSCheckHandleAllocated(ACustomEdit, 'SetTextHint') then Exit;
-  SendMessage(ACustomEdit.Handle, EM_SETCUEBANNER, 1, {%H-}LParam(PWideChar(WideString(ATextHint))));
+  SendMessage(ACustomEdit.Handle, EM_SETCUEBANNER, 1, {%H-}LParam(PWideChar(UTF8ToUTF16(ATextHint))));
 end;
 
 class procedure TWin32WSCustomEdit.Cut(const ACustomEdit: TCustomEdit);
@@ -1344,6 +1415,28 @@ end;
 
 { TWin32WSCustomMemo }
 
+function MemoWndProc(Window: HWnd; Msg: UInt; WParam: Windows.WParam;
+    LParam: Windows.LParam): LResult; stdcall;
+var
+  Control: TWinControl;
+  LMessage: TLMessage;
+begin
+  case Msg of
+    // prevent flickering, Mantis #16140
+    WM_ERASEBKGND:
+      begin
+        Control := GetWin32WindowInfo(Window)^.WinControl;
+        LMessage.msg := Msg;
+        LMessage.wParam := WParam;
+        LMessage.lParam := LParam;
+        LMessage.Result := 0;
+        Result := DeliverMessage(Control, LMessage);
+      end;
+    else
+      Result := WindowProc(Window, Msg, WParam, LParam);
+  end;
+end;
+
 class function TWin32WSCustomMemo.CreateHandle(const AWinControl: TWinControl;
   const AParams: TCreateParams): HWND;
 var
@@ -1355,6 +1448,7 @@ begin
   with Params do
   begin
     pClassName := @EditClsName[0];
+    SubClassWndProc := @MemoWndProc;
     WindowTitle := StrCaption;
   end;
   // create window
@@ -1433,6 +1527,12 @@ begin
   RecreateWnd(ACustomMemo);
 end;
 
+class procedure TWin32WSCustomMemo.SetSelText(const ACustomEdit: TCustomEdit;
+  const NewSelText: string);
+begin
+  TWin32WSCustomEdit.SetSelText(ACustomEdit, NewSelText);
+end;
+
 class procedure TWin32WSCustomMemo.SetWordWrap(const ACustomMemo: TCustomMemo; const NewWordWrap: boolean);
 begin
   // TODO: check if can be done without recreation
@@ -1451,6 +1551,11 @@ function StaticTextWndProc(Window: HWnd; Msg: UInt; WParam: Windows.WParam;
     LParam: Windows.LParam): LResult; stdcall;
 var
   WindowInfo: PWin32WindowInfo;
+  StaticText: TCustomStaticText;
+  DC: HDC;
+  Flags: Cardinal;
+  ARect: TRect;
+  WideBuffer: WideString;
 begin
   // move static text specific code here
   case Msg of
@@ -1463,13 +1568,39 @@ begin
       begin
         TWin32ThemeServices(ThemeServices).PaintBorder(WindowInfo^.WinControl, True);
         Result := 0;
-      end
-      else
-        Result := WindowProc(Window, Msg, WParam, LParam);
+        Exit;
+      end;
     end;
-    else
-      Result := WindowProc(Window, Msg, WParam, LParam);
+    WM_PAINT:
+      begin
+        WindowInfo := GetWin32WindowInfo(Window);
+        if ThemeServices.ThemesEnabled and Assigned(WindowInfo) and (WindowInfo^.WinControl is TCustomStaticText)
+        and not TCustomStaticText(WindowInfo^.WinControl).Enabled then
+        begin
+          Result := WindowProc(Window, Msg, WParam, LParam);
+          StaticText := TCustomStaticText(WindowInfo^.WinControl);
+          DC := GetDC(Window);
+          SetBkColor(DC, GetSysColor(COLOR_BTNFACE));
+          SetTextColor(DC, GetSysColor(COLOR_GRAYTEXT));
+          SelectObject(DC, StaticText.Font.Reference.Handle);
+          Flags := 0;
+          ARect := Classes.Rect(0, 0, 0, 0);
+          WideBuffer := UTF8ToUTF16(TCustomGroupBox(WindowInfo^.WinControl).Caption);
+          DrawTextW(DC, PWideChar(WideBuffer), Length(WideBuffer), ARect, Flags or DT_CALCRECT);
+          if StaticText.BiDiMode = bdRightToLeft then
+          begin
+            Flags := Flags or DT_RIGHT;
+            OffsetRect(ARect, StaticText.ClientWidth - ARect.Right, 0);
+          end
+          else
+            OffsetRect(ARect, 0, 0);
+          DrawTextW(DC, PWideChar(WideBuffer), Length(WideBuffer), ARect, Flags);
+          ReleaseDC(Window, DC);
+          Exit;
+        end;
+      end;
   end;
+  Result := WindowProc(Window, Msg, WParam, LParam);
 end;
 
 function StaticTextParentMsgHandler(const AWinControl: TWinControl; Window: HWnd;

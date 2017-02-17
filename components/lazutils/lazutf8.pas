@@ -84,10 +84,10 @@ function UTF8LengthFast(p: PChar; ByteCount: PtrInt): PtrInt;
 
 // Functions dealing with unicode number U+xxx.
 function UTF8CharacterToUnicode(p: PChar; out CharLen: integer): Cardinal;
-function UnicodeToUTF8(CodePoint: cardinal): string;
-function UnicodeToUTF8(CodePoint: cardinal; Buf: PChar): integer;
-function UnicodeToUTF8SkipErrors(CodePoint: cardinal; Buf: PChar): integer;
-function UnicodeToUTF8Inline(CodePoint: cardinal; Buf: PChar): integer; inline;
+function UnicodeToUTF8(CodePoint: cardinal): string; // UTF32 to UTF8
+function UnicodeToUTF8(CodePoint: cardinal; Buf: PChar): integer; // UTF32 to UTF8
+function UnicodeToUTF8SkipErrors(CodePoint: cardinal; Buf: PChar): integer; // UTF32 to UTF8
+function UnicodeToUTF8Inline(CodePoint: cardinal; Buf: PChar): integer; inline; // UTF32 to UTF8
 function UTF8ToDoubleByteString(const s: string): string;
 function UTF8ToDoubleByte(UTF8Str: PChar; Len: PtrInt; DBStr: PByte): PtrInt;
 function UTF8FindNearestCharStart(UTF8Str: PChar; Len: SizeInt;
@@ -224,11 +224,15 @@ begin
   Result:=true;
 end;
 
-{$ifdef windows}
+{$IFDEF windows}
   {$i winlazutf8.inc}
-{$else}
+{$ELSE}
+  {$IFDEF HASAMIGA}
+  {$i unixlazutf8.inc}   // Reuse UNIX code for Amiga
+  {$ELSE}
   {$i unixlazutf8.inc}
-{$endif}
+  {$ENDIF}
+{$ENDIF}
 
 var
   FNeedRTLAnsi: boolean = false;
@@ -608,9 +612,14 @@ var
   Buf: array[0..6] of Char;
   Len: Integer;
 begin
-  Len:=UnicodeToUTF8Inline(CodePoint, @Buf[0]);
-  Buf[Len]:=#0;
-  Result := StrPas(@Buf[0]);
+  if (CodePoint = 0) then
+    Result := #0 //StrPas does not like #0
+  else
+  begin
+    Len:=UnicodeToUTF8Inline(CodePoint, @Buf[0]);
+    Buf[Len]:=#0;
+    Result := StrPas(@Buf[0]);
+  end;
 end;
 
 function UnicodeToUTF8Inline(CodePoint: cardinal; Buf: PChar): integer;

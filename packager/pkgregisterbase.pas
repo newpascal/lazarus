@@ -21,7 +21,7 @@
  *   A copy of the GNU General Public License is available on the World    *
  *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
  *   obtain it by writing to the Free Software Foundation,                 *
- *   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.        *
+ *   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
  *                                                                         *
  ***************************************************************************
 
@@ -41,16 +41,13 @@ uses
 {$ifdef mswindows}
   ServiceManager,
 {$endif}
-  Classes, SysUtils, Process, DB, BufDataset, SimpleIPC, XMLConf, EventLog;
+  Classes, SysUtils, Process, DB, BufDataset, SimpleIPC, XMLConf, EventLog,
+  UTF8Process;
 
-procedure Register;
+procedure RegisterFCLBaseComponents;
+procedure RegisterLazUtilsComponents;
 
 implementation
-
-procedure RegisterProcess;
-begin
-  RegisterComponents('System',[TProcess]);
-end;
 
 procedure RegisterDB;
 begin
@@ -79,17 +76,38 @@ begin
 end;
 {$endif mswindows}
 
-procedure Register;
+procedure RegisterProcess;
+begin
+  RegisterComponents('System',[TProcess]);
+end;
+
+procedure RegisterFCLBaseComponents;
 begin
   RegisterUnit('DB',@RegisterDB);
-  RegisterUnit('Process',@RegisterProcess);
   RegisterUnit('SimpleIPC', @RegisterSimpleIPC);
   RegisterUnit('XMLConf',@RegisterXMLConf);
   RegisterUnit('EventLog',@RegisterEventLog);
 {$ifdef mswindows}
   RegisterUnit('ServiceManager',@RegisterServiceManager);
 {$endif mswindows}
+  RegisterUnit('Process',@RegisterProcess);
 end;
+
+procedure RegisterUTF8Process;
+begin
+  RegisterComponents('System',[TProcessUTF8]);
+end;
+
+procedure RegisterLazUtilsComponents;
+begin
+  RegisterUnit('UTF8Process',@RegisterUTF8Process);
+end;
+
+initialization
+  // register package FCL and LazUtils here to avoid pulling in all units
+  // and to keep those package clean of designtime code.
+  RegisterPackage('FCL', @RegisterFCLBaseComponents);
+  RegisterPackage('LazUtils', @RegisterLazUtilsComponents);
 
 end.
 

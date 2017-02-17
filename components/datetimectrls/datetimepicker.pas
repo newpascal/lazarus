@@ -187,6 +187,8 @@ type
     FChangeInRecursiveCall: Boolean;
     FCorrectedDTP: TDateTimePart;
     FCorrectedValue: Word;
+    FEnableWhenUnchecked: Boolean;
+    FAutoCheck: Boolean;
 
     function AreSeparatorsStored: Boolean;
     function GetChecked: Boolean;
@@ -248,6 +250,7 @@ type
     procedure SetYear(const AValue: Word);
     procedure SetYYYYMMDD(const AValue: TYMD);
     procedure SetHMSMs(const AValue: THMSMs);
+    procedure SetEnableWhenUnchecked(const AEnableWhenUnchecked: Boolean);
     procedure UpdateIfUserChangedText;
     function GetSelectedText: String;
     procedure AdjustSelection;
@@ -333,6 +336,7 @@ type
     procedure Change; virtual;
     procedure DoDropDown; virtual;
     procedure DoCloseUp; virtual;
+    procedure DoAutoCheck; virtual;
 
     property BorderStyle default bsSingle;
     property AutoSize default True;
@@ -360,6 +364,7 @@ type
              read FOnCheckBoxChange write FOnCheckBoxChange;
     property OnDropDown: TNotifyEvent read FOnDropDown write FOnDropDown;
     property OnCloseUp: TNotifyEvent read FOnCloseUp write FOnCloseUp;
+    property AutoCheck: Boolean read FAutoCheck write FAutoCheck default True;
     property ShowCheckBox: Boolean
              read GetShowCheckBox write SetShowCheckBox default False;
     property Checked: Boolean read GetChecked write SetChecked default True;
@@ -393,13 +398,14 @@ type
     property DroppedDown: Boolean read GetDroppedDown;
     property CalAlignment: TDTCalAlignment read FCalAlignment write SetCalAlignment default dtaDefault;
     property FlatButton: Boolean read GetFlatButton write SetFlatButton default False;
-
+    property EnableWhenUnchecked: Boolean read FEnableWhenUnchecked write SetEnableWhenUnchecked default False;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     function DateIsNull: Boolean;
     procedure SelectDate;
     procedure SelectTime;
+    procedure SendExternalKey(const aKey: Char);
 
     procedure Paint; override;
     procedure EditingDone; override;
@@ -417,6 +423,7 @@ type
     property DroppedDown;
   published
     property ArrowShape;
+    property AutoCheck;
     property ShowCheckBox;
     property Checked;
     property CenturyFrom;
@@ -465,6 +472,7 @@ type
     property ShowMonthNames;
     property CalAlignment;
     property FlatButton;
+    property EnableWhenUnchecked;
 // events:
     property OnChange;
     property OnCheckBoxChange;
@@ -679,6 +687,7 @@ begin
               // we'll change the date, but keep the time:
               DTPicker.SetDateTime(ComposeDateTime(Cal.GetDate, DTPicker.DateTime));
             end;
+            DTPicker.DoAutoCheck;
           finally
             Dec(DTPicker.FUserChanging);
           end;
@@ -893,7 +902,7 @@ end;
 
 procedure TCustomDateTimePicker.CheckTextEnabled;
 begin
-  FTextEnabled := Self.Enabled and GetChecked;
+  FTextEnabled := Self.Enabled and (FEnableWhenUnchecked or GetChecked);
 
   if Assigned(FArrowButton) then
     FArrowButton.Enabled := FTextEnabled;
@@ -2010,14 +2019,20 @@ begin
             Key := 0;
             UpdateIfUserChangedText;
             if not FReadOnly then
+            begin
               IncreaseCurrentTextPart;
+              DoAutoCheck;
+            end;
           end;
         VK_DOWN:
           begin
             Key := 0;
             UpdateIfUserChangedText;
             if not FReadOnly then
+            begin
               DecreaseCurrentTextPart;
+              DoAutoCheck;
+            end;
           end;
         VK_RETURN:
           if not FReadOnly then
@@ -2208,6 +2223,7 @@ begin
           end else
             Invalidate;
 
+          DoAutoCheck;
         end;
 
       end;
@@ -2881,6 +2897,25 @@ begin
   SelectDateTimePart(dtpYear);
 end;
 
+procedure TCustomDateTimePicker.SendExternalKey(const aKey: Char);
+begin
+  if not(aKey in ['0'..'9']) then
+    Exit;
+
+  if FSelectedTextPart in [1..3] then
+  begin
+    FTextPart[FSelectedTextPart] := aKey;
+    FUserChangedText := True;
+    DoAutoCheck;
+  end else
+  if FSelectedTextPart in [4..8] then
+  begin
+    FTimeText[TDateTimePart(FSelectedTextPart-1)] := aKey;
+    FUserChangedText := True;
+    DoAutoCheck;
+  end;
+end;
+
 procedure TCustomDateTimePicker.SelectHour;
 begin
   SelectDateTimePart(dtpHour);
@@ -2913,6 +2948,16 @@ begin
     CheckTextEnabled;
     Invalidate;
   end;
+end;
+
+procedure TCustomDateTimePicker.SetEnableWhenUnchecked(
+  const AEnableWhenUnchecked: Boolean);
+begin
+  if FEnableWhenUnchecked = AEnableWhenUnchecked then Exit;
+  FEnableWhenUnchecked := AEnableWhenUnchecked;
+
+  CheckTextEnabled;
+  Invalidate;
 end;
 
 procedure TCustomDateTimePicker.SetFlatButton(const AValue: Boolean);
@@ -3554,13 +3599,18 @@ procedure TDTSpeedButton.Paint;
   var
     Details: TThemedElementDetails;
     ArrowState: TThemedToolBar;
+    ASize: TSize;
+    ARect: TRect;
   begin
     if Enabled then
       ArrowState := ttbSplitButtonDropDownNormal
     else
       ArrowState := ttbSplitButtonDropDownDisabled;
     Details := ThemeServices.GetElementDetails(ArrowState);
-    ThemeServices.DrawElement(Canvas.Handle, Details, DropDownButtonRect);
+    ASize := ThemeServices.GetDetailSize(Details);
+    ARect := DropDownButtonRect;
+    InflateRect(ARect, -(ARect.Right-ARect.Left-ASize.cx) div 2, 0);
+    ThemeServices.DrawElement(Canvas.Handle, Details, ARect);
   end;
 const
   ArrowColor = TColor($8D665A);
@@ -3688,6 +3738,12 @@ begin
   end;
 end;
 
+procedure TCustomDateTimePicker.DoAutoCheck;
+begin
+  if ShowCheckBox and not Checked and AutoCheck then
+    Checked := True;
+end;
+
 procedure TCustomDateTimePicker.DestroyArrowBtn;
 begin
   if Assigned(FArrowButton) then begin
@@ -3707,6 +3763,7 @@ begin
   with GetControlClassDefaultSize do
     SetInitialBounds(0, 0, cx, cy);
 
+  FAutoCheck := True;
   FCalAlignment := dtaDefault;
   FCorrectedDTP := dtpAMPM;
   FCorrectedValue := 0;

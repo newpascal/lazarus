@@ -46,15 +46,15 @@ msgstr "Справка"
 
 #: opkman_const.rscreatejsonforupdatesfrm_btest_caption
 msgid "Test"
-msgstr ""
+msgstr "Проверить"
 
 #: opkman_const.rscreatejsonforupdatesfrm_caption
-msgid "Create update JSON for package: "
-msgstr ""
+msgid "Create update JSON for package:"
+msgstr "Создать JSON для обновления пакета:"
 
 #: opkman_const.rscreatejsonforupdatesfrm_column0_text
 msgid "PackageFileName"
-msgstr ""
+msgstr "Имя файла пакета"
 
 #: opkman_const.rscreatejsonforupdatesfrm_column1_text
 msgctxt "opkman_const.rscreatejsonforupdatesfrm_column1_text"
@@ -63,146 +63,220 @@ msgstr "Версия"
 
 #: opkman_const.rscreatejsonforupdatesfrm_column2_text
 msgid "Force notify"
-msgstr ""
+msgstr "Принудительное уведомление"
 
 #: opkman_const.rscreatejsonforupdatesfrm_column3_text
 msgid "Internal version"
-msgstr ""
+msgstr "Внутренняя версия"
+
+#: opkman_const.rscreatejsonforupdatesfrm_error1
+msgid "Cannot create JSON for updates! Error message:"
+msgstr "Невозможно создать JSON для обновлений! Сообщение об ошибке:"
 
 #: opkman_const.rscreatejsonforupdatesfrm_lblinktozip_caption
 msgid "Link to the package zip file"
-msgstr ""
+msgstr "Ссылка на архивный файл пакета"
 
 #: opkman_const.rscreatejsonforupdatesfrm_message0
-msgid "Please select a repository package!"
-msgstr ""
+msgid "Please check a repository package!"
+msgstr "Отметьте пакет в репозитории!"
 
 #: opkman_const.rscreatejsonforupdatesfrm_message1
-msgid "Please select only one repository package!"
-msgstr ""
+msgid "Please check only one repository package!"
+msgstr "Следует отметить только один пакет в репозитории!"
 
 #: opkman_const.rscreatejsonforupdatesfrm_message2
 msgid "Please enter a valid URL!"
-msgstr ""
+msgstr "Введите корректный адрес!"
 
 #: opkman_const.rscreatejsonforupdatesfrm_message3
 msgid "Please check at least one package file!"
-msgstr ""
+msgstr "Следует отметить хотя бы один файл пакета!"
+
+#: opkman_const.rscreatejsonforupdatesfrm_message4
+msgid "JSON for updates successfully created."
+msgstr "JSON для обновлений успешно создан."
+
+#: opkman_const.rscreaterepositorypackagefrm_bcancel_caption
+msgctxt "opkman_const.rscreaterepositorypackagefrm_bcancel_caption"
+msgid "Cancel"
+msgstr "Отмена"
+
+#: opkman_const.rscreaterepositorypackagefrm_bcancel_hint
+msgid "Close this dialog"
+msgstr "Закрыть этот диалог"
+
+#: opkman_const.rscreaterepositorypackagefrm_bcreate_caption
+msgctxt "opkman_const.rscreaterepositorypackagefrm_bcreate_caption"
+msgid "Create"
+msgstr "Создать"
+
+#: opkman_const.rscreaterepositorypackagefrm_bcreate_hint
+msgid "Create files locally"
+msgstr "Создать файлы локально"
+
+#: opkman_const.rscreaterepositorypackagefrm_bhelp_caption
+msgctxt "opkman_const.rscreaterepositorypackagefrm_bhelp_caption"
+msgid "Help"
+msgstr "Справка"
+
+#: opkman_const.rscreaterepositorypackagefrm_bhelp_hint
+msgid "Open help"
+msgstr "Открыть справку"
+
+#: opkman_const.rscreaterepositorypackagefrm_boptions_caption
+msgctxt "opkman_const.rscreaterepositorypackagefrm_boptions_caption"
+msgid "Options"
+msgstr "Параметры"
+
+#: opkman_const.rscreaterepositorypackagefrm_boptions_hint
+msgid "Open options dialog"
+msgstr "Открыть диалог параметров"
+
+#: opkman_const.rscreaterepositorypackagefrm_bsubmit_caption
+msgid "Submit"
+msgstr "Отправить"
+
+#: opkman_const.rscreaterepositorypackagefrm_bsubmit_hint
+msgid "Submit files to remote server"
+msgstr "Отправить файлы на удалённый сервер"
 
 #: opkman_const.rscreaterepositorypackagefrm_caption
 msgctxt "opkman_const.rscreaterepositorypackagefrm_caption"
 msgid "Create repository package"
-msgstr "Создать пакет в репозитории"
-
-#: opkman_const.rscreaterepositorypackagefrm_cbopen_caption
-msgid "After create open containing folder"
-msgstr ""
+msgstr "Создать пакет для репозитория"
 
 #: opkman_const.rscreaterepositorypackagefrm_error0
 msgid "Error reading package"
-msgstr ""
+msgstr "Ошибка чтения пакета"
 
 #: opkman_const.rscreaterepositorypackagefrm_error1
 msgid "Cannot create zip file:"
-msgstr ""
+msgstr "Невозможно создать файл ZIP:"
 
 #: opkman_const.rscreaterepositorypackagefrm_error2
 msgid "Cannot create JSON file:"
-msgstr ""
+msgstr "Невозможно создать файл JSON:"
+
+#: opkman_const.rscreaterepositorypackagefrm_error3
+msgid "Cannot send file: \"%s\""
+msgstr "Невозможно отправить файл: \"%s\""
 
 #: opkman_const.rscreaterepositorypackagefrm_lbcategory_caption
 msgid "Category:"
-msgstr ""
+msgstr "Категория:"
 
 #: opkman_const.rscreaterepositorypackagefrm_lbdisplayname_caption
-msgid "Display name"
-msgstr ""
+msgid "Display name:"
+msgstr "Отображаемое имя:"
 
 #: opkman_const.rscreaterepositorypackagefrm_lbdownloadurl_caption
-msgid "Download link:"
-msgstr ""
+msgid "Update link (JSON):"
+msgstr "Адрес загрузки (JSON):"
 
 #: opkman_const.rscreaterepositorypackagefrm_lbfpccompatibility_caption
 msgid "FPC compatibility:"
-msgstr ""
+msgstr "Совместимость с FPC:"
 
 #: opkman_const.rscreaterepositorypackagefrm_lbhomepageurl_caption
 msgid "Home page:"
-msgstr ""
+msgstr "Домашняя страница:"
 
 #: opkman_const.rscreaterepositorypackagefrm_lblazcompatibility_caption
 msgid "Lazarus compatibility:"
-msgstr ""
+msgstr "Совместимость с Lazarus:"
 
 #: opkman_const.rscreaterepositorypackagefrm_lbpackagedir_caption
-msgid "Select package directory:"
-msgstr ""
+msgid "Package directory:"
+msgstr "Каталог пакета:"
 
 #: opkman_const.rscreaterepositorypackagefrm_lbsupportedwidgetset_caption
-msgid "Supported widgetset:"
-msgstr ""
+msgid "Supported widgetsets:"
+msgstr "Поддерживаемые библиотеки виджетов:"
 
 #: opkman_const.rscreaterepositorypackagefrm_lbsvnurl_caption
 msgctxt "opkman_const.rscreaterepositorypackagefrm_lbsvnurl_caption"
-msgid "SVN"
-msgstr "SVN"
+msgid "SVN:"
+msgstr "SVN:"
 
 #: opkman_const.rscreaterepositorypackagefrm_message0
 msgid "Please select a category for package:"
-msgstr ""
+msgstr "Выберите категорию пакета:"
 
 #: opkman_const.rscreaterepositorypackagefrm_message1
-msgid "Please enter supported lazarus versions for package:"
-msgstr ""
+msgid "Please enter supported Lazarus versions for package:"
+msgstr "Введите поддерживаемые пакетом версии Lazarus:"
+
+#: opkman_const.rscreaterepositorypackagefrm_message10
+msgid "Cancelling upload. Please wait..."
+msgstr "Отмена загрузки. Подождите..."
 
 #: opkman_const.rscreaterepositorypackagefrm_message2
 msgid "Please enter supported FPC versions for package:"
-msgstr ""
+msgstr "Введите поддерживаемые пакетом версии FPC:"
 
 #: opkman_const.rscreaterepositorypackagefrm_message3
 msgid "Please enter supported widgetsets for package:"
-msgstr ""
+msgstr "Введите поддерживаемые пакетом библиотеки виджетов:"
 
 #: opkman_const.rscreaterepositorypackagefrm_message4
 msgid "Compressing package. Please wait..."
-msgstr ""
+msgstr "Идёт сжатие пакета. Подождите..."
 
 #: opkman_const.rscreaterepositorypackagefrm_message5
 msgid "Creating JSON. Please wait..."
-msgstr ""
+msgstr "Идёт создание JSON. Подождите..."
 
 #: opkman_const.rscreaterepositorypackagefrm_message6
+msgctxt "opkman_const.rscreaterepositorypackagefrm_message6"
+msgid "Creating JSON for updates. Please wait..."
+msgstr "Идёт создание JSON для обновлений. Подождите..."
+
+#: opkman_const.rscreaterepositorypackagefrm_message7
+msgctxt "opkman_const.rscreaterepositorypackagefrm_message7"
 msgid "Repository package successfully created."
+msgstr "Пакет для репозитория успешно создан."
+
+#: opkman_const.rscreaterepositorypackagefrm_message8
+msgid "Sending files (\"%s\"). Please wait..."
+msgstr "Идёт отправка файлов (\"%s\"). Подождите..."
+
+#: opkman_const.rscreaterepositorypackagefrm_message9
+msgid ""
+"Files successfully sent. Thank you for submitting packages!\n"
+"Your request will be processed in 24 hours.\n"
 msgstr ""
+"Файлы успешно отправлены. Спасибо за помощь!\n"
+"Ваш запрос будет обработан в течение 24 часов.\n"
 
 #: opkman_const.rscreaterepositorypackagefrm_nopackage
 msgid "No packages found!"
-msgstr ""
+msgstr "Не найдено ни одного пакета!"
 
 #: opkman_const.rscreaterepositorypackagefrm_pncaption_caption0
 msgid "Available packages"
-msgstr ""
+msgstr "Доступные пакеты"
 
 #: opkman_const.rscreaterepositorypackagefrm_pncaption_caption1
 msgctxt "opkman_const.rscreaterepositorypackagefrm_pncaption_caption1"
 msgid "Description"
-msgstr ""
+msgstr "Описание"
 
 #: opkman_const.rscreaterepositorypackagefrm_pncaption_caption2
 msgid "Data"
-msgstr ""
+msgstr "Данные"
 
 #: opkman_const.rscreaterepositorypackagefrm_pnmessage_caption
 msgid "Please wait..."
-msgstr ""
+msgstr "Подождите..."
 
 #: opkman_const.rscreaterepositorypackagefrm_sddtitledst
 msgid "Save repository package to..."
-msgstr ""
+msgstr "Сохранить пакет для репозитория в..."
 
 #: opkman_const.rscreaterepositorypackagefrm_sddtitlesrc
 msgid "Select package directory"
-msgstr ""
+msgstr "Выберите каталог пакета"
 
 #: opkman_const.rslazaruspackagemanager
 msgid "Online Package Manager"
@@ -210,36 +284,52 @@ msgstr "Сетевой диспетчер пакетов"
 
 #: opkman_const.rsmainfrm_cball_caption
 msgid "All/None"
-msgstr ""
+msgstr "Всё/ничего"
 
 #: opkman_const.rsmainfrm_cball_hint
 msgid "Check/Uncheck packages"
-msgstr ""
+msgstr "Выбрать/снять выбор со всех пакетов"
 
 #: opkman_const.rsmainfrm_cbfilterby_hint
 msgid "Filter package list by:"
-msgstr ""
+msgstr "Фильтровать список пакетов по:"
 
 #: opkman_const.rsmainfrm_edfilter_hint
 msgid "Type filter text"
-msgstr ""
-
-#: opkman_const.rsmainfrm_filenamealreadyexists
-msgid "A package with the same zip file already exists!"
-msgstr ""
+msgstr "Введите текст фильтра"
 
 #: opkman_const.rsmainfrm_lbfilter_caption
 msgid "Filter by:"
 msgstr "Фильтрация:"
 
+#: opkman_const.rsmainfrm_miascendent
+msgid "Ascendent"
+msgstr "По возрастанию"
+
+#: opkman_const.rsmainfrm_mibydate
+msgid "By date"
+msgstr "По дате"
+
+#: opkman_const.rsmainfrm_mibyname
+msgid "By name"
+msgstr "По имени"
+
+#: opkman_const.rsmainfrm_micopytoclpbrd
+msgid "Copy to clipboard"
+msgstr "Копировать в буфер обмена"
+
 #: opkman_const.rsmainfrm_micreatejsonforupdates
 msgid "Create JSON for updates"
-msgstr ""
+msgstr "Создать JSON для обновлений"
 
 #: opkman_const.rsmainfrm_micreaterepositorypackage
 msgctxt "opkman_const.rsmainfrm_micreaterepositorypackage"
 msgid "Create repository package"
-msgstr "Создать пакет в репозитории"
+msgstr "Создать пакет для репозитория"
+
+#: opkman_const.rsmainfrm_midescendent
+msgid "Descendent"
+msgstr "По убыванию"
 
 #: opkman_const.rsmainfrm_mijsonhide
 msgid "Hide JSON"
@@ -249,107 +339,117 @@ msgstr "Скрыть JSON"
 msgid "Show JSON"
 msgstr "Показать JSON"
 
+#: opkman_const.rsmainfrm_mijsonsort
+msgid "Sort"
+msgstr "Сортировать"
+
+#: opkman_const.rsmainfrm_miresetrating
+msgid "Reset rating"
+msgstr "Сбросить рейтинг"
+
+#: opkman_const.rsmainfrm_misavetofile
+msgid "Save to file"
+msgstr "Сохранить в файл"
+
 #: opkman_const.rsmainfrm_packagealreadydownloaded
-msgid "The following repository packages already exists in the target folder. Continue?"
-msgstr ""
+msgid "The following repository packages already exist in the target folder. Continue?"
+msgstr "Следующие пакеты из репозитория уже существуют в целевом каталоге. Продолжить?"
 
 #: opkman_const.rsmainfrm_packagealreadyinstalled
-msgid "The following packages are alrady installed. Continue with install?"
-msgstr ""
+msgid "The following packages are already installed. Continue anyway?"
+msgstr "Следующие пакеты уже установлены. Продолжить всё равно?"
 
 #: opkman_const.rsmainfrm_packagenamealreadyexists
 msgid "A package with the same name already exists!"
-msgstr ""
+msgstr "Пакет с таким же именем уже имеется!"
 
 #: opkman_const.rsmainfrm_packageupdate0
 msgid "The following repository packages are not installed or don't have a valid external download link. The packages will be skipped. Continue?"
-msgstr ""
+msgstr "Следующие пакеты из репозитория не установлены либо не имеют корректной ссылки для загрузки. Они будут пропущены. Продолжить?"
 
 #: opkman_const.rsmainfrm_packageupdate1
-msgid "None of the checked repository packages are installed or has a valid external download link."
-msgstr ""
+msgid "None of the checked repository packages is installed or has a valid external download link."
+msgstr "Ни один из отмеченных пакетов из репозитория не установлен и не имеет корректной ссылки для загрузки."
 
 #: opkman_const.rsmainfrm_packageupdatewarning
 msgid ""
 "Updating packages from external link is not without a risk!\n"
 "Only update if you trust the package maintainer. Continue?\n"
 msgstr ""
+"Обновление пакетов из внешнего источника рискованно!\n"
+"Проводите обновление только при доверии сопровождающему пакета. Продолжить?\n"
+
+#: opkman_const.rsmainfrm_rsmessagechangingrepository
+msgid "Changing repository. Please wait..."
+msgstr "Смена репозитория. Подождите..."
 
 #: opkman_const.rsmainfrm_rsmessagedownload
 msgid "Downloading package list. Please wait..."
-msgstr ""
+msgstr "Идёт загрузка списка пакетов. Подождите..."
 
 #: opkman_const.rsmainfrm_rsmessageerror0
 msgid "Cannot download package list. Error message:"
-msgstr ""
+msgstr "Невозможно загрузить список пакетов. Сообщение об ошибке:"
 
 #: opkman_const.rsmainfrm_rsmessageerror1
 msgid "Invalid JSON file."
-msgstr ""
+msgstr "Файл JSON некорректен."
 
 #: opkman_const.rsmainfrm_rsmessageerror2
 msgid "Remote server unreachable."
-msgstr ""
+msgstr "Удалённый сервер недоступен."
 
 #: opkman_const.rsmainfrm_rsmessagenopackage
 msgid "No packages to show."
-msgstr ""
+msgstr "Пакеты для отображения отсутствуют."
 
 #: opkman_const.rsmainfrm_rsmessagenorepository0
-msgid "Remote package repository not configured."
+msgid ""
+"Remote package repository not configured.\n"
+"Do you wish to configure it now?\n"
 msgstr ""
-
-#: opkman_const.rsmainfrm_rsmessagenorepository1
-msgid "Do you wish to configure it now?"
-msgstr ""
+"Удалённый репозиторий не настроен.\n"
+"Хотите сделать это сейчас?\n"
 
 #: opkman_const.rsmainfrm_rsmessageparsingjson
 msgid "Parsing JSON. Please wait..."
-msgstr ""
+msgstr "Идёт чтение JSON. Подождите..."
 
 #: opkman_const.rsmainfrm_rsnopackagetodownload
 msgid "Please check one or more packages!"
-msgstr ""
+msgstr "Отметьте один или более пакетов!"
 
 #: opkman_const.rsmainfrm_rspackagedependency0
-msgid "depends on package:"
-msgstr ""
+msgid "Package \"%s\" depends on package \"%s\". Resolve dependency?"
+msgstr "Пакет \"%s\" зависит от пакета \"%s\". Провести разрешение зависимости?"
 
 #: opkman_const.rsmainfrm_rspackagedependency1
-msgid "Resolve dependency?"
-msgstr ""
-
-#: opkman_const.rsmainfrm_rspackagedependency2
 msgid "Not resolving dependencies might lead to install failure!"
-msgstr ""
+msgstr "Неразрешённые зависимости могут привести к сбою установки!"
 
-#: opkman_const.rsmainfrm_rspackagedependency3
-msgid "is in"
-msgstr ""
-
-#: opkman_const.rsmainfrm_rspackagedependency4
-msgid "dependency list. Unchecking it might lead to installing failure. Do you wish to continue?"
-msgstr ""
+#: opkman_const.rsmainfrm_rspackagerating
+msgid "Your vote for package \"%s\" is: %s. Thank you for voting!"
+msgstr "Ваш голос за пакет \"%s\": %s. Спасибо за участие!"
 
 #: opkman_const.rsmainfrm_rsrepositorycleanup0
 msgid "This will delete all non-installed packages from local repository. Continue?"
-msgstr ""
+msgstr "Все неустановленные пакеты из локального репозитория будут удалены. Продолжить?"
 
 #: opkman_const.rsmainfrm_rsrepositorycleanup1
-msgid "packages deleted!"
-msgstr ""
+msgid "%s packages deleted!"
+msgstr "Удалено %s пакетов!"
 
 #: opkman_const.rsmainfrm_spclear_hint
 msgid "Clear filter text"
-msgstr ""
+msgstr "Очистить фильтр"
 
 #: opkman_const.rsmainfrm_spcollapse_hint
 msgid "Collapse package tree"
-msgstr ""
+msgstr "Свернуть дерево пакетов"
 
 #: opkman_const.rsmainfrm_spexpand_hint
 msgid "Expand package tree"
-msgstr ""
+msgstr "Развернуть дерево пакетов"
 
 #: opkman_const.rsmainfrm_tbcleanup_caption
 msgid "Cleanup"
@@ -436,6 +536,10 @@ msgstr "Файл пакета (.lpk)"
 msgid "Packages"
 msgstr "Пакеты"
 
+#: opkman_const.rsmainfrm_vstheadercolumn_rating
+msgid "Rating"
+msgstr "Рейтинг"
+
 #: opkman_const.rsmainfrm_vstheadercolumn_repository
 msgctxt "opkman_const.rsmainfrm_vstheadercolumn_repository"
 msgid "Repository"
@@ -468,8 +572,8 @@ msgid "Description"
 msgstr "Описание"
 
 #: opkman_const.rsmainfrm_vsttext_downloadurl
-msgid "Update link"
-msgstr "Адрес загрузки"
+msgid "Update link (JSON)"
+msgstr "Адрес загрузки (JSON)"
 
 #: opkman_const.rsmainfrm_vsttext_fpccompatibility
 msgid "FPC compatibility"
@@ -511,111 +615,111 @@ msgstr "Категория пакета"
 
 #: opkman_const.rsmainfrm_vsttext_packagecategory0
 msgid "Charts and Graphs"
-msgstr ""
+msgstr "Диаграммы и графики"
 
 #: opkman_const.rsmainfrm_vsttext_packagecategory1
 msgid "Cryptography"
-msgstr ""
+msgstr "Криптография"
 
 #: opkman_const.rsmainfrm_vsttext_packagecategory10
 msgid "Indicators and Gauges"
-msgstr ""
+msgstr "Индикаторы и указатели"
 
 #: opkman_const.rsmainfrm_vsttext_packagecategory11
 msgid "Labels"
-msgstr ""
+msgstr "Метки"
 
 #: opkman_const.rsmainfrm_vsttext_packagecategory12
 msgid "LazIDEPlugins"
-msgstr ""
+msgstr "Плагины Lazarus IDE"
 
 #: opkman_const.rsmainfrm_vsttext_packagecategory13
 msgid "List and Combo Boxes"
-msgstr ""
+msgstr "Списки"
 
 #: opkman_const.rsmainfrm_vsttext_packagecategory14
 msgid "ListViews and TreeViews"
-msgstr ""
+msgstr "ListView и TreeView"
 
 #: opkman_const.rsmainfrm_vsttext_packagecategory15
 msgid "Menus"
-msgstr ""
+msgstr "Меню"
 
 #: opkman_const.rsmainfrm_vsttext_packagecategory16
 msgid "Multimedia"
-msgstr ""
+msgstr "Мультимедиа"
 
 #: opkman_const.rsmainfrm_vsttext_packagecategory17
 msgid "Networking"
-msgstr ""
+msgstr "Сеть"
 
 #: opkman_const.rsmainfrm_vsttext_packagecategory18
 msgid "Panels"
-msgstr ""
+msgstr "Панели"
 
 #: opkman_const.rsmainfrm_vsttext_packagecategory19
 msgid "Reporting"
-msgstr ""
+msgstr "Отчёты"
 
 #: opkman_const.rsmainfrm_vsttext_packagecategory2
 msgid "DataControls"
-msgstr ""
+msgstr "Данные"
 
 #: opkman_const.rsmainfrm_vsttext_packagecategory20
 msgid "Science"
-msgstr ""
+msgstr "Наука"
 
 #: opkman_const.rsmainfrm_vsttext_packagecategory21
 msgid "Security"
-msgstr ""
+msgstr "Безопасность"
 
 #: opkman_const.rsmainfrm_vsttext_packagecategory22
 msgid "Shapes"
-msgstr ""
+msgstr "Фигуры"
 
 #: opkman_const.rsmainfrm_vsttext_packagecategory23
 msgid "Sizers and Scrollers"
-msgstr ""
+msgstr "Размер и прокрутка"
 
 #: opkman_const.rsmainfrm_vsttext_packagecategory24
 msgid "System"
-msgstr ""
+msgstr "Система"
 
 #: opkman_const.rsmainfrm_vsttext_packagecategory25
 msgid "Tabbed Components"
-msgstr ""
+msgstr "Компоненты со вкладками"
 
 #: opkman_const.rsmainfrm_vsttext_packagecategory26
 msgid "Other"
-msgstr ""
+msgstr "Прочее"
 
 #: opkman_const.rsmainfrm_vsttext_packagecategory3
 msgid "Date and Time"
-msgstr ""
+msgstr "Дата и время"
 
 #: opkman_const.rsmainfrm_vsttext_packagecategory4
 msgid "Dialogs"
-msgstr ""
+msgstr "Диалоги"
 
 #: opkman_const.rsmainfrm_vsttext_packagecategory5
 msgid "Edit and Memos"
-msgstr ""
+msgstr "Поля ввода"
 
 #: opkman_const.rsmainfrm_vsttext_packagecategory6
 msgid "Files and Drives"
-msgstr ""
+msgstr "Файлы и накопители"
 
 #: opkman_const.rsmainfrm_vsttext_packagecategory7
 msgid "GUIContainers"
-msgstr ""
+msgstr "Компоненты-контейнеры"
 
 #: opkman_const.rsmainfrm_vsttext_packagecategory8
 msgid "Graphics"
-msgstr ""
+msgstr "Графика"
 
 #: opkman_const.rsmainfrm_vsttext_packagecategory9
 msgid "Grids"
-msgstr ""
+msgstr "Таблицы"
 
 #: opkman_const.rsmainfrm_vsttext_packageinfo
 msgid "Package info"
@@ -644,15 +748,11 @@ msgid "Up to date"
 msgstr "Обновлений нет"
 
 #: opkman_const.rsmainfrm_vsttext_packagestate5
-#, fuzzy
-#| msgid "New updates available"
 msgctxt "opkman_const.rsmainfrm_vsttext_packagestate5"
-msgid "New version available(repository)"
-msgstr "Доступно обновление"
+msgid "New version available (repository)"
+msgstr "Доступно обновление (в репозитории)"
 
 #: opkman_const.rsmainfrm_vsttext_packagestate6
-#, fuzzy
-#| msgid "New updates available"
 msgctxt "opkman_const.rsmainfrm_vsttext_packagestate6"
 msgid "New updates available"
 msgstr "Доступно обновление"
@@ -698,7 +798,7 @@ msgid "Repository filesize"
 msgstr "Размер файла в репозитории"
 
 #: opkman_const.rsmainfrm_vsttext_supportedwidgetsets
-msgid "Supported widget sets"
+msgid "Supported widgetsets"
 msgstr "Поддерживаемые библиотеки виджетов"
 
 #: opkman_const.rsmainfrm_vsttext_svnurl
@@ -711,37 +811,91 @@ msgctxt "opkman_const.rsmainfrm_vsttext_version"
 msgid "Version"
 msgstr "Версия"
 
+#: opkman_const.rsoptions_badd_caption
+msgctxt "opkman_const.rsoptions_badd_caption"
+msgid "Add"
+msgstr "Добавить"
+
+#: opkman_const.rsoptions_bdelete_caption
+msgctxt "opkman_const.rsoptions_bdelete_caption"
+msgid "Delete"
+msgstr "Удалить"
+
+#: opkman_const.rsoptions_bedit_caption
+msgctxt "opkman_const.rsoptions_bedit_caption"
+msgid "Edit"
+msgstr "Правка"
+
+#: opkman_const.rsoptions_cbcheckforupdates_item0
+msgid "Every few minutes"
+msgstr "Каждые несколько минут"
+
+#: opkman_const.rsoptions_cbcheckforupdates_item1
+msgid "Every hour"
+msgstr "Каждый час"
+
+#: opkman_const.rsoptions_cbcheckforupdates_item2
+msgid "Once per day"
+msgstr "Каждый день"
+
+#: opkman_const.rsoptions_cbcheckforupdates_item3
+msgid "Weekly"
+msgstr "Каждую неделю"
+
+#: opkman_const.rsoptions_cbcheckforupdates_item4
+msgid "Montly"
+msgstr "Каждый месяц"
+
+#: opkman_const.rsoptions_cbcheckforupdates_item5
+msgctxt "opkman_const.rsoptions_cbcheckforupdates_item5"
+msgid "Never"
+msgstr "Никогда"
+
 #: opkman_const.rsoptions_cbdelete_caption
 msgid "Delete downloaded zip files after installation/update"
-msgstr ""
+msgstr "Удалять загруженные архивы после установки/обновления"
 
 #: opkman_const.rsoptions_cbdelete_hint
 msgid "If this option is checked the downloaded zip file is always deleted after installation"
-msgstr ""
+msgstr "При включении этого параметра загруженный файл ZIP всегда будет удаляться после установки"
 
 #: opkman_const.rsoptions_cbforcedownloadextract_caption
 msgid "Always force download and extract"
-msgstr ""
+msgstr "Всегда загружать и распаковывать"
 
 #: opkman_const.rsoptions_cbforcedownloadextract_hint
 msgid "If this option is checked the packages are always re-downloaded/extracted before install"
-msgstr ""
+msgstr "При включении этого параметра пакеты всегда повторно загружаются и распаковываются перед установкой"
 
 #: opkman_const.rsoptions_cbproxy_caption
 msgid "Use proxy"
-msgstr ""
+msgstr "Использовать прокси-сервер"
+
+#: opkman_const.rsoptions_cbselectprofile_hint
+msgid "Choose a profile that best fits you"
+msgstr "Выберите наиболее подходящий вам профиль"
+
+#: opkman_const.rsoptions_cbselectprofile_item0
+msgctxt "opkman_const.rsoptions_cbselectprofile_item0"
+msgid "Regular user"
+msgstr "Обычный пользователь"
+
+#: opkman_const.rsoptions_cbselectprofile_item1
+msgctxt "opkman_const.rsoptions_cbselectprofile_item1"
+msgid "Package maintainer"
+msgstr "Сопровождающий пакета"
 
 #: opkman_const.rsoptions_edlocalrepositoryarchive_hint
 msgid "The folder where the zip files are downloaded from the remote repository"
-msgstr ""
+msgstr "Каталог для загрузки архивов из удалённого репозитория"
 
 #: opkman_const.rsoptions_edlocalrepositorypackages_hint
 msgid "The folder where the repository packages are extracted/installed"
-msgstr ""
+msgstr "Каталог для распаковки и установки пакетов из репозитория"
 
 #: opkman_const.rsoptions_edlocalrepositoryupdate_hint
 msgid "The folder where the zip files are downloaded from the package maintainer webpage"
-msgstr ""
+msgstr "Каталог для загрузки архивов со страницы сопровождающего"
 
 #: opkman_const.rsoptions_frmcaption
 msgctxt "opkman_const.rsoptions_frmcaption"
@@ -750,59 +904,142 @@ msgstr "Параметры"
 
 #: opkman_const.rsoptions_gbproxysettings_caption
 msgid "Proxy settings"
-msgstr ""
+msgstr "Параметры прокси-сервера"
+
+#: opkman_const.rsoptions_inputbox_caption
+msgid "Add new exclusion"
+msgstr "Добавить новое исключение"
+
+#: opkman_const.rsoptions_inputbox_conf0
+msgid "Delete selected extension (\"%s\")?"
+msgstr "Удалить выбранное расширение (\"%s\")?"
+
+#: opkman_const.rsoptions_inputbox_conf1
+msgid "Delete selected folder (\"%s\")?"
+msgstr "Удалить выбранный каталог (\"%s\")?"
+
+#: opkman_const.rsoptions_inputbox_info0
+msgid "Please select a file extension!"
+msgstr "Выберите расширение файла!"
+
+#: opkman_const.rsoptions_inputbox_info1
+msgid "Please select a folder!"
+msgstr "Выберите каталог!"
+
+#: opkman_const.rsoptions_inputbox_text0
+msgid "Type the extension name:"
+msgstr "Введите расширение:"
+
+#: opkman_const.rsoptions_inputbox_text1
+msgid "Type the folder name:"
+msgstr "Введите имя каталога:"
 
 #: opkman_const.rsoptions_invaliddirectory_info
-msgid "Please enter a valid directory"
-msgstr ""
+msgid "Please enter a valid directory!"
+msgstr "Введите корректный каталог!"
+
+#: opkman_const.rsoptions_lastupdate_never
+msgctxt "opkman_const.rsoptions_lastupdate_never"
+msgid "never"
+msgstr "не проводилось"
+
+#: opkman_const.rsoptions_lbcheckforupdates_caption
+msgid "Check for package updates"
+msgstr "Проверять наличие обновлений пакетов"
+
+#: opkman_const.rsoptions_lbdaystoshownewpackages_caption
+msgid "Show different icon for newly added packages for (days):"
+msgstr "Другой значок для вновь добавленных пакетов в течение (дней):"
+
+#: opkman_const.rsoptions_lbexcludefiles_hint
+msgctxt "opkman_const.rsoptions_lbexcludefiles_hint"
+msgid "These files will be excluded from repository packages (see: \"Create repository package\")"
+msgstr "Эти файлы будут исключены из состава пакета (см. \"Создать пакет для репозитория\")"
+
+#: opkman_const.rsoptions_lbexcludefolders_hint
+msgctxt "opkman_const.rsoptions_lbexcludefolders_hint"
+msgid "These folders will be excluded from repository packages (see: \"Create repository package\")"
+msgstr "Эти каталоги будут исключены из состава пакета (см. \"Создать пакет для репозитория\")"
+
+#: opkman_const.rsoptions_lbfilterdirs_caption
+msgid "Excluded folders (packages)"
+msgstr "Исключённые каталоги (пакеты)"
+
+#: opkman_const.rsoptions_lbfilterfiles_caption
+msgid "Excluded files (packages)"
+msgstr "Исключённые файлы (пакеты)"
+
+#: opkman_const.rsoptions_lblastupdate_caption
+msgid "Last update: "
+msgstr "Последнее обновление: "
 
 #: opkman_const.rsoptions_lblocalrepositoryarchive_caption
 msgid "Archive directory"
-msgstr ""
+msgstr "Каталог архивов"
 
 #: opkman_const.rsoptions_lblocalrepositorypackages_caption
 msgid "Local repository"
-msgstr ""
+msgstr "Локальный репозиторий"
 
 #: opkman_const.rsoptions_lblocalrepositoryupdate_caption
 msgid "Update directory"
-msgstr ""
+msgstr "Каталог обновлений"
 
 #: opkman_const.rsoptions_lbpassword_caption
 msgid "Password"
-msgstr ""
+msgstr "Пароль"
 
 #: opkman_const.rsoptions_lbport_caption
 msgid "Port"
-msgstr ""
+msgstr "Порт"
 
 #: opkman_const.rsoptions_lbremoterepository_caption
 msgid "Remote repository"
-msgstr ""
+msgstr "Удалённый репозиторий"
+
+#: opkman_const.rsoptions_lbselectprofile_caption
+msgid "Select profile"
+msgstr "Выберите профиль"
 
 #: opkman_const.rsoptions_lbserver_caption
 msgid "Server"
-msgstr ""
+msgstr "Сервер"
 
 #: opkman_const.rsoptions_lbusername_caption
 msgid "Username"
-msgstr ""
+msgstr "Имя пользователя"
 
 #: opkman_const.rsoptions_proxyport_info
 msgid "Please enter the proxy server port!"
-msgstr ""
+msgstr "Введите порт прокси-сервера!"
 
 #: opkman_const.rsoptions_proxyserver_info
 msgid "Please enter the proxy server address!"
-msgstr ""
+msgstr "Введите адрес прокси-сервера!"
 
 #: opkman_const.rsoptions_remoterepository_information
 msgid "Please enter the remote repository address!"
-msgstr ""
+msgstr "Введите адрес удалённого репозитория!"
 
 #: opkman_const.rsoptions_restoredefaults_conf
 msgid "This will restore the default settings. Continue?"
-msgstr ""
+msgstr "Это действие восстановит значения параметров по умолчанию. Продолжить?"
+
+#: opkman_const.rsoptions_tsfolders_caption
+msgid "Folders"
+msgstr "Каталоги"
+
+#: opkman_const.rsoptions_tsgeneral_caption
+msgid "General"
+msgstr "Общие"
+
+#: opkman_const.rsoptions_tsprofiles_caption
+msgid "Profiles"
+msgstr "Профили"
+
+#: opkman_const.rsoptions_tsproxy_caption
+msgid "Proxy"
+msgstr "Прокси-сервер"
 
 #: opkman_const.rspackagelistfrm_bno_caption
 msgctxt "opkman_const.rspackagelistfrm_bno_caption"
@@ -821,15 +1058,15 @@ msgstr "Да"
 
 #: opkman_const.rspackagelistfrm_caption0
 msgid "Installed package list"
-msgstr ""
+msgstr "Список установленных пакетов"
 
 #: opkman_const.rspackagelistfrm_caption1
 msgid "Downloaded package list"
-msgstr ""
+msgstr "Список загруженных пакетов"
 
 #: opkman_const.rspackagelistfrm_caption2
 msgid "Update package list"
-msgstr ""
+msgstr "Список обновляемых пакетов"
 
 #: opkman_const.rspackagesfound
 msgid "(%s packages found)"
@@ -837,143 +1074,112 @@ msgstr "(найдено пакетов: %s)"
 
 #: opkman_const.rsprogressfrm_caption0
 msgid "Downloading packages"
-msgstr ""
+msgstr "Идёт загрузка пакетов"
 
 #: opkman_const.rsprogressfrm_caption1
 msgid "Extracting packages"
-msgstr ""
+msgstr "Идёт распаковка пакетов"
 
 #: opkman_const.rsprogressfrm_caption2
 msgid "Installing packages"
-msgstr ""
+msgstr "Идёт установка пакетов"
 
 #: opkman_const.rsprogressfrm_caption3
 msgid "Updating packages"
-msgstr ""
+msgstr "Идёт обновление пакетов"
 
 #: opkman_const.rsprogressfrm_caption4
 msgid ". Please wait..."
-msgstr ""
+msgstr ". Подождите..."
 
 #: opkman_const.rsprogressfrm_caption5
 msgid "Unknown"
-msgstr ""
+msgstr "Неизвестно"
 
 #: opkman_const.rsprogressfrm_cbextractopen_caption0
 msgid "Extract after download"
-msgstr ""
+msgstr "Распаковать после загрузки"
 
 #: opkman_const.rsprogressfrm_cbextractopen_caption1
 msgid "Open containing folder"
-msgstr ""
+msgstr "Открыть целевой каталог"
 
 #: opkman_const.rsprogressfrm_conf0
 msgid "Continue with next one?"
-msgstr ""
+msgstr "Приступить к работе со следующим?"
 
 #: opkman_const.rsprogressfrm_error0
 msgid "Cannot download package:"
-msgstr ""
+msgstr "Невозможно загрузить пакет:"
 
 #: opkman_const.rsprogressfrm_error1
 msgid "Error message:"
-msgstr ""
-
-#: opkman_const.rsprogressfrm_error10
-msgctxt "opkman_const.rsprogressfrm_error10"
-msgid "Dependecy"
-msgstr ""
-
-#: opkman_const.rsprogressfrm_error11
-msgctxt "opkman_const.rsprogressfrm_error11"
-msgid "not found!"
-msgstr ""
-
-#: opkman_const.rsprogressfrm_error12
-msgid "Cannot open package file."
-msgstr ""
-
-#: opkman_const.rsprogressfrm_error13
-msgid "Cannot compile package."
-msgstr ""
-
-#: opkman_const.rsprogressfrm_error14
-msgid "Cannot install package."
-msgstr ""
+msgstr "Сообщение об ошибке:"
 
 #: opkman_const.rsprogressfrm_error2
 msgid "Cannot extract package:"
-msgstr ""
+msgstr "Невозможно распаковать пакет:"
 
 #: opkman_const.rsprogressfrm_error3
 msgid "Cannot install package:"
-msgstr ""
+msgstr "Невозможно установить пакет:"
 
 #: opkman_const.rsprogressfrm_error4
 msgctxt "opkman_const.rsprogressfrm_error4"
-msgid "Dependecy"
-msgstr ""
+msgid "Dependency \"%s\" not found!"
+msgstr "Зависимость \"%s\" не найдена!"
 
 #: opkman_const.rsprogressfrm_error5
 msgctxt "opkman_const.rsprogressfrm_error5"
-msgid "not found!"
-msgstr ""
+msgid "Cannot contact download site"
+msgstr "Невозможно соединиться с сайтом для загрузки"
 
 #: opkman_const.rsprogressfrm_error6
-msgid "Unknown error."
-msgstr ""
+msgid "No valid download link found."
+msgstr "Не найдено корректной ссылки для загрузки."
 
 #: opkman_const.rsprogressfrm_error7
-msgid "Cannot contact download site"
-msgstr ""
+msgid "Cannot open package file."
+msgstr "Невозможно открыть файл пакета."
 
 #: opkman_const.rsprogressfrm_error8
-msgid "No valid download link found."
-msgstr ""
+msgid "Cannot compile package."
+msgstr "Невозможно собрать пакет."
 
 #: opkman_const.rsprogressfrm_error9
-msgid "Cannot add package to the IDE."
-msgstr ""
+msgid "Cannot install package."
+msgstr "Невозможно установить пакет."
 
 #: opkman_const.rsprogressfrm_info0
 msgctxt "opkman_const.rsprogressfrm_info0"
 msgid "Installing package:"
-msgstr ""
+msgstr "Установка пакета:"
 
 #: opkman_const.rsprogressfrm_info1
 msgctxt "opkman_const.rsprogressfrm_info1"
 msgid "Success."
-msgstr ""
+msgstr "Успешно."
 
 #: opkman_const.rsprogressfrm_info2
-msgid "Contacting download site for"
-msgstr ""
+msgid "Contacting download site for \"%s\" (%s)"
+msgstr "Соединение с сайтом для загрузки \"%s\" (%s)"
 
 #: opkman_const.rsprogressfrm_info3
 msgid "Preparing to download. Please wait..."
-msgstr ""
+msgstr "Подготовка к загрузке. Подождите..."
 
 #: opkman_const.rsprogressfrm_info4
 msgid "Canceling. Please wait..."
-msgstr ""
+msgstr "Отмена. Подождите..."
 
 #: opkman_const.rsprogressfrm_info5
 msgid "Opening package:"
-msgstr ""
+msgstr "Открытие пакета:"
 
 #: opkman_const.rsprogressfrm_info6
 msgctxt "opkman_const.rsprogressfrm_info6"
-msgid "Success."
-msgstr ""
-
-#: opkman_const.rsprogressfrm_info7
 msgid "Compiling package:"
-msgstr ""
-
-#: opkman_const.rsprogressfrm_info8
-msgctxt "opkman_const.rsprogressfrm_info8"
-msgid "Installing package:"
-msgstr ""
+msgstr "Компиляция пакета:"
 
 #: opkman_const.rsprogressfrm_lbelapsed_caption
 msgid "Elapsed:"
@@ -1010,4 +1216,53 @@ msgstr "Ждите, идёт оценка..."
 #: opkman_const.rsprogressfrm_lbspeed_caption
 msgid "Speed:"
 msgstr "Скорость:"
+
+#: opkman_const.rsrepositories_badd_caption
+msgctxt "opkman_const.rsrepositories_badd_caption"
+msgid "Add"
+msgstr "Добавить"
+
+#: opkman_const.rsrepositories_bcancel_caption
+msgctxt "opkman_const.rsrepositories_bcancel_caption"
+msgid "Cancel"
+msgstr "Отмена"
+
+#: opkman_const.rsrepositories_bdelete_caption
+msgctxt "opkman_const.rsrepositories_bdelete_caption"
+msgid "Delete"
+msgstr "Удалить"
+
+#: opkman_const.rsrepositories_bedit_caption
+msgctxt "opkman_const.rsrepositories_bedit_caption"
+msgid "Edit"
+msgstr "Правка"
+
+#: opkman_const.rsrepositories_bok_caption
+msgctxt "opkman_const.rsrepositories_bok_caption"
+msgid "OK"
+msgstr "ОК"
+
+#: opkman_const.rsrepositories_caption
+msgid "Repositories"
+msgstr "Репозитории"
+
+#: opkman_const.rsrepositories_confirmation0
+msgid "Delete selected repository \"%s\"?"
+msgstr "Удалить выбранный репозиторий \"%s\"?"
+
+#: opkman_const.rsrepositories_inputbox_caption0
+msgid "Add repository"
+msgstr "Добавить репозиторий"
+
+#: opkman_const.rsrepositories_inputbox_caption1
+msgid "Edit repository"
+msgstr "Редактировать репозиторий"
+
+#: opkman_const.rsrepositories_inputbox_text
+msgid "Type the repository address:"
+msgstr "Введите адрес репозитория:"
+
+#: opkman_const.rsrepositories_vst_headercolumn
+msgid "Repository Address"
+msgstr "Адрес репозитория"
 

@@ -14,7 +14,7 @@
  *   A copy of the GNU General Public License is available on the World    *
  *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
  *   obtain it by writing to the Free Software Foundation,                 *
- *   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.        *
+ *   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
  *                                                                         *
  ***************************************************************************
 
@@ -31,8 +31,8 @@ unit opkman_serializablepackages;
 interface
 
 uses
-  Classes, SysUtils, FileUtil, Variants, fpjson, jsonparser, md5, contnrs,
-  PackageIntf, Laz2_XMLCfg;
+  Classes, SysUtils, FileUtil, Variants, fpjson, jsonparser, contnrs,
+  PackageIntf, Laz2_XMLCfg, LazFileUtils, dateutils;
 
 
 type
@@ -59,6 +59,11 @@ type
   TPackageStates = set of TPackageState;
 
   TChangeType = (ctAdd, ctRemove);
+
+  TSortType = (stName, stDate);
+
+  TSortOrder = (soAscendent, soDescendent);
+
   { TPackageVersion }
 
    TPackageVersion = class(TPersistent)
@@ -132,6 +137,8 @@ type
     FPackageAbsolutePath: String;
     FInstalledFileName: String;
     FInstalledFileVersion: String;
+    FInstalledFileDescription: String;
+    FInstalledFileLincese: String;
     FUpdateVersion: String;
     FForceNotify: Boolean;
     FInternalVersion: Integer;
@@ -165,6 +172,8 @@ type
     property InternalVersion: Integer read FInternalVersion write FInternalVersion;
     property InternalVersionOld: Integer read FInternalVersionOld write FInternalVersionOld;
     property HasUpdate: Boolean read FHasUpdate write FHasUpdate;
+    property InstalledFileDescription: String read FInstalledFileDescription write FInstalledFileDescription;
+    property InstalledFileLincese: String read FInstalledFileLincese write FInstalledFileLincese;
   published
     property Name: String read FName write FName;
     property Author: String read FAuthor write FAuthor;
@@ -202,6 +211,8 @@ type
     FSVNURL: String;
     FUpdateSize: Int64;
     FIsDirZipped: Boolean;
+    FZippedBaseDir: String;
+    FRating: Integer;
     FPackageFiles: TCollection;
     function GetDownloadable: Boolean;
     function GetExtractable: Boolean;
@@ -217,9 +228,11 @@ type
     property IsExtractable: Boolean read GetExtractable;
     property UpdateSize: Int64 read FUpdateSize write FUpdateSize;
     property IsDirZipped: Boolean read FIsDirZipped write FIsDirZipped;
+    property ZippedBaseDir: String read FZippedBaseDir write FZippedBaseDir;
     property DownloadZipURL: String read FDownloadZipURL write FDownloadZipURL;
     property HasUpdate: Boolean read FHasUpdate write FHasUpdate;
     property DisableInOPM: Boolean read FDisableInOPM write FDisableInOPM;
+    property Rating: Integer read FRating write FRating;
   published
     property Name: String read FName write FName;
     property DisplayName: String read FDisplayName write FDisplayName;
@@ -259,7 +272,9 @@ type
     function IsPackageExtracted(const APackage: TPackage): Boolean;
     function IsPackageInstalled(const APackageFile: TPackageFile; const APackageBaseDir: String): Boolean;
     function IsAtLeastOnePackageFileInstalled(const APackage: TPackage): Boolean;
-    function GetRuntimePackageVersion(const APath: String): String;
+    function GetPackageVersion(const APath: String): String;
+    function GetPackageDescription(const APath: String): String;
+    function GetPackageLicense(const APath: String): String;
   public
     constructor Create;
     destructor Destroy; override;
@@ -281,6 +296,7 @@ type
     function IsInstalledVersionOk(PackageDependency: TPackageDependency; InstalledVersion: String): Boolean;
     function GetPackageInstallState(const APackage: TPackage): Integer; overload;
     procedure DeleteDownloadedZipFiles;
+    procedure Sort(const ASortType: TSortType; const ASortOrder: TSortOrder);
   public
     property Count: Integer read GetCount;
     property DownloadCount: Integer read GetDownloadCount;
@@ -935,7 +951,13 @@ var
   Package: TPackage;
 begin
   Clear;
-  Result := True;
+  if Trim(JSON) = '' then
+  begin
+    Result := False;
+    Exit;
+  end
+  else
+    Result := True;
   Parser := TJSONParser.Create(JSON);
   try
     Data := Parser.Parse;
@@ -979,6 +1001,7 @@ var
   PackageFile: TPackageFile;
   PackageFileObject: TJSONObject;
   I: Integer;
+  PackageRelativePath: String;
 begin
   Result := True;
   try
@@ -992,7 +1015,13 @@ begin
       PackageFileObject.Add('Description', PackageFile.Description);
       PackageFileObject.Add('Author', PackageFile.Author);
       PackageFileObject.Add('License', PackageFile.License);
-      PackageFileObject.Add('RelativeFilePath', PackageFile.PackageRelativePath);
+      PackageRelativePath := PackageFile.PackageRelativePath;
+      if Trim(PackageRelativePath) <> '' then
+      begin
+        PackageRelativePath := AppendPathDelim(PackageRelativePath);
+        PackageRelativePath := StringReplace(PackageRelativePath, PathDelim, '\/', [rfReplaceAll]);
+      end;
+      PackageFileObject.Add('RelativeFilePath', PackageRelativePath);
       PackageFileObject.Add('VersionAsString', PackageFile.VersionAsString);
       PackageFileObject.Add('LazCompatibility', PackageFile.LazCompatibility);
       PackageFileObject.Add('FPCCompatibility', PackageFile.FPCCompatibility);
@@ -1015,8 +1044,8 @@ var
   FileName: String;
 begin
   FileName := Options.LocalRepositoryArchive + APackage.RepositoryFileName;
-  Result := (FileExists(FileName)) and
-            (MD5Print(MD5File(FileName)) = APackage.RepositoryFileHash) and
+  Result := (FileExistsUTF8(FileName)) and
+//            (MD5Print(MD5File(FileName)) = APackage.RepositoryFileHash) and
             (FileUtil.FileSize(FileName) = APackage.RepositoryFileSize);
 end;
 
@@ -1030,7 +1059,7 @@ begin
   begin
     PackageFile := TPackageFile(APackage.FPackageFiles.Items[I]);
     PackageFile.FPackageAbsolutePath := Options.LocalRepositoryPackages + APackage.PackageBaseDir + PackageFile.FPackageRelativePath + PackageFile.Name;
-    if not FileExists(PackageFile.FPackageAbsolutePath) then
+    if not FileExistsUTF8(PackageFile.FPackageAbsolutePath) then
     begin
       Result := False;
       Break;
@@ -1038,7 +1067,7 @@ begin
   end;
 end;
 
-function TSerializablePackages.GetRuntimePackageVersion(const APath: String): String;
+function TSerializablePackages.GetPackageVersion(const APath: String): String;
 
   function VersionBound(const AVersion: Integer): Integer;
   begin
@@ -1073,6 +1102,32 @@ begin
   end;
 end;
 
+function TSerializablePackages.GetPackageDescription(const APath: String): String;
+var
+  XMLConfig: TXMLConfig;
+begin
+  Result := '';
+  XMLConfig := TXMLConfig.Create(APath);
+  try
+    Result := XMLConfig.GetValue('Package/Description/Value', '');
+  finally
+    XMLConfig.Free;
+  end;
+end;
+
+function TSerializablePackages.GetPackageLicense(const APath: String): String;
+var
+  XMLConfig: TXMLConfig;
+begin
+  Result := '';
+  XMLConfig := TXMLConfig.Create(APath);
+  try
+    Result := XMLConfig.GetValue('Package/License/Value', '');
+  finally
+    XMLConfig.Free;
+  end;
+end;
+
 
 function TSerializablePackages.IsPackageInstalled(const APackageFile: TPackageFile;
   const APackageBaseDir: String): Boolean;
@@ -1092,9 +1147,14 @@ function TSerializablePackages.IsPackageInstalled(const APackageFile: TPackageFi
       begin
         APackageFile.InstalledFileName := Package.Filename;
         APackageFile.InstalledFileVersion := IntToStr(Package.Version.Major) + '.' +
-                                         IntToStr(Package.Version.Minor) + '.' +
-                                         IntToStr(Package.Version.Release) + '.' +
-                                         IntToStr(Package.Version.Build);
+                                             IntToStr(Package.Version.Minor) + '.' +
+                                             IntToStr(Package.Version.Release) + '.' +
+                                             IntToStr(Package.Version.Build);
+        if FileExistsUTF8(APackageFile.InstalledFileName) then
+        begin
+          APackageFile.InstalledFileDescription := GetPackageDescription(Package.Filename);
+          APackageFile.InstalledFileLincese := GetPackageLicense(Package.Filename);
+        end;
         Result := True;
         Break;
       end;
@@ -1110,12 +1170,16 @@ begin
       begin
         FileName := StringReplace(APackageFile.Name, '.lpk', '.opkman', [rfIgnoreCase]);
         Result := (psExtracted in APackageFile.PackageStates) and
-                  FileExists(Options.LocalRepositoryPackages + APackageBaseDir + APackageFile.PackageRelativePath + FileName);
+                  FileExistsUTF8(Options.LocalRepositoryPackages + APackageBaseDir + APackageFile.PackageRelativePath + FileName);
         if Result then
         begin
           APackageFile.InstalledFileName := Options.LocalRepositoryPackages + APackageBaseDir + APackageFile.FPackageRelativePath + APackageFile.Name;
-          APackageFile.InstalledFileVersion := GetRuntimePackageVersion(APackageFile.InstalledFileName);
-          Result := True;
+          if FileExistsUTF8(APackageFile.InstalledFileName) then
+          begin
+            APackageFile.InstalledFileVersion := GetPackageVersion(APackageFile.InstalledFileName);
+            APackageFile.InstalledFileDescription := GetPackageDescription(APackageFile.InstalledFileName);
+            APackageFile.InstalledFileLincese := GetPackageLicense(APackageFile.InstalledFileName);
+          end;
         end
         else
           Result := CheckIDEPackages
@@ -1152,6 +1216,8 @@ end;
 
 function TSerializablePackages.PackageDataToJSON(APackage: TPackage;
  var APackageData: TJSONObject): Boolean;
+var
+  PackageBaseDir: String;
 begin
   //need to change
   Result := True;
@@ -1164,7 +1230,13 @@ begin
     APackageData.Add('RepositoryFileSize', TPackage(APackage).RepositoryFileSize);
     APackageData.Add('RepositoryFileHash', TPackage(APackage).RepositoryFileHash);
     APackageData.Add('RepositoryDate', TPackage(APackage).RepositoryDate);
-    APackageData.Add('PackageBaseDir', TPackage(APackage).PackageBaseDir);
+    PackageBaseDir := TPackage(APackage).PackageBaseDir;
+    if Trim(PackageBaseDir) <> '' then
+    begin
+      PackageBaseDir := AppendPathDelim(PackageBaseDir);
+      PackageBaseDir := StringReplace(PackageBaseDir, PathDelim, '\/', [rfReplaceAll]);
+    end;
+    APackageData.Add('PackageBaseDir', PackageBaseDir);
     APackageData.Add('HomePageURL', TPackage(APackage).HomePageURL);
     APackageData.Add('DownloadURL', TPackage(APackage).DownloadURL);
     APackageData.Add('SVNURL', TPackage(APackage).SVNURL);
@@ -1324,7 +1396,7 @@ begin
              (PackageFile.PackageType in [ptRunTime, ptRunTimeOnly]) then
       begin
         FileName := StringReplace(PackageFile.Name, '.lpk', '.opkman', [rfIgnoreCase]);
-        FileCreate(Options.LocalRepositoryPackages + Items[I].PackageBaseDir + PackageFile.PackageRelativePath + FileName);
+        FileCreateUTF8(Options.LocalRepositoryPackages + Items[I].PackageBaseDir + PackageFile.PackageRelativePath + FileName);
       end;
     end;
   end;
@@ -1381,13 +1453,65 @@ begin
         end;
       paUpdate:
         begin
-          if FileExists(Options.LocalRepositoryUpdate + Items[I].RepositoryFileName) then
+          if FileExistsUTF8(Options.LocalRepositoryUpdate + Items[I].RepositoryFileName) then
             DeleteFile(Options.LocalRepositoryUpdate + Items[I].RepositoryFileName)
         end;
     end;
   end;
 end;
 
+function SortByNameAsc(Item1, Item2: TCollectionItem): Integer;
+var
+  Package1, Package2: TPackage;
+begin
+  Package1 := TPackage(Item1);
+  Package2 := TPackage(Item2);
+  Result := CompareText(Package1.FDisplayName, Package2.FDisplayName);
+end;
+
+function SortByNameDsc(Item1, Item2: TCollectionItem): Integer;
+var
+  Package1, Package2: TPackage;
+begin
+  Package1 := TPackage(Item1);
+  Package2 := TPackage(Item2);
+  Result := CompareText(Package2.FDisplayName, Package1.FDisplayName);
+end;
+
+function SortByDateAsc(Item1, Item2: TCollectionItem): Integer;
+var
+  Package1, Package2: TPackage;
+begin
+  Package1 := TPackage(Item1);
+  Package2 := TPackage(Item2);
+  Result := CompareDate(Package1.RepositoryDate, Package2.RepositoryDate);
+end;
+
+function SortByDateDsc(Item1, Item2: TCollectionItem): Integer;
+var
+  Package1, Package2: TPackage;
+begin
+  Package1 := TPackage(Item1);
+  Package2 := TPackage(Item2);
+  Result := CompareDate(Package2.RepositoryDate, Package1.RepositoryDate);
+end;
+
+procedure TSerializablePackages.Sort(const ASortType: TSortType;
+  const ASortOrder: TSortOrder);
+begin
+  case ASortType of
+    stName:
+      if ASortOrder = soAscendent then
+        FPackages.Sort(@SortByNameAsc)
+      else if ASortOrder = soDescendent then
+        FPackages.Sort(@SortByNameDsc);
+    stDate:
+      if ASortOrder = soAscendent then
+        FPackages.Sort(@SortByDateAsc)
+      else if ASortOrder = soDescendent then
+        FPackages.Sort(@SortByDateDsc)
+  end;
+end;
 
 function TSerializablePackages.IsDependencyOk(PackageDependency: TPackageDependency;
   DependencyPackage: TPackageFile): Boolean;

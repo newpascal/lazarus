@@ -26,7 +26,7 @@
  *   A copy of the GNU General Public License is available on the World    *
  *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
  *   obtain it by writing to the Free Software Foundation,                 *
- *   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.        *
+ *   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
  *                                                                         *
  ***************************************************************************
 }
@@ -94,12 +94,13 @@ type
     popEnableAllSameSource: TMenuItem;
     popDeleteAllSameSource: TMenuItem;
     ToolBar1: TToolBar;
+    ToolButtonAdd: TToolButton;
     ToolButtonProperties: TToolButton;
-    ToolButton10: TToolButton;
+    ToolSep2: TToolButton;
     ToolButtonEnable: TToolButton;
     ToolButtonDisable: TToolButton;
     ToolButtonTrash: TToolButton;
-    ToolButton6: TToolButton;
+    ToolSep1: TToolButton;
     ToolButtonEnableAll: TToolButton;
     ToolButtonDisableAll: TToolButton;
     ToolButtonTrashAll: TToolButton;
@@ -330,6 +331,8 @@ begin
   ToolBar1.Images := IDEImages.Images_16;
   mnuPopup.Images := IDEImages.Images_16;
   lvBreakPoints.SmallImages := IDEImages.Images_16;
+
+  ToolButtonAdd.ImageIndex := IDEImages.LoadImage(16, 'laz_add');
 
   actEnableSelected.Caption := lisDbgItemEnable;
   actEnableSelected.Hint    := lisDbgItemEnableHint;

@@ -14,7 +14,7 @@
  *   A copy of the GNU General Public License is available on the World    *
  *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
  *   obtain it by writing to the Free Software Foundation,                 *
- *   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.        *
+ *   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
  *                                                                         *
  ***************************************************************************
 
@@ -31,11 +31,18 @@ unit BuildProfileManager;
 interface
 
 uses
-  Classes, SysUtils, FileUtil, Laz2_XMLCfg, LazLogger, LazFileUtils, LazUTF8,
-  LResources, Forms, Controls, Graphics, Dialogs, ExtCtrls, Buttons, StdCtrls,
-  ComCtrls, Contnrs, ButtonPanel, DefineTemplates, IDEImagesIntf,
-  IDEHelpIntf, IDEDialogs, LazarusIDEStrConsts, LazConf, InterfaceBase,
-  IDEProcs, TransferMacros, CompilerOptions, EnvironmentOpts;
+  Classes, SysUtils,
+  // LazUtils
+  Laz2_XMLCfg, LazLogger, LazFileUtils, LazUTF8,
+  // LCL
+  Forms, Controls, Dialogs, ExtCtrls, StdCtrls, ComCtrls, Contnrs, ButtonPanel,
+  InterfaceBase, LCLPlatformDef,
+  // Codetools
+  DefineTemplates,
+  // IdeIntf
+  IDEImagesIntf, IDEHelpIntf, IDEDialogs,
+  // IDE
+  LazarusIDEStrConsts, IDEProcs, TransferMacros, EnvironmentOpts;
 
 type
 
@@ -395,7 +402,7 @@ begin
     fTargetPlatform:=Platfrm;
     fIdeBuildMode:=bmBuild;
     fUpdateRevisionInc:=True;
-    fOptions.Add('-O2 -g- -Xs');
+    fOptions.Add('-O3 -g- -Xs');
   end;
   Add(Profile);
 

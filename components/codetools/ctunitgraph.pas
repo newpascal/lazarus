@@ -14,7 +14,7 @@
  *   A copy of the GNU General Public License is available on the World    *
  *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
  *   obtain it by writing to the Free Software Foundation,                 *
- *   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.        *
+ *   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
  *                                                                         *
  ***************************************************************************
 
@@ -267,10 +267,15 @@ var
   AVLNode: TAVLTreeNode;
   AnUnit: TUGUnit;
 begin
+  {$IF FPC_FULLVERSION<30101}
   if FFiles.ConsistencyCheck<>0 then
     raise Exception.Create('FFiles.ConsistencyCheck');
   if FQueuedFiles.ConsistencyCheck<>0 then
     raise Exception.Create('FStartFiles.ConsistencyCheck');
+  {$ELSE}
+  FFiles.ConsistencyCheck;
+  FQueuedFiles.ConsistencyCheck;
+  {$ENDIF}
 
   AVLNode:=FQueuedFiles.FindLowest;
   while AVLNode<>nil do begin

@@ -22,7 +22,7 @@
  *   A copy of the GNU General Public License is available on the World    *
  *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
  *   obtain it by writing to the Free Software Foundation,                 *
- *   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.        *
+ *   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
  *                                                                         *
  ***************************************************************************
 }
@@ -668,6 +668,7 @@ resourcestring
   lisAddDelphiDefineHint = 'Useful when the code has checks for supported compiler versions';
   lisBackupChangedFiles = 'Make backup of changed files';
   lisBackupHint = 'Creates a Backup directory under project directory';
+
   lisStartConversion = 'Start Conversion';
   lisConvertTarget = 'Target';
   lisConvertTargetHint = 'Converter adds conditional compilation to support different targets';
@@ -683,6 +684,42 @@ resourcestring
   lisScanFilesInParentDir = 'Scan files in parent directory';
   lisScanFilesInParentDirHint = 'Search for source files in sibling directories'
     +' (parent directory and its children)';
+
+  //Delphi converter
+  lisConvDelphiConvertDelphiUnit = 'Convert Delphi unit';
+  lisConvDelphiConvertDelphiProject = 'Convert Delphi project';
+  lisConvDelphiConvertDelphiPackage = 'Convert Delphi package';
+  lisConvDelphiFoundAllUnitFiles = 'Found all unit files';
+  lisConvDelphiRepairingFormFiles = '*** Fixing used units and Repairing form files ***';
+  lisConvDelphiConvertingProjPackUnits = '*** Converting unit files belonging to project/package ***';
+  lisConvDelphiConvertingFoundUnits = '*** Converting unit files found during conversion ***';
+  lisConvDelphiChangedEncodingToUTF8 = 'Changed encoding from %s to UTF-8';
+  lisConvDelphiAllSubDirsScanned = 'All sub-directories will be scanned for unit files';
+  lisConvDelphiMissingIncludeFile = '%s(%s,%s) missing include file';
+  lisConvDelphiFixedUnitCase = 'Fixed character case of unit "%s" to "%s".';
+  lisConvDelphiReplacedUnitInUsesSection = 'Replaced unit "%s" with "%s" in uses section.';
+  lisConvDelphiRemovedUnitFromUsesSection = 'Removed unit "%s" from uses section.';
+  lisConvDelphiAddedUnitToUsesSection = 'Added unit "%s" to uses section.';
+  lisConvDelphiAddedCustomOptionDefines = 'Added defines %s in custom options';
+  lisConvDelphiUnitsToReplaceIn = 'Units to replace in %s';
+  lisConvDelphiConversionTook = 'Conversion took: %s';
+  lisConvDelphiConversionReady = 'Conversion Ready.';
+  lisConvDelphiConversionAborted = 'Conversion Aborted.';
+  lisConvDelphiBeginCodeToolsFailed = 'BeginCodeTools failed!';
+  lisConvDelphiError = 'Error="%s"';
+  lisConvDelphiFailedConvertingUnit = 'Failed converting unit';
+  lisConvDelphiFailedToConvertUnit = 'Failed to convert unit "%s"';
+  lisConvDelphiExceptionDuringConversion = 'Exception happened during unit conversion.'
+    +' Continuing with form files of already converted units...';
+  lisConvDelphiUnitnameExistsInLCL = 'Unitname exists in LCL';
+  lisConvDelphiUnitWithNameExistsInLCL = 'LCL already has a unit with name %s.'
+    +' Delete local file %s?';
+  lisConvDelphiPackageNameExists = 'Package name exists';
+  lisConvDelphiProjOmittedUnit = 'Omitted unit %s from project';
+  lisConvDelphiAddedPackageDependency = 'Added Package %s as a dependency.';
+  lisConvDelphiPackageRequired = 'Package %s is required but not installed in Lazarus! Install it later.';
+  lisConvDelphiThereIsAlreadyAPackageWithTheNamePleaseCloseThisPa = 'There is '
+    +'already a package with the name "%s"%sPlease close this package first.';
   lisConvUnknownProps = 'Unknown properties';
   lisConvTypesToReplace = 'Types to replace';
   lisConvTypeReplacements = 'Type Replacements';
@@ -703,7 +740,6 @@ resourcestring
   lisConvTopOff = 'Top offset';
   lisConvLeftOff = 'Left offset';
   lisConvDelphiFunc = 'Delphi Function';
-  lisConvAddedUnitToUsesSection = 'Added unit %s to uses section';
   lisConvAddingFlagForRegister = 'Adding flag for "Register" procedure in unit %s.';
   lisConvDeletedFile = 'Deleted file %s';
   lisConvBracketNotFound = 'Bracket not found';
@@ -723,7 +759,6 @@ resourcestring
   lisConvStoppedBecauseThereIsPackage  = 'Stopped because there already is a package with the same name';
   lisConvConvertedFrom = ' { *Converted from %s* }';
   lisConvThisLogWasSaved = 'This log was saved to %s';
-  lisScanning = 'Scanning';
   lisScanParentDir = 'Scanning parent directory';
   lisReplacement = 'Replacement';
   lisReplacements = 'Replacements';
@@ -736,6 +771,7 @@ resourcestring
   lisFilesHaveRightEncoding = '*** All found files already have the right encoding ***';
   lisEncodingNumberOfFilesFailed = 'Number of files failed to convert: %d';
 
+  //
   lisnoname = 'noname';
   lisTheDestinationDirectoryDoesNotExist = 'The destination directory%s"%s" does not exist.';
   lisRenameFile = 'Rename file?';
@@ -1131,7 +1167,7 @@ resourcestring
    +'A copy of the GNU General Public License is available on the World '
    +'Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also '
    +'obtain it by writing to the Free Software Foundation, '
-   +'Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.';
+   +'Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.';
 
   lisLGPLNotice =
     '<description>' + sLineBreak + sLineBreak
@@ -1146,7 +1182,7 @@ resourcestring
    +'GNU Library General Public License for more details. ' + sLineBreak + sLineBreak
    +'You should have received a copy of the GNU Library General Public License '
    +'along with this library; if not, write to the Free Software '
-   +'Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.';
+   +'Foundation, Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.';
 
   lisModifiedLGPLNotice =
     '<description>' + sLineBreak + sLineBreak
@@ -1171,7 +1207,7 @@ resourcestring
    +'GNU Library General Public License for more details. ' + sLineBreak + sLineBreak
    +'You should have received a copy of the GNU Library General Public License '
    +'along with this library; if not, write to the Free Software '
-   +'Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.';
+   +'Foundation, Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.';
 
   // MIT license aka Expat license see: http://www.opensource.org/licenses/MIT
   lisMITNotice =
@@ -1902,6 +1938,10 @@ resourcestring
   dlgBracketMatchGroup = 'Matching bracket pairs';
   dlgPasExtKeywordsGroup = 'Extended Pascal Keyword Options';
   dlgPasKeywordsMatches = 'Matching Keywords';
+  dlgPasKeywordsMarkup = 'Markup (on caret)';
+  dlgPasKeywordsOutline = 'Outline';
+  dlgMarkupWordBracket = 'Word Brackets on caret (global)';
+  dlgMarkupOutline = 'Outline (global)';
   dlgPasExtKeywords = 'Highlight control statements as keywords';
   dlgPasStringKeywords = 'Highlight "String" keyword(s)';
   dlgPasStringKeywordsOptDefault = 'Default';
@@ -2328,8 +2368,12 @@ resourcestring
   dlgCOSources = 'Other sources (.pp/.pas files, used only by IDE not by compiler)';
   dlgCODebugPath = 'Debugger path addition (none):';
   lisDelimiterIsSemicolon = 'Delimiter is semicolon.';
+
+  // Initial setup dialog
+  lisScanning = 'Scanning';
   lisCompiler = 'Compiler';
   lisDebugger = 'Debugger';
+
   lisToFPCPath = 'Path:';
   lisCOSkipCallingCompiler = 'Skip calling compiler';
   lisCOAmbiguousAdditionalCompilerConfigFile = 'Ambiguous additional compiler config file';
@@ -5013,6 +5057,8 @@ resourcestring
   lisTabOrderUpHint = 'Move the selected control up in tab order';
   lisTabOrderDownHint = 'Move the selected control down in tab order';
   lisTabOrderSortHint = 'Calculate tab order for controls by their X- and Y- positions';
+  lisTabOrderRecursively = 'recursively';
+  lisTabOrderRecursionHint = 'Calculate tab order recursively for child controls';
   lisTabOrderConfirmSort = 'Sort tab orders of all child controls of "%s" by their positions?';
 
   lisCustomProgram = 'Custom Program';
@@ -5135,10 +5181,10 @@ resourcestring
   lisAnchorLeftToRightSide = 'Anchor left side to right side of sibling. The kept distance is defined by both BorderSpacing properties of this and sibling.';
   lisAnchorRightToLeftSide = 'Anchor right side to left side of sibling. The kept distance is defined by both BorderSpacing properties of this and sibling.';
   lisAnchorRightToRightSide = 'Anchor right side to right side of sibling. Use BorderSpacing to set a distance. BorderSpacing of sibling is ignored.';
-  lisTopSiblingComboBoxHint = 'This is the sibling control to which the top side is anchored. Leave empty for anchoring to parent in Delphi style (BorderSpacing and ReferenceSide does not matter).';
-  lisBottomSiblingComboBoxHint = 'This is the sibling control to which the bottom side is anchored. Leave empty for anchoring to parent in Delphi style (BorderSpacing and ReferenceSide does not matter).';
-  lisRightSiblingComboBoxHint = 'This is the sibling control to which the right side is anchored. Leave empty for anchoring to parent in Delphi style (BorderSpacing and ReferenceSide does not matter).';
-  lisLeftSiblingComboBoxHint = 'This is the sibling control to which the left side is anchored. Leave empty for anchoring to parent in Delphi style (BorderSpacing and ReferenceSide does not matter).';
+  lisTopSiblingComboBoxHint = 'This is the sibling control to which the top side is anchored. Leave empty for anchoring to parent in Delphi style (BorderSpacing and ReferenceSide do not matter).';
+  lisBottomSiblingComboBoxHint = 'This is the sibling control to which the bottom side is anchored. Leave empty for anchoring to parent in Delphi style (BorderSpacing and ReferenceSide do not matter).';
+  lisRightSiblingComboBoxHint = 'This is the sibling control to which the right side is anchored. Leave empty for anchoring to parent in Delphi style (BorderSpacing and ReferenceSide do not matter).';
+  lisLeftSiblingComboBoxHint = 'This is the sibling control to which the left side is anchored. Leave empty for anchoring to parent in Delphi style (BorderSpacing and ReferenceSide do not matter).';
   lisBorderSpace = 'Border space';
   lisSibling = 'Sibling';
   lisRightAnchoring = 'Right anchoring';
@@ -5890,41 +5936,6 @@ resourcestring
 
   //IDE info dialog
   lisIDEInfoInformationAboutTheIDE = 'Information about the IDE';
-
-  //Delphi converter
-  lisConvDelphiConvertDelphiUnit = 'Convert Delphi unit';
-  lisConvDelphiConvertDelphiProject = 'Convert Delphi project';
-  lisConvDelphiConvertDelphiPackage = 'Convert Delphi package';
-  lisConvDelphiFoundAllUnitFiles = 'Found all unit files';
-  lisConvDelphiRepairingFormFiles = '*** Fixing used units and Repairing form files ***';
-  lisConvDelphiConvertingProjPackUnits = '*** Converting unit files belonging to project/package ***';
-  lisConvDelphiConvertingFoundUnits = '*** Converting unit files found during conversion ***';
-  lisConvDelphiChangedEncodingToUTF8 = 'Changed encoding from %s to UTF-8';
-  lisConvDelphiAllSubDirsScanned = 'All sub-directories will be scanned for unit files';
-  lisConvDelphiMissingIncludeFile = '%s(%s,%s) missing include file';
-  lisConvDelphiFixedUnitCase = 'Fixed character case of unit "%s" to "%s".';
-  lisConvDelphiReplacedUnitInUsesSection = 'Replaced unit "%s" with "%s" in uses section.';
-  lisConvDelphiRemovedUnitInUsesSection = 'Removed unit "%s" in uses section.';
-  lisConvDelphiAddedCustomOptionDefines = 'Added defines %s in custom options';
-  lisConvDelphiUnitsToReplaceIn = 'Units to replace in %s';
-  lisConvDelphiConversionTook = 'Conversion took: %s';
-  lisConvDelphiConversionReady = 'Conversion Ready.';
-  lisConvDelphiConversionAborted = 'Conversion Aborted.';
-  lisConvDelphiBeginCodeToolsFailed = 'BeginCodeTools failed!';
-  lisConvDelphiError = 'Error="%s"';
-  lisConvDelphiFailedConvertingUnit = 'Failed converting unit';
-  lisConvDelphiFailedToConvertUnit = 'Failed to convert unit "%s"';
-  lisConvDelphiExceptionDuringConversion = 'Exception happened during unit conversion.'
-    +' Continuing with form files of already converted units...';
-  lisConvDelphiUnitnameExistsInLCL = 'Unitname exists in LCL';
-  lisConvDelphiUnitWithNameExistsInLCL = 'LCL already has a unit with name %s.'
-    +' Delete local file %s?';
-  lisConvDelphiPackageNameExists = 'Package name exists';
-  lisConvDelphiProjOmittedUnit = 'Omitted unit %s from project';
-  lisConvDelphiAddedPackageDependency = 'Added Package %s as a dependency.';
-  lisConvDelphiPackageRequired = 'Package %s is required but not installed in Lazarus! Install it later.';
-  lisConvDelphiThereIsAlreadyAPackageWithTheNamePleaseCloseThisPa = 'There is '
-    +'already a package with the name "%s"%sPlease close this package first.';
 
   //Disassembler dialog
   lisDisAssAssembler = 'Assembler';

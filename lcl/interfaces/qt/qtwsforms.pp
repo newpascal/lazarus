@@ -590,6 +590,13 @@ begin
 
   {$IFDEF HASX11}
 
+  // make qt interface snappy.
+  if Assigned(Application) and not Application.Terminated then
+  begin
+    if AWinControl.HandleObjectShouldBeVisible or (fsModal in TCustomForm(AWinControl).FormState) then
+      QCoreApplication_processEvents(QEventLoopAllEvents);
+  end;
+
   if (Application.TaskBarBehavior = tbSingleButton) or
     (TForm(AWinControl).ShowInTaskBar <> stDefault) then
       SetShowInTaskbar(TForm(AWinControl), TForm(AWinControl).ShowInTaskBar);
@@ -1044,12 +1051,6 @@ begin
   AWidget := TQtHintWindow(AWinControl.Handle);
 
   AWidget.BeginUpdate;
-
-  if AWinControl.HandleObjectShouldBeVisible then
-  begin
-    if QApplication_activeModalWidget <> nil then
-      QWidget_setWindowModality(AWidget.Widget, QtWindowModal);
-  end;
   AWidget.setVisible(AWinControl.HandleObjectShouldBeVisible);
   AWidget.EndUpdate;
 end;

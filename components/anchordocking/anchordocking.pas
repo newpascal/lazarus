@@ -25,7 +25,7 @@
 
   You should have received a copy of the GNU Library General Public License
   along with this library; if not, write to the Free Software Foundation,
-  Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+  Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.
 
   Features:
     - dnd docking
@@ -5874,7 +5874,7 @@ begin
         // insert as last
         ADockObject.DropOnControl:=DockSite.Pages;
       end else begin
-        TabIndex:=DockSite.Pages.TabIndexAtClientPos(p);
+        TabIndex:=DockSite.Pages.IndexOfPageAt(p);
         if TabIndex>=0 then begin
           // insert in front of an existing
           ADockObject.DropOnControl:=DockSite.Pages.Page[TabIndex];
@@ -6248,7 +6248,7 @@ var
   Site: TAnchorDockHostSite;
 begin
   inherited MouseDown(Button, Shift, X, Y);
-  ATabIndex := TabIndexAtClientPos(Point(X,Y));
+  ATabIndex := IndexOfPageAt(X, Y);
   if (Button = mbLeft) and DockMaster.AllowDragging and (ATabIndex >= 0) then
   begin
     APage:=Page[ATabIndex];

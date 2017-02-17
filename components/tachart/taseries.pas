@@ -64,6 +64,8 @@ type
     procedure SetZeroLevel(AValue: Double);
   strict protected
     function GetLabelDataPoint(AIndex: Integer): TDoublePoint; override;
+    function ToolTargetDistance(const AParams: TNearestPointParams;
+      AGraphPt: TDoublePoint; APointIdx, AXIdx, AYIdx: Integer): Integer; override;
   protected
     procedure BarOffsetWidth(
       AX: Double; AIndex: Integer; out AOffset, AWidth: Double);
@@ -78,6 +80,8 @@ type
     function GetBarWidth(AIndex: Integer): Integer;
     procedure Draw(ADrawer: IChartDrawer); override;
     function Extent: TDoubleRect; override;
+    function GetNearestPoint(const AParams: TNearestPointParams;
+      out AResults: TNearestPointResults): Boolean; override;
   published
     property AxisIndexX;
     property AxisIndexY;
@@ -164,6 +168,7 @@ type
     property SeriesColor: TColor
       read GetSeriesColor write SetSeriesColor stored false default clWhite;
     property Source;
+    property Stacked default true;
     property Styles;
     property UseReticule;
     property UseZeroLevel: Boolean
@@ -222,6 +227,7 @@ type
       read GetShowLines write SetShowLines stored false default true;
     property ShowPoints: Boolean
       read FShowPoints write SetShowPoints default false;
+    property Stacked default false;
     property Source;
     property Styles;
     property UseReticule default true;
@@ -411,7 +417,7 @@ begin
   PrepareGraphPoints(ext, LineType <> ltFromOrigin);
   DrawSingleLineInStack(ADrawer, 0);
   for i := 0 to Source.YCount - 2 do begin
-    UpdateGraphPoints(i);
+    UpdateGraphPoints(i, FStacked);
     DrawSingleLineInStack(ADrawer, i + 1);
   end;
 end;
@@ -646,6 +652,7 @@ begin
   FShowPoints := AValue;
   UpdateParentChart;
 end;
+
 
 { TManhattanSeries }
 
@@ -950,6 +957,9 @@ begin
   FBarPen.OnChange := @StyleChanged;
   FBarPen.Color := clBlack;
   FBarBrush.Color := clRed;
+
+  FStacked := true;
+  FOptimizeX := false;
 end;
 
 destructor TBarSeries.Destroy;
@@ -1031,7 +1041,7 @@ var
   end;
 
 var
-  z, ofs, y: Double;
+  ofs, y: Double;
 begin
   if IsEmpty then exit;
 
@@ -1044,25 +1054,22 @@ begin
   scaled_depth := ADrawer.Scale(Depth);
 
   PrepareGraphPoints(ext2, true);
-  if IsRotated then
-    z := AxisToGraphX(ZeroLevel)
-  else
-    z := AxisToGraphY(ZeroLevel);
   SetLength(heights, Source.YCount + 1);
   for pointIndex := FLoBound to FUpBound do begin
-    p := FGraphPoints[pointIndex - FLoBound];
-    if IsRotated then
-      Exchange(p.X, p.Y);
+    p := Source[pointIndex]^.Point;
     if IsNan(p.X) then continue;
+    p.X := AxisToGraphX(p.X);
     BarOffsetWidth(p.X, pointIndex, ofs, w);
     p.X += ofs;
-    heights[0] := z;
-    heights[1] := NumberOr(p.Y, z);
+    heights[0] := ZeroLevel;
+    heights[1] := ZeroLevel + p.Y;
     for stackIndex := 1 to Source.YCount - 1 do begin
       y := Source[pointIndex]^.YList[stackIndex - 1];
       if not IsNan(y) then
         heights[stackIndex + 1] := heights[stackIndex] + y;
     end;
+    for stackIndex := 0 to High(heights) do
+      heights[stackindex] := AxisToGraphY(heights[stackindex]);
     for stackIndex := 0 to Source.YCount - 1 do
       BuildBar;
   end;
@@ -1082,16 +1089,18 @@ begin
   UpdateMinMax(ZeroLevel, Result.a.Y, Result.b.Y);
   // Show first and last bars fully.
   i := 0;
-  x := NearestXNumber(i, +1);
+  x := NearestXNumber(i, +1);       // --> x is in graph units
   if not IsNan(x) then begin
     BarOffsetWidth(x, i, ofs, w);
-    Result.a.X := Min(Result.a.X, x + ofs - w);
+    x := GraphToAxisX(x + ofs - w); // x is in graph units, Extent in axis units!
+    Result.a.X := Min(Result.a.X, x);
   end;
   i := Count - 1;
   x := NearestXNumber(i, -1);
   if not IsNan(x) then begin
     BarOffsetWidth(x, i, ofs, w);
-    Result.b.X := Max(Result.b.X, x + ofs + w);
+    x := GraphToAxisX(x + ofs + w);
+    Result.b.X := Max(Result.b.X, x);
   end;
 end;
 
@@ -1120,6 +1129,75 @@ end;
 procedure TBarSeries.GetLegendItems(AItems: TChartLegendItems);
 begin
   GetLegendItemsRect(AItems, BarBrush);
+end;
+
+function TBarSeries.GetNearestPoint(const AParams: TNearestPointParams;
+  out AResults: TNearestPointResults): Boolean;
+var
+  pointIndex: Integer;
+  graphClickPt: TDoublePoint;
+  sp: TDoublePoint;
+  ofs, w: Double;
+  heights: TDoubleDynArray;
+  y: Double;
+  stackindex: Integer;
+begin
+  Result := false;
+  AResults.FDist := Sqr(AParams.FRadius) + 1;
+  AResults.FIndex := -1;
+  AResults.FXIndex := 0;
+  AResults.FYIndex := 0;
+
+  if not (nptCustom in AParams.FTargets) then begin
+    Result := inherited;
+    exit;
+  end;
+
+  SetLength(heights, Source.YCount + 1);
+
+  // clicked point in image units
+  graphClickPt := ParentChart.ImageToGraph(AParams.FPoint);
+  if IsRotated then
+    Exchange(graphclickpt.X, graphclickpt.Y);
+
+  // Iterate through all points of the series
+  for pointIndex := 0 to Count - 1 do begin
+    sp := Source[pointindex]^.Point;
+    if IsNan(sp) then
+      continue;
+    sp.X := AxisToGraphX(sp.X);
+    BarOffsetWidth(sp.X, pointindex, ofs, w); // works with graph units
+    sp.X := sp.X + ofs;
+    if not InRange(graphClickPt.X, sp.X - w, sp.X + w) then
+      continue;
+    // Calculate stacked bar levels (in axis units)
+    heights[0] := ZeroLevel;
+    heights[1] := NumberOr(sp.Y, ZeroLevel);
+    for stackIndex := 1 to Source.YCount-1 do begin
+      y := NumberOr(Source[pointindex]^.YList[stackIndex - 1], 0);
+      heights[stackIndex + 1] := heights[stackindex] + y;
+    end;
+    // Convert heights to graph units
+    for stackIndex := 0 to High(heights) do
+      heights[stackIndex] := AxisToGraphY(heights[stackIndex]);
+    // Check if clicked pt is inside stacked bar
+    for stackindex := 0 to High(heights)-1 do
+      if ((heights[stackindex] < heights[stackindex + 1]) and
+         InRange(graphClickPt.Y, heights[stackindex], heights[stackIndex + 1]))
+      or
+         ((heights[stackindex + 1] < heights[stackindex]) and
+         InRange(graphClickPt.Y, heights[stackindex + 1], heights[stackIndex]))
+      then  begin
+        AResults.FDist := 0;
+        AResults.FIndex := pointindex;
+        AResults.FYIndex := stackIndex;
+        AResults.FValue := DoublePoint(Source[pointindex]^.X, Source[pointindex]^.GetY(stackIndex));
+        AResults.FValue := AxisToGraph(AResults.FValue);
+        AResults.FImg := ParentChart.GraphToImage(AResults.FValue);
+        Result := true;
+        exit;
+      end;
+  end;
 end;
 
 function TBarSeries.GetSeriesColor: TColor;
@@ -1188,6 +1266,48 @@ begin
   UpdateParentChart;
 end;
 
+function TBarSeries.ToolTargetDistance(const AParams: TNearestPointParams;
+  AGraphPt: TDoublePoint; APointIdx, AXIdx, AYIdx: Integer): Integer;
+var
+  sp1, sp2: TDoublePoint;
+  clickPt, pt1, pt2: TPoint;
+  ofs, w: Double;
+  dist1, dist2: Integer;
+begin
+  Unused(APointIdx);
+  Unused(AXIdx, AYIdx);
+
+  clickPt := AParams.FPoint;
+  if IsRotated then begin
+    Exchange(clickPt.X, clickPt.Y);
+    Exchange(AGraphPt.X, AGraphPt.Y);
+  end;
+
+  BarOffsetWidth(AGraphPt.X, APointIdx, ofs, w);
+  sp1 := DoublePoint(AGraphPt.X + ofs - w, AGraphPt.Y);
+  sp2 := DoublePoint(AGraphPt.X + ofs + w, AGraphPt.Y);
+  if IsRotated then begin
+    Exchange(sp1.X, sp1.Y);
+    Exchange(sp2.X, sp2.Y);
+  end;
+  pt1 := ParentChart.GraphToImage(sp1);
+  pt2 := ParentChart.GraphToImage(sp2);
+  if IsRotated then begin
+    Exchange(pt1.X, pt1.Y);
+    Exchange(pt2.X, pt2.Y);
+    if pt1.X > pt2.X then Exchange(pt1.X, pt2.X);
+  end;
+
+  if InRange(clickPt.X, pt1.X, pt2.X) then
+    Result := sqr(clickPt.Y - pt1.Y)
+  else begin
+    dist1 := AParams.FDistFunc(clickPt, pt1);
+    dist2 := AParams.FDistFunc(clickPt, pt2);
+    Result := Min(dist1, dist2);
+  end;
+end;
+
+
 { TAreaSeries }
 
 procedure TAreaSeries.Assign(ASource: TPersistent);
@@ -1213,6 +1333,7 @@ begin
   FAreaContourPen.OnChange := @StyleChanged;
   FAreaLinesPen := TPen.Create;
   FAreaLinesPen.OnChange := @StyleChanged;
+  FStacked := true;
 end;
 
 destructor TAreaSeries.Destroy;
@@ -1272,9 +1393,7 @@ var
 
     for j := 0 to Source.YCount - 1 do begin
       if j > 0 then
-        UpdateGraphPoints(j - 1{, AStart, AEnd});
-        // The modification in above line fixes a drawing error reported in
-        // forum.lazarus.freepascal.org/index.php/topic,28025.msg174184
+        UpdateGraphPoints(j - 1, AStart, AEnd, FStacked);
       numPts := 0;
       a := ProjToRect(FGraphPoints[AStart], ext2);
       PushPoint(ProjToLine(a, z1));

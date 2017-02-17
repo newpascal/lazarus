@@ -2197,6 +2197,8 @@ var
   QtDC: TQtDeviceContext absolute DC;
   R, R1: TRect;
   Pt: TPoint;
+  ALayout: QtLayoutDirection;
+  B: Boolean;
 
   procedure DoDrawCharByChar(const AClipped: Boolean);
   var
@@ -2239,6 +2241,7 @@ begin
 
   if not IsValidDC(DC) then Exit;
 
+  B := False;
   if ((Options and (ETO_OPAQUE + ETO_CLIPPED)) <> 0) and (Rect = nil) then
   begin
     if Count >= 0 then
@@ -2248,6 +2251,7 @@ begin
 
     R := QtDC.getClipRegion.getBoundingRect;
     QtDC.font.Metrics.boundingRect(@R1, @R, 0, @WideStr);
+    B := True;
     Rect := @R1;
   end;
 
@@ -2259,7 +2263,10 @@ begin
     begin
       // couldn't find way to fix it.
     end;
-    QtDC.fillRect(Rect^.Left, Rect^.Top, Rect^.Right - Rect^.Left, Rect^.Bottom - Rect^.Top);
+    if B then
+      QtDC.fillRect(X, Y, Rect^.Right - Rect^.Left, Rect^.Bottom - Rect^.Top)
+    else
+      QtDC.fillRect(Rect^.Left, Rect^.Top, Rect^.Right - Rect^.Left, Rect^.Bottom - Rect^.Top);
   end else
   if ((Options and ETO_OPAQUE) = 0) and (Rect <> nil) and (QtDC.getBKMode = OPAQUE) then
   begin
@@ -2281,6 +2288,9 @@ begin
 
   if Str <> nil then
   begin
+    ALayout := QPainter_layoutDirection(QtDC.Widget);
+    if Options and ETO_RTLREADING <> 0 then
+      QPainter_setLayoutDirection(QtDC.Widget, QtRightToLeft);
     if Count >= 0 then
       WideStr := GetUtf8String(Copy(Str, 1, Count))
     else
@@ -2306,6 +2316,8 @@ begin
       else
         QtDC.drawText(X, Y, @WideStr);
     end;
+    if Options and ETO_RTLREADING <> 0 then
+      QPainter_setLayoutDirection(QtDC.Widget, ALayout);
   end;
 
   Result := True;

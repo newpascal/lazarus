@@ -365,27 +365,15 @@ end;
                NoteBook1.ScreenToClient(Mouse.CursorPos));
  ------------------------------------------------------------------------------}
 function TCustomTabControl.TabIndexAtClientPos(ClientPos: TPoint): integer;
-var
-  i, VisiblePageInd: Integer;
 begin
   if HandleAllocated then begin
-    Result:=TWSCustomTabControlClass(WidgetSetClass).GetTabIndexAtPos(Self, ClientPos);
+    Result := TWSCustomTabControlClass(WidgetSetClass).GetTabIndexAtPos(Self, ClientPos);
     // Result is the index in visible tabs because invisible tabs are removed
     //  from the native control. Calculate the real tab index here.
-    VisiblePageInd:=-1;
-    for i:=0 to PageCount-1 do begin
-      if Page[i].TabVisible then
-        Inc(VisiblePageInd)
-      else begin
-        if VisiblePageInd < Result then
-          Inc(Result)
-        else
-          Break;
-      end;
-    end;
+    Result := TabToPageIndex(Result);
   end
   else
-    Result:=-1;
+    Result := -1;
 end;
 
 function TCustomTabControl.TabRect(AIndex: Integer): TRect;
@@ -443,7 +431,7 @@ begin
   //debugln('TCustomTabControl.GetMinimumTabHeight A ',dbgs(Result));
 end;
 
-function TCustomTabControl.GetCapabilities: TNoteBookCapabilities;
+function TCustomTabControl.GetCapabilities: TCTabControlCapabilities;
 begin
   Result:=TWSCustomTabControlClass(WidgetSetClass).GetCapabilities;
 end;
@@ -461,15 +449,16 @@ begin
   Result := AIndex;
   if csDesigning in ComponentState then
     exit; //all pages are visible
+
+  // it is possible to show pages without visible tabs, but then, no tab index
+  // can be sendet back, issue #21723
+  if not Page[AIndex].TabVisible then
+    exit(-1);
+
   for i := 0 to AIndex - 1 do begin
     if not Page[i].TabVisible then
       dec(Result); //exclude invisible page
   end;
-end;
-
-function TCustomTabControl.IndexOfTabAt(X, Y: Integer): Integer;
-begin
-  Result := TabIndexAtClientPos(Point(X, Y));
 end;
 
 function TCustomTabControl.TabToPageIndex(AIndex: integer): integer;
@@ -867,6 +856,17 @@ begin
 end;
 
 {------------------------------------------------------------------------------
+  TCustomTabControl SetTabHeight
+ ------------------------------------------------------------------------------}
+procedure TCustomTabControl.SetTabHeight(AValue: Smallint);
+begin
+  if FTabHeight = AValue then Exit;
+  if not (nbcTabsSizeable in GetCapabilities) then Exit;
+  FTabHeight := AValue;
+  DoSendTabSize;
+end;
+
+{------------------------------------------------------------------------------
   TCustomTabControl SetTabPosition
  ------------------------------------------------------------------------------}
 procedure TCustomTabControl.SetTabPosition(tabPos: TTabPosition);
@@ -874,6 +874,17 @@ begin
   if fTabPosition = tabPos then exit;
   fTabPosition := tabPos;
   DoSendTabPosition;
+end;
+
+{------------------------------------------------------------------------------
+  TCustomTabControl SetTabWidth
+ ------------------------------------------------------------------------------}
+procedure TCustomTabControl.SetTabWidth(AValue: Smallint);
+begin
+  if FTabWidth = AValue then Exit;
+  if not (nbcTabsSizeable in GetCapabilities) then Exit;
+  FTabWidth := AValue;
+  DoSendTabSize;
 end;
 
 {------------------------------------------------------------------------------
@@ -943,6 +954,57 @@ begin
     end;
   end;
   inherited ShowControl(APage);
+end;
+
+{------------------------------------------------------------------------------
+  function TCustomTabControl.IndexOfTabAt(X, Y: Integer): Integer;
+
+  Returns the index of the visible tab at the client position.
+ ------------------------------------------------------------------------------}
+function TCustomTabControl.IndexOfTabAt(X, Y: Integer): Integer;
+begin
+  Result := IndexOfTabAt(Point(X, Y));
+end;
+
+{------------------------------------------------------------------------------
+  function TCustomTabControl.IndexOfTabAt(P: TPoint): Integer;
+
+  Returns the index of the visible tab at the client position.
+  For example:
+    Index:=NoteBook1.IndexOfTabAt(
+               NoteBook1.ScreenToClient(Mouse.CursorPos));
+ ------------------------------------------------------------------------------}
+function TCustomTabControl.IndexOfTabAt(P: TPoint): Integer;
+begin
+  if HandleAllocated then
+    Result := TWSCustomTabControlClass(WidgetSetClass).GetTabIndexAtPos(Self, P)
+  else
+    Result := -1;
+end;
+
+{------------------------------------------------------------------------------
+  function TCustomTabControl.IndexOfPageAt(X, Y: Integer): Integer;
+
+  Returns the index of the page at the client position.
+ ------------------------------------------------------------------------------}
+function TCustomTabControl.IndexOfPageAt(X, Y: Integer): Integer;
+begin
+  Result := IndexOfPageAt(Point(X, Y));
+end;
+
+{------------------------------------------------------------------------------
+  function TCustomTabControl.IndexOfPageAt(X, Y: Integer): Integer;
+
+  Returns the index of the page at the client position.
+  For example:
+    Index:=NoteBook1.IndexOfPageAt(
+               NoteBook1.ScreenToClient(Mouse.CursorPos));
+ ------------------------------------------------------------------------------}
+function TCustomTabControl.IndexOfPageAt(P: TPoint): Integer;
+begin
+  Result := IndexOfTabAt(P);
+  if Result <> -1 then
+    Result := TabToPageIndex(Result);
 end;
 
 {------------------------------------------------------------------------------
@@ -1119,6 +1181,14 @@ procedure TCustomTabControl.DoSendTabPosition;
 begin
   if not HandleAllocated or (csLoading in ComponentState) then exit;
   TWSCustomTabControlClass(WidgetSetClass).SetTabPosition(Self, FTabPosition);
+end;
+
+procedure TCustomTabControl.DoSendTabSize;
+begin
+  if not HandleAllocated or (csLoading in ComponentState) then exit;
+  TWSCustomTabControlClass(WidgetSetClass).SetTabSize(Self, FTabWidth, FTabHeight);
+  DoSendTabPosition;
+  Invalidate;
 end;
 
 procedure TCustomTabControl.DoImageListChange(Sender: TObject);

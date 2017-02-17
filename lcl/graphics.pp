@@ -39,8 +39,8 @@ interface
 
 
 uses
-  SysUtils, Math, Types, Classes, Contnrs, FPCAdds, LCLVersion, LazUTF8Classes,
-  FileUtil,
+  // RTL + FCL
+  SysUtils, Math, Types, Classes, Contnrs,
   FPImage, FPCanvas,
   FPWriteBMP,              // bmp support
   FPWritePNG, PNGComn,     // png support
@@ -48,10 +48,11 @@ uses
   FPReadJpeg, FPWriteJpeg, // jpg support
   FPReadTiff, FPTiffCmn,   // tiff support
   FPReadGif,
-  AvgLvlTree,
-  IntfGraphics,
-  LCLStrConsts, LCLType, LCLProc, LMessages, LResources, LCLResCache,
-  GraphType, IcnsTypes, GraphMath, WSReferences;
+  // LazUtils
+  FPCAdds, LazUTF8Classes, FileUtil, AvgLvlTree,
+  // LCL
+  LCLVersion, LCLStrConsts, LCLType, LCLProc, LMessages, LResources, LCLResCache,
+  IntfGraphics, GraphType, IcnsTypes, GraphMath, WSReferences;
 
 type
   PColor = ^TColor;
@@ -2031,6 +2032,8 @@ function CreateBitmapFromLazarusResource(AHandle: TLResource; AMinimumClass: TCu
 function CreateCompatibleBitmaps(const ARawImage: TRawImage; out ABitmap, AMask: HBitmap; ASkipMask: Boolean = False): Boolean;
 
 function CreateBitmapFromFPImage(Img: TFPCustomImage): TBitmap;
+function AllocPatternBitmap(colorBG, colorFG: TColor): TBitmap;
+
 
 var
   { Stores information about the current screen
@@ -2766,6 +2769,7 @@ end;
 {$I bitmap.inc}
 {$I tiffimage.inc}
 {$I gifimage.inc}
+{$I patternbitmap.inc}
 
 function CreateGraphicFromResourceName(Instance: THandle; const ResName: String): TGraphic;
 var
@@ -2835,11 +2839,13 @@ begin
   FontResourceCache:=TFontHandleCache.Create;
   PenResourceCache:=TPenHandleCache.Create;
   BrushResourceCache:=TBrushHandleCache.Create;
+  PatternBitmapCache := TPatternBitmapCache.Create;
 end;
 
 procedure InterfaceFinal;
 begin
   //debugln('Graphics.InterfaceFinal');
+  FreeAndNil(PatternBitmapCache);
   FreeAndNil(FontResourceCache);
   FreeAndNil(PenResourceCache);
   FreeAndNil(BrushResourceCache);

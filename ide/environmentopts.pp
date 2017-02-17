@@ -14,7 +14,7 @@
  *   A copy of the GNU General Public License is available on the World    *
  *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
  *   obtain it by writing to the Free Software Foundation,                 *
- *   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.        *
+ *   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
  *                                                                         *
  ***************************************************************************
 
@@ -1443,7 +1443,8 @@ begin
   end;
   
   // external tools
-  fExternalUserTools:=ExternalUserToolsClass.Create;
+  if Assigned(ExternalUserToolsClass) then
+    fExternalUserTools:=ExternalUserToolsClass.Create;
   FMaxExtToolsInParallel:=0;
 
   // naming
@@ -1871,7 +1872,8 @@ begin
     end;
 
     // external tools
-    fExternalUserTools.Load(FConfigStore,Path+'ExternalTools/');
+    if Assigned(fExternalUserTools) then
+      fExternalUserTools.Load(FConfigStore,Path+'ExternalTools/');
     FMaxExtToolsInParallel:=FXMLCfg.GetValue(Path+'ExternalTools/MaxInParallel',0);
 
     // naming
@@ -2209,7 +2211,8 @@ begin
     FXMLCfg.SetDeleteValue(Path+'Recent/UseUnitDlg/AddToImplementation',FUseUnitDlgOptions.AddToImplementation,False);
 
     // external tools
-    fExternalUserTools.Save(FConfigStore,Path+'ExternalTools/');
+    if Assigned(fExternalUserTools) then
+      fExternalUserTools.Save(FConfigStore,Path+'ExternalTools/');
     FXMLCfg.SetDeleteValue(Path+'ExternalTools/MaxInParallel',FMaxExtToolsInParallel,0);
 
     // naming

@@ -21,7 +21,7 @@
  *   A copy of the GNU General Public License is available on the World    *
  *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
  *   obtain it by writing to the Free Software Foundation,                 *
- *   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.        *
+ *   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
  *                                                                         *
  ***************************************************************************
 }
@@ -1358,6 +1358,8 @@ begin
   HelpViewers:=THelpViewers.Create;
   RegisterIDEHelpDatabases;
   RegisterDefaultIDEHelpViewers;
+  CombineSameIdentifiersInUnit:=true;
+  ShowCodeBrowserOnUnknownIdentifier:=true;
   
   CodeHelpBoss:=TCodeHelpManager.Create(Self);
 
@@ -1475,6 +1477,7 @@ function TIDEHelpManager.ShowHelpForSourcePosition(const Filename: string;
     ListOfPCodeXYPosition: TFPList;
     CurCodePos: PCodeXYPosition;
     i: Integer;
+    Flags: TFindDeclarationListFlags;
   begin
     Complete:=false;
     Result:=shrHelpNotFound;
@@ -1482,8 +1485,12 @@ function TIDEHelpManager.ShowHelpForSourcePosition(const Filename: string;
     PascalHelpContextLists:=nil;
     try
       // get all possible declarations of this identifier
+      debugln(['CollectDeclarations ',CodeBuffer.Filename,' line=',CodePos.Y,' col=',CodePos.X]);
+      Flags:=[fdlfWithoutEmptyProperties,fdlfWithoutForwards];
+      if CombineSameIdentifiersInUnit then
+        Include(Flags,fdlfOneOverloadPerUnit);
       if CodeToolBoss.FindDeclarationAndOverload(CodeBuffer,CodePos.X,CodePos.Y,
-        ListOfPCodeXYPosition,[fdlfWithoutEmptyProperties,fdlfWithoutForwards])
+        ListOfPCodeXYPosition,Flags)
       then begin
         if ListOfPCodeXYPosition=nil then exit;
         debugln('TIDEHelpManager.ShowHelpForSourcePosition Success, number of declarations: ',dbgs(ListOfPCodeXYPosition.Count));
@@ -1538,7 +1545,7 @@ begin
   debugln(['TIDEHelpManager.ShowHelpForSourcePosition no declaration found, trying keywords...']);
   Result:=CollectKeyWords(CodeBuffer,Identifier);
   if Result in [shrCancel,shrSuccess] then exit;
-  if IsValidIdent(Identifier) then
+  if IsValidIdent(Identifier) and ShowCodeBrowserOnUnknownIdentifier then
   begin
     debugln(['TIDEHelpManager.ShowHelpForSourcePosition "',Identifier,'" is not an FPC keyword, search via code browser...']);
     ShowCodeBrowser(Identifier);

@@ -20,7 +20,7 @@
  *   A copy of the GNU General Public License is available on the World    *
  *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
  *   obtain it by writing to the Free Software Foundation,                 *
- *   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.        *
+ *   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
  *                                                                         *
  ***************************************************************************
 }
@@ -42,37 +42,43 @@ uses
   {$IFDEF IDE_MEM_CHECK}
   MemCheck,
   {$ENDIF}
-  SynEditMouseCmds, Classes, SysUtils, StrUtils, types, Math,
+  SynEditMouseCmds,
+  // RTL + FCL
+  Classes, SysUtils, StrUtils, types, Math, RegExpr,
+  // LCL
   Controls, Forms, ComCtrls, StdCtrls, Graphics, Dialogs, Extctrls, Menus,
-  ExtendedNotebook, LCLProc, LCLType, LResources, LCLIntf, FileUtil, LazFileUtils,
-  Translations, ClipBrd, HelpIntfs,
-  LConvEncoding, Messages, LazLoggerBase, lazutf8classes, LazLogger, AvgLvlTree,
-  LazFileCache, LazUTF8,
+  LCLProc, LCLType, LResources, LCLIntf, FileUtil, LazFileUtils,
+  ClipBrd, HelpIntfs, Messages,
+  // LazControls
+  ExtendedNotebook,
+  // LazUtils
+  LConvEncoding, LazUTF8Classes, LazFileCache, LazUTF8, AvgLvlTree,
+  LazLoggerBase, LazLogger, Translations,
   // codetools
   BasicCodeTools, CodeBeautifier, CodeToolManager, CodeCache, SourceLog,
   LinkScanner, CodeTree, SourceChanger,
   // synedit
-  SynEditLines, SynEditStrConst, SynEditTypes, SynEdit, SynRegExpr,
+  SynEditLines, SynEditStrConst, SynEditTypes, SynEdit,
   SynEditHighlighter, SynEditAutoComplete, SynEditKeyCmds, SynCompletion,
   SynEditMiscClasses, SynEditMarkupHighAll, SynEditMarks,
   SynBeautifier, SynPluginMultiCaret,
   SynPluginSyncronizedEditBase, SourceSynEditor,
   SynExportHTML, SynHighlighterPas, SynEditMarkup, SynEditMarkupIfDef,
-  // Intf
+  // IdeIntf
   SrcEditorIntf, MenuIntf, LazIDEIntf, PackageIntf, IDEHelpIntf, IDEImagesIntf,
-  IDEWindowIntf, ProjectIntf, MacroDefIntf, ToolBarIntf,
+  IDEWindowIntf, ProjectIntf, MacroDefIntf, ToolBarIntf, IDEDialogs,
+  EditorSyntaxHighlighterDef,
+  // DebuggerIntf
+  DbgIntfBaseTypes, DbgIntfDebuggerBase,
   // IDE units
-  IDECmdLine, IDEDialogs, LazarusIDEStrConsts, IDECommands,
-  EditorOptions, EnvironmentOpts, WordCompletion, FindReplaceDialog, IDEProcs,
-  IDEOptionDefs, IDEHelpManager, MacroPromptDlg, TransferMacros,
-  CodeContextForm, SrcEditHintFrm, etMessagesWnd, etSrcEditMarks, InputHistory,
-  CodeMacroPrompt, CodeTemplatesDlg, CodeToolsOptions,
-  editor_general_options,
-  SortSelectionDlg, EncloseSelectionDlg, EncloseIfDef, InvertAssignTool,
-  SourceEditProcs, SourceMarks, CharacterMapDlg, SearchFrm, MultiPasteDlg,
-  FPDocHints, EditorMacroListViewer, EditorToolbarStatic, editortoolbar_options,
-  DbgIntfBaseTypes, DbgIntfDebuggerBase, BaseDebugManager, Debugger, MainIntf,
-  GotoFrm;
+  IDECmdLine, LazarusIDEStrConsts, IDECommands, EditorOptions, EnvironmentOpts,
+  WordCompletion, FindReplaceDialog, IDEProcs, IDEOptionDefs, IDEHelpManager,
+  MacroPromptDlg, TransferMacros, CodeContextForm, SrcEditHintFrm, etMessagesWnd,
+  etSrcEditMarks, CodeMacroPrompt, CodeTemplatesDlg, CodeToolsOptions,
+  editor_general_options, SortSelectionDlg, EncloseSelectionDlg, EncloseIfDef,
+  InvertAssignTool, SourceEditProcs, SourceMarks, CharacterMapDlg, SearchFrm,
+  MultiPasteDlg, EditorMacroListViewer, EditorToolbarStatic, editortoolbar_options,
+  InputhistoryWithSearchOpt, FPDocHints, MainIntf, GotoFrm, BaseDebugManager, Debugger;
 
 type
   TSourceNotebook = class;
@@ -425,6 +431,8 @@ type
     procedure SetSelection(const AValue: string); override;
     procedure CopyToClipboard; override;
     procedure CutToClipboard; override;
+    function GetBookMark(BookMark: Integer; out X, Y: Integer): Boolean; override;
+    procedure SetBookMark(BookMark: Integer; X, Y: Integer); override;
 
     procedure ExportAsHtml(AFileName: String);
 
@@ -3330,12 +3338,12 @@ begin
     NewOptions := NewOptions + [ssoReplace, ssoReplaceAll]
   else
     NewOptions := NewOptions - [ssoReplace, ssoReplaceAll];
-  NewOptions:=NewOptions-SaveOptions+InputHistories.FindOptions*SaveOptions
+  NewOptions:=NewOptions-SaveOptions+InputHistoriesSO.FindOptions*SaveOptions
                         -[ssoSelectedOnly, ssoEntireScope];
 
   // Fill in history items
-  LazFindReplaceDialog.TextToFindComboBox.Items.Assign(InputHistories.FindHistory);
-  LazFindReplaceDialog.ReplaceTextComboBox.Items.Assign(InputHistories.ReplaceHistory);
+  LazFindReplaceDialog.TextToFindComboBox.Items.Assign(InputHistoriesSO.FindHistory);
+  LazFindReplaceDialog.ReplaceTextComboBox.Items.Assign(InputHistoriesSO.ReplaceHistory);
 
   with EditorComponent do begin
     if SelAvail then
@@ -3359,10 +3367,10 @@ begin
       LazFindReplaceDialog.FindText:='';
     end;
   end;
-  LazFindReplaceDialog.EnableAutoComplete:=InputHistories.FindAutoComplete;
+  LazFindReplaceDialog.EnableAutoComplete:=InputHistoriesSO.FindAutoComplete;
   // if there is no FindText, use the most recently used FindText
-  if (LazFindReplaceDialog.FindText='') and (InputHistories.FindHistory.Count > 0) then
-    LazFindReplaceDialog.FindText:=InputHistories.FindHistory[0];
+  if (LazFindReplaceDialog.FindText='') and (InputHistoriesSO.FindHistory.Count > 0) then
+    LazFindReplaceDialog.FindText:=InputHistoriesSO.FindHistory[0];
 
   GetDialogPosition(LazFindReplaceDialog.Width,LazFindReplaceDialog.Height,ALeft,ATop);
   LazFindReplaceDialog.Left:=ALeft;
@@ -3370,17 +3378,17 @@ begin
 
   LazFindReplaceDialog.Options := NewOptions;
   DlgResult:=LazFindReplaceDialog.ShowModal;
-  InputHistories.FindOptions:=LazFindReplaceDialog.Options*SaveOptions;
-  InputHistories.FindAutoComplete:=LazFindReplaceDialog.EnableAutoComplete;
+  InputHistoriesSO.FindOptions:=LazFindReplaceDialog.Options*SaveOptions;
+  InputHistoriesSO.FindAutoComplete:=LazFindReplaceDialog.EnableAutoComplete;
   if DlgResult = mrCancel then
     exit;
   //debugln('TSourceEditor.StartFindAndReplace B LazFindReplaceDialog.FindText="',dbgstr(LazFindReplaceDialog.FindText),'"');
 
   Replace:=ssoReplace in LazFindReplaceDialog.Options;
   if Replace then
-    InputHistories.AddToReplaceHistory(LazFindReplaceDialog.ReplaceText);
-  InputHistories.AddToFindHistory(LazFindReplaceDialog.FindText);
-  InputHistories.Save;
+    InputHistoriesSO.AddToReplaceHistory(LazFindReplaceDialog.ReplaceText);
+  InputHistoriesSO.AddToFindHistory(LazFindReplaceDialog.FindText);
+  InputHistoriesSO.Save;
   DoFindAndReplace(LazFindReplaceDialog.FindText, LazFindReplaceDialog.ReplaceText,
     LazFindReplaceDialog.Options);
 end;
@@ -4550,6 +4558,17 @@ end;
 procedure TSourceEditor.CutToClipboard;
 begin
   FEditor.CutToClipboard;
+end;
+
+function TSourceEditor.GetBookMark(BookMark: Integer; out X, Y: Integer): Boolean;
+begin
+  X := 0; Y := 0;
+  Result := FEditor.GetBookMark(BookMark, X, Y);
+end;
+
+procedure TSourceEditor.SetBookMark(BookMark: Integer; X, Y: Integer);
+begin
+  FEditor.SetBookMark(BookMark, X, Y);
 end;
 
 procedure TSourceEditor.ExportAsHtml(AFileName: String);
@@ -6454,7 +6473,7 @@ begin
           SrcEdit.CodeBuffer.DiskEncoding:=NewEncoding;
           SrcEdit.CodeBuffer.Modified:=true;
           // set override
-          InputHistories.FileEncodings[SrcEdit.CodeBuffer.Filename]:=NewEncoding;
+          InputHistoriesSO.FileEncodings[SrcEdit.CodeBuffer.Filename]:=NewEncoding;
           DebugLn(['TSourceNotebook.EncodingClicked Change file to ',SrcEdit.CodeBuffer.DiskEncoding]);
           if (not SrcEdit.CodeBuffer.IsVirtual)
           and (LazarusIDE.DoSaveEditorFile(SrcEdit, []) <> mrOk)
@@ -6473,7 +6492,7 @@ begin
             end;
           end;
           // set override
-          InputHistories.FileEncodings[SrcEdit.CodeBuffer.Filename]:=NewEncoding;
+          InputHistoriesSO.FileEncodings[SrcEdit.CodeBuffer.Filename]:=NewEncoding;
           if not SrcEdit.CodeBuffer.Revert then begin
             IDEMessageDialog(lisCodeToolsDefsReadError,
               Format(lisUnableToRead, [SrcEdit.CodeBuffer.Filename]),
@@ -6562,7 +6581,7 @@ begin
   // Get the tab that was clicked
   if PopM.PopupComponent is TPageControl then begin
     PageCtrl:=TPageControl(PopM.PopupComponent);
-    PageI:=PageCtrl.TabIndexAtClientPos(PageCtrl.ScreenToClient(PopM.PopupPoint));
+    PageI:=PageCtrl.IndexOfPageAt(PageCtrl.ScreenToClient(PopM.PopupPoint));
     if (PageI>=0) and (PageI<PageCtrl.PageCount) then
       PageIndex := PageI  // Todo: This should be in MouseDown / or both, whichever is first
     else
@@ -6789,7 +6808,7 @@ var
   ASrcEdit: TSourceEditor;
 begin
   if (PageCount=0) or (HintInfo=nil) then exit;
-  TabIndex:=FNoteBook.TabIndexAtClientPos(FNotebook.ScreenToClient(Mouse.CursorPos));
+  TabIndex:=FNoteBook.IndexOfPageAt(FNotebook.ScreenToClient(Mouse.CursorPos));
   if TabIndex<0 then exit;
   ASrcEdit:=FindSourceEditorWithPageIndex(TabIndex);
   if ASrcEdit=nil then exit;
@@ -8397,7 +8416,7 @@ var
 begin
   if (Button = mbMiddle) then
   begin
-    TabIndex:=FNotebook.TabIndexAtClientPos(Point(X,Y));
+    TabIndex:=FNotebook.IndexOfPageAt(X, Y);
     if TabIndex>=0 then
       CloseClicked(NoteBookPage[TabIndex],
                    (GetKeyState(VK_CONTROL) < 0) and EditorOpts.CtrlMiddleTabClickClosesOthers);
@@ -8405,7 +8424,7 @@ begin
   if (Button = mbRight) then
   begin
     //select on right click
-    TabIndex:=FNotebook.TabIndexAtClientPos(Point(X,Y));
+    TabIndex:=FNotebook.IndexOfPageAt(X, Y);
     if TabIndex>=0 then
       FNotebook.ActivePageIndex := TabIndex;
   end;
@@ -8418,7 +8437,7 @@ var
 begin
   if (Button = mbRight) then
   begin
-    TabIndex:=FNotebook.TabIndexAtClientPos(Point(X,Y));
+    TabIndex:=FNotebook.IndexOfPageAt(X, Y);
     if TabIndex>=0 then
     begin
       TabPopUpMenu.PopupComponent := FNotebook;

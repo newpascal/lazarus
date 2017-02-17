@@ -2336,6 +2336,10 @@ msgstr "マーカーの色"
 msgid "Highlight of Word under Caret"
 msgstr "キャレットの下の単語を強調"
 
+#: lazarusidestrconsts.dlgmarkupoutline
+msgid "Outline (global)"
+msgstr ""
+
 #: lazarusidestrconsts.dlgmarkupuserdefined
 msgctxt "lazarusidestrconsts.dlgmarkupuserdefined"
 msgid "User defined markup"
@@ -2438,6 +2442,10 @@ msgstr "キー設定"
 #: lazarusidestrconsts.dlgmarkupuserdefinedpagemain
 msgid "Main settings"
 msgstr "主な設定"
+
+#: lazarusidestrconsts.dlgmarkupwordbracket
+msgid "Word Brackets on caret (global)"
+msgstr ""
 
 #: lazarusidestrconsts.dlgmarkupwordfulllen
 msgid "Match word boundaries for words up to this length:"
@@ -2973,8 +2981,16 @@ msgstr "コントロール文をキーワードとして強調"
 msgid "Extended Pascal Keyword Options"
 msgstr "拡張されたPascalキーワードオプション"
 
+#: lazarusidestrconsts.dlgpaskeywordsmarkup
+msgid "Markup (on caret)"
+msgstr ""
+
 #: lazarusidestrconsts.dlgpaskeywordsmatches
 msgid "Matching Keywords"
+msgstr ""
+
+#: lazarusidestrconsts.dlgpaskeywordsoutline
+msgid "Outline"
 msgstr ""
 
 #: lazarusidestrconsts.dlgpassoptslinker
@@ -4879,8 +4895,8 @@ msgstr "下部"
 
 #: lazarusidestrconsts.lisbottomsiblingcomboboxhint
 #, fuzzy
-#| msgid "This is the sibling control to which the bottom side is anchored. Leave empty for parent."
-msgid "This is the sibling control to which the bottom side is anchored. Leave empty for anchoring to parent in Delphi style (BorderSpacing and ReferenceSide does not matter)."
+#| msgid "This is the sibling control to which the bottom side is anchored. Leave empty for anchoring to parent in Delphi style (BorderSpacing and ReferenceSide does not matter)."
+msgid "This is the sibling control to which the bottom side is anchored. Leave empty for anchoring to parent in Delphi style (BorderSpacing and ReferenceSide do not matter)."
 msgstr "これは下側がアンカーされる兄弟のコントロールです。親については空欄のままとしてください。"
 
 #: lazarusidestrconsts.lisbottomspaceequally
@@ -6881,10 +6897,6 @@ msgstr "コントロールには親コントロールが必要です"
 msgid "Add comment after replacement"
 msgstr "置換後にコメントを追加"
 
-#: lazarusidestrconsts.lisconvaddedunittousessection
-msgid "Added unit %s to uses section"
-msgstr ""
-
 #: lazarusidestrconsts.lisconvaddingflagforregister
 msgid "Adding flag for \"Register\" procedure in unit %s."
 msgstr ""
@@ -6920,6 +6932,10 @@ msgstr "カスタムオプションに追加されたdefines  %s"
 #: lazarusidestrconsts.lisconvdelphiaddedpackagedependency
 msgid "Added Package %s as a dependency."
 msgstr "依存するものとして追加されたパッケージ %s"
+
+#: lazarusidestrconsts.lisconvdelphiaddedunittousessection
+msgid "Added unit \"%s\" to uses section."
+msgstr ""
 
 #: lazarusidestrconsts.lisconvdelphiallsubdirsscanned
 msgctxt "lazarusidestrconsts.lisconvdelphiallsubdirsscanned"
@@ -7020,9 +7036,9 @@ msgstr "パッケージ %s が要求されていますが、Lazarusにインス�
 msgid "Omitted unit %s from project"
 msgstr "プロジェクトからユニット %s を省略"
 
-#: lazarusidestrconsts.lisconvdelphiremovedunitinusessection
-msgid "Removed unit \"%s\" in uses section."
-msgstr "このuses節からユニット \"%s\" を削除しました"
+#: lazarusidestrconsts.lisconvdelphiremovedunitfromusessection
+msgid "Removed unit \"%s\" from uses section."
+msgstr ""
 
 #: lazarusidestrconsts.lisconvdelphirepairingformfiles
 msgid "*** Fixing used units and Repairing form files ***"
@@ -9795,6 +9811,16 @@ msgstr ""
 
 #: lazarusidestrconsts.lisgplnotice
 #, fuzzy,badformat
+#| msgid ""
+#| "<description>\n"
+#| "\n"
+#| "Copyright (C) <year> <name of author> <contact>\n"
+#| "\n"
+#| "This source is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation; either version 2 of the License, or (at your option) any later version. \n"
+#| "\n"
+#| "This code is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details. \n"
+#| "\n"
+#| "A copy of the GNU General Public License is available on the World Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also obtain it by writing to the Free Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.\n"
 msgid ""
 "<description>\n"
 "\n"
@@ -9804,7 +9830,7 @@ msgid ""
 "\n"
 "This code is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details. \n"
 "\n"
-"A copy of the GNU General Public License is available on the World Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also obtain it by writing to the Free Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.\n"
+"A copy of the GNU General Public License is available on the World Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also obtain it by writing to the Free Software Foundation, Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.\n"
 msgstr "<説明>%s著作権(C) <年> <作者名> <連絡先>%sこのソースはフリーソフトです。あなたは、フリーソフトウェア財団が公表した GNU 一般公有使用許諾の「バージョン2」或いはそれ以降の各バージョンの中からいずれかを選択し、そのバージョンが定める条項に従って本プログラムを再頒布または変更することができます。%s本プログラムは有用とは思いますが、頒布にあたっては、市場性及び特定目的適合性についての暗黙の保証を含めて、いかなる保証も行ないません。詳細については GNU 一般公衆使用許諾書をお読みください。%sGNU 一般公衆使用許諾書のコピーはインターネット上の<http://www.gnu.org/copyleft/gpl.html>。 次の住所に手紙でリクエストすることによっても入手できます：Free Software Foundation Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA"
 
 #: lazarusidestrconsts.lisgroup
@@ -11560,8 +11586,8 @@ msgstr "左にアンカー"
 
 #: lazarusidestrconsts.lisleftsiblingcomboboxhint
 #, fuzzy
-#| msgid "This is the sibling control to which the left side is anchored. Leave empty for parent."
-msgid "This is the sibling control to which the left side is anchored. Leave empty for anchoring to parent in Delphi style (BorderSpacing and ReferenceSide does not matter)."
+#| msgid "This is the sibling control to which the left side is anchored. Leave empty for anchoring to parent in Delphi style (BorderSpacing and ReferenceSide does not matter)."
+msgid "This is the sibling control to which the left side is anchored. Leave empty for anchoring to parent in Delphi style (BorderSpacing and ReferenceSide do not matter)."
 msgstr "これ左側がアンカーされる兄弟のコントロールです。親については空欄のままとしてください。"
 
 #: lazarusidestrconsts.lisleftsides
@@ -11599,6 +11625,16 @@ msgstr "LFMはOK"
 
 #: lazarusidestrconsts.lislgplnotice
 #, fuzzy,badformat
+#| msgid ""
+#| "<description>\n"
+#| "\n"
+#| "Copyright (C) <year> <name of author> <contact>\n"
+#| "\n"
+#| "This library is free software; you can redistribute it and/or modify it under the terms of the GNU Library General Public License as published by the Free Software Foundation; either version 2 of the License, or (at your option) any later version. \n"
+#| "\n"
+#| "This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Library General Public License for more details. \n"
+#| "\n"
+#| "You should have received a copy of the GNU Library General Public License along with this library; if not, write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.\n"
 msgid ""
 "<description>\n"
 "\n"
@@ -11608,7 +11644,7 @@ msgid ""
 "\n"
 "This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Library General Public License for more details. \n"
 "\n"
-"You should have received a copy of the GNU Library General Public License along with this library; if not, write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.\n"
+"You should have received a copy of the GNU Library General Public License along with this library; if not, write to the Free Software Foundation, Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.\n"
 msgstr "<説明>%s著作権(C) <年> <作者名> <連絡先>%sこのライブラリはフリーソフトです。あなたは、フリーソフトウェア財団が公表した GNU ライブラリ一般公有使用許諾の「バージョン2」或いはそれ以降の各バージョンの中からいずれかを選択し、そのバージョンが定める条項に従って本プログラムを再頒布または変更することができます。%s本プログラムは有用とは思いますが、頒布にあたっては、市場性及び特定目的適合性についての暗黙の保証を含めて、いかなる保証も行ないません。詳細については GNU ライブラリ一般公衆使用許諾書をお読みください。%sあなたはこのプログラムと共に、GNU ライブラリ一般公衆利用許諾契約書の複製物を一部受け取ったはずです。もし受け取っていなければ、フリーソフトウェア財団まで請求してください（宛先は the Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA）。"
 
 #: lazarusidestrconsts.lislibrarypath
@@ -13594,6 +13630,18 @@ msgstr ""
 
 #: lazarusidestrconsts.lismodifiedlgplnotice
 #, fuzzy,badformat
+#| msgid ""
+#| "<description>\n"
+#| "\n"
+#| "Copyright (C) <year> <name of author> <contact>\n"
+#| "\n"
+#| "This library is free software; you can redistribute it and/or modify it under the terms of the GNU Library General Public License as published by the Free Software Foundation; either version 2 of the License, or (at your option) any later version with the following modification:\n"
+#| "\n"
+#| "As a special exception, the copyright holders of this library give you permission to link this library with independent modules to produce an executable, regardless of the license terms of these independent modules,and to copy and distribute the resulting executable under terms of your choice, provided that you also meet, for each linked independent module, the terms and conditions of the license of that module. An independent module is a module which is not derived from or based on this library. If you modify this library, you may extend this exception to your version of the library, but you are not obligated to do so. If you do not wish to do so, delete this exception statement from your version.\n"
+#| "\n"
+#| "This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Library General Public License for more details. \n"
+#| "\n"
+#| "You should have received a copy of the GNU Library General Public License along with this library; if not, write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.\n"
 msgid ""
 "<description>\n"
 "\n"
@@ -13605,7 +13653,7 @@ msgid ""
 "\n"
 "This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Library General Public License for more details. \n"
 "\n"
-"You should have received a copy of the GNU Library General Public License along with this library; if not, write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.\n"
+"You should have received a copy of the GNU Library General Public License along with this library; if not, write to the Free Software Foundation, Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.\n"
 msgstr "<説明>%s著作権(C) <年> <作者名> <連絡先>%sこのライブラリはフリーソフトです。あなたは、フリーソフトウェア財団が公表した GNU ライブラリ一般公有使用許諾の「バージョン2」或いはそれ以降の各バージョンの中からいずれかを選択し、そのバージョンが定める条項に従って本プログラムを再頒布または変更することができます。%s特別の例外として、このライブラリの版権所有者は、あなたにこのライブラリを生産する独立したモジュールとリンクする許可を与えます。1つの、実行可能、これらの独立したモジュールのライセンス条件にかかわらず、そしてコピーし分配することために、生じること、もしさらに、個々のリンクした独立したモジュール、そのモジュールのライセンスの条件のために会合すれば、あなたの好みの条件の下で実行可能です。独立したモジュールは、ライブラリに由来されないか、このライブラリに基づかないモジュールです。このライブラリを修正すれば、ライブラリのバージョンのこの例外を拡張してもよい。しかし、そうするようには業務づけられません。そうしたくない場合は、バージョンからこの例外ステートメントを削除してください。%s本プログラムは有用とは思いますが、頒布にあたっては、市場性及び特定目的適合性についての暗黙の保証を含めて、いかなる保証も行ないません。詳細については GNU ライブラリ一般公衆使用許諾書をお読みください。%sGNU ライブラリ一般公衆使用許諾書はこのライブラリとともに配布されているはずですが、もしなければ、次の住所に手紙でリクエストすることによって入手できます：Free Software Foundation Inc., 59 Temple Place - Suite 330, Boston, MA"
 
 #: lazarusidestrconsts.lismodify
@@ -16658,8 +16706,8 @@ msgstr "左側の境界間隔。この値は基本境界間隔に追加されコ
 
 #: lazarusidestrconsts.lisrightsiblingcomboboxhint
 #, fuzzy
-#| msgid "This is the sibling control to which the right side is anchored. Leave empty for parent."
-msgid "This is the sibling control to which the right side is anchored. Leave empty for anchoring to parent in Delphi style (BorderSpacing and ReferenceSide does not matter)."
+#| msgid "This is the sibling control to which the right side is anchored. Leave empty for anchoring to parent in Delphi style (BorderSpacing and ReferenceSide does not matter)."
+msgid "This is the sibling control to which the right side is anchored. Leave empty for anchoring to parent in Delphi style (BorderSpacing and ReferenceSide do not matter)."
 msgstr "これは右側がアンカーされる兄弟のコントロールです。親については空欄のままとしてください。"
 
 #: lazarusidestrconsts.lisrightsides
@@ -17552,6 +17600,14 @@ msgstr "選択したコントロールのタブ順序を下へ移動"
 msgid "Tab Order of %s"
 msgstr "%s のタブ順序"
 
+#: lazarusidestrconsts.listaborderrecursionhint
+msgid "Calculate tab order recursively for child controls"
+msgstr ""
+
+#: lazarusidestrconsts.listaborderrecursively
+msgid "recursively"
+msgstr ""
+
 #: lazarusidestrconsts.listabordersorthint
 msgid "Calculate tab order for controls by their X- and Y- positions"
 msgstr "コントロールに対するタブ順序を X,Y 座標より計算"
@@ -18405,8 +18461,8 @@ msgstr "上端"
 
 #: lazarusidestrconsts.listopsiblingcomboboxhint
 #, fuzzy
-#| msgid "This is the sibling control to which the top side is anchored. Leave empty for parent."
-msgid "This is the sibling control to which the top side is anchored. Leave empty for anchoring to parent in Delphi style (BorderSpacing and ReferenceSide does not matter)."
+#| msgid "This is the sibling control to which the top side is anchored. Leave empty for anchoring to parent in Delphi style (BorderSpacing and ReferenceSide does not matter)."
+msgid "This is the sibling control to which the top side is anchored. Leave empty for anchoring to parent in Delphi style (BorderSpacing and ReferenceSide do not matter)."
 msgstr "これは上側がアンカーされる兄弟のコントロールです。親については空欄のままとしてください。"
 
 #: lazarusidestrconsts.listopspaceequally

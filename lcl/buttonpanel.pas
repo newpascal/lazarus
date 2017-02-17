@@ -44,6 +44,7 @@ type
     property Font;
     property Glyph;
     property Name stored True;
+    property PopupMenu;
     property ShowHint;
     property OnClick;
   end;
@@ -118,6 +119,8 @@ type
     property Anchors;
     property AutoSize;
     property BorderSpacing;
+    property Constraints;
+    property Enabled;
     property OKButton;
     property HelpButton;
     property CloseButton;

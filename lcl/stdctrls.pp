@@ -24,9 +24,12 @@ interface
 
 
 uses
-  Classes, SysUtils, types, LCLStrConsts, LCLType, LCLProc, LMessages, Graphics,
-  ExtendedStrings, LCLIntf, ActnList, Controls, TextStrings, LazUTF8,
-  Forms, Menus, LResources;
+  Classes, SysUtils, types,
+  // LCL
+  LCLStrConsts, LCLType, LCLProc, LCLIntf, LMessages, LResources, Graphics,
+  ActnList, Controls, Forms, Menus, Themes,
+  // LazUtils
+  TextStrings, ExtendedStrings, LazUTF8;
 
 type
 
@@ -267,6 +270,7 @@ type
     FCanvas: TCanvas;
     FDropDownCount: Integer;
     FDroppedDown: boolean;
+    FDroppingDown: Boolean;
     FItemHeight: integer;
     FItemIndex: integer;
     FItemWidth: integer;
@@ -313,6 +317,7 @@ type
     procedure MeasureItem(Index: Integer; var TheHeight: Integer); virtual;
     class function GetControlClassDefaultSize: TSize; override;
     procedure LMChanged(var Msg); message LM_CHANGED;
+    procedure CMWantSpecialKey(var Message: TCMWantSpecialKey); message CM_WANTSPECIALKEY;
     procedure Change; virtual;
     procedure Select; virtual;
     procedure DropDown; virtual;
@@ -373,6 +378,7 @@ type
     procedure ClearSelection; //override;
     property CharCase: TEditCharCase read FCharCase write SetCharCase default ecNormal;
     property DroppedDown: Boolean read GetDroppedDown write SetDroppedDown;
+    property DroppingDown: Boolean read FDroppingDown write FDroppingDown;
     procedure SelectAll;
     property AutoComplete: boolean
       read GetAutoComplete write SetAutoComplete default False;
@@ -852,7 +858,6 @@ type
     procedure KeyUpAfterInterface(var Key: Word; Shift: TShiftState); override;
     procedure SetCaretPos(const Value: TPoint); override;
     procedure SetLines(const Value: TStrings);
-    procedure SetSelText(const Val: string); override;
     procedure SetWantReturns(const AValue: Boolean);
     procedure SetWantTabs(const NewWantTabs: boolean);
     procedure SetWordWrap(const Value: boolean);
@@ -1059,6 +1064,7 @@ type
     property DragCursor;
     property DragKind;
     property DragMode;
+    property Enabled;
     property FocusControl;
     property Font;
     property OnChangeBounds;
@@ -1081,6 +1087,8 @@ type
     property ParentBidiMode;
     property ParentFont;
     property ParentColor;
+    property ParentShowHint;
+    property PopupMenu;
     property ShowAccelChar;
     property ShowHint;
     property TabOrder;

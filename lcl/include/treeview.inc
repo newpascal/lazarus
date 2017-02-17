@@ -3178,7 +3178,7 @@ begin
   FDefItemHeight := DefaultTreeNodeHeight;
   FExpandSignType := tvestTheme;
   UpdateExpandSignSize;
-  FTreeNodes := TTreeNodes.Create(Self);
+  FTreeNodes := CreateNodes;
   BorderStyle := bsSingle;
   BorderWidth := 0;
   FMultiSelectStyle := DefaultMultiSelectStyle;
@@ -5329,6 +5329,11 @@ begin
   end;
 end;
 
+function TCustomTreeView.CreateNodes: TTreeNodes;
+begin
+  Result := TTreeNodes.Create(Self);
+end;
+
 procedure TCustomTreeView.ImageListChange(Sender: TObject);
 begin
   Invalidate;
@@ -5870,13 +5875,6 @@ begin
    Items.ClearMultiSelection(not KeepPrimary)
  else
    if not KeepPrimary then Selected := nil;
-end;
-
-procedure TCustomTreeView.CMShowingChanged(var Message: TLMessage);
-begin
-  inherited CMShowingChanged(Message);
-  if not Showing and (FHintWnd<>nil) and FHintWnd.Visible then
-    FHintWnd.Hide;
 end;
 
 function TCustomTreeView.IsCustomDrawn(Target: TCustomDrawTarget;

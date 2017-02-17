@@ -159,9 +159,10 @@ begin
   EndFormUpdate; // the BeginFormUpdate is in CreateNew
   inherited AfterConstruction;
 
-  if Scaled and (Screen.PixelsPerInch<>PixelsPerInch) then
-    AutoAdjustLayout(lapAutoAdjustForDPI, PixelsPerInch, Screen.PixelsPerInch,
-      Width, MulDiv(Width, Screen.PixelsPerInch, PixelsPerInch), False);
+  if Scaled and (Monitor.PixelsPerInch<>PixelsPerInch) then
+    AutoAdjustLayout(lapAutoAdjustForDPI, PixelsPerInch, Monitor.PixelsPerInch,
+      Width, MulDiv(Width, Monitor.PixelsPerInch, PixelsPerInch),
+      Screen.PixelsPerInch<>Monitor.PixelsPerInch);
 end;
 
 {------------------------------------------------------------------------------
@@ -501,6 +502,20 @@ begin
   { If the the form is about to show, calculate its metrics }
   if (not Showing) and Visible and ([csDestroying, csDesigning] * ComponentState = []) then
     MoveToDefaultPosition;
+end;
+
+procedure TCustomForm.AutoScale(const AScale0Fonts: Boolean);
+begin
+  if not Scaled then
+  begin
+    Scaled := True; // will execute AutoScale
+    Exit;
+  end;
+
+  if PixelsPerInch<>Monitor.PixelsPerInch then
+    AutoAdjustLayout(lapAutoAdjustForDPI, PixelsPerInch, Monitor.PixelsPerInch,
+      MulDiv(Width, Monitor.PixelsPerInch, PixelsPerInch),
+      MulDiv(Height, Monitor.PixelsPerInch, PixelsPerInch), AScale0Fonts);
 end;
 
 {------------------------------------------------------------------------------
@@ -1553,6 +1568,35 @@ begin
   end;
 end;
 
+procedure TCustomForm.DoAutoAdjustLayout(const AMode: TLayoutAdjustmentPolicy;
+  const AXProportion, AYProportion: Double; const AScale0Fonts: Boolean);
+var
+  NewWidth, NewHeight, OldWidth, OldHeight: Integer;
+begin
+  if Assigned(Parent) then
+  begin
+    inherited DoAutoAdjustLayout(AMode, AXProportion, AYProportion, AScale0Fonts);
+    Exit;
+  end;
+
+  if (AScale0Fonts or (Font.Height<>0)) and (not ParentFont or (Parent=nil)) then
+  begin
+    if Font.Size<>0 then
+      Font.Size := Round(Font.Size*AYProportion)
+    else
+      Font.Height := Round(GetFontData(Font.Reference.Handle).Height*AYProportion);
+  end;
+
+  // Apply the changes
+  if AMode in [lapAutoAdjustWithoutHorizontalScrolling, lapAutoAdjustForDPI] then
+  begin
+    BorderSpacing.AutoAdjustLayout(AXProportion, AYProportion);
+    Constraints.AutoAdjustLayout(AXProportion, AYProportion);
+
+    SetBounds(Left, Top, Round(Width*AXProportion), Round(Height*AYProportion));
+  end;
+end;
+
 procedure TCustomForm.DoRemoveActionList(List: TCustomActionList);
 begin
   if FActionLists<>nil then
@@ -1858,6 +1902,20 @@ begin
   WindowState := wsNormal;
   SetBounds(ALeft, ATop, AWidth, AHeight);
   WindowState := prevWindowState;
+end;
+
+procedure TCustomForm.SetScaled(const AScaled: Boolean);
+var
+  OldScaled: Boolean;
+begin
+  if Scaled=AScaled then
+    Exit;
+
+  OldScaled := Scaled;
+  inherited SetScaled(AScaled);
+  if not OldScaled and Scaled
+  and (ComponentState * [csDesigning, csLoading] = []) then // not in designtime and not when loading
+    AutoScale(Screen.PixelsPerInch<>Monitor.PixelsPerInch);
 end;
 
 {------------------------------------------------------------------------------
@@ -2260,6 +2318,10 @@ end;
 ------------------------------------------------------------------------------}
 procedure TCustomForm.Show;
 begin
+  if Scaled and (Monitor.PixelsPerInch<>PixelsPerInch) then
+    AutoAdjustLayout(lapAutoAdjustForDPI, PixelsPerInch, Monitor.PixelsPerInch,
+      Width, MulDiv(Width, Monitor.PixelsPerInch, PixelsPerInch), True);
+
   Visible := True;
   BringToFront;
 end;
@@ -2283,10 +2345,7 @@ end;
 ------------------------------------------------------------------------------}
 function TCustomForm.AutoSizeDelayedHandle: Boolean;
 begin
-  if WindowState=wsMinimized then
-    // this form is minimized => no valid width/height, see bug 30826
-    Result:=true
-  else if (Parent<>nil) or (ParentWindow<>0) then
+  if (Parent<>nil) or (ParentWindow<>0) then
     // this form is inlined / embedded it works like a normal TWinControl
     Result:=inherited AutoSizeDelayedHandle
   else
@@ -2324,7 +2383,10 @@ end;
 
 function TCustomForm.GetMonitor: TMonitor;
 begin
-  Result := Screen.MonitorFromWindow(Handle, mdNearest);
+  if HandleAllocated then
+  Result := Screen.MonitorFromWindow(Handle, mdNearest)
+  else
+  Result :=Screen.MonitorFromPoint(point(Left,Top));
 end;
 
 {------------------------------------------------------------------------------
@@ -2598,8 +2660,7 @@ var
 begin
   Result := TBitmap.Create;
   try
-    Result.Width := ClientWidth;
-    Result.Height := ClientHeight;
+    Result.SetSize(ClientWidth, ClientHeight);
     LCLIntf.GetWindowRect(Handle, ARect);
     with GetClientOrigin do
       PaintTo(Result.Canvas, ARect.Left - X, ARect.Top - Y);
@@ -2702,7 +2763,7 @@ begin
   {$IF defined(CHECK_POSITION) or defined(VerboseFormUpdateShowing) or defined(VerboseShowing)}
   DebugLn(['[TCustomForm.UpdateShowing] START ',DbgSName(Self),' Pos=',Left,',',Top,' Visible=',Visible,' Showing=',Showing]);
   {$ENDIF}
-  // If the the form is about to show, calculate its metrics
+  // If the form is about to show, calculate its metrics
   if Visible and (not (csDestroying in ComponentState)) then
   begin
     if not (csDesigning in ComponentState) then

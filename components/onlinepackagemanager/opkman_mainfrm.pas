@@ -14,7 +14,7 @@
  *   A copy of the GNU General Public License is available on the World    *
  *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
  *   obtain it by writing to the Free Software Foundation,                 *
- *   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.        *
+ *   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
  *                                                                         *
  ***************************************************************************
 
@@ -31,8 +31,8 @@ interface
 uses
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, contnrs,
   StdCtrls, ExtCtrls, Buttons, Menus, ComCtrls, IDECommands, LazFileUtils,
-  LCLIntf, fpjson, opkman_downloader, opkman_installer,
-  PackageIntf;
+  LCLIntf, fpjson, opkman_VirtualTrees, opkman_downloader, opkman_installer,
+  PackageIntf, Clipbrd, md5;
 
 type
 
@@ -43,8 +43,20 @@ type
     cbPackageState: TComboBox;
     cbPackageType: TComboBox;
     imTBDis: TImageList;
+    MenuItem1: TMenuItem;
+    miDateDsc: TMenuItem;
+    miDateAsc: TMenuItem;
+    miNameDsc: TMenuItem;
+    miNameAsc: TMenuItem;
+    miByDate: TMenuItem;
+    miByName: TMenuItem;
+    miSaveToFile: TMenuItem;
+    miJSONSort: TMenuItem;
+    miResetRating: TMenuItem;
+    miCopyToClpBrd: TMenuItem;
     miCreateRepository: TMenuItem;
     miCreateRepositoryPackage: TMenuItem;
+    SD: TSaveDialog;
     tbCleanUp1: TToolButton;
     tbOptions: TToolButton;
     cbAll: TCheckBox;
@@ -76,8 +88,12 @@ type
     tbCleanUp: TToolButton;
     tbCreate: TToolButton;
     tbUpdate: TToolButton;
+    procedure miCopyToClpBrdClick(Sender: TObject);
     procedure miCreateRepositoryClick(Sender: TObject);
     procedure miCreateRepositoryPackageClick(Sender: TObject);
+    procedure miNameAscClick(Sender: TObject);
+    procedure miResetRatingClick(Sender: TObject);
+    procedure miSaveToFileClick(Sender: TObject);
     procedure pnToolBarResize(Sender: TObject);
     procedure tbCleanUpClick(Sender: TObject);
     procedure tbDownloadClick(Sender: TObject);
@@ -106,8 +122,7 @@ type
     procedure EnableDisableControls(const AEnable: Boolean);
     procedure SetupMessage(const AMessage: String = '');
     procedure SetupControls;
-    procedure GetPackageList;
-    procedure ShowOptions;
+    procedure GetPackageList(const ARepositoryHasChanged: Boolean = False);
     procedure DoOnChecking(Sender: TObject; const AIsAllChecked: Boolean);
     procedure DoOnChecked(Sender: TObject);
     procedure DoOnJSONProgress(Sender: TObject);
@@ -119,8 +134,10 @@ type
     function Extract(const ASrcDir, ADstDir: String; var ADoOpen: Boolean; const AIsUpdate: Boolean = False): TModalResult;
     function Install(var AInstallStatus: TInstallStatus; var ANeedToRebuild: Boolean): TModalResult;
     function UpdateP(const ADstDir: String; var ADoExtract: Boolean): TModalResult;
-    procedure TerminateUpdates;
+    procedure StartUpdates;
+    procedure StopUpdates;
   public
+    procedure ShowOptions(const AActivePageIndex: Integer = 0);
   end;
 
 var
@@ -146,13 +163,10 @@ begin
   VisualTree.OnChecked := @DoOnChecked;
   SerializablePackages := TSerializablePackages.Create;
   SerializablePackages.OnProcessJSON := @DoOnProcessJSON;
-  PackageDownloader := TPackageDownloader.Create(Options.RemoteRepository);
+  PackageDownloader := TPackageDownloader.Create(Options.RemoteRepository[Options.ActiveRepositoryIndex]);
   PackageDownloader.OnJSONProgress := @DoOnJSONProgress;
   PackageDownloader.OnJSONDownloadCompleted := @DoOnJSONDownloadCompleted;
-  Updates := TUpdates.Create(LocalRepositoryUpdatesFile);
-  Updates.OnUpdate := @DoOnUpdate;
-  Updates.StartUpdate;
-  Updates.PauseUpdate;
+  StartUpdates;
   InstallPackageList := TObjectList.Create(True);
   FHintTimeOut := Application.HintHidePause;
   Application.HintHidePause := 1000000;
@@ -161,7 +175,18 @@ begin
  {$ENDIF}
 end;
 
-procedure TMainFrm.TerminateUpdates;
+procedure TMainFrm.StartUpdates;
+var
+  FileName: String;
+begin
+  FileName := Format(LocalRepositoryUpdatesFile, [MD5Print(MD5String(Options.RemoteRepository[Options.ActiveRepositoryIndex]))]);
+  Updates := TUpdates.Create(FileName);
+  Updates.OnUpdate := @DoOnUpdate;
+  Updates.StartUpdate;
+  Updates.PauseUpdate;
+end;
+
+procedure TMainFrm.StopUpdates;
 begin
   if Assigned(Updates) then
   begin
@@ -173,7 +198,7 @@ end;
 
 procedure TMainFrm.FormDestroy(Sender: TObject);
 begin
-  TerminateUpdates;
+  StopUpdates;
   PackageDownloader.Free;
   SerializablePackages.Free;
   VisualTree.Free;
@@ -194,13 +219,22 @@ begin
   GetPackageList;
 end;
 
-procedure TMainFrm.GetPackageList;
+procedure TMainFrm.GetPackageList(const ARepositoryHasChanged: Boolean = False);
 begin
   Caption := rsLazarusPackageManager;
-  VisualTree.VST.Clear;
-  if SerializablePackages.Count > 0 then
-    SerializablePackages.Clear;
   EnableDisableControls(False);
+  VisualTree.VST.Clear;
+  VisualTree.VST.Invalidate;
+  if ARepositoryHasChanged then
+  begin
+    SetupMessage(rsMainFrm_rsMessageChangingRepository);
+    Sleep(1500);
+    StopUpdates;
+    SerializablePackages.Clear;
+    StartUpdates;
+  end
+  else
+    Updates.PauseUpdate;
   SetupMessage(rsMainFrm_rsMessageDownload);
   PackageDownloader.DownloadJSON(10000);
 end;
@@ -299,7 +333,6 @@ begin
   end;
 end;
 
-
 procedure TMainFrm.DoOnJSONDownloadCompleted(Sender: TObject; AJSON: TJSONStringType; AErrTyp: TErrorType; const AErrMsg: String = '');
 begin
   case AErrTyp of
@@ -314,13 +347,14 @@ begin
           Exit;
         end;
         VisualTree.PopulateTree;
-        Updates.StartUpdate;
         EnableDisableControls(True);
         SetupMessage;
         mJSON.Text := AJSON;
         cbAll.Checked := False;
         Caption := rsLazarusPackageManager + ' ' + Format(rsPackagesFound, [
           IntToStr(SerializablePackages.Count)]);
+        if Assigned(Updates) then
+          Updates.StartUpdate;
       end;
     etConfig:
       begin
@@ -350,15 +384,18 @@ begin
   VisualTree.UpdatePackageUStatus;
 end;
 
-procedure TMainFrm.ShowOptions;
+procedure TMainFrm.ShowOptions(const AActivePageIndex: Integer = 0);
+var
+  OldIndex: Integer;
 begin
   OptionsFrm := TOptionsFrm.Create(MainFrm);
   try
-    OptionsFrm.SetupControls;
+    OptionsFrm.SetupControls(AActivePageIndex);
+    OldIndex := Options.ActiveRepositoryIndex;
     if OptionsFrm.ShowModal = mrOk then
     begin
-      tbRefresh.Enabled := Options.RemoteRepository <> '';
-      GetPackageList;
+      tbRefresh.Enabled := Trim(Options.RemoteRepository[Options.ActiveRepositoryIndex]) <> '';
+      GetPackageList(OldIndex <> Options.ActiveRepositoryIndex);
     end;
   finally
     OptionsFrm.Free;
@@ -378,12 +415,18 @@ begin
   VisualTree.VST.Enabled := (AEnable) and (SerializablePackages.Count > 0);
   if edFilter.CanFocus then
     edFilter.SetFocus;
-  tbRefresh.Enabled := (AEnable) and (Trim(Options.RemoteRepository) <> '');
+  tbRefresh.Enabled := (AEnable) and (Trim(Options.RemoteRepository[Options.ActiveRepositoryIndex]) <> '');
   tbDownload.Enabled := (AEnable) and (SerializablePackages.Count > 0) and (VisualTree.VST.CheckedCount > 0);
   tbInstall.Enabled := (AEnable) and (SerializablePackages.Count > 0) and (VisualTree.VST.CheckedCount > 0);
   tbUpdate.Enabled :=  (AEnable) and (SerializablePackages.Count > 0) and (VisualTree.VST.CheckedCount > 0);
   tbCleanUp.Enabled := (AEnable) and (SerializablePackages.Count > 0);
-  tbCreate.Enabled := (AEnable);
+  tbCreate.Visible := Options.UserProfile = 1;
+  if tbCreate.Visible then
+  begin
+    tbCreate.Left := tbOptions.Left - 10;
+    tbCreate.Enabled := (AEnable);
+  end;
+  pnToolBarResize(pnToolbar);
   tbOptions.Enabled := (AEnable);
   tbHelp.Enabled := (AEnable);
 end;
@@ -424,6 +467,7 @@ end;
 procedure TMainFrm.cbAllClick(Sender: TObject);
 begin
   VisualTree.CheckNodes(cbAll.Checked);
+  EnableDisableControls(True);
 end;
 
 procedure TMainFrm.cbFilterByChange(Sender: TObject);
@@ -542,9 +586,6 @@ end;
 
 procedure TMainFrm.tbRefreshClick(Sender: TObject);
 begin
-  Updates.PauseUpdate;
-  VisualTree.VST.Clear;
-  VisualTree.VST.Invalidate;
   GetPackageList;
 end;
 
@@ -670,7 +711,6 @@ begin
               VisualTree.UpdatePackageStates;
               if NeedToRebuild then
               begin
-                TerminateUpdates;
                 EnableDisableControls(False);
                 IDECommands.ExecuteIDECommand(Self, ecBuildLazarus);
                 EnableDisableControls(True);
@@ -700,7 +740,6 @@ begin
     Exit;
 
   CanGo := True;
-  VisualTree.UpdatePackageStates;
   PackageListFrm := TPackageListFrm.Create(MainFrm);
   try
     PackageListFrm.lbMessage.Caption := rsMainFrm_PackageAlreadyInstalled;
@@ -750,7 +789,6 @@ begin
             begin
               if NeedToRebuild then
               begin
-                TerminateUpdates;
                 EnableDisableControls(False);
                 IDECommands.ExecuteIDECommand(Self, ecBuildLazarus);
                 EnableDisableControls(True);
@@ -775,7 +813,8 @@ begin
   if MessageDlgEx(rsMainFrm_rsRepositoryCleanup0, mtInformation, [mbYes, mbNo], Self) = mrYes then
   begin
     Cnt := SerializablePackages.Cleanup;
-    MessageDlgEx(IntToStr(Cnt) + ' ' + rsMainFrm_rsRepositoryCleanup1, mtInformation, [mbOk], Self);
+    MessageDlgEx(Format(rsMainFrm_rsRepositoryCleanup1, [IntToStr(Cnt)]),
+      mtInformation, [mbOk], Self);
   end;
 end;
 
@@ -786,7 +825,8 @@ var
 begin
   W := 0;
   for I := 0 to tbButtons.ButtonCount - 1 do
-    W := W + tbButtons.Buttons[I].Width;
+    if tbButtons.Buttons[I].Visible then
+      W := W + tbButtons.Buttons[I].Width;
   tbButtons.Width := W + 2;
   if tbButtons.Width < 450 then
     tbButtons.Width := 450;
@@ -829,6 +869,46 @@ begin
   end;
 end;
 
+procedure TMainFrm.miCopyToClpBrdClick(Sender: TObject);
+var
+  Data: PData;
+  Node: PVirtualNode;
+begin
+  Node := VisualTree.VST.GetFirstSelected;
+  if Node <> nil then
+  begin
+    Data := VisualTree.VST.GetNodeData(Node);
+    case Data^.DataType of
+      17: Clipboard.AsText := Data^.HomePageURL;
+      18: Clipboard.AsText := Data^.DownloadURL;
+    end;
+  end;
+end;
+
+procedure TMainFrm.miResetRatingClick(Sender: TObject);
+var
+  Data: PData;
+  Node: PVirtualNode;
+  Package: TPackage;
+begin
+  if MessageDlgEx(rsMainFrm_miResetRating + '?', mtConfirmation, [mbYes, mbNo], Self) = mrNo then
+    Exit;
+  Node := VisualTree.VST.GetFirstSelected;
+  if Node <> nil then
+  begin
+    Data := VisualTree.VST.GetNodeData(Node);
+    if Data^.DataType = 1 then
+    begin
+      Data^.Rating := 0;
+      Package := SerializablePackages.FindPackage(Data^.PackageName, fpbPackageName);
+      if Package <> nil then
+        Package.Rating := 0;
+      VisualTree.VST.ReinitNode(Node, False);
+      VisualTree.VST.RepaintNode(Node);
+    end;
+  end;
+end;
+
 procedure TMainFrm.pnMainResize(Sender: TObject);
 begin
   pnMessage.Left := (pnMain.Width - pnMessage.Width) div 2;
@@ -839,6 +919,7 @@ procedure TMainFrm.miJSONShowClick(Sender: TObject);
 begin
   if not mJSON.Visible then
   begin
+    StopUpdates;
     EnableDisableControls(False);
     mJSON.Visible := True;
     mJSON.BringToFront;
@@ -848,6 +929,48 @@ begin
     mJSON.SendToBack;
     mJSON.Visible := False;
     EnableDisableControls(True);
+    StartUpdates;
+  end;
+end;
+
+procedure TMainFrm.miNameAscClick(Sender: TObject);
+var
+  JSON: TJSONStringType;
+begin
+  JSON := '';
+  case (Sender as TMenuItem).Tag of
+    0: SerializablePackages.Sort(stName, soAscendent);
+    1: SerializablePackages.Sort(stName, soDescendent);
+    2: SerializablePackages.Sort(stDate, soAscendent);
+    3: SerializablePackages.Sort(stDate, soDescendent);
+  end;
+  SerializablePackages.PackagesToJSON(JSON);
+  mJSON.Lines.BeginUpdate;
+  try
+    mJSON.Clear;
+    mJSON.Text := JSON;
+  finally
+    mJSON.Lines.EndUpdate;
+  end;
+end;
+
+procedure TMainFrm.miSaveToFileClick(Sender: TObject);
+var
+  JSON: TJSONStringType;
+  Ms: TMemoryStream;
+begin
+  if SD.Execute then
+  begin
+    JSON := '';
+    SerializablePackages.PackagesToJSON(JSON);
+    Ms := TMemoryStream.Create;
+    try
+      Ms.Write(Pointer(JSON)^, Length(JSON));
+      Ms.Position := 0;
+      Ms.SaveToFile(SD.FileName);
+    finally
+      Ms.Free;
+    end;
   end;
 end;
 
@@ -913,6 +1036,16 @@ begin
   miCreateRepository.Caption := rsMainFrm_miCreateJSONForUpdates;
   miJSONShow.Caption := rsMainFrm_miJSONShow;
   miJSONHide.Caption := rsMainFrm_miJSONHide;
+  miJSONSort.Caption := rsMainFrm_miJSONSort;
+  miByName.Caption := rsMainFrm_miByName;
+  miNameAsc.Caption := rsMainFrm_miAscendent;
+  miNameDsc.Caption := rsMainFrm_miDescendent;
+  miByDate.Caption := rsMainFrm_miByDate;
+  miDateAsc.Caption := rsMainFrm_miAscendent;
+  miDateDsc.Caption := rsMainFrm_miDescendent;
+  miSaveToFile.Caption := rsMainFrm_miSaveToFile;
+  miCopyToClpBrd.Caption := rsMainFrm_miCopyToClpBrd;
+  miResetRating.Caption := rsMainFrm_miResetRating;
 
   edFilter.Hint := rsMainFrm_edFilter_Hint;
   spClear.Hint := rsMainFrm_spClear_Hint;

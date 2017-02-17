@@ -14,7 +14,7 @@
  *   A copy of the GNU General Public License is available on the World    *
  *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
  *   obtain it by writing to the Free Software Foundation,                 *
- *   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.        *
+ *   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
  *                                                                         *
  ***************************************************************************
 }
@@ -25,9 +25,16 @@ unit AboutFrm;
 interface
 
 uses
-  Classes, SysUtils, FPCAdds, Forms, Controls, Graphics, StdCtrls, Buttons,
-  ExtCtrls, ComCtrls, Menus, LCLIntf, LazConf, LazarusIDEStrConsts,
-  EnvironmentOpts, Clipbrd, LazFileUtils, lazutf8classes, DefineTemplates;
+  Classes, SysUtils,
+  // LCL
+  Forms, Controls, Graphics, StdCtrls, Buttons, ExtCtrls, ComCtrls, Menus,
+  LCLIntf, LazConf, InterfaceBase, LCLPlatformDef, Clipbrd,
+  // LazUtils
+  FPCAdds, LazFileUtils, lazutf8classes,
+  // Codetools
+  DefineTemplates,
+  // IDE
+  LazarusIDEStrConsts, EnvironmentOpts;
 
 type
 
@@ -182,7 +189,7 @@ begin
     Format(lisAboutLazarusMsg,[DoubleLineEnding,DoubleLineEnding,DoubleLineEnding]);
 
   OfficialLabel.Caption := lisAboutOfficial;
-  OfficialURLLabel.Caption := 'http://lazarus.freepascal.org';
+  OfficialURLLabel.Caption := 'http://www.lazarus-ide.org';
   DocumentationLabel.Caption := lisAboutDocumentation;
   DocumentationURLLabel.Caption := 'http://wiki.lazarus.freepascal.org';
 

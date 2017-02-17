@@ -16,7 +16,11 @@ interface
 {$H+}
 
 uses
-  Classes, Controls, CustomTimer, Forms, FPCanvas, Types,
+  Classes, SysUtils, Types, Math, FPCanvas,
+  // LCL
+  Controls, CustomTimer, GraphMath, Forms, LCLPlatformDef, InterfaceBase,
+  LCLType, LCLIntf,
+  // TAChart
   TAChartUtils, TADrawUtils, TAGraph, TATypes;
 
 type
@@ -385,7 +389,6 @@ type
       FGraphPos: TDoublePoint;
       FIndex: Integer;
       FSeries: TBasicChartSeries;
-
       procedure SetGraphPos(const ANewPos: TDoublePoint);
     public
       procedure Assign(ASource: TPointRef);
@@ -400,6 +403,7 @@ type
     FDistanceMode: TChartDistanceMode;
     FGrabRadius: Integer;
     FMouseInsideOnly: Boolean;
+    FTargets: TNearestPointTargets;
     function GetAffectedSeries: String; inline;
     function GetIsSeriesAffected(AIndex: Integer): Boolean; inline;
     procedure SetAffectedSeries(AValue: String); inline;
@@ -407,10 +411,14 @@ type
   strict protected
     FNearestGraphPoint: TDoublePoint;
     FPointIndex: Integer;
+    FXIndex: Integer;
+    FYIndex: Integer;
     FSeries: TBasicChartSeries;
     procedure FindNearestPoint(APoint: TPoint);
     property MouseInsideOnly: Boolean
       read FMouseInsideOnly write FMouseInsideOnly default false;
+    property Targets: TNearestPointTargets
+      read FTargets write FTargets default [nptPoint, nptXList, nptYList, nptCustom];
   public
     constructor Create(AOwner: TComponent); override;
   public
@@ -419,6 +427,8 @@ type
     property NearestGraphPoint: TDoublePoint read FNearestGraphPoint;
     property PointIndex: Integer read FPointIndex;
     property Series: TBasicChartSeries read FSeries;
+    property XIndex: Integer read FXIndex;
+    property YIndex: Integer read FYIndex;
   published
     property AffectedSeries: String
       read GetAffectedSeries write SetAffectedSeries;
@@ -452,6 +462,7 @@ type
     property ActiveCursor default crSizeAll;
     property EscapeCancels default true;
     property KeepDistance: Boolean read FKeepDistance write FKeepDistance default false;
+    property Targets;
     property OnDrag: TDataPointDragEvent read FOnDrag write FOnDrag;
     property OnDragStart: TDataPointDragEvent
       read FOnDragStart write FOnDragStart;
@@ -468,6 +479,7 @@ type
     procedure MouseUp(APoint: TPoint); override;
   published
     property ActiveCursor;
+    property Targets;
     property OnPointClick: TChartToolEvent
       read FOnPointClick write FOnPointClick;
   end;
@@ -493,6 +505,7 @@ type
     FOnHintLocation: TChartToolHintLocationEvent;
     FPrevPointIndex: Integer;
     FPrevSeries: TBasicChartSeries;
+    FPrevYIndex: Integer;
     FUseApplicationHint: Boolean;
     FUseDefaultHintText: Boolean;
     procedure HideHint;
@@ -507,6 +520,7 @@ type
     procedure MouseUp(APoint: TPoint); override;
   published
     property ActiveCursor;
+    property Targets;
     property OnHint: TChartToolHintEvent read FOnHint write FOnHint;
     property OnHintLocation: TChartToolHintLocationEvent
       read FOnHintLocation write FOnHintLocation;
@@ -569,6 +583,7 @@ type
     property Shape: TChartCrosshairShape
       read FShape write FShape default ccsCross;
     property Size: Integer read FSize write FSize default -1;
+    property Targets;
   end;
 
   TReticuleTool = class(TChartTool)
@@ -589,7 +604,6 @@ var
 implementation
 
 uses
-  GraphMath, InterfaceBase, LCLType, LCLIntf, Math, SysUtils,
   TAChartStrConsts, TACustomSeries, TAEnumerators, TAGeometry, TAMath;
 
 function InitBuiltinTools(AChart: TChart): TBasicChartToolset;
@@ -1600,6 +1614,8 @@ begin
   FAffectedSeries.Init;
   SetPropDefaults(Self, ['GrabRadius']);
   FPointIndex := -1;
+  FYIndex := 0;
+  FTargets := [nptPoint, nptXList, nptYList, nptCustom];  // check all targets
 end;
 
 procedure TDataPointTool.FindNearestPoint(APoint: TPoint);
@@ -1649,6 +1665,7 @@ begin
   p.FPoint := APoint;
   p.FRadius := GrabRadius;
   p.FOptimizeX := DistanceMode <> cdmOnlyY;
+  p.FTargets := Targets;
   best.FDist := MaxInt;
   for s in CustomSeries(FChart, FAffectedSeries.AsBooleans(FChart.SeriesCount)) do
     if
@@ -1661,6 +1678,8 @@ begin
   if best.FDist = MaxInt then exit;
   FSeries := bestS;
   FPointIndex := best.FIndex;
+  FXIndex := best.FXIndex;
+  FYIndex := best.FYIndex;
   FNearestGraphPoint := FChart.ImageToGraph(best.FImg);
 end;
 
@@ -1709,6 +1728,7 @@ begin
   FindNearestPoint(APoint);
   if FSeries = nil then exit;
   FOrigin := NearestGraphPoint;
+  FSeries.DragOrigin := APoint;
   p := FChart.ImageToGraph(APoint);
   FDistance := p - FOrigin;
   if Assigned(OnDragStart) then begin
@@ -1730,7 +1750,8 @@ begin
     if Toolset.FIsHandled then exit;
   end;
   if FKeepDistance then p := p - FDistance;
-  FSeries.MovePoint(FPointIndex, p);
+//  FSeries.MovePoint(FPointIndex, p);
+  FSeries.MovePointEx(FPointIndex, FXIndex, FYIndex, p);
   Handled;
 end;
 
@@ -1833,12 +1854,15 @@ begin
     HideHint;
     exit;
   end;
-  if (FPrevSeries = Series) and (FPrevPointIndex = PointIndex) then
+  if (FPrevSeries = Series) and (FPrevPointIndex = PointIndex) and
+     (FPrevYIndex = YIndex)
+  then
     exit;
   if FPrevSeries = nil then
     SetCursor;
   FPrevSeries := Series;
   FPrevPointIndex := PointIndex;
+  FPrevYIndex := YIndex;
   h := GetHintText;
   APoint := FChart.ClientToScreen(APoint);
   if Assigned(OnHintPosition) then

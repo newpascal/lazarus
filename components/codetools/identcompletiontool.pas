@@ -14,7 +14,7 @@
  *   A copy of the GNU General Public License is available on the World    *
  *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
  *   obtain it by writing to the Free Software Foundation,                 *
- *   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.        *
+ *   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
  *                                                                         *
  ***************************************************************************
 
@@ -2786,8 +2786,8 @@ begin
                 CurrentIdentifierList.ContextFlags+[ilcfIsExpression, ilcfDontAllowProcedures];
             end;
             // check if procedure is allowed
-            if (CurPos.Flag in [cafComma, cafRoundBracketOpen, cafEdgedBracketOpen, cafEqual, cafOtherOperator])
-            or ((Scanner.CompilerMode<>cmDelphi) and (CurPos.Flag = cafAssignment)) // "MyEvent := MyProc;" is supported only in Delphi mode
+            if (CurPos.Flag in [cafEdgedBracketOpen, cafEqual, cafOtherOperator])
+            or ((Scanner.CompilerMode<>cmDelphi) and (CurPos.Flag in [cafAssignment, cafComma, cafRoundBracketOpen])) // "MyEvent := MyProc;" and "o.Test(MyProc)" is supported only in Delphi mode
             then
               CurrentIdentifierList.ContextFlags:=
                 CurrentIdentifierList.ContextFlags+[ilcfDontAllowProcedures];

@@ -29,12 +29,15 @@ type
     FOptimizeX: Boolean;
     FPoint: TPoint;
     FRadius: Integer;
+    FTargets: TNearestPointTargets;
   end;
 
   TNearestPointResults = record
     FDist: Integer;
     FImg: TPoint;
-    FIndex: Integer;
+    FIndex: Integer;        // Point index
+    FXIndex: Integer;       // Index to be used in Source.GetX()
+    FYIndex: Integer;       // Index to be used in Source.GetY()
     FValue: TDoublePoint;
   end;
 
@@ -174,14 +177,18 @@ type
     function  GetXMax: Double;
     function  GetXMin: Double;
     function  GetXValue(AIndex: Integer): Double;
+    function  GetXValues(AIndex, AXIndex: Integer): Double;
     function  GetYImgValue(AIndex: Integer): Integer;
     function  GetYMax: Double;
     function  GetYMin: Double;
     function  GetYValue(AIndex: Integer): Double;
+    function  GetYValues(AIndex, AYIndex: Integer): Double;
     procedure SetColor(AIndex: Integer; AColor: TColor); inline;
     procedure SetText(AIndex: Integer; AValue: String); inline;
     procedure SetXValue(AIndex: Integer; AValue: Double); inline;
+    procedure SetXValues(AIndex, AXIndex: Integer; AValue: Double);
     procedure SetYValue(AIndex: Integer; AValue: Double); inline;
+    procedure SetYValues(AIndex, AYIndex: Integer; AValue: Double);
   public
     function Add(
       AValue: Double;
@@ -216,7 +223,9 @@ type
     function MaxYValue: Double;
     function MinYValue: Double;
     property XValue[AIndex: Integer]: Double read GetXValue write SetXValue;
+    property XValues[AIndex, AXIndex: Integer]: Double read GetXValues write SetXValues;
     property YValue[AIndex: Integer]: Double read GetYValue write SetYValue;
+    property YValues[AIndex, AYIndex: Integer]: Double read GetYValues write SetYValues;
   published
     property Active default true;
     property Marks: TChartMarks read FMarks write SetMarks;
@@ -248,14 +257,17 @@ type
     function GetLabelDirection(AIndex: Integer): TLabelDirection;
     procedure SetMarkPositions(AValue: TLinearMarkPositions);
     procedure SetPointer(AValue: TSeriesPointer);
+    procedure SetStacked(AValue: Boolean);
     procedure SetUseReticule(AValue: Boolean);
   strict protected
     FGraphPoints: array of TDoublePoint;
     FLoBound: Integer;
     FMinXRange: Double;
     FPointer: TSeriesPointer;
+    FStacked: Boolean;
     FUpBound: Integer;
     FUseReticule: Boolean;
+    FOptimizeX: Boolean;
 
     procedure AfterDrawPointer(
       ADrawer: IChartDrawer; AIndex: Integer; const APos: TPoint); virtual;
@@ -270,11 +282,14 @@ type
     function NearestXNumber(var AIndex: Integer; ADir: Integer): Double;
     procedure PrepareGraphPoints(
       const AExtent: TDoubleRect; AFilterByExtent: Boolean);
-    procedure UpdateGraphPoints(AIndex: Integer); overload; inline;
-    procedure UpdateGraphPoints(AIndex, ALo, AUp: Integer); overload;
+    function ToolTargetDistance(const AParams: TNearestPointParams;
+      AGraphPt: TDoublePoint; APointIdx, AXIdx, AYIdx: Integer): Integer; virtual;
+    procedure UpdateGraphPoints(AIndex: Integer; ACumulative: Boolean); overload; inline;
+    procedure UpdateGraphPoints(AIndex, ALo, AUp: Integer; ACumulative: Boolean); overload;
     procedure UpdateMinXRange;
 
     property Pointer: TSeriesPointer read FPointer write SetPointer;
+    property Stacked: Boolean read FStacked write SetStacked;
   protected
     procedure AfterAdd; override;
     procedure UpdateMargins(ADrawer: IChartDrawer; var AMargins: TRect); override;
@@ -284,13 +299,17 @@ type
       read FOnGetPointerStyle write FOnGetPointerStyle;
 
   public
+    constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
   public
     procedure Assign(ASource: TPersistent); override;
+    function Extent: TDoubleRect; override;
     function GetNearestPoint(
       const AParams: TNearestPointParams;
       out AResults: TNearestPointResults): Boolean; override;
     procedure MovePoint(var AIndex: Integer; const ANewPos: TDoublePoint); override;
+    procedure MovePointEx(var AIndex: Integer; AXIndex, AYIndex: Integer;
+      const ANewPos: TDoublePoint); override;
     property MarkPositions: TLinearMarkPositions
       read FMarkPositions write SetMarkPositions default lmpOutside;
     property UseReticule: Boolean
@@ -884,6 +903,14 @@ begin
   Result := Source[AIndex]^.X;
 end;
 
+function TChartSeries.GetXValues(AIndex, AXIndex: Integer): Double;
+begin
+  if AXIndex = 0 then
+    Result := Source[AIndex]^.X
+  else
+    Result := Source[AIndex]^.XList[AXIndex - 1];
+end;
+
 function TChartSeries.GetYImgValue(AIndex: Integer): Integer;
 begin
   Result := ParentChart.YGraphToImage(Source[AIndex]^.Y);
@@ -912,6 +939,14 @@ end;
 function TChartSeries.GetYValue(AIndex: Integer): Double;
 begin
   Result := Source[AIndex]^.Y;
+end;
+
+function TChartSeries.GetYValues(AIndex, AYIndex: Integer): Double;
+begin
+  if AYIndex = 0 then
+    Result := GetYValue(AIndex)
+  else
+    Result := Source[AIndex]^.YList[AYIndex - 1];
 end;
 
 function TChartSeries.IsEmpty: Boolean;
@@ -985,9 +1020,25 @@ begin
   ListSource.SetXValue(AIndex, AValue);
 end;
 
+procedure TChartSeries.SetXValues(AIndex, AXIndex: Integer; AValue: Double);
+begin
+  if AXIndex = 0 then
+    ListSource.SetXValue(AIndex, AValue)
+  else
+    ListSource.Item[AIndex]^.XList[AXIndex - 1] := AValue;
+end;
+
 procedure TChartSeries.SetYValue(AIndex: Integer; AValue: Double); inline;
 begin
   ListSource.SetYValue(AIndex, AValue);
+end;
+
+procedure TChartSeries.SetYValues(AIndex, AYIndex: Integer; AValue: Double);
+begin
+  if AYIndex = 0 then
+    ListSource.SetYValue(AIndex, AValue)
+  else
+    ListSource.Item[AIndex]^.YList[AYIndex - 1] := AValue;
 end;
 
 procedure TChartSeries.SourceChanged(ASender: TObject);
@@ -1025,9 +1076,16 @@ begin
       Self.FMarkPositions := MarkPositions;
       if Self.FPointer <> nil then
         Self.FPointer.Assign(Pointer);
+      Self.Stacked := Stacked;
       Self.FUseReticule := UseReticule;
     end;
   inherited Assign(ASource);
+end;
+
+constructor TBasicPointSeries.Create(AOwner: TComponent);
+begin
+  inherited;
+  FOptimizeX := true;
 end;
 
 destructor TBasicPointSeries.Destroy;
@@ -1133,6 +1191,14 @@ begin
   end;
 end;
 
+function TBasicPointSeries.Extent: TDoubleRect;
+begin
+  if FStacked then
+    Result := Source.ExtentCumulative
+  else
+    Result := Source.ExtentList;
+end;
+
 // Find an interval of x-values intersecting the extent.
 // Requires monotonic (but not necessarily increasing) axis transformation.
 procedure TBasicPointSeries.FindExtentInterval(
@@ -1214,13 +1280,15 @@ function TBasicPointSeries.GetNearestPoint(
   end;
 
 var
-  dist, i, lb, ub: Integer;
-  pt: TPoint;
-  sp: TDoublePoint;
+  dist, tmpDist, i, j, lb, ub: Integer;
+  sp, tmpSp: TDoublePoint;
+  pt, tmpPt: TDoublePoint;
 begin
-  AResults.FDist := Sqr(AParams.FRadius) + 1;
+  AResults.FDist := Sqr(AParams.FRadius) + 1;  // the dist func does not calc sqrt
   AResults.FIndex := -1;
-  if AParams.FOptimizeX then
+  AResults.FXIndex := 0;
+  AResults.FYIndex := 0;
+  if FOptimizeX and AParams.FOptimizeX then
     Source.FindBounds(
       GetGrabBound(-AParams.FRadius),
       GetGrabBound( AParams.FRadius), lb, ub)
@@ -1228,19 +1296,69 @@ begin
     lb := 0;
     ub := Count - 1;
   end;
+
+  dist := AResults.FDist;
   for i := lb to ub do begin
     sp := Source[i]^.Point;
-    if IsNan(sp) then continue;
+    if IsNan(sp) then
+      continue;
+
     // Since axis transformation may be non-linear, the distance should be
     // measured in screen coordinates. With high zoom ratios this may lead to
     // an integer overflow, so ADistFunc should use saturation arithmetics.
-    pt := ParentChart.GraphToImage(AxisToGraph(sp));
-    dist := AParams.FDistFunc(AParams.FPoint, pt);
-    if dist >= AResults.FDist then continue;
+
+    // Find nearest point of datapoint at (x, y)
+    if (nptPoint in AParams.FTargets) then begin
+      pt := AxisToGraph(sp);
+      dist := Min(dist, ToolTargetDistance(AParams, pt, i, 0, 0));
+    end;
+
+    // Find nearest point to additional y values (at x).
+    // In case of stacked data points check the stacked values.
+    if (nptYList in AParams.FTargets) and (dist > 0) then begin
+      tmpSp := sp;
+      for j := 0 to Source.YCount - 2 do begin
+        if FStacked then
+          tmpSp.Y += Source[i]^.YList[j] else
+          tmpSp.Y := Source[i]^.YList[j];
+        tmpPt := AxisToGraph(tmpSp);
+        tmpDist := ToolTargetDistance(AParams, tmpPt, i, 0, j + 1);
+        if tmpDist < dist then begin
+          dist := tmpDist;
+          sp := tmpSp;
+          pt := tmpPt;
+          AResults.FYIndex := j + 1;    // FYIndex = 0 refers to the regular y
+        end;
+      end;
+    end;
+
+    // Find nearest point of additional x values (at y)
+    if (nptXList in AParams.FTargets) and (dist > 0) then begin
+      tmpSp := sp;
+      for j := 0 to Source.XCount - 2 do begin
+        tmpSp.X := Source[i]^.XList[j];
+        tmpPt := AxisToGraph(tmpSp);
+        tmpDist := ToolTargetDistance(AParams, tmpPt, i, j + 1, 0);
+        if tmpDist < dist then begin
+          dist := tmpDist;
+          sp := tmpSp;
+          pt := tmpPt;
+          AResults.FXIndex := j + 1;   // FXindex = 0 refers to the regular x
+        end;
+      end;
+    end;
+
+    // The case nptCustom is not handled here, it depends on the series type.
+    // TBarSeries, for example, checks whether AParams.FPoint is inside a bar.
+
+    if dist >= AResults.FDist then
+      continue;
+
     AResults.FDist := dist;
     AResults.FIndex := i;
-    AResults.FImg := pt;
     AResults.FValue := sp;
+    AResults.FImg := ParentChart.GraphToImage(pt);
+    if dist = 0 then break;
   end;
   Result := AResults.FIndex >= 0;
 end;
@@ -1272,6 +1390,39 @@ begin
   with ListSource do begin
     AIndex := SetXValue(AIndex, p.X);
     SetYValue(AIndex, p.Y);
+  end;
+end;
+
+procedure TBasicPointSeries.MovePointEx(var AIndex: Integer;
+  AXIndex, AYIndex: Integer; const ANewPos: TDoublePoint);
+var
+  sp: TDoublePoint;
+  sum: Double;
+  j: Integer;
+begin
+  Unused(AXIndex);
+
+  if not InRange(AIndex, 0, Count - 1) then
+    exit;
+
+  sp := GraphToAxis(ANewPos);
+  case AYIndex of
+   -1: begin
+         ListSource.SetXValue(AIndex, sp.X);
+         ListSource.SetYValue(AIndex, sp.Y);
+       end;
+    0: begin
+         ListSource.SetYValue(AIndex, sp.Y);
+       end;
+    else
+      if FStacked then begin
+        sum := 0;
+        for j := 0 to AYIndex - 1 do
+          sum := sum + YValues[AIndex, j];
+        YValues[AIndex, AYIndex] := sp.Y - sum;
+      end else
+        YValues[AIndex, AYIndex] := sp.Y;
+      UpdateParentChart;
   end;
 end;
 
@@ -1318,6 +1469,13 @@ begin
   UpdateParentChart;
 end;
 
+procedure TBasicPointSeries.SetStacked(AValue: Boolean);
+begin
+  if FStacked = AValue then exit;
+  FStacked := AValue;
+  UpdateParentChart;
+end;
+
 procedure TBasicPointSeries.SetUseReticule(AValue: Boolean);
 begin
   if FUseReticule = AValue then exit;
@@ -1325,21 +1483,51 @@ begin
   UpdateParentChart;
 end;
 
-procedure TBasicPointSeries.UpdateGraphPoints(AIndex, ALo, AUp: Integer);
+function TBasicPointSeries.ToolTargetDistance(const AParams: TNearestPointParams;
+  AGraphPt: TDoublePoint; APointIdx, AXIdx, AYIdx: Integer): Integer;
 var
-  i: Integer;
+  pt: TPoint;
+begin
+  Unused(APointIdx);
+  Unused(AXIdx, AYIdx);
+  pt := ParentChart.GraphToImage(AGraphPt);
+  Result := AParams.FDistFunc(AParams.FPoint, pt);
+end;
+
+procedure TBasicPointSeries.UpdateGraphPoints(AIndex, ALo, AUp: Integer;
+  ACumulative: Boolean);
+var
+  i, j: Integer;
+  y: Double;
 begin
   if IsRotated then
     for i := ALo to AUp do
-      FGraphPoints[i - ALo].X += AxisToGraphY(Source[i]^.YList[AIndex])
+    begin
+      if ACumulative then begin
+        y := Source[i]^.Y;
+        for j := 0 to AIndex do
+          y += Source[i]^.YList[j];
+        FGraphPoints[i - ALo].X := AxisToGraphY(y);
+      end else
+        FGraphPoints[i - Alo].X := AxisToGraphY(Source[i]^.YList[AIndex]);
+    end
   else
     for i := ALo to AUp do
-      FGraphPoints[i - ALo].Y += AxisToGraphY(Source[i]^.YList[AIndex]);
+    begin
+      if ACumulative then begin
+        y := Source[i]^.Y;
+        for j := 0 to AIndex do
+          y += Source[i]^.YList[j];
+        FGraphPoints[i - ALo].Y := AxisToGraphY(y);
+      end else
+        FGraphPoints[i - Alo].Y := AxisToGraphY(Source[i]^.YList[AIndex]);
+    end;
 end;
 
-procedure TBasicPointSeries.UpdateGraphPoints(AIndex: Integer);
+procedure TBasicPointSeries.UpdateGraphPoints(AIndex: Integer;
+  ACumulative: Boolean);
 begin
-  UpdateGraphPoints(AIndex, FLoBound, FUpBound);
+  UpdateGraphPoints(AIndex, FLoBound, FUpBound, ACumulative);
 end;
 
 procedure TBasicPointSeries.UpdateMargins(
