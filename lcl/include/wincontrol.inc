@@ -4356,15 +4356,13 @@ begin
   if bShow then
   begin
     if not HandleAllocated then CreateHandle;
+    if Assigned(FControls) then
+    begin
+      for n := 0 to FControls.Count - 1 do
+        if TObject(FControls[n]) is TWinControl then
+          TWinControl(FControls[n]).UpdateShowing;
+    end;
   end;
-
-  if Assigned(FControls) then
-  begin
-    for n := 0 to FControls.Count - 1 do
-      if TObject(FControls[n]) is TWinControl then
-        TWinControl(FControls[n]).UpdateShowing;
-  end;
-
   if not HandleAllocated then
   begin
     {$IFDEF VerboseShowing}
@@ -5033,6 +5031,7 @@ end;
 procedure TWinControl.PaintTo(ACanvas: TCanvas; X, Y: Integer);
 begin
   PaintTo(ACanvas.Handle, X, Y);
+  ACanvas.Changed;
 end;
 
 procedure TWinControl.SetShape(AShape: TBitmap);
@@ -6089,8 +6088,7 @@ begin
   if csDesigning in ComponentState then
     DebugLn('TWinControl.Repaint A ',Name,':',ClassName);
   {$ENDIF}
-  Invalidate;
-  Update;
+  TWSWinControlClass(WidgetSetClass).Repaint(Self);
 end;
 
 {------------------------------------------------------------------------------
@@ -6155,13 +6153,13 @@ var
   i: Integer;
 begin
   // scroll inner controls
-  DisableAutoSizing;
+  DisableAutoSizing{$IFDEF DebugDisableAutoSizing}('TWinControl.ScrollBy'){$ENDIF};
   try
     for i := 0 to ControlCount - 1 do
       with Controls[i] do
         SetBounds(Left + DeltaX, Top + DeltaY, Width, Height);
   finally
-    EnableAutoSizing;
+    EnableAutoSizing{$IFDEF DebugDisableAutoSizing}('TWinControl.ScrollBy'){$ENDIF};
   end;
 end;
 
@@ -7015,7 +7013,8 @@ begin
     SetBounds(NewLeft, NewTop, Message.Width, Message.Height);
   //if CheckPosition(Self) then
     //debugln(['TWinControl.WMSize ',DbgSName(Self),' ClientRectNeedsInterfaceUpdate=',ClientRectNeedsInterfaceUpdate]);
-  if ((Message.SizeType and Size_SourceIsInterface) > 0) and ClientRectNeedsInterfaceUpdate then
+  if ((Message.SizeType and Size_SourceIsInterface) > 0) and ((Message.SizeType and SIZE_MINIMIZED) = 0)
+  and ClientRectNeedsInterfaceUpdate then
     DoAdjustClientRectChange;
   {$IFDEF VerboseClientRectBugFix}
   {$IFDEF CHECK_POSITION}
@@ -8107,7 +8106,6 @@ var
   Layout: TAutoSizeCtrlData;
   NewClientWidth: Integer;
   NewClientHeight: Integer;
-  CurClientRect: TRect;
   NewMoveLeft, NewMoveRight: integer;
   FrameWidth: integer;
   FrameHeight: integer;

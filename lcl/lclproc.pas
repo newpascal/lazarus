@@ -26,9 +26,12 @@ interface
 
 uses
   {$IFDEF Darwin}MacOSAll, {$ENDIF}
+  Classes, SysUtils, Math, TypInfo, Types,
+  // LazUtils
+  FPCAdds, AvgLvlTree, LazFileUtils, LazMethodList, LazUTF8, LazUTF8Classes,
   {$IFnDEF WithOldDebugln} LazLogger, {$ENDIF}
-  Classes, SysUtils, Math, TypInfo, Types, FPCAdds, AvgLvlTree, LazFileUtils,
-  LCLStrConsts, LCLType, WSReferences, LazMethodList, LazUTF8, LazUTF8Classes;
+  // LCL
+  LCLStrConsts, LCLType;
 
 type
   TMethodList = LazMethodList.TMethodList;
@@ -140,7 +143,6 @@ function BreakString(const s: string; MaxLineLength, Indent: integer): string;
 
 function ComparePointers(p1, p2: Pointer): integer;
 function CompareHandles(h1, h2: THandle): integer;
-function CompareLCLHandles(h1, h2: TLCLHandle): integer;
 function CompareRect(R1, R2: PRect): Boolean;
 function ComparePoints(const p1, p2: TPoint): integer;
 function CompareMethods(const m1, m2: TMethod): boolean;
@@ -910,39 +912,26 @@ begin
   // creates an exception, that gdb catches:
   debugln(rsCreatingGdbCatchableError);
   DumpStack;
+  {$ifndef HASAMIGA} // On Amiga Division by 0 is not catchable, just crash
   if (length(Msg) div (length(Msg) div 10000))=0 then ;
+  {$endif}
 end;
 
 procedure RaiseAndCatchException;
 begin
   try
+    {$ifndef HASAMIGA} // On Amiga Division by 0 is not catchable, just crash
     if (length(rsERRORInLCL) div (length(rsERRORInLCL) div 10000))=0 then ;
+    {$else}
+    DumpStack;
+    {$endif}
   except
-  end;
-end;
-
-procedure DumpAddr(Addr: Pointer);
-begin
-  // preventing another exception, while dumping stack trace
-  try
-    DebugLn(BackTraceStrFunc(Addr));
-  except
-    DebugLn(SysBackTraceStr(Addr));
   end;
 end;
 
 procedure DumpExceptionBackTrace;
-var
-  FrameCount: integer;
-  Frames: PPointer;
-  FrameNumber:Integer;
 begin
-  DebugLn('  Stack trace:');
-  DumpAddr(ExceptAddr);
-  FrameCount:=ExceptFrameCount;
-  Frames:=ExceptFrames;
-  for FrameNumber := 0 to FrameCount-1 do
-    DumpAddr(Frames[FrameNumber]);
+  LazLogger.DumpExceptionBackTrace;
 end;
 
 function GetStackTrace(UseCache: boolean): string;
@@ -1193,16 +1182,6 @@ begin
 end;
 
 function CompareHandles(h1, h2: THandle): integer;
-begin
-  if h1>h2 then
-    Result:=1
-  else if h1<h2 then
-    Result:=-1
-  else
-    Result:=0;
-end;
-
-function CompareLCLHandles(h1, h2: TLCLHandle): integer;
 begin
   if h1>h2 then
     Result:=1
@@ -3207,6 +3186,11 @@ initialization
   // To prevent crashes, replace it with the default system back trace function
   // that just outputs addresses and not source and line number
   BackTraceStrFunc := @SysBackTraceStr;
+  {$endif}
+  {$ifdef AROS}
+    {$if FPC_FULLVERSION>=30101}
+    EnableBackTraceStr;
+    {$endif}
   {$endif}
   InterfaceInitializationHandlers := TFPList.Create;
   InterfaceFinalizationHandlers := TFPList.Create;

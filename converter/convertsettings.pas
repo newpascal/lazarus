@@ -14,7 +14,7 @@
  *   A copy of the GNU General Public License is available on the World    *
  *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
  *   obtain it by writing to the Free Software Foundation,                 *
- *   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.        *
+ *   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
  *                                                                         *
  ***************************************************************************
 
@@ -31,7 +31,8 @@ interface
 
 uses
   Classes, SysUtils, AVL_Tree,
-  Forms, Controls, Dialogs, StdCtrls, Buttons, ButtonPanel, ComCtrls,
+  // LCL
+  Forms, Controls, Dialogs, StdCtrls, Buttons, ButtonPanel, ComCtrls, LCLProc,
   // LazUtils
   FileUtil, LazFileUtils, DividerBevel, LazConfigStorage,
   // CodeTools
@@ -211,7 +212,6 @@ type
   public
     constructor Create(AOwner: TComponent; ASettings: TConvertSettings); reintroduce;
     destructor Destroy; override;
-    property CacheUnitsThread: TThread read fCacheUnitsThread;
   end;
 
 
@@ -298,7 +298,6 @@ begin
   fOmitProjUnits['SynHighlighterMulti']:='SynEdit';
   fOmitProjUnits['SynHighlighterPas']  :='SynEdit';
   fOmitProjUnits['SynTextDrawer']      :='SynEdit';
-  fOmitProjUnits['SynRegExpr']         :='SynEdit';
 end;
 
 destructor TConvertSettings.Destroy;
@@ -528,6 +527,8 @@ begin
   MapReplacement('MMSystem',            '');
   MapReplacement('.*dll.*',             '');
   MapReplacement('^Q(.+)',              '$1');         // Kylix unit names.
+  // SynEdit has an identical RegExpr as FCL has, but names differ.
+  MapReplacement('SynRegExpr',          'RegExpr');
   // Tnt* third party components.
   MapReplacement('TntLXStringGrids',    'Grids');
   MapReplacement('TntLXCombos',         '');
@@ -597,8 +598,8 @@ begin
     AddDefaultCategory(Categ);
     //AddFunc(Categ, 'CreateFile', 'FileCreate($1)','','SysUtils');
     //AddFunc(Categ, 'ReadFile',   'FileRead($1)'  ,'','SysUtils');
-    AddFunc(Categ, 'GetFileSize','FileSize($1)'  ,'','SysUtils');
     AddFunc(Categ, 'CloseHandle','FileClose($1)' ,'','SysUtils');
+    AddFunc(Categ, 'GetFileSize','FileSize($1)'  ,'LazUtils','FileUtil');
     // WindowsAPI
     Categ:='WindowsAPI';
     AddDefaultCategory(Categ);
@@ -851,8 +852,6 @@ end;
 
 destructor TConvertSettingsForm.Destroy;
 begin
-  if Assigned(fCacheUnitsThread) and not fThreadStarted then
-    fCacheUnitsThread.Free;
   inherited Destroy;
 end;
 
@@ -964,7 +963,6 @@ begin
   if ScanParentDirCheckBox.Checked and Assigned(fCacheUnitsThread) then
   begin
     ThreadGuiShow(True);
-    fCacheUnitsThread.FreeOnTerminate:=True;
     fCacheUnitsThread.OnTerminate:=@ThreadTerminated;
     fCacheUnitsThread.Start;
     fThreadStarted := True;
@@ -980,7 +978,8 @@ end;
 
 procedure TConvertSettingsForm.CancelButtonClick(Sender: TObject);
 begin
-  if Assigned(fCacheUnitsThread) then begin
+  if Assigned(fCacheUnitsThread) and fThreadStarted then
+  begin
     (fCacheUnitsThread as TCacheUnitsThread).Searcher.Stop;
     fCacheUnitsThread.WaitFor;
   end;
@@ -999,7 +998,6 @@ end;
 procedure TConvertSettingsForm.ThreadTerminated(Sender: TObject);
 begin
   ThreadGuiShow(False);
-  fCacheUnitsThread := nil;  // Thread frees itself. Make the variable nil, too.
 end;
 
 // Edit replacements in grids

@@ -25,7 +25,7 @@
  *   A copy of the GNU General Public License is available on the World    *
  *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
  *   obtain it by writing to the Free Software Foundation,                 *
- *   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.        *
+ *   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
  *                                                                         *
  ***************************************************************************
 }
@@ -38,8 +38,12 @@ unit Debugger;
 interface
 
 uses
-  TypInfo, Classes, SysUtils, Laz2_XMLCfg, math, LazFileUtils, LazLoggerBase,
-  LCLProc, LazConfigStorage, LazClasses, maps,
+  TypInfo, Classes, SysUtils, math,
+  // LCL
+  LCLProc,
+  // LazUtils
+  Laz2_XMLCfg, LazFileUtils, LazLoggerBase, LazConfigStorage, LazClasses, Maps,
+  // DebuggerIntf
   DbgIntfBaseTypes, DbgIntfMiscClasses, DbgIntfDebuggerBase;
 
 const
@@ -680,7 +684,7 @@ type
     procedure SetSnapShot(const AValue: TIdeWatchValue);
   protected
     procedure RequestData; override;
-    procedure DoDataValidityChanged(AnOldValidity: TDebuggerDataState); override;
+    procedure DoDataValidityChanged({%H-}AnOldValidity: TDebuggerDataState); override;
   public
     property SnapShot: TIdeWatchValue read FSnapShot write SetSnapShot;
   end;
@@ -817,7 +821,7 @@ type
                               APath: string);
   public
     constructor CreateFromXMLConfig(const AConfig: TXMLConfig; APath: string);
-    procedure SetDataValidity(AValidity: TDebuggerDataState); override;
+    procedure SetDataValidity({%H-}AValidity: TDebuggerDataState); override;
   end;
 
   { TCurrentLocals }
@@ -970,7 +974,7 @@ type
   TIDERegisterValue = class(TRegisterValue)
   protected
     procedure DoDataValidityChanged(AnOldValidity: TDebuggerDataState); override;
-    procedure DoDisplayFormatChanged(AnOldFormat: TRegisterDisplayFormat); override;
+    procedure DoDisplayFormatChanged({%H-}AnOldFormat: TRegisterDisplayFormat); override;
   end;
 
   { TIDERegisters }
@@ -1143,10 +1147,10 @@ type
   public
     procedure DoEntriesCreated; override;
     procedure DoEntriesUpdated; override;
-    procedure SetCountValidity(AValidity: TDebuggerDataState); override;
-    procedure SetHasAtLeastCountInfo(AValidity: TDebuggerDataState; AMinCount: Integer = - 1);
+    procedure SetCountValidity({%H-}AValidity: TDebuggerDataState); override;
+    procedure SetHasAtLeastCountInfo({%H-}AValidity: TDebuggerDataState; {%H-}AMinCount: Integer = - 1);
       override;
-    procedure SetCurrentValidity(AValidity: TDebuggerDataState); override;
+    procedure SetCurrentValidity({%H-}AValidity: TDebuggerDataState); override;
   public
     constructor Create;
     function CreateCopy: TCallStackBase; override;
@@ -1395,7 +1399,7 @@ type
                        const AThreadId: Integer; const AThreadName: String;
                        const AThreadState: String;
                        AState: TDebuggerDataState = ddsValid): TThreadEntry; override;
-    procedure SetValidity(AValidity: TDebuggerDataState); override;
+    procedure SetValidity({%H-}AValidity: TDebuggerDataState); override;
     property Entries[const AnIndex: Integer]: TIdeThreadEntry read GetEntry; default;
     property EntryById[const AnID: Integer]: TIdeThreadEntry read GetEntryById;
   end;

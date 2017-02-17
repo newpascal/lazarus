@@ -47,6 +47,7 @@ type
     FActive: Boolean;
     FChart: TChart;
     FDepth: TChartDistance;
+    FDragOrigin: TPoint;
     FShadow: TChartShadow;
     FTransparency: TChartTransparency;
     FZPosition: TChartDistance;
@@ -83,10 +84,13 @@ type
     function IsEmpty: Boolean; virtual; abstract;
     procedure MovePoint(var AIndex: Integer; const ANewPos: TPoint); overload; inline;
     procedure MovePoint(var AIndex: Integer; const ANewPos: TDoublePoint); overload; virtual;
+    procedure MovePointEx(var AIndex: Integer; AXIndex, AYIndex: Integer;
+      const ANewPos: TDoublePoint); virtual;
     procedure UpdateBiDiMode; virtual;
 
     property Active: Boolean read FActive write SetActive default true;
     property Depth: TChartDistance read FDepth write SetDepth default 0;
+    property DragOrigin: TPoint read FDragOrigin write FDragOrigin;
     property ParentChart: TChart read FChart;
     property Shadow: TChartShadow read FShadow write SetShadow;
     property Transparency: TChartTransparency
@@ -1813,6 +1817,13 @@ procedure TBasicChartSeries.MovePoint(
   var AIndex: Integer; const ANewPos: TPoint);
 begin
   MovePoint(AIndex, FChart.ImageToGraph(ANewPos));
+end;
+
+procedure TBasicChartSeries.MovePointEx(
+  var AIndex: Integer; AXIndex, AYIndex: Integer; const ANewPos: TDoublePoint);
+begin
+  Unused(AXIndex, AYIndex);
+  MovePoint(AIndex, ANewPos);
 end;
 
 procedure TBasicChartSeries.UpdateBiDiMode;

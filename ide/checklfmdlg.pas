@@ -20,7 +20,7 @@
  *   A copy of the GNU General Public License is available on the World    *
  *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
  *   obtain it by writing to the Free Software Foundation,                 *
- *   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.        *
+ *   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
  *                                                                         *
  ***************************************************************************
 }
@@ -34,15 +34,16 @@ uses
   // FCL+LCL
   Classes, SysUtils, Math, TypInfo, contnrs,
   LCLProc, LResources, Forms, Controls,
-  Graphics, Dialogs, Buttons, StdCtrls, ExtCtrls,
+  Dialogs, Buttons, StdCtrls, ExtCtrls,
   // components
   SynHighlighterLFM, SynEdit, BasicCodeTools, CodeCache, CodeToolManager,
   SynEditMiscClasses, LFMTrees,
+  // IDEIntf
+  IDEExternToolIntf, PackageIntf, IDEWindowIntf, PropEdits, PropEditUtils,
+  IDEMsgIntf, IDEDialogs, ComponentReg,
   // IDE
-  IDEExternToolIntf, PackageIntf, IDEWindowIntf, PropEdits, PropEditUtils, IDEMsgIntf,
-  IDEDialogs, ComponentReg,
   CustomFormEditor, LazarusIDEStrConsts,
-  IDEProcs, IDEOptionDefs, EditorOptions, SourceMarks, JITForms;
+  IDEProcs, EditorOptions, SourceMarks, JITForms;
 
 type
 
@@ -279,6 +280,7 @@ var
   s: String;
   MsgResult: TModalResult;
 begin
+  ComponentModified:=false;
   ListOfPInstancePropInfo:=nil;
   try
     // find all dangling events
@@ -322,14 +324,14 @@ begin
       Format(lisTheFollowingMethodsUsedByAreNotInTheSourceRemoveTh, [DbgSName(
         RootComponent), LineEnding, PascalBuffer.Filename, LineEnding+LineEnding, s, LineEnding])
        ,mtConfirmation,
-       [mrYes, lisRemoveThem, mrIgnore, lisKeepThemAndContinue, mrCancel]);
+       [mrYes, lisRemoveThem, mrIgnore, lisKeepThemAndContinue, mrAbort]);
      if MsgResult=mrYes then begin
        ClearDanglingEvents(ListOfPInstancePropInfo);
        ComponentModified:=true;
      end else if MsgResult=mrIgnore then
        exit(mrOk)
      else
-       exit(mrCancel);
+       exit(mrAbort);
   finally
     FreeListOfPInstancePropInfo(ListOfPInstancePropInfo);
   end;

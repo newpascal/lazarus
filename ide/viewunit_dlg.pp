@@ -27,7 +27,7 @@
  *   A copy of the GNU General Public License is available on the World    *
  *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
  *   obtain it by writing to the Free Software Foundation,                 *
- *   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.        *
+ *   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
  *                                                                         *
  ***************************************************************************
 }
@@ -117,6 +117,8 @@ type
     procedure ListboxDrawItem({%H-}Control: TWinControl; Index: Integer;
       ARect: TRect; {%H-}State: TOwnerDrawState);
     procedure ListboxKeyPress(Sender: TObject; var Key: char);
+    procedure ListboxMeasureItem({%H-}Control: TWinControl; {%H-}Index: Integer;
+      var AHeight: Integer);
     procedure OnIdle(Sender: TObject; var {%H-}Done: Boolean);
     procedure SortAlphabeticallySpeedButtonClick(Sender: TObject);
     procedure OKButtonClick(Sender :TObject);
@@ -483,6 +485,13 @@ procedure TViewUnitDialog.ListboxKeyPress(Sender: TObject; var Key: char);
 begin
   if Key = Char(VK_RETURN) then
     OKButtonClick(nil);
+end;
+
+procedure TViewUnitDialog.ListboxMeasureItem(Control: TWinControl;
+  Index: Integer; var AHeight: Integer);
+begin
+  if AHeight <= IDEImages.Images_16.Height then
+    AHeight := IDEImages.Images_16.Height + 2;
 end;
 
 procedure TViewUnitDialog.MultiselectCheckBoxClick(Sender :TObject);

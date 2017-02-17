@@ -16,8 +16,8 @@
 
   A copy of the GNU General Public License is available on the World Wide Web
   at <http://www.gnu.org/copyleft/gpl.html>. You can also obtain it by writing
-  to the Free Software Foundation, Inc., 59 Temple Place - Suite 330, Boston,
-  MA 02111-1307, USA.
+  to the Free Software Foundation, Inc., 51 Franklin Street - Fifth Floor,
+  Boston, MA 02110-1335, USA.
 }
 unit LazChmHelp;
 
@@ -27,9 +27,16 @@ unit LazChmHelp;
 interface
 
 uses
-  Classes, SysUtils, FileUtil, LazLogger, LazFileUtils, LazHelpIntf, HelpIntfs,
-  LazConfigStorage, PropEdits, LazIDEIntf, IDEDialogs, IDEExternToolIntf,
-  LHelpControl, Controls, UTF8Process, ChmLangRef, ChmLcl, ChmProg;
+  Classes, SysUtils,
+  // LazUtils
+  FileUtil, LazLogger, LazFileUtils, LazConfigStorage, UTF8Process,
+  // LCL
+  Controls, Forms, Dialogs, LazHelpIntf, HelpIntfs, LCLPlatformDef, InterfaceBase,
+  // IdeIntf
+  PropEdits, IDEDialogs, MacroIntf, LazIDEIntf, IDEExternToolIntf, HelpFPDoc,
+  IDEHelpIntf,
+  // ChmHelp
+  LHelpControl, ChmLangRef, ChmLcl, ChmProg;
   
 resourcestring
   HELP_CURRENT_MENU  = '&Help';
@@ -109,8 +116,6 @@ procedure Register;
 
 implementation
 
-uses Process, MacroIntf, InterfaceBase, Forms, Dialogs, HelpFPDoc;
-
 const
   // Part of help name. Stored/retrieved in Lazarus options CHMHelp/Name.
   // Do not localize.
@@ -138,6 +143,10 @@ begin
   LCLHelpDatabase.OnFindViewer := @ChmHelp.DBFindViewer;
   RegisterFPCDirectivesHelpDatabase;
   FPCDirectivesHelpDatabase.OnFindViewer := @ChmHelp.DBFindViewer;
+
+  // disable showing CodeBrowser on unknown identifiers. LHelp has its own
+  // search function.
+  LazarusHelp.ShowCodeBrowserOnUnknownIdentifier:=false;
 end;
 
 

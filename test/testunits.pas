@@ -17,8 +17,8 @@
 
   A copy of the GNU General Public License is available on the World Wide Web
   at <http://www.gnu.org/copyleft/gpl.html>. You can also obtain it by writing
-  to the Free Software Foundation, Inc., 59 Temple Place - Suite 330, Boston,
-  MA 02111-1307, USA.
+  to the Free Software Foundation, Inc., 51 Franklin Street - Fifth Floor,
+  Boston, MA 02110-1335, USA.
 }
 unit testunits;
 
@@ -30,9 +30,9 @@ uses
   TestLpi, BugTestCase,
   bug8432, testfileutil, testfileproc,
   // lazutils
-  TestLazUtils, TestLazUTF8, TestLConvEncoding, TestAvgLvlTree,
+  TestLazUtils, TestLazUTF8, TestLazUTF16, TestLConvEncoding, TestAvgLvlTree,
   // lcltests
-  testunicode, testpen, TestPreferredSize, TestTextStrings
+  testpen, TestPreferredSize, TestTextStrings
   {$IFNDEF NoSemiAutomatedTests}
   // semi-automatic tests
   , testpagecontrol, semiautotest, idesemiautotests, lclsemiautotests

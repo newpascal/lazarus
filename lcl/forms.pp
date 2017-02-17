@@ -32,10 +32,14 @@ interface
 {$DEFINE HasDefaultValues}
 
 uses
-  Classes, SysUtils, Types, TypInfo, Math, Maps, LCLVersion, InterfaceBase,
-  LCLStrConsts, LCLType, LCLProc, LCLIntf, LazFileUtils, LazUTF8,
+  // RTL + FCL
+  Classes, SysUtils, Types, TypInfo, Math, CustApp,
+  // LCL
+  LCLStrConsts, LCLType, LCLProc, LCLIntf, LCLVersion, LCLClasses, InterfaceBase,
   LResources, GraphType, Graphics, Menus, LMessages, CustomTimer, ActnList,
-  ClipBrd, CustApp, HelpIntfs, LCLClasses, Controls, ImgList, Themes
+  ClipBrd, HelpIntfs, Controls, ImgList, Themes,
+  // LazUtils
+  LazFileUtils, LazUTF8, Maps
   {$ifndef wince},gettext{$endif}// remove ifdefs when gettext is fixed and a new fpc is released
   ;
 
@@ -261,6 +265,8 @@ type
 
     procedure SetDesignTimePPI(const ADesignTimePPI: Integer);
   protected
+    procedure SetScaled(const AScaled: Boolean); virtual;
+
     procedure AutoAdjustLayout(AMode: TLayoutAdjustmentPolicy; const AFromDPI,
       AToDPI, AOldFormWidth, ANewFormWidth: Integer; const AScale0Fonts: Boolean); override;
     procedure Loaded; override;
@@ -270,7 +276,7 @@ type
     property DesignTimeDPI: Integer read FDesignTimePPI write SetDesignTimePPI stored False; deprecated 'Use DesignTimePPI instead. DesignTimeDPI will be removed in 1.8';
     property DesignTimePPI: Integer read FDesignTimePPI write SetDesignTimePPI default 96;
     property PixelsPerInch: Integer read FPixelsPerInch write FPixelsPerInch stored False;
-    property Scaled: Boolean read FScaled write FScaled default DefaultScaled;
+    property Scaled: Boolean read FScaled write SetScaled default DefaultScaled;
   end;
 
 
@@ -544,6 +550,9 @@ type
     procedure CreateParams(var Params: TCreateParams); override;
     procedure CreateWnd; override;
     procedure Deactivate; virtual;
+    procedure DoAutoAdjustLayout(const AMode: TLayoutAdjustmentPolicy;
+      const AXProportion, AYProportion: Double;
+      const AScale0Fonts: Boolean); override;
     procedure DoClose(var CloseAction: TCloseAction); virtual;
     procedure DoCreate; virtual;
     procedure DoDestroy; virtual;
@@ -578,6 +587,7 @@ type
     procedure DoAutoSize; override;
     procedure SetAutoSize(Value: Boolean); override;
     procedure SetAutoScroll(Value: Boolean); override;
+    procedure SetScaled(const AScaled: Boolean); override;
     procedure DoAddActionList(List: TCustomActionList);
     procedure DoRemoveActionList(List: TCustomActionList);
     procedure ProcessResource;virtual;
@@ -656,7 +666,8 @@ type
     function ActiveMDIChild: TCustomForm; virtual;
     function GetMDIChildren(AIndex: Integer): TCustomForm; virtual;
     function MDIChildCount: Integer; virtual;
-
+  public
+    procedure AutoScale(const AScale0Fonts: Boolean); // set scaled to True and AutoAdjustLayout to current monitor PPI
   public
     // drag and dock
     procedure Dock(NewDockSite: TWinControl; ARect: TRect); override;
@@ -940,6 +951,7 @@ type
     function GetInfo(out Info: TMonitorInfo): Boolean; {inline; fpc bug - compilation error with inline}
     function GetLeft: Integer;
     function GetHeight: Integer;
+    function GetPixelsPerInch: Integer;
     function GetTop: Integer;
     function GetWidth: Integer;
     function GetBoundsRect: TRect;
@@ -955,6 +967,7 @@ type
     property BoundsRect: TRect read GetBoundsRect;
     property WorkareaRect: TRect read GetWorkareaRect;
     property Primary: Boolean read GetPrimary;
+    property PixelsPerInch: Integer read GetPixelsPerInch;
   end;
 
   { TMonitorList }

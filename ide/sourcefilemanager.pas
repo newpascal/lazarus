@@ -14,7 +14,7 @@
  *   A copy of the GNU General Public License is available on the World    *
  *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
  *   obtain it by writing to the Free Software Foundation,                 *
- *   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.        *
+ *   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
  *                                                                         *
  ***************************************************************************
 
@@ -32,28 +32,34 @@ unit SourceFileManager;
 interface
 
 uses
-  AVL_Tree, typinfo, math, Classes, SysUtils, Controls, Forms, Dialogs, LCLIntf,
-  LCLType, LCLProc, FileProcs, IDEProcs, DialogProcs, IDEDialogs,
-  LConvEncoding, LazFileCache, FileUtil, LazFileUtils, LazUTF8, LResources, PropEdits,
-  DefineTemplates, IDEMsgIntf, IDEProtocol, LazarusIDEStrConsts, LclStrConsts, NewDialog,
-  NewProjectDlg, LazIDEIntf, MainBase, MainBar, MainIntf, MenuIntf, NewItemIntf,
-  CompOptsIntf, SrcEditorIntf, IDEWindowIntf, ProjectIntf, Project, ProjectDefs,
-  ProjectInspector, PackageIntf, PackageDefs, PackageSystem, CompilerOptions,
-  BasePkgManager, ComponentReg, SourceEditor, EditorOptions, CustomFormEditor,
-  FormEditor, EmptyMethodsDlg, BaseDebugManager, ControlSelection,
-  TransferMacros, EnvironmentOpts, BuildManager, EditorMacroListViewer,
-  KeywordFuncLists, FindRenameIdentifier, GenericCheckList, ViewUnit_Dlg,
-  DiskDiffsDialog, InputHistory, CheckLFMDlg, LCLMemManager, CodeToolManager,
-  CodeToolsStructs, ConvCodeTool, CodeCache, CodeTree, FindDeclarationTool,
-  BasicCodeTools, SynEdit, UnitResources, IDEExternToolIntf, ObjectInspector,
-  PublishModule, etMessagesWnd, SourceSynEditor,
-  FormEditingIntf, fpjson;
+  Classes, SysUtils, typinfo, math, AVL_Tree, fpjson,
+  // LCL
+  Controls, Forms, Dialogs, LCLIntf, LCLType, LCLProc, LclStrConsts,
+  LResources, LCLMemManager,
+  // LazUtils
+  LConvEncoding, LazFileCache, FileUtil, LazFileUtils, LazUTF8,
+  // Codetools
+  BasicCodeTools, CodeToolsStructs, CodeToolManager, FileProcs, DefineTemplates,
+  CodeCache, CodeTree, FindDeclarationTool, KeywordFuncLists,
+  // IdeIntf
+  IDEDialogs, PropEdits, IDEMsgIntf, LazIDEIntf, MenuIntf, NewItemIntf,
+  CompOptsIntf, SrcEditorIntf, IDEWindowIntf, ProjectIntf, PackageIntf,
+  FormEditingIntf, IDEExternToolIntf, ObjectInspector, UnitResources, ComponentReg,
+  EditorSyntaxHighlighterDef,
+  // IDE
+  IDEProcs, DialogProcs, IDEProtocol, LazarusIDEStrConsts, NewDialog, NewProjectDlg,
+  MainBase, MainBar, MainIntf, Project, ProjectDefs, ProjectInspector, CompilerOptions,
+  SourceSynEditor, SourceEditor, EditorOptions, EnvironmentOpts, CustomFormEditor,
+  ControlSelection, FormEditor, EmptyMethodsDlg, BaseDebugManager, TransferMacros,
+  BuildManager, EditorMacroListViewer, FindRenameIdentifier, GenericCheckList,
+  ViewUnit_Dlg, DiskDiffsDialog, InputHistory, CheckLFMDlg, PublishModule, etMessagesWnd,
+  ConvCodeTool, BasePkgManager, PackageDefs, PackageSystem;
 
 type
 
   TBookmarkCommandsStamp = record
   private
-    BookmarksStamp: Int64;
+    FBookmarksStamp: Int64;
   public
     function Changed(ABookmarksStamp: Int64): Boolean;
   end;
@@ -454,14 +460,9 @@ end;
 
 function TBookmarkCommandsStamp.Changed(ABookmarksStamp: Int64): Boolean;
 begin
-  Result := not(
-        (BookmarksStamp = ABookmarksStamp)
-    );
-
-  if not Result then
-    Exit;
-
-  BookmarksStamp := ABookmarksStamp;
+  Result := (FBookmarksStamp <> ABookmarksStamp);
+  if Result then
+    FBookmarksStamp := ABookmarksStamp;
 end;
 
 { TFileCommandsStamp }
@@ -1094,15 +1095,19 @@ begin
         // either this is a lazarus project or it is not yet a lazarus project ;)
         LPIFilename:=ChangeFileExt(FFilename,'.lpi');
         if FileExistsCached(LPIFilename) then begin
-          if IDEQuestionDialog(lisProjectInfoFileDetected,
+          case IDEQuestionDialog(lisProjectInfoFileDetected,
             Format(lisTheFileSeemsToBeTheProgramFileOfAnExistingLazarusP,
                    [FFilename]), mtConfirmation,
-              [mrOk, lisOpenProject2, mrCancel, lisOpenTheFileAsNormalSource])=mrOk then
-          begin
-            Result:=MainIDE.DoOpenProjectFile(LPIFilename,[ofAddToRecent]);
-            if Result = mrOK then
-              Result := mrIgnore;
-            exit;
+              [mrOk, lisOpenProject2, mrAbort, lisOpenTheFileAsNormalSource])
+          of
+            mrOk:
+            begin
+              Result:=MainIDE.DoOpenProjectFile(LPIFilename,[ofAddToRecent]);
+              if Result = mrOK then
+                Result := mrIgnore;
+              exit;
+            end;
+            mrCancel: Exit(mrCancel);
           end;
         end else begin
           AText:=Format(lisTheFileSeemsToBeAProgramCloseCurrentProject,
@@ -1226,11 +1231,14 @@ begin
   end;
 
   // check if symlink and ask user if the real file should be opened instead
+  // Note that compiler never resolves symlinks, so files in the compiler
+  // search path must not be resolved.
   if FilenameIsAbsolute(FFileName) then begin
     s:=CodeToolBoss.GetCompleteSrcPathForDirectory('');
     if SearchDirectoryInSearchPath(s,ExtractFilePath(FFileName))<1 then
       // the file is not in the project search path => check if it is a symlink
-      ChooseSymlink(FFilename,true);
+      if ChooseSymlink(FFilename,true) <> mrOK then
+        exit(mrCancel);
   end;
 
   // check to not open directories
@@ -2494,11 +2502,20 @@ begin
     TestFilename := MainBuildBoss.GetTestUnitFilename(AnUnitInfo);
     if TestFilename <> '' then
     begin
+      DestFilename := TestFilename;
+      // notify packages
+      Result:=MainIDEInterface.CallSaveEditorFileHandler(LazarusIDE,AnUnitInfo,
+                                                  sefsBeforeWrite,DestFilename);
+      if Result<>mrOk then exit;
+      // actual write
       //DebugLn(['TLazSourceFileManager.SaveEditorFile TestFilename="',TestFilename,'" Size=',AnUnitInfo.Source.SourceLength]);
-      Result := AnUnitInfo.WriteUnitSourceToFile(TestFilename);
+      Result := AnUnitInfo.WriteUnitSourceToFile(DestFilename);
       if Result <> mrOk then
         Exit;
-      DestFilename := TestFilename;
+      // notify packages
+      Result:=MainIDEInterface.CallSaveEditorFileHandler(LazarusIDE,AnUnitInfo,
+                                                   sefsAfterWrite,DestFilename);
+      if Result<>mrOk then exit;
     end
     else
       exit(mrCancel);
@@ -2507,10 +2524,19 @@ begin
     if AnUnitInfo.Modified or AnUnitInfo.NeedsSaveToDisk then
     begin
       // save source to file
+      DestFilename := AnUnitInfo.Filename;
+      // notify packages
+      Result:=MainIDEInterface.CallSaveEditorFileHandler(LazarusIDE,
+        AnUnitInfo,sefsBeforeWrite,DestFilename);
+      if Result<>mrOk then exit;
+      // actual write
       Result := AnUnitInfo.WriteUnitSource;
       if Result <> mrOK then
         exit;
-      DestFilename := AnUnitInfo.Filename;
+      // notify packages
+      Result:=MainIDEInterface.CallSaveEditorFileHandler(LazarusIDE,
+        AnUnitInfo,sefsAfterWrite,DestFilename);
+      if Result<>mrOk then exit;
     end;
   end;
 
@@ -5814,9 +5840,16 @@ begin
 
     // save file
     if not NewSource.IsVirtual then begin
+      // notify packages
+      Result:=MainIDEInterface.CallSaveEditorFileHandler(LazarusIDE,AnUnitInfo,sefsBeforeWrite);
+      if Result<>mrOk then exit;
+      // actual write
       Result:=AnUnitInfo.WriteUnitSource;
       if Result<>mrOk then exit;
       AnUnitInfo.Modified:=false;
+      // notify packages
+      Result:=MainIDEInterface.CallSaveEditorFileHandler(LazarusIDE,AnUnitInfo,sefsAfterWrite);
+      if Result<>mrOk then exit;
     end;
 
     // change lpks containing the file
@@ -8168,7 +8201,7 @@ begin
     // lpi file will change => ask
     Result:=IDEQuestionDialog(lisProjectChanged,
       Format(lisSaveChangesToProject, [Project1.GetTitleOrName]),
-      mtConfirmation, [mrYes, mrNoToAll, rsmbNo, mbCancel], '');
+      mtConfirmation, [mrYes, mrNoToAll, rsmbNo, mrCancel], '');
     if Result=mrNoToAll then exit(mrOk);
     if Result<>mrYes then exit(mrCancel);
   end
@@ -8176,7 +8209,7 @@ begin
   begin
     // some non project files were changes in the source editor
     Result:=IDEQuestionDialog(lisSaveChangedFiles,lisSaveChangedFiles,
-      mtConfirmation, [mrYes, mrNoToAll, rsmbNo, mbCancel], '');
+      mtConfirmation, [mrYes, mrNoToAll, rsmbNo, mrCancel], '');
     if Result=mrNoToAll then exit(mrOk);
     if Result<>mrYes then exit(mrCancel);
   end
@@ -8193,7 +8226,7 @@ begin
       if EnvironmentOptions.AskSaveSessionOnly then begin
         Result:=IDEQuestionDialog(lisProjectSessionChanged,
           Format(lisSaveSessionChangesToProject, [Project1.GetTitleOrName]),
-          mtConfirmation, [mrYes, mrNoToAll, rsmbNo, mbCancel], '');
+          mtConfirmation, [mrYes, mrNoToAll, rsmbNo, mrCancel], '');
         if Result=mrNoToAll then exit(mrOk);
         if Result<>mrYes then exit(mrCancel);
       end;

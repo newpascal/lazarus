@@ -15,7 +15,7 @@
  *   A copy of the GNU General Public License is available on the World    *
  *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
  *   obtain it by writing to the Free Software Foundation,                 *
- *   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.        *
+ *   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
  *                                                                         *
  ***************************************************************************
 
@@ -59,6 +59,8 @@ type
       ARect: TRect; State: TOwnerDrawState);
     procedure UnitsListBoxKeyDown(Sender: TObject; var Key: Word;
       Shift: TShiftState);
+    procedure UnitsListBoxMeasureItem({%H-}Control: TWinControl; {%H-}Index: Integer;
+      var AHeight: Integer);
   private
     UnitImgInd: Integer;
     FMainUsedUnits: TStringList;
@@ -183,7 +185,7 @@ end;
 procedure TUseUnitDialog.FormCreate(Sender: TObject);
 begin
   // Internationalization
-  IDEDialogLayoutList.ApplyLayout(Self,500,460);
+  IDEDialogLayoutList.ApplyLayout(Self, 500, 460, False);
   AllUnitsCheckBox.Caption := dlgShowAllUnits;
   SectionRadioGroup.Caption := dlgInsertSection;
   SectionRadioGroup.Items.Clear;
@@ -285,6 +287,13 @@ begin
   // Should be removed when issue #20599 is resolved.
   if (Key = VK_O) and (Shift = []) then
     Key:=VK_UNKNOWN;
+end;
+
+procedure TUseUnitDialog.UnitsListBoxMeasureItem(Control: TWinControl;
+  Index: Integer; var AHeight: Integer);
+begin
+  if (AHeight <= IDEImages.Images_16.Height) then
+    AHeight := IDEImages.Images_16.Height + 2;
 end;
 
 procedure TUseUnitDialog.AddImplUsedUnits;

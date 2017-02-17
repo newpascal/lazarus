@@ -14,7 +14,7 @@
 *   A copy of the GNU General Public License is available on the World    *
 *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
 *   obtain it by writing to the Free Software Foundation,                 *
-*   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.        *
+*   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
 *                                                                         *
 ***************************************************************************
 
@@ -210,7 +210,7 @@ procedure TProgressFrm.DoOnPackageDownloadProgress(Sender: TObject; AFrom, ATo: 
   ACnt, ATotCnt: Integer; ACurPos, ACurSize, ATotPos, ATotSize: Int64;
   AElapsed, ARemaining, ASpeed: LongInt);
 begin
-  Caption := rsProgressfrm_Caption0 + '(' + IntToStr(ACnt) + '/' + IntToStr(ATotCnt) +')' + rsProgressFrm_Caption4;
+  Caption := rsProgressfrm_Caption0 + ' (' + IntToStr(ACnt) + '/' + IntToStr(ATotCnt) +')' + rsProgressFrm_Caption4;
   lbPackageData.Caption := ExtractFileName(ATo);
   lbSpeedData.Caption := FormatSpeed(ASpeed);
   lbSpeedData.Update;
@@ -275,7 +275,7 @@ procedure TProgressFrm.DoOnZipProgress(Sender: TObject; AZipfile: String;
   ACnt, ATotCnt: Integer;  ACurPos, ACurSize, ATotPos, ATotSize: Int64;
   AElapsed, ARemaining, ASpeed: LongInt);
 begin
-  Caption := rsProgressfrm_Caption1 + '(' + IntToStr(ACnt) + '/' + IntToStr(ATotCnt) +')' + rsProgressFrm_Caption4;
+  Caption := rsProgressfrm_Caption1 + ' (' + IntToStr(ACnt) + '/' + IntToStr(ATotCnt) +')' + rsProgressFrm_Caption4;
   lbPackageData.Caption := AZipFile;
   lbSpeedData.Caption := FormatSpeed(ASpeed);
   lbSpeedData.Update;
@@ -327,6 +327,7 @@ end;
 
 procedure TProgressFrm.DoOnZipCompleted(Sender: TObject);
 begin
+  Application.ProcessMessages;
   FCanClose := True;
   FSuccess := True;
   Close;
@@ -342,7 +343,7 @@ var
 begin
   FCnt := ACnt;
   FTotCnt := ATotCnt;
-  Caption := rsProgressFrm_Caption2 + '(' + IntToStr(ACnt) + '/' + IntToStr(ATotCnt) + ')' + rsProgressFrm_Caption4;
+  Caption := rsProgressFrm_Caption2 + ' (' + IntToStr(ACnt) + '/' + IntToStr(ATotCnt) + ')' + rsProgressFrm_Caption4;
   Node := FVST.AddChild(nil);
   Data := FVST.GetNodeData(Node);
   case AInstallMessage of
@@ -353,27 +354,27 @@ begin
        end;
     imOpenPackageSuccess:
        begin
-         Data^.FName := rsProgressFrm_Info6;
+         Data^.FName := rsProgressFrm_Info1;
          Data^.FImageIndex := 1;
        end;
     imCompilePackage:
        begin
-         Data^.FName := rsProgressFrm_Info7 + ' "' + APackageName + '".';
+         Data^.FName := rsProgressFrm_Info6 + ' "' + APackageName + '".';
          Data^.FImageIndex := 0;
        end;
     imCompilePackageSuccess:
        begin
-         Data^.FName := rsProgressFrm_Info6;
+         Data^.FName := rsProgressFrm_Info1;
          Data^.FImageIndex := 1;
        end;
     imInstallPackage:
        begin
-         Data^.FName := rsProgressFrm_Info8 + ' "' + APackageName + '".';
+         Data^.FName := rsProgressFrm_Info0 + ' "' + APackageName + '".';
          Data^.FImageIndex := 0;
        end;
     imInstallPackageSuccess:
        begin
-         Data^.FName := rsProgressFrm_Info6;
+         Data^.FName := rsProgressFrm_Info1;
          Data^.FImageIndex := 1;
        end;
     imPackageCompleted:
@@ -434,6 +435,7 @@ begin
   FSuccess := True;
   FNeedToRebuild := ANeedToRebuild;
   FInstallStatus := AInstallStatus;
+  Application.ProcessMessages;
   Sleep(1000);
   Close;
 end;
@@ -446,16 +448,16 @@ var
 begin
   FCnt := ACnt;
   FTotCnt := ATotCnt;
-  Caption := rsProgressFrm_Caption3 + '(' + IntToStr(ACnt) + '/' + IntToStr(ATotCnt) +')' + rsProgressFrm_Caption4;
+  Caption := rsProgressFrm_Caption3 + ' (' + IntToStr(ACnt) + '/' + IntToStr(ATotCnt) +')' + rsProgressFrm_Caption4;
   Node := FVST.AddChild(nil);
   Data := FVST.GetNodeData(Node);
   case AUtyp of
-    0: Data^.FName := rsProgressFrm_Info2 + ' "' + AUPackageName + '"( ' + AUPackageURL + ')';
+    0: Data^.FName := Format(rsProgressFrm_Info2, [AUPackageName, AUPackageURL]);
     1: Data^.FName := rsProgressFrm_Info1;
     2: if AUErrMsg <> '' then
-         Data^.FName := rsProgressFrm_Error7 + ': ' + AUErrMsg + '';
+         Data^.FName := rsProgressFrm_Error5 + ': ' + AUErrMsg + '';
        else
-         Data^.FName := rsProgressFrm_Error7 + '.';
+         Data^.FName := rsProgressFrm_Error5 + '.';
   end;
   Data^.FImageIndex := AUTyp;
   FVST.TopNode := Node;
@@ -475,15 +477,15 @@ begin
     Data^.FImageIndex := 0;
     FVST.TopNode := Node;
     FVST.RepaintNode(Node);
-    Sleep(3000);
-    SetupControls(0);
     Application.ProcessMessages;
+    Sleep(2000);
+    SetupControls(0);
   end
   else
   begin
     Node := FVST.AddChild(nil);
     Data := FVST.GetNodeData(Node);
-    Data^.FName := rsProgressFrm_Error8;
+    Data^.FName := rsProgressFrm_Error6;
     Data^.FImageIndex := 2;
     FVST.TopNode := Node;
     FVST.RepaintNode(Node);
@@ -578,6 +580,7 @@ begin
   pbTotal.Top := lbReceivedTotal.Top + lbReceivedTotal.Height + 1;
   bCancel.Top := (pnButtons.Height - bCancel.Height) div 2;
   cbExtractOpen.Top := bCancel.Top + (bCancel.Height - cbExtractOpen.Height) div 2;
+  Application.ProcessMessages;
 end;
 
 procedure TProgressFrm.VSTGetText(Sender: TBaseVirtualTree; Node: PVirtualNode;

@@ -21,7 +21,7 @@
  *   A copy of the GNU General Public License is available on the World    *
  *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
  *   obtain it by writing to the Free Software Foundation,                 *
- *   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.        *
+ *   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
  *                                                                         *
  ***************************************************************************
 
@@ -48,10 +48,10 @@ uses
   // RTL, FCL
   TypInfo, math, Classes, SysUtils, contnrs,
   // LCL
-  LCLProc, Forms, Controls, Dialogs, Menus, ComCtrls, StringHashList,
-  Translations, LResources,
+  LCLProc, Forms, Controls, Dialogs, Menus, ComCtrls, LResources,
   // LazUtils
-  LazUTF8, Laz2_XMLCfg, lazutf8classes, LazFileUtils, LazFileCache,
+  LazUTF8, Laz2_XMLCfg, lazutf8classes, LazFileUtils, LazFileCache, StringHashList,
+  Translations,
   // Codetools
   CodeToolsConfig, CodeToolManager, CodeCache, CodeToolsStructs, BasicCodeTools,
   FileProcs, CodeTree,
@@ -1550,9 +1550,12 @@ begin
   if StaticPackages=nil then exit;
   Quiet:=false;
 
+  // register IDE's FCL components
+
   // register components in Lazarus packages
   for i:=0 to StaticPackages.Count-1 do begin
     StaticPackage:=PRegisteredPackage(StaticPackages[i]);
+    //debugln(['TPkgManager.LoadStaticCustomPackages ',StaticPackage^.Name]);
 
     // check package name
     if not IsValidPkgName(StaticPackage^.Name)
@@ -1562,7 +1565,7 @@ begin
       continue;
     end;
     
-    // check register procedure
+    // check RegisterFCLBaseComponents procedure
     if (StaticPackage^.RegisterProc=nil) then begin
       DebugLn('Warning: (lazarus) [TPkgManager.LoadStaticCustomPackages]',
         ' Package "',StaticPackage^.Name,'" has no register procedure.');
@@ -1573,12 +1576,7 @@ begin
     APackage:=LoadInstalledPackage(StaticPackage^.Name,KeepInstalledPackages,
                                    Quiet);
 
-    // register
-    if APackage=PackageGraph.FCLPackage then
-      // register FCL components used by the IDE itself
-      PackageGraph.RegisterStaticPackage(APackage,@PkgRegisterBase.Register)
-    else
-      PackageGraph.RegisterStaticPackage(APackage,StaticPackage^.RegisterProc);
+    PackageGraph.RegisterStaticPackage(APackage,StaticPackage^.RegisterProc);
   end;
   PackageGraph.SortAutoInstallDependencies;
   ClearRegisteredPackages;

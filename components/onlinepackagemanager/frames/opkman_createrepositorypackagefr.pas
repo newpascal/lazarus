@@ -7,7 +7,8 @@ interface
 uses
   Classes, SysUtils, FileUtil, Forms, Controls, ExtCtrls, StdCtrls, Dialogs,
   LazFileUtils, Graphics, Menus, Buttons, Laz2_XMLCfg, opkman_VirtualTrees,
-  md5, fpjson, LCLIntf, EditBtn, opkman_serializablepackages, opkman_zipper;
+  md5, fpjson, LCLIntf, EditBtn, opkman_serializablepackages, opkman_zipper,
+  opkman_uploader;
 
 type
   PData = ^TData;
@@ -33,14 +34,17 @@ type
     FSVNURL: String;
   end;
 
-
+  TPackageOperation = (poCreate, poSubmit);
   { TCreateRepositoryPackagefr }
 
   TCreateRepositoryPackagefr = class(TFrame)
     bCancel: TButton;
     bCreate: TButton;
     Bevel1: TBevel;
-    cbOpen: TCheckBox;
+    bHelp: TButton;
+    bOptions: TButton;
+    bSubmit: TButton;
+    cbJSONForUpdates: TCheckBox;
     edCategories: TEdit;
     edPackageDir: TDirectoryEdit;
     edDownloadURL: TEdit;
@@ -64,6 +68,7 @@ type
     lbOF4: TLabel;
     lbPackagedir: TLabel;
     lbSupportedWidgetSet: TLabel;
+    pnB: TPanel;
     pnButtons: TPanel;
     pnCategories: TPanel;
     pnPackageData: TPanel;
@@ -75,9 +80,11 @@ type
     SDD: TSelectDirectoryDialog;
     spCategories: TSpeedButton;
     spMain: TSplitter;
-    spMain1: TSplitter;
     procedure bCancelClick(Sender: TObject);
     procedure bCreateClick(Sender: TObject);
+    procedure bHelpClick(Sender: TObject);
+    procedure bOptionsClick(Sender: TObject);
+    procedure bSubmitClick(Sender: TObject);
     procedure edPackageDirAcceptDirectory(Sender: TObject; var Value: String);
     procedure edPackageDirButtonClick(Sender: TObject);
     procedure pnBrowseResize(Sender: TObject);
@@ -85,12 +92,12 @@ type
   private
     FVSTPackages: TVirtualStringTree;
     FVSTPackageData: TVirtualStringTree;
-    FCreatePressed: Boolean;
     FPackageZipper: TPackageZipper;
     FPackageDir: String;
     FPackageName: String;
     FPackageFile: String;
     FDestDir: String;
+    FPackageOperation: TPackageOperation;
     procedure VSTPackagesGetText(Sender: TBaseVirtualTree; Node: PVirtualNode;
       Column: TColumnIndex; {%H-}TextType: TVSTTextType; var CellText: String);
     procedure VSTPackagesGetImageIndex(Sender: TBaseVirtualTree; Node: PVirtualNode;
@@ -106,29 +113,38 @@ type
     procedure VSTPackageDataGetImageIndex(Sender: TBaseVirtualTree; Node: PVirtualNode;
       {%H-}Kind: TVTImageKind; Column: TColumnIndex; var {%H-}Ghosted: Boolean;
       var ImageIndex: Integer);
+    procedure VSTCompareNodes(Sender: TBaseVirtualTree; Node1,
+      Node2: PVirtualNode; Column: TColumnIndex; var Result: Integer);
     procedure VSTPackageDataFreeNode(Sender: TBaseVirtualTree; Node: PVirtualNode);
     procedure DoOnZippError(Sender: TObject; AZipFile: String; const AErrMsg: String);
     procedure DoOnZipCompleted(Sender: TObject);
     function LoadPackageData(const APath: String; AData: PData): Boolean;
     procedure ShowHideControls(const AType: Integer);
+    procedure EnableDisableControls(const AEnable: Boolean);
     procedure SaveExtraInfo(const ANode: PVirtualNode);
     function TranslateCategories(const AStr: String): String;
+    function CanCreate: Boolean;
+    function CreateJSON(var AErrMsg: String): Boolean;
+    function CreateJSONForUpdates(var AErrMsg: String): Boolean;
+    procedure DoOnUploadProgress(Sender: TObject; AFileName: String);
+    procedure DoOnUploadError(Sender: TObject; AErrMsg: String);
+    procedure DoOnUploadCompleted(Sender: TObject);
   public
-    procedure InitializeFrame;
+    procedure InitializeFrame(const ATyp: Integer = 0);
     procedure FinalizeFrame;
   end;
 
 implementation
-uses opkman_const, opkman_common, opkman_options, opkman_categoriesfrm;
+uses opkman_const, opkman_common, opkman_options, opkman_categoriesfrm,
+     opkman_mainfrm, opkman_updates;
 {$R *.lfm}
 
 { TCreateRepositoryPackagefr }
 
-procedure TCreateRepositoryPackagefr.InitializeFrame;
+procedure TCreateRepositoryPackagefr.InitializeFrame(const ATyp: Integer = 0);
 begin
   lbPackagedir.Caption := rsCreateRepositoryPackageFrm_lbPackageDir_Caption;
   pnMessage.Caption := rsCreateRepositoryPackageFrm_pnMessage_Caption;
-  cbOpen.Caption := rsCreateRepositoryPackageFrm_cbOpen_Caption;
   edCategories.Text := '';
   lbLazCompatibility.Caption := rsCreateRepositoryPackageFrm_lbLazCompatibility_Caption;
   lbFPCCompatibility.Caption := rsCreateRepositoryPackageFrm_lbFPCCompatibility_Caption;
@@ -138,6 +154,21 @@ begin
   lbHomePageURL.Caption := rsCreateRepositoryPackageFrm_lbHomePageURL_Caption;
   lbDownloadURL.Caption := rsCreateRepositoryPackageFrm_lbDownloadURL_Caption;
   lbSVNURL.Caption := rsCreateRepositoryPackageFrm_lbSVNURL_Caption;
+  bHelp.Caption := rsCreateRepositoryPackageFrm_bHelp_Caption;
+  bHelp.Hint := rsCreateRepositoryPackageFrm_bHelp_Hint;
+  bOptions.Caption := rsCreateRepositoryPackageFrm_bOptions_Caption;
+  bOptions.Hint := rsCreateRepositoryPackageFrm_bOptions_Hint;
+  bCreate.Caption := rsCreateRepositoryPackageFrm_bCreate_Caption;
+  bCreate.Hint := rsCreateRepositoryPackageFrm_bCreate_Hint;
+  bSubmit.Caption := rsCreateRepositoryPackageFrm_bSubmit_Caption;
+  bSubmit.Hint := rsCreateRepositoryPackageFrm_bSubmit_Hint;
+  bCancel.Caption := rsCreateRepositoryPackageFrm_bCancel_Caption;
+  bCancel.Hint := rsCreateRepositoryPackageFrm_bCancel_Hint;
+  bSubmit.Visible := ATyp = 0;
+  cbJSONForUpdates.Visible := ATyp = 0;
+  pnB.Height := bSubmit.Height + 1;
+  pnB.Top := (pnButtons.Height - pnB.Height) div 2;
+  bCreate.Visible := ATyp = 0;
 
   FVSTPackages := TVirtualStringTree.Create(nil);
   with FVSTPackages do
@@ -214,10 +245,20 @@ begin
   end;
   FVSTPackageData.NodeDataSize := SizeOf(TData);
   ShowHideControls(0);
+  EnableDisableControls(True);
 end;
 
 procedure TCreateRepositoryPackagefr.FinalizeFrame;
 begin
+  if Uploader <> nil then
+  begin
+    pnMessage.Caption := rsCreateRepositoryPackageFrm_Message10;
+    pnMessage.Invalidate;
+    Application.ProcessMessages;
+    Uploader.StopUpload;
+    Uploader.WaitFor;
+    Uploader := nil;
+  end;
   FVSTPackages.Clear;
   FVSTPackages.Free;
   FVSTPackageData.Clear;
@@ -339,6 +380,18 @@ begin
   end;
 end;
 
+procedure TCreateRepositoryPackagefr.EnableDisableControls(
+  const AEnable: Boolean);
+begin
+  pnBrowse.Enabled := AEnable;
+  cbJSONForUpdates.Enabled := AEnable;
+  bHelp.Enabled := AEnable;
+  bOptions.Enabled := AEnable;
+  bCreate.Enabled := (AEnable) and (FVSTPackages.CheckedCount > 0);
+  bSubmit.Enabled := (AEnable) and (FVSTPackages.CheckedCount > 0);
+  bCancel.Enabled := AEnable;
+end;
+
 procedure TCreateRepositoryPackagefr.edPackageDirButtonClick(Sender: TObject);
 begin
   edPackageDir.DialogTitle := rsCreateRepositoryPackageFrm_SDDTitleSrc;
@@ -379,6 +432,7 @@ begin
         RootData^.FHomePageURL := '';
         RootData^.FDownloadURL := '';
         RootData^.FSVNURL := '';
+        RootData^.FDataType := 0;
         FPackageName := RootData^.FName;
         for I := 0 to PackageList.Count - 1 do
         begin
@@ -395,6 +449,7 @@ begin
           Data^.FLazCompatibility := '1.6, Trunk';
           Data^.FFPCCompatibility := '2.6.4, 3.0.0';
           Data^.FSupportedWidgetSet := 'win32/64, gtk2, carbon';
+          Data^.FDataType := 1;
         end;
         FVSTPackages.FullExpand;
         RootNode := FVSTPackages.GetFirst;
@@ -404,6 +459,7 @@ begin
           FVSTPackages.Selected[RootNode] := True;
           CanGo := True;
         end;
+        FVSTPackages.SortTree(0, opkman_VirtualTrees.sdAscending);
       end
       else
         MessageDlgEx(rsCreateRepositoryPackageFrm_NoPackage, mtInformation, [mbOk], TForm(Self.Parent));
@@ -443,7 +499,7 @@ begin
   end;
 end;
 
-procedure TCreateRepositoryPackagefr.bCreateClick(Sender: TObject);
+function TCreateRepositoryPackagefr.CanCreate: Boolean;
 
   procedure SelectAndFocusNode(const ANode: PVirtualNode);
   begin
@@ -455,7 +511,7 @@ var
   Node: PVirtualNode;
   Data: PData;
 begin
-  FCreatePressed := True;
+  Result := False;
   Node := FVSTPackages.GetFirstSelected;
   if Node <> nil then
     SaveExtraInfo(Node);
@@ -501,25 +557,78 @@ begin
     end;
     Node := FVSTPackages.GetNext(Node);
   end;
+  Result := True;
+end;
 
+procedure TCreateRepositoryPackagefr.bCreateClick(Sender: TObject);
+var
+  RootNode: PVirtualNode;
+  RootData: PData;
+begin
+  if not CanCreate then
+    Exit;
   SDD.Title := rsCreateRepositoryPackageFrm_SDDTitleDst;
   SDD.InitialDir := Options.LastPackagedirDst;
+  EnableDisableControls(False);
   if SDD.Execute then
   begin
-    fPackageZipper := TPackageZipper.Create;
-    fPackageZipper.OnZipError := @DoOnZippError;
-    fPackageZipper.OnZipCompleted := @DoOnZipCompleted;
+    FPackageOperation := poCreate;
+    Screen.Cursor := crHourGlass;
+    ShowHideControls(1);
+    FPackageZipper := TPackageZipper.Create;
+    FPackageZipper.OnZipError := @DoOnZippError;
+    FPackageZipper.OnZipCompleted := @DoOnZipCompleted;
     FDestDir := AppendPathDelim(SDD.FileName);
     Options.LastPackagedirDst := SDD.FileName;
     Options.Changed := True;
-    FPackageName := StringReplace(FPackageName, ' ', '', [rfReplaceAll]);
+    RootNode := FVSTPackages.GetFirst;
+    RootData := FVSTPackages.GetNodeData(RootNode);
+    if RootData^.FDisplayName <> '' then
+      FPackageName := StringReplace(RootData^.FDisplayName, ' ', '', [rfReplaceAll])
+    else
+      FPackageName := StringReplace(RootData^.FName, ' ', '', [rfReplaceAll]);
     FPackageFile := FDestDir + FPackageName + '.zip';
     pnMessage.Caption := rsCreateRepositoryPackageFrm_Message4;
-    ShowHideControls(1);
-    bCreate.Enabled := False;
-    pnBrowse.Enabled := False;
     fPackageZipper.StartZip(FPackageDir, FPackageFile);
-  end;
+  end
+  else
+    EnableDisableControls(True);
+end;
+
+procedure TCreateRepositoryPackagefr.bSubmitClick(Sender: TObject);
+var
+  RootNode: PVirtualNode;
+  RootData: PData;
+begin
+  if not CanCreate then
+    Exit;
+  FPackageOperation := poSubmit;
+  EnableDisableControls(False);
+  ShowHideControls(1);
+  Screen.Cursor := crHourGlass;
+  fPackageZipper := TPackageZipper.Create;
+  fPackageZipper.OnZipError := @DoOnZippError;
+  fPackageZipper.OnZipCompleted := @DoOnZipCompleted;
+  FDestDir := Options.LocalRepositoryUpdate;
+  RootNode := FVSTPackages.GetFirst;
+  RootData := FVSTPackages.GetNodeData(RootNode);
+  if RootData^.FDisplayName <> '' then
+    FPackageName := StringReplace(RootData^.FDisplayName, ' ', '', [rfReplaceAll])
+  else
+    FPackageName := StringReplace(RootData^.FName, ' ', '', [rfReplaceAll]);
+  FPackageFile := FDestDir + FPackageName + '.zip';
+  pnMessage.Caption := rsCreateRepositoryPackageFrm_Message4;
+  fPackageZipper.StartZip(FPackageDir, FPackageFile);
+end;
+
+procedure TCreateRepositoryPackagefr.bHelpClick(Sender: TObject);
+begin
+  OpenURL(cHelpPage_CreateRepositoryPackage);
+end;
+
+procedure TCreateRepositoryPackagefr.bOptionsClick(Sender: TObject);
+begin
+  MainFrm.ShowOptions(3);
 end;
 
 procedure TCreateRepositoryPackagefr.bCancelClick(Sender: TObject);
@@ -652,7 +761,7 @@ end;
 procedure TCreateRepositoryPackagefr.VSTPackagesChecked(
   Sender: TBaseVirtualTree; Node: PVirtualNode);
 begin
-  bCreate.Enabled := FVSTPackages.CheckedCount > 0;
+  EnableDisableControls(True);
 end;
 
 procedure TCreateRepositoryPackagefr.VSTPackagesFreeNode(Sender: TBaseVirtualTree;
@@ -709,6 +818,25 @@ begin
   end;
 end;
 
+procedure TCreateRepositoryPackagefr.VSTCompareNodes(Sender: TBaseVirtualTree;
+  Node1, Node2: PVirtualNode; Column: TColumnIndex; var Result: Integer);
+var
+  Data1: PData;
+  Data2: PData;
+begin
+  Data1 := Sender.GetNodeData(Node1);
+  Data2 := Sender.GetNodeData(Node2);
+  if Column = 0 then
+  begin
+    if (Data1^.FDataType = 1) and (Data1^.FDataType = 1) then
+       Result := CompareText(Data1^.FName, Data2^.FName);
+     if (Data1^.FDataType < Data2^.FDataType) then
+       Result := 0
+     else if (Data1^.FDataType > Data2^.FDataType) then
+       Result := 1
+  end;
+end;
+
 procedure TCreateRepositoryPackagefr.VSTPackageDataFreeNode(
   Sender: TBaseVirtualTree; Node: PVirtualNode);
 var
@@ -721,11 +849,11 @@ end;
 procedure TCreateRepositoryPackagefr.DoOnZippError(Sender: TObject;
   AZipFile: String; const AErrMsg: String);
 begin
+   Screen.Cursor := crDefault;
    MessageDlgEx(rsCreateRepositoryPackageFrm_Error1 + ' "' + AZipFile + '". ' + rsProgressFrm_Error1 + sLineBreak +
                 AErrMsg, mtError, [mbOk], TForm(Self.Parent));
    ShowHideControls(2);
-   bCreate.Enabled := True;
-   pnBrowse.Enabled := True;
+   EnableDisableControls(True);
 end;
 
 function TCreateRepositoryPackagefr.TranslateCategories(const AStr: String): String;
@@ -767,7 +895,65 @@ begin
     Result := AStr;
 end;
 
-procedure TCreateRepositoryPackagefr.DoOnZipCompleted(Sender: TObject);
+function TCreateRepositoryPackagefr.CreateJSONForUpdates(var AErrMsg: String): Boolean;
+var
+  RootNode, Node: PVirtualNode;
+  RootData, Data: PData;
+  JSON: TJSONStringType;
+  Ms: TMemoryStream;
+  UpdatePackage: TUpdatePackage;
+  UpdatePackageFiles: TUpdatePackageFiles;
+begin
+  Result := False;
+  pnMessage.Caption := rsCreateRepositoryPackageFrm_Message6;
+  pnMessage.Invalidate;
+  Application.ProcessMessages;
+  Sleep(2000);
+  UpdatePackage := TUpdatePackage.Create;
+  try
+    RootNode := FVSTPackages.GetFirst;
+    if RootNode <> nil then
+    begin
+      RootData := FVSTPackages.GetNodeData(RootNode);
+      UpdatePackage.UpdatePackageData.Name := RootData^.FName;
+      UpdatePackage.UpdatePackageData.DownloadZipURL := RootData^.FDownloadURL;
+      Node := FVSTPackages.GetFirstChild(RootNode);
+      while Assigned(Node) do
+      begin
+        if FVSTPackages.CheckState[Node] = csCheckedNormal then
+        begin
+          Data := FVSTPackages.GetNodeData(Node);
+          UpdatePackageFiles := TUpdatePackageFiles(UpdatePackage.UpdatePackageFiles.Add);
+          UpdatePackageFiles.Name := Data^.FName;
+          UpdatePackageFiles.Version := Data^.FVersionAsString;
+          UpdatePackageFiles.ForceNotify := False;
+          UpdatePackageFiles.InternalVersion := 1;
+        end;
+        Node := FVSTPackages.GetNextSibling(Node);
+      end;
+    end;
+    JSON := '';
+    if UpdatePackage.SaveToJSON(JSON) then
+    begin
+      JSON := StringReplace(JSON, '\/', '/', [rfReplaceAll]);
+      Ms := TMemoryStream.Create;
+      try
+        Ms.Write(Pointer(JSON)^, Length(JSON));
+        Ms.Position := 0;
+        Ms.SaveToFile(FDestDir + 'update_' + FPackageName + '.json');
+      finally
+        MS.Free;
+      end;
+      Result := True;
+    end
+    else
+      AErrMsg := rsCreateJSONForUpdatesFrm_Error1 + sLineBreak + '"' + StringReplace(UpdatePackage.LastError, '"', '', [rfReplaceAll]) + '"';
+  finally
+    UpdatePackage.Free;
+  end;
+end;
+
+function TCreateRepositoryPackagefr.CreateJSON(var AErrMsg: String): Boolean;
 var
   SerializablePackages: TSerializablePackages;
   Package: TPackage;
@@ -777,10 +963,11 @@ var
   JSON: TJSONStringType;
   MS: TMemoryStream;
 begin
+  Result := False;
   pnMessage.Caption := rsCreateRepositoryPackageFrm_Message5;
   pnMessage.Invalidate;
+  Application.ProcessMessages;
   Sleep(2000);
-
   SerializablePackages := TSerializablePackages.Create;
   try
     RootNode := FVSTPackages.GetFirst;
@@ -793,7 +980,7 @@ begin
       Package.RepositoryFileSize := FileUtil.FileSize(FPackageFile);
       Package.RepositoryFileHash := MD5Print(MD5File(FPackageFile));
       Package.RepositoryDate := Trunc(now);
-      Package.PackageBaseDir := RootData^.FPackageBaseDir + '\/';
+      Package.PackageBaseDir := RootData^.FPackageBaseDir;
       Package.DisplayName := RootData^.FDisplayName;
       Package.HomePageURL := RootData^.FHomePageURL;
       Package.DownloadURL := RootData^.FDownloadURL;
@@ -807,11 +994,6 @@ begin
           PackageFile := TPackageFile(Package.PackageFiles.Add);
           PackageFile.Name := Data^.FName;
           PackageFile.PackageRelativePath := Data^.FPackageRelativePath;
-          if Trim(PackageFile.PackageRelativePath) <> '' then
-          begin
-            PackageFile.PackageRelativePath := AppendPathDelim(PackageFile.PackageRelativePath);
-            PackageFile.PackageRelativePath := StringReplace(PackageFile.PackageRelativePath, PathDelim, '\/', [rfReplaceAll]);
-          end;
           PackageFile.Version := TPackageVersion.Create;
           PackageFile.Version.AsString := Data^.FVersionAsString;
           PackageFile.Description := Data^.FDescription;
@@ -827,7 +1009,6 @@ begin
         Node := FVSTPackages.GetNextSibling(Node);
       end;
     end;
-
     if SerializablePackages.Count > 0 then
     begin
       JSON := '';
@@ -838,22 +1019,96 @@ begin
           MS.Write(Pointer(JSON)^, Length(JSON));
           MS.Position := 0;
           MS.SaveToFile(FDestDir + FPackageName + '.json');
-          if cbOpen.Checked then
-            OpenDocument(FDestDir);
-          MessageDlgEx(rsCreateRepositoryPackageFrm_Message6, mtInformation, [mbOk], TForm(Self.Parent));
+          Result := True;
         finally
           MS.Free;
         end;
       end
       else
-       MessageDlgEx(rsCreateRepositoryPackageFrm_Error2 + sLineBreak + SerializablePackages.LastError, mtInformation, [mbOk], TForm(Self.Parent));
+        AErrMsg := rsCreateRepositoryPackageFrm_Error2 + sLineBreak + '"' + StringReplace(SerializablePackages.LastError, '"', '', [rfReplaceAll]) + '"'
     end;
-    ShowHideControls(2);
   finally
     SerializablePackages.Free;
   end;
-  bCreate.Enabled := True;
-  pnBrowse.Enabled := True;
+end;
+
+procedure TCreateRepositoryPackagefr.DoOnZipCompleted(Sender: TObject);
+var
+  ErrMsg: String;
+begin
+  ErrMsg := '';
+  if not CreateJSON(ErrMsg) then
+  begin
+    MessageDlgEx(ErrMsg, mtError, [mbOk], TForm(Self.Parent));
+    Exit;
+  end;
+
+  if cbJSONForUpdates.Checked then
+  begin
+    ErrMsg := '';
+    if not CreateJSONForUpdates(ErrMsg) then
+    begin
+      MessageDlgEx(ErrMsg, mtError, [mbOk], TForm(Self.Parent));
+      Exit;
+    end;
+  end;
+
+  case FPackageOperation of
+    poCreate:
+      begin
+        Screen.Cursor := crDefault;
+        ShowHideControls(2);
+        EnableDisableControls(True);
+        MessageDlgEx(rsCreateRepositoryPackageFrm_Message7, mtInformation, [mbOk], TForm(Self.Parent));
+        TForm(Self.Parent).ModalResult := mrOk;
+        TForm(Self.Parent).Close;
+      end;
+    poSubmit:
+      begin
+        Uploader := TUploader.Create;
+        Uploader.OnUploadProgress := @DoOnUploadProgress;
+        Uploader.OnUploadError := @DoOnUploadError;
+        Uploader.OnUploadCompleted := @DoOnUploadCompleted;
+        if cbJSONForUpdates.Checked then
+          Uploader.StartUpload(cSubmitURL_Zip, cSubmitURL_JSON, FPackageFile, FDestDir + FPackageName + '.json', FDestDir + 'update_' + FPackageName + '.json')
+        else
+          Uploader.StartUpload(cSubmitURL_Zip, cSubmitURL_JSON, FPackageFile, FDestDir + FPackageName + '.json', '')
+      end;
+  end;
+end;
+
+procedure TCreateRepositoryPackagefr.DoOnUploadProgress(Sender: TObject;
+  AFileName: String);
+begin
+  pnMessage.Caption := Format(rsCreateRepositoryPackageFrm_Message8, [AFileName]);
+  pnMessage.Invalidate;
+  Application.ProcessMessages;
+end;
+
+procedure TCreateRepositoryPackagefr.DoOnUploadError(Sender: TObject;
+  AErrMsg: String);
+begin
+  Screen.Cursor := crDefault;
+  ShowHideControls(2);
+  EnableDisableControls(True);
+  MessageDlgEx(AErrMsg, mtError, [mbOk], TForm(Self.Parent));
+end;
+
+procedure TCreateRepositoryPackagefr.DoOnUploadCompleted(Sender: TObject);
+begin
+  Screen.Cursor := crDefault;
+  ShowHideControls(2);
+  EnableDisableControls(True);
+  Uploader := nil;
+  if FileExistsUTF8(FPackageFile) then
+    DeleteFileUTF8(FPackageFile);
+  if FileExistsUTF8(FDestDir + FPackageName + '.json') then
+    DeleteFileUTF8(FDestDir + FPackageName + '.json');
+  if FileExistsUTF8(FDestDir + 'update_' + FPackageName + '.json') then
+    DeleteFileUTF8(FDestDir + 'update_' + FPackageName + '.json');
+  MessageDlgEx(rsCreateRepositoryPackageFrm_Message9, mtInformation, [mbOk], TForm(Self.Parent));
+  TForm(Self.Parent).ModalResult := mrOk;
+  TForm(Self.Parent).Close;
 end;
 
 

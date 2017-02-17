@@ -3923,7 +3923,7 @@ begin
   Result := IsValidDC(DC) and IsValidGDIObject(Brush);
   if not Result or IsRectEmpty(Rect) then
     Exit;
-  if ({%H-}PGdiObject(Brush)^.GDIBrushFill <> GDK_SOLID) and (TGtkDeviceContext(DC).BkMode = OPAQUE) then
+  if ({%H-}PGdiObject(Brush)^.GDIBrushFill = GDK_TILED) and (TGtkDeviceContext(DC).BkMode = OPAQUE) then
   begin
     // fill a rectangle with a solid back color first
     TempBr := CreateSolidBrush(TGtkDeviceContext(DC).CurrentBackColor.ColorRef);
@@ -6866,7 +6866,7 @@ var
 
   i: integer;
   PointArray: PGDKPoint;
-  DCOrigin: TPoint;
+  DCOrigin, P: TPoint;
 begin
   if not IsValidDC(DC) then Exit(False);
   
@@ -6879,9 +6879,11 @@ begin
   for i:=0 to NumPts-1 do
   begin
     if DevCtx.HasTransf then
-      Points[I] := DevCtx.TransfPointIndirect(Points[I]);
-    PointArray[i].x := Points[i].x + DCOrigin.X;
-    PointArray[i].y := Points[i].y + DCOrigin.Y;
+      P := DevCtx.TransfPointIndirect(Points[I])
+    else
+      P := Points[i];
+    PointArray[i].x := P.x + DCOrigin.X;
+    PointArray[i].y := P.y + DCOrigin.Y;
   end;
 
   // draw line
@@ -7868,13 +7870,6 @@ begin
       
       DevCtx.CurrentBrush := GDIObject;
       DevCtx.SelectedColors := dcscCustom;
-      if DevCtx.GC = nil then Exit;
-
-      gdk_gc_set_fill(DevCtx.GC, GDIObject^.GDIBrushFill);
-      case GDIObject^.GDIBrushFill of
-        GDK_STIPPLED: gdk_gc_set_stipple(DevCtx.GC, GDIObject^.GDIBrushPixMap);
-        GDK_TILED:    gdk_gc_set_tile(DevCtx.GC, GDIObject^.GDIBrushPixMap);
-      end;
     end;
 
     gdiFont: begin
@@ -9593,15 +9588,10 @@ begin
   EnsureGCColor(DC, dccCurrentTextColor, True, False);
 
   BackGroundColor := nil;
-  if Assigned(DevCtx.GDIObjects[gdiBrush]) and (DevCtx.BkMode = OPAQUE) and
-    Assigned(DevCtx.CurrentBackColor.Colormap) then
+  if DevCtx.BkMode = OPAQUE then
   begin
-    EnsureGCColor(DC, dccCurrentBackColor, DevCtx.GDIObjects[gdiBrush]^.GDIBrushFill = GDK_SOLID, True);
-    //do not set BackGroundColor if CurrentBrush.Color = CurrentBackColor.
-    //issue #22719
-    if TGDKColorToTColor(DevCtx.CurrentBackColor.Color) <>
-      TGDKColorToTColor(DevCtx.GetBrush^.GDIBrushColor.Color) then
-      BackGroundColor := @DevCtx.CurrentBackColor.Color;
+    AllocGDIColor(DC, @DevCtx.CurrentBackColor);
+    BackGroundColor := @DevCtx.CurrentBackColor.Color;
   end;
 
   DevCtx.DrawTextWithColors(Str, Count,

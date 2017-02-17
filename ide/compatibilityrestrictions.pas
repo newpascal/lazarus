@@ -19,7 +19,7 @@
  *   A copy of the GNU General Public License is available on the World    *
  *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
  *   obtain it by writing to the Free Software Foundation,                 *
- *   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.        *
+ *   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
  *                                                                         *
  ***************************************************************************
 
@@ -34,10 +34,15 @@ unit CompatibilityRestrictions;
 interface
 
 uses
-  Classes, SysUtils, Forms, LCLProc, InterfaceBase, StringHashList,
-  Laz2_DOM, Laz2_XMLRead, Laz2_XMLWrite,
-  ObjectInspector, OIFavoriteProperties, PackageIntf,
-  PackageSystem, PackageDefs, ComponentReg, LazConf;
+  Classes, SysUtils,
+  // LCL
+  Forms, LCLProc, LCLPlatformDef,
+  // LazUtils
+  Laz2_DOM, Laz2_XMLRead, Laz2_XMLWrite, StringHashList,
+  // IdeIntf
+  OIFavoriteProperties, PackageIntf, ComponentReg,
+  // IDE
+  PackageSystem, PackageDefs;
 
 type
   TReadRestrictedEvent = procedure (const RestrictedName, WidgetSetName: String) of object;

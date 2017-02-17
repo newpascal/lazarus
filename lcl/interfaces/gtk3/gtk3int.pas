@@ -25,11 +25,13 @@ uses
   BaseUnix, Unix,
   {$ENDIF}
   SysUtils, Classes, types,
-  InterfaceBase, Translations,
-  Controls, Forms, FPImage, Graphics, GraphUtil, GraphType, LCLProc, LazUTF8,
-  LCLStrConsts, LCLType, LMessages,
+  // LazUtils
+  LazUTF8, Translations,
+  // LCL
+  LCLPlatformDef, InterfaceBase, LCLProc, LCLStrConsts, LCLType, LMessages,
+  Controls, Forms, FPImage, Graphics, GraphUtil, GraphType, IntfGraphics,
   LazGtk3, LazGdk3, LazGlib2, LazGObject2, LazCairo1, LazPango1, LazPangoCairo1, LazGio2,
-  LazGdkPixbuf2, gtk3widgets, gtk3objects, gtk3procs, IntfGraphics;
+  LazGdkPixbuf2, gtk3widgets, gtk3objects, gtk3procs;
 
 type
 

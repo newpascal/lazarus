@@ -93,7 +93,8 @@ type
   TSeriesPointerStyle = (
     psNone, psRectangle, psCircle, psCross, psDiagCross, psStar,
     psLowBracket, psHighBracket, psLeftBracket, psRightBracket, psDiamond,
-    psTriangle, psLeftTriangle, psRightTriangle, psVertBar, psHorBar, psPoint);
+    psTriangle, psLeftTriangle, psRightTriangle, psVertBar, psHorBar, psPoint,
+    psDownTriangle, psHexagon, psFullStar);
 
   { TSeriesPointer }
 
@@ -407,11 +408,13 @@ procedure TSeriesPointer.DrawSize(ADrawer: IChartDrawer;
     pts: array of TPoint;
     i: Integer;
     j: Integer = 0;
+    notClosed: Boolean;
   begin
+    notClosed := (AStr[1] <> AStr[Length(AStr) - 1]);
     SetLength(pts, Length(AStr));
     for i := 1 to Length(AStr) do begin
       if AStr[i] = ' ' then begin
-        if Brush.Style = bsClear then
+        if (Brush.Style = bsClear) or notClosed then
           ADrawer.Polyline(pts, 0, j)
         else
           ADrawer.Polygon(pts, 0, j); // Winding?
@@ -424,14 +427,42 @@ procedure TSeriesPointer.DrawSize(ADrawer: IChartDrawer;
     end;
   end;
 
+  procedure DrawPolygon(AStyle: TSeriesPointerStyle);
+  const
+    INNER = 0.5;
+  var
+    p: array of TPoint;
+    pt: TDoublePoint;
+    phi, sinphi, cosphi, dPhi: Double;
+    i: Integer;
+  begin
+    case AStyle of
+      psHexagon  : begin dPhi := pi / 3; SetLength(p, 7); end;
+      psFullStar : begin dPhi := pi / 6; SetLength(p, 13); end;
+    end;
+    phi := 0;
+    for i := 0 to High(p) do begin
+      SinCos(phi, sinphi, cosphi);
+      pt := DoublePoint(ASize.X * cosPhi, ASize.Y * sinPhi);
+      if odd(i) and (AStyle = psFullStar) then
+        pt := pt * INNER;
+      p[i] := ACenter + RoundPoint(RotatePoint(pt, AAngle));
+      phi += dPhi;
+    end;
+    ADrawer.Polygon(p, 0, Length(p));
+  end;
+
+
 const
   DRAW_STRINGS: array [TSeriesPointerStyle] of String = (
     // psNone, psRectangle, psCircle, psCross, psDiagCross, psStar,
     // psLowBracket, psHighBracket, psLeftBracket, psRightBracket, psDiamond,
-    // psTriangle, psLeftTriangle, psRightTriangle, psVertBar, psHorBar, psPoint
-    '', '17931', '', '28 46', '19 73', '28 46 19 73',
+    // psTriangle, psLeftTriangle, psRightTriangle, psVertBar, psHorBar,
+    // psPoint, pwDownTriangle, psHexagon, psFullStar
+    '', '17931', '', '28 46', '19 73', '', //28 46 19 73',
     '41236', '47896', '87412', '89632', '84268',
-    '183', '842', '862', '82', '46', '');
+    '1831', '8428', '8628', '82', '46',
+    '', '7927', '', '');
 begin
   ADrawer.Brush := Brush;
   if (ocBrush in OverrideColor) and (AColor <> clTAColor) then
@@ -440,15 +471,21 @@ begin
   if (ocPen in OverrideColor) and (AColor <> clTAColor) then
     ADrawer.SetPenParams(Pen.Style, AColor);
 
-  if Style = psPoint then
-    ADrawer.PutPixel(ACenter.X, ACenter.Y, Pen.Color)
-  else
-  if Style = psCircle then
-    ADrawer.Ellipse(
-      ACenter.X - ASize.X, ACenter.Y - ASize.Y,
-      ACenter.X + ASize.X + 1, ACenter.Y + ASize.Y + 1)
-  else
-    DrawByString(DRAW_STRINGS[Style] + ' ');
+  case Style of
+    psNone    : ;
+    psPoint   : ADrawer.PutPixel(ACenter.X, ACenter.Y, Pen.Color);
+    psCircle  : ADrawer.Ellipse(
+                  ACenter.X - ASize.X, ACenter.Y - ASize.Y,
+                  ACenter.X + ASize.X + 1, ACenter.Y + ASize.Y + 1);
+    psHexagon : DrawPolygon(psHexagon);
+    psStar    : begin
+                  DrawByString(DRAW_STRINGS[psCross] + ' ');
+                  ASize := Point(ASize.X * 7 div 10, ASize.Y * 7 div 10);
+                  DrawByString(DRAW_STRINGS[psDiagCross] + ' ');
+                end;
+    psFullStar: DrawPolygon(psFullStar);
+    else        DrawByString(DRAW_STRINGS[Style] + ' ');
+  end;
 end;
 
 procedure TSeriesPointer.SetBrush(AValue: TBrush);

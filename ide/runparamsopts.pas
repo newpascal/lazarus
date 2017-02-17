@@ -14,7 +14,7 @@
  *   A copy of the GNU General Public License is available on the World    *
  *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
  *   obtain it by writing to the Free Software Foundation,                 *
- *   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.        *
+ *   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
  *                                                                         *
  ***************************************************************************
 
@@ -47,10 +47,15 @@ uses
   {$IFDEF IDE_MEM_CHECK}
   MemCheck,
   {$ENDIF}
-  Classes, SysUtils, LCLProc, Controls, Forms, Buttons, StdCtrls, ComCtrls,
-  Dialogs, ExtCtrls, BaseIDEIntf, IDEHelpIntf, ProjectIntf, IDEDialogs,
-  IDEProcs, SysVarUserOverrideDlg, InputHistory, LazarusIDEStrConsts, LazFileUtils,
-  Laz2_XMLCfg, LazFileCache, LazUTF8, ButtonPanel;
+  Classes, SysUtils,
+  // LCL
+  Controls, Forms, Buttons, StdCtrls, ComCtrls, Dialogs, ButtonPanel,
+  // IdeIntf
+  BaseIDEIntf, IDEHelpIntf, ProjectIntf, IDEDialogs,
+  // LazUtils
+  LazFileUtils, LazFileCache, LazUTF8, Laz2_XMLCfg,
+  // IDE
+  IDEProcs, SysVarUserOverrideDlg, InputHistory, LazarusIDEStrConsts;
 
 { The xml format version:
     When the format changes (new values, changed formats) we can distinguish old

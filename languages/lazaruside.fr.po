@@ -3,14 +3,14 @@ msgstr ""
 "Project-Id-Version: lazaruside\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: \n"
-"PO-Revision-Date: 2016-10-13 08:51+0200\n"
+"PO-Revision-Date: 2017-02-10 12:56+0100\n"
 "Last-Translator: Vasseur Gilles <gillesvasseur58@gmail.com>\n"
 "Language-Team: http://lazarus.developpez.com/\n"
 "Language: fr_FR\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"X-Generator: Poedit 1.8.9\n"
+"X-Generator: Poedit 1.8.11\n"
 "Plural-Forms: nplurals=2; plural=(n > 1);\n"
 
 #: lazarusidestrconsts.dbgbreakgroupdlgcaption
@@ -150,7 +150,7 @@ msgstr "Réinitialiser le zoom"
 
 #: lazarusidestrconsts.dlfmousesimplediff
 msgid "This page does not represent your current settings. See advanced page. Use this page to reset any advanced changes"
-msgstr "Cette page ne rend pas compte de vos paramètres courants. Voyez la page avancée. Utilisez cette page pour réinitialiser les modifications avancées."
+msgstr "Cette page ne rend pas compte de vos paramètres en cours. Voyez la page avancée. Utilisez cette page pour réinitialiser les modifications avancées"
 
 #: lazarusidestrconsts.dlfmousesimplegenericsect
 msgctxt "lazarusidestrconsts.dlfmousesimplegenericsect"
@@ -159,15 +159,15 @@ msgstr "Général"
 
 #: lazarusidestrconsts.dlfmousesimplegutterleftdown
 msgid "Standard, All actions (breakpoint, fold) on mouse down"
-msgstr "Standard, toutes les actions (point d'arrêt, pliage) sur clic"
+msgstr "Standard -  toutes les actions (point d'arrêt, pliage) sur clic"
 
 #: lazarusidestrconsts.dlfmousesimplegutterleftup
 msgid "Extended, Actions (breakpoint, fold) on mouse up. Selection on mouse down and move"
-msgstr "Étendu, actions (point d'arrêt, pliage) sur fin de clic. Sélection sur clic et déplacement"
+msgstr "Étendu - actions (point d'arrêt, pliage) sur fin de clic. Sélection sur clic et déplacement"
 
 #: lazarusidestrconsts.dlfmousesimplegutterleftupright
 msgid "Extended, Actions, right gutter half only"
-msgstr "Étendu, actions, seulement sur la moitié de gouttière à droite"
+msgstr "Étendu - actions, seulement sur la moitié de gouttière à droite"
 
 #: lazarusidestrconsts.dlfmousesimplegutterlines
 msgid "Use line numbers to select lines"
@@ -330,7 +330,7 @@ msgstr "Molette Maj"
 
 #: lazarusidestrconsts.dlfmousesimplewarning
 msgid "You have unsaved changes. Using this page will undo changes made on the advanced page"
-msgstr "Vous avez des modifications non enregistrées. L'utilisation de cette page annulera les modifications apportées à la page avancée."
+msgstr "Vous avez des modifications non enregistrées. L'utilisation de cette page annulera les modifications apportées à la page avancée"
 
 #: lazarusidestrconsts.dlfmousesimplewheelhsrolldef
 msgid "Scroll horizontal (System speed)"
@@ -392,7 +392,7 @@ msgstr "Lecture seule"
 
 #: lazarusidestrconsts.dlg1up2low
 msgid "Lowercase, first letter up"
-msgstr "Minuscules, première lettre en majuscule"
+msgstr "Minuscules avec première lettre en majuscule"
 
 #: lazarusidestrconsts.dlgactivedesktop
 msgid "active"
@@ -400,7 +400,7 @@ msgstr "actif"
 
 #: lazarusidestrconsts.dlgaddassignmentoperator
 msgid "Add assignment operator :="
-msgstr "Ajouter l'opérateur d'affectation :="
+msgstr "Ajouter l'opérateur d'affectation \":=\""
 
 #: lazarusidestrconsts.dlgaddhiattrbracketmatch
 msgid "Brackets highlight"
@@ -485,7 +485,7 @@ msgstr "Incrémentales (autres)"
 
 #: lazarusidestrconsts.dlgaddhiattrhighlightword
 msgid "Highlight current word"
-msgstr "Mettre en surbrillance le mot courant"
+msgstr "Mettre en surbrillance le mot en cours"
 
 #: lazarusidestrconsts.dlgaddhiattrincrementalsearch
 msgid "Incremental search"
@@ -587,7 +587,7 @@ msgstr "Prévenir à la compilation"
 
 #: lazarusidestrconsts.dlganiconforerrorwarninghintisshown
 msgid "An icon for error/warning/hint is shown in front of a message. The same icon shows in source editor gutter in any case."
-msgstr "Une icône d'erreur/d'avertissement/de conseil est présente en face d'un message. De toute façon, la même icône est présente dans la gouttière de l'éditeur de source."
+msgstr "Une icône d'erreur/d'avertissement/de conseil est présente en tête d'un message. De toute façon, la même icône est présente dans la gouttière de l'éditeur de source."
 
 #: lazarusidestrconsts.dlgansicommenttab
 msgid "Ansi (* *)"
@@ -800,7 +800,7 @@ msgstr "Ordre des classes"
 
 #: lazarusidestrconsts.dlgcdtlast
 msgid "Last"
-msgstr "Fin"
+msgstr "En dernier"
 
 #: lazarusidestrconsts.dlgcdtlower
 msgid "lowercase"
@@ -873,7 +873,7 @@ msgstr "Utiliser les chaînes \"Ansi\""
 
 #: lazarusidestrconsts.dlgcoasmstyle
 msgid "Assembler style"
-msgstr "Style d'assembleur"
+msgstr "Style de type assembleur"
 
 #: lazarusidestrconsts.dlgcocfgcmpmessages
 msgctxt "lazarusidestrconsts.dlgcocfgcmpmessages"
@@ -928,7 +928,7 @@ msgstr "Inverser l'ordre de pliage dans le menu surgissant"
 
 #: lazarusidestrconsts.dlgcogdb
 msgid "Generate debugging info for GDB (slower / increases exe-size)"
-msgstr "Générer les informations de débogage pour \"GDB\" (ralentit et augmente la taille de l'exécutable)"
+msgstr "Générer les informations de débogage pour \"gdb\" (ralentit et augmente la taille de l'exécutable)"
 
 #: lazarusidestrconsts.dlgcoheaptrc
 msgid "Use Heaptrc unit (check for mem-leaks)"
@@ -940,7 +940,7 @@ msgstr "Inclure les fichiers (\"-Fi\") :"
 
 #: lazarusidestrconsts.dlgcoinfoforgdb
 msgid "Info for GDB"
-msgstr "Informations concernant \"GDB\""
+msgstr "Informations concernant \"gdb\""
 
 #: lazarusidestrconsts.dlgcolibraries
 msgid "Libraries (-Fl):"
@@ -953,7 +953,7 @@ msgstr "Édition des liens"
 #: lazarusidestrconsts.dlgcoloadsavehint
 msgctxt "lazarusidestrconsts.dlgcoloadsavehint"
 msgid "Compiler options can be saved to an XML file."
-msgstr "Les options du compilateur peuvent être sauvées dans un fichier XML."
+msgstr "Les options du compilateur peuvent être enregistrées dans un fichier XML."
 
 #: lazarusidestrconsts.dlgcolor
 msgid "Color"
@@ -990,7 +990,7 @@ msgstr "Préfixer les commentaires lors d'un passage à la ligne"
 
 #: lazarusidestrconsts.dlgcommentcontinuematch
 msgid "Match current line"
-msgstr "Correspondre à la ligne courante"
+msgstr "Correspondre à la ligne en cours"
 
 #: lazarusidestrconsts.dlgcommentcontinuematchasterisk
 msgid "Match text including \"*\" of token \"(*\""
@@ -1261,7 +1261,7 @@ msgstr "%d bureau(x) importé(s) avec succès depuis \"%s\""
 
 #: lazarusidestrconsts.dlgdifferentvaluebackgroundcolor
 msgid "Different values background"
-msgstr "Valeur différente d'arrière-plan"
+msgstr "Différentes valeurs d'arrière-plan"
 
 #: lazarusidestrconsts.dlgdirection
 msgid "Direction"
@@ -1888,15 +1888,15 @@ msgstr "Avant-plan"
 
 #: lazarusidestrconsts.dlgformtitlebarchangesobjectinspector
 msgid "Change Object Inspector contents on clicking form title bar"
-msgstr ""
+msgstr "Changer le contenu de l'inspecteur d'objets en cliquant sur la barre de titre de la fiche"
 
 #: lazarusidestrconsts.dlgformtitlebarchangesobjectinspectorhint
 msgid "Show a form's properties in Object Inspector by clicking on its title bar."
-msgstr ""
+msgstr "Montrer les propriétés de la fiche dans l'inspecteur d'objets en cliquant sur sa barre de titre."
 
 #: lazarusidestrconsts.dlgforwardprocsinsertpolicy
 msgid "Procedure insert policy"
-msgstr "Règles d'insertion de procédure"
+msgstr "Règles d'insertion des procédures"
 
 #: lazarusidestrconsts.dlgforwardprocskeeporder
 msgid "Keep order of procedures"
@@ -2093,7 +2093,7 @@ msgstr "Application hôte"
 #: lazarusidestrconsts.dlgidentifiercompletion
 msgctxt "lazarusidestrconsts.dlgidentifiercompletion"
 msgid "Identifier Completion"
-msgstr "Complétion de l'identificateur"
+msgstr "Complétion des identificateurs"
 
 #: lazarusidestrconsts.dlgidentifierpolicy
 msgid "Identifier policy"
@@ -2149,7 +2149,7 @@ msgstr "Tabulations"
 
 #: lazarusidestrconsts.dlginfrontofmethods
 msgid "In front of methods"
-msgstr "Devant les méthodes"
+msgstr "En tête des méthodes"
 
 #: lazarusidestrconsts.dlginitdoneonly
 msgid "Constructor name must be 'init' (destructor must be 'done')"
@@ -2168,10 +2168,8 @@ msgid "Interface"
 msgstr "Interface"
 
 #: lazarusidestrconsts.dlginsertmethods
-#, fuzzy
-#| msgid "Insert methods"
 msgid "Insert method implementations"
-msgstr "Insérer les méthodes"
+msgstr "Insérer les implémentations de méthodes"
 
 #: lazarusidestrconsts.dlginsertsection
 msgid "Insert into Uses section of"
@@ -2228,7 +2226,7 @@ msgstr "Langue"
 
 #: lazarusidestrconsts.dlglast
 msgid "Last (i.e. at end of source)"
-msgstr "Dernier (du code source)"
+msgstr "À la fin du code source"
 
 #: lazarusidestrconsts.dlglazarusdir
 msgid "Lazarus directory (default for all projects)"
@@ -2310,6 +2308,10 @@ msgstr "Couleur de marqueur"
 #: lazarusidestrconsts.dlgmarkupgroup
 msgid "Highlight of Word under Caret"
 msgstr "Mot sous le curseur surligné"
+
+#: lazarusidestrconsts.dlgmarkupoutline
+msgid "Outline (global)"
+msgstr "Schéma (global)"
 
 #: lazarusidestrconsts.dlgmarkupuserdefined
 msgctxt "lazarusidestrconsts.dlgmarkupuserdefined"
@@ -2413,6 +2415,10 @@ msgstr "Paramètres des touches"
 #: lazarusidestrconsts.dlgmarkupuserdefinedpagemain
 msgid "Main settings"
 msgstr "Paramètres principaux"
+
+#: lazarusidestrconsts.dlgmarkupwordbracket
+msgid "Word Brackets on caret (global)"
+msgstr "Parenthèses de mot au curseur (global)"
 
 #: lazarusidestrconsts.dlgmarkupwordfulllen
 msgid "Match word boundaries for words up to this length:"
@@ -2944,9 +2950,17 @@ msgstr "Surligner les instructions de contrôle comme des mots-clés"
 msgid "Extended Pascal Keyword Options"
 msgstr "Pascal étendu : options des mots-clés"
 
+#: lazarusidestrconsts.dlgpaskeywordsmarkup
+msgid "Markup (on caret)"
+msgstr "Balisage (au curseur)"
+
 #: lazarusidestrconsts.dlgpaskeywordsmatches
 msgid "Matching Keywords"
 msgstr "Mots-clés appariés"
+
+#: lazarusidestrconsts.dlgpaskeywordsoutline
+msgid "Outline"
+msgstr "Schéma"
 
 #: lazarusidestrconsts.dlgpassoptslinker
 msgid "Pass options to linker with \"-k\", delimiter is space"
@@ -3000,23 +3014,23 @@ msgstr "Icône par &défaut"
 
 #: lazarusidestrconsts.dlgpodpiawareness
 msgid "DPI awareness"
-msgstr ""
+msgstr "Prise en compte du DPI"
 
 #: lazarusidestrconsts.dlgpodpiawarenessoff
 msgid "off"
-msgstr ""
+msgstr "Désactivé"
 
 #: lazarusidestrconsts.dlgpodpiawarenessoldoffnewpermonitor
 msgid "Vista-8: off, 8.1+: per monitor"
-msgstr ""
+msgstr "Vista-8 : désactivé, 8.1+ : par moniteur"
 
 #: lazarusidestrconsts.dlgpodpiawarenessoldonnewpermonitor
 msgid "Vista-8: on, 8.1+: per monitor"
-msgstr ""
+msgstr "Vista-8 : activé, 8.1+ : par moniteur"
 
 #: lazarusidestrconsts.dlgpodpiawarenesson
 msgid "on"
-msgstr ""
+msgstr "Activé"
 
 #: lazarusidestrconsts.dlgpoexecutionlevel
 msgid "Execution Level"
@@ -3074,7 +3088,7 @@ msgstr "Session"
 
 #: lazarusidestrconsts.dlgpotextfields
 msgid "Text fields"
-msgstr ""
+msgstr "Champs de texte"
 
 #: lazarusidestrconsts.dlgpotitle
 msgid "Title:"
@@ -3089,10 +3103,8 @@ msgid "Use Application Bundle for running and debugging"
 msgstr "Utiliser l'ensemble application pour exécuter et déboguer"
 
 #: lazarusidestrconsts.dlgpousemanifest
-#, fuzzy
-#| msgid "Use manifest file to enable themes"
 msgid "Use manifest resource (and enable themes)"
-msgstr "Utiliser le fichier \"manifest\" pour autoriser les thèmes"
+msgstr "Utiliser les ressources \"manifest\" (et autoriser les thèmes)"
 
 #: lazarusidestrconsts.dlgpreferdoubleclickoversingleclick
 msgid "Prefer double-click over single-click"
@@ -3886,7 +3898,7 @@ msgstr "Historique"
 
 #: lazarusidestrconsts.lis0no1drawdividerlinesonlyfortoplevel2drawlinesforfi
 msgid "0 = no, 1 = draw divider lines only for top level, 2 = draw lines for first two levels, ..."
-msgstr "0 = non, 1 = dessine les lignes de séparation pour le niveau supérieur seulement, 2 = pour les deux premiers niveaux..."
+msgstr "0 = non - 1 = dessine les lignes de séparation pour le niveau supérieur seulement - 2 = pour les deux premiers niveaux..."
 
 #: lazarusidestrconsts.lisa2paddfiles
 msgid "Add Files"
@@ -3979,7 +3991,7 @@ msgstr "Type d'ancêtre incorrect"
 
 #: lazarusidestrconsts.lisa2pinvalidcirculardependency
 msgid "Invalid Circular Dependency"
-msgstr "Dépendance ciculaire non autorisée"
+msgstr "Dépendance circulaire non autorisée"
 
 #: lazarusidestrconsts.lisa2pinvalidclassname
 msgid "Invalid Class Name"
@@ -4529,7 +4541,7 @@ msgstr "Ancrer la droite à la droite du frère. Utilisez \"BorderSpacing\" pour
 
 #: lazarusidestrconsts.lisanchorsof
 msgid "Anchors of %s"
-msgstr ""
+msgstr "Ancres de %s"
 
 #: lazarusidestrconsts.lisanchorsofselectedcontrols
 msgid "Anchors of selected controls"
@@ -4610,7 +4622,7 @@ msgstr "Ajuster automatiquement la hauteur de la fenêtre principale de l'EDI"
 
 #: lazarusidestrconsts.lisautoadjustideheightfullcomponentpalette
 msgid "Show complete component palette"
-msgstr "Montrer la palette des composants entière"
+msgstr "Montrer la totalité de la palette des composants"
 
 #: lazarusidestrconsts.lisautoadjustideheightfullcomponentpalettehint
 msgid "If component palette spans over more lines, show them all and not only one."
@@ -4651,7 +4663,7 @@ msgstr "Convertir automatiquement les fichiers \".lfm\" en fichiers de ressource
 
 #: lazarusidestrconsts.lisautomaticallyignoreforselection
 msgid "do not complete selection"
-msgstr "ne pas continuer la sélection"
+msgstr "ne pas terminer la sélection"
 
 #: lazarusidestrconsts.lisautomaticallyinvokeafterpoint
 msgid "Automatically invoke after point"
@@ -4719,7 +4731,7 @@ msgstr "commence"
 
 #: lazarusidestrconsts.lisbehindrelated
 msgid "Behind related"
-msgstr "Derrière les méthodes"
+msgstr "Derrière les apparentés"
 
 #: lazarusidestrconsts.lisbelessverbosecanbegivenmultipletimes
 msgid "be less verbose, can be given multiple times"
@@ -4787,10 +4799,8 @@ msgid "Bottoms"
 msgstr "Bas"
 
 #: lazarusidestrconsts.lisbottomsiblingcomboboxhint
-#, fuzzy
-#| msgid "This is the sibling control to which the bottom side is anchored. Leave empty for parent."
-msgid "This is the sibling control to which the bottom side is anchored. Leave empty for anchoring to parent in Delphi style (BorderSpacing and ReferenceSide does not matter)."
-msgstr "Il s'agit du contrôle frère auquel le côté inférieur est ancré. Le laisser vide pour le parent."
+msgid "This is the sibling control to which the bottom side is anchored. Leave empty for anchoring to parent in Delphi style (BorderSpacing and ReferenceSide do not matter)."
+msgstr "Il s'agit du contrôle frère auquel le côté inférieur est ancré. Le laisser vide pour l'ancrer au parent comme le ferait Delphi (\"BorderSpacing\" et \"ReferenceSide\" n'importent pas)."
 
 #: lazarusidestrconsts.lisbottomspaceequally
 msgid "Bottom space equally"
@@ -5563,7 +5573,7 @@ msgstr ". Vérifier le chemin de recherche du paquet %s ; essayer une reconstruc
 
 #: lazarusidestrconsts.lischeckthenexttokeninsourceandaddasemicolonifneeded
 msgid "Check the next token in source and add a semicolon if needed."
-msgstr ""
+msgstr "Vérifier l'élément suivant dans le code source et ajouter un point-virgule si nécessaire."
 
 #: lazarusidestrconsts.lischeckthetargetoscpulclwidgettypemaybeyouhavetoreco
 msgid "%s Check the target (OS, CPU, LCL widget type). Maybe you have to recompile the package for this target or set another target for the project."
@@ -6419,7 +6429,7 @@ msgstr "Parenthèse"
 
 #: lazarusidestrconsts.liscodetoolsoptscaret
 msgid "Caret (^)"
-msgstr "Curseur (^)"
+msgstr "Circonflexe (^)"
 
 #: lazarusidestrconsts.liscodetoolsoptscolon
 msgid "Colon"
@@ -6768,10 +6778,6 @@ msgstr "Le contrôle nécessite un parent"
 msgid "Add comment after replacement"
 msgstr "Ajouter un commentaire après le remplacement"
 
-#: lazarusidestrconsts.lisconvaddedunittousessection
-msgid "Added unit %s to uses section"
-msgstr "Unité %s ajoutée à la section \"uses\""
-
 #: lazarusidestrconsts.lisconvaddingflagforregister
 msgid "Adding flag for \"Register\" procedure in unit %s."
 msgstr "Ajout d'un drapeau de procédure \"Register\" dans l'unité %s."
@@ -6807,6 +6813,10 @@ msgstr "Définitions %s ajoutées dans les options personnalisées"
 #: lazarusidestrconsts.lisconvdelphiaddedpackagedependency
 msgid "Added Package %s as a dependency."
 msgstr "Paquet %s ajouté en tant que dépendance."
+
+#: lazarusidestrconsts.lisconvdelphiaddedunittousessection
+msgid "Added unit \"%s\" to uses section."
+msgstr "Unité \"%s\" ajoutée à la clause \"uses\"."
 
 #: lazarusidestrconsts.lisconvdelphiallsubdirsscanned
 msgctxt "lazarusidestrconsts.lisconvdelphiallsubdirsscanned"
@@ -6905,8 +6915,8 @@ msgstr "Le paquet %s est nécessaire, mais pas installé dans Lazarus ! Installe
 msgid "Omitted unit %s from project"
 msgstr "Omission de l'unité %s du projet"
 
-#: lazarusidestrconsts.lisconvdelphiremovedunitinusessection
-msgid "Removed unit \"%s\" in uses section."
+#: lazarusidestrconsts.lisconvdelphiremovedunitfromusessection
+msgid "Removed unit \"%s\" from uses section."
 msgstr "Unité \"%s\" retirée de la section \"uses\"."
 
 #: lazarusidestrconsts.lisconvdelphirepairingformfiles
@@ -6920,7 +6930,7 @@ msgstr "Unité \"%s\" remplacée par \"%s\" dans la section \"uses\"."
 
 #: lazarusidestrconsts.lisconvdelphithereisalreadyapackagewiththenamepleaseclosethispa
 msgid "There is already a package with the name \"%s\"%sPlease close this package first."
-msgstr "Il y a déjà un paquet portant le nom \"%s\"%sVeuillez fermer ce paquet en premier."
+msgstr "Il existe déjà un paquet portant le nom \"%s\"%sVeuillez tout d'abord fermer ce paquet."
 
 #: lazarusidestrconsts.lisconvdelphiunitnameexistsinlcl
 msgid "Unitname exists in LCL"
@@ -7161,7 +7171,7 @@ msgstr "Paramètres généraux des barres d'outils"
 
 #: lazarusidestrconsts.liscoolbargrabstyle
 msgid "Toolbars grab style"
-msgstr "Style de saisie d'une barre d'outils"
+msgstr "Style de saisie des barres d'outils"
 
 #: lazarusidestrconsts.liscoolbargrabstyleitem0
 msgid "Simple"
@@ -7909,7 +7919,7 @@ msgstr "Valeur par défaut"
 
 #: lazarusidestrconsts.lisdefaultclassvisibilitysectionofnewmethodsforexampl
 msgid "Default class visibility section of new methods. For example code completion on OnShow:="
-msgstr ""
+msgstr "Section de visibilité de classe par défaut des nouvelles méthodes. Par exemple, complétion de code pour \"OnShow:=\""
 
 #: lazarusidestrconsts.lisdefaultiscomboboxwithtrueandfalse
 msgid "The default is ComboBox with \"True\" and \"False\" selections"
@@ -7921,7 +7931,7 @@ msgstr "(par défaut)"
 
 #: lazarusidestrconsts.lisdefaultsectionofmethods
 msgid "Default section of methods"
-msgstr ""
+msgstr "Section par défaut des méthodes"
 
 #: lazarusidestrconsts.lisdelayforcompletionlonglinehint
 msgid "Delay for long line hints in completion box"
@@ -8411,7 +8421,7 @@ msgstr "Nom  dupliqué. Un composant appelé \"%s\" existe déjà dans le compos
 
 #: lazarusidestrconsts.lisduplicateppufilesdeleteoneormakesureallsearchpaths
 msgid "Duplicate ppu files. Delete one or make sure all search paths have correct order (Hint: FPC uses last path first)."
-msgstr "Fichiers \"ppu\" dupliqués. Supprimez-en un ou assurez-vous que les chemins de recherche sont dans le bon ordre (Astuce : FPC utilise le dernier chemin en premier)."
+msgstr "Fichiers \"ppu\" dupliqués. Supprimez-en un ou assurez-vous que les chemins de recherche sont dans le bon ordre (Astuce : FPC utilise tout d'abord le dernier chemin)."
 
 #: lazarusidestrconsts.lisduplicatesearchpath
 msgid "Duplicate search path"
@@ -8419,7 +8429,7 @@ msgstr "Chemins de recherche dupliqués"
 
 #: lazarusidestrconsts.lisduplicatesourcesdeleteoneormakesureallsearchpathsh
 msgid "Duplicate sources. Delete one or make sure all search paths have correct order (Hint: FPC uses last path first)."
-msgstr "Codes sources dupliqués. Supprimez-en un ou assurez-vous que les chemins de recherche sont dans le bon ordre (Astuce : FPC utilise le dernier chemin en premier)."
+msgstr "Codes sources dupliqués. Supprimez-en un ou assurez-vous que les chemins de recherche sont dans le bon ordre (Astuce : FPC utilise tout d'abord le dernier chemin)."
 
 #: lazarusidestrconsts.lisduplicateunit
 msgid "Duplicate Unit"
@@ -8460,15 +8470,15 @@ msgstr "Macros de l'éditeur"
 
 #: lazarusidestrconsts.liseditortoolbar
 msgid "Editor ToolBar"
-msgstr "Éditeur de barre d'outils"
+msgstr "Éditeur de barres d'outils"
 
 #: lazarusidestrconsts.liseditortoolbarsettings
 msgid "Editor Toolbar Settings"
-msgstr "Paramètres de l'éditeur de la barre d'outils"
+msgstr "Paramètres de l'éditeur des barres d'outils"
 
 #: lazarusidestrconsts.liseditortoolbarvisible
 msgid "Editor Toolbar is &visible"
-msgstr "L'éditeur de la barre d'outils est &visible"
+msgstr "L'éditeur des barres d'outils est &visible"
 
 #: lazarusidestrconsts.lisedoptsloadascheme
 msgid "Load a scheme"
@@ -8604,7 +8614,7 @@ msgstr "Publique"
 
 #: lazarusidestrconsts.lisemdpublished
 msgid "Published"
-msgstr "Publié"
+msgstr "Publiée"
 
 #: lazarusidestrconsts.lisemdremovemethods
 msgid "Remove methods"
@@ -9381,7 +9391,7 @@ msgstr "Trouver l'unité manquante"
 
 #: lazarusidestrconsts.lisfirst
 msgid "First"
-msgstr "Premier"
+msgstr "En premier"
 
 #: lazarusidestrconsts.lisfirsttest
 msgid "&First test"
@@ -9413,7 +9423,7 @@ msgstr "Fiche"
 
 #: lazarusidestrconsts.lisformacosdarwin
 msgid "For macOS (Darwin)"
-msgstr ""
+msgstr "Pour macOS (Darwin)"
 
 #: lazarusidestrconsts.lisformaterror
 msgid "Format error"
@@ -9612,18 +9622,18 @@ msgid ""
 "\n"
 "This code is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details. \n"
 "\n"
-"A copy of the GNU General Public License is available on the World Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also obtain it by writing to the Free Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.\n"
+"A copy of the GNU General Public License is available on the World Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also obtain it by writing to the Free Software Foundation, Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.\n"
 msgstr ""
 "<description>\n"
 "\n"
-"Copyright (C) <année> <nom de l'auteur> <contact>\n"
+"Copyright (C) <year> <name of author> <contact>\n"
 "\n"
-"[La version anglaise a seule une valeur légale.]\n"
+"[Seule la version anglaise est valable.]\n"
 "This source is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation; either version 2 of the License, or (at your option) any later version. \n"
 "\n"
 "This code is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details. \n"
 "\n"
-"A copy of the GNU General Public License is available on the World Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also obtain it by writing to the Free Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.\n"
+"A copy of the GNU General Public License is available on the World Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also obtain it by writing to the Free Software Foundation, Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.\n"
 
 #: lazarusidestrconsts.lisgroup
 msgid "Group"
@@ -10099,7 +10109,7 @@ msgstr "Dans le chemin de recherche des unités FPC. Probablement installé par 
 
 #: lazarusidestrconsts.lisinfrontofrelated
 msgid "In front of related"
-msgstr "Devant les apparentés"
+msgstr "En tête des apparentés"
 
 #: lazarusidestrconsts.lisinheriteditem
 msgid "Inherited Item"
@@ -10231,7 +10241,7 @@ msgstr "Insérer un nom de procédure"
 
 #: lazarusidestrconsts.lisinsertsemicolonifneeded
 msgid "Insert semicolon if needed"
-msgstr ""
+msgstr "Insérer un point-virgule si nécessaire"
 
 #: lazarusidestrconsts.lisinserttime
 msgid "insert time"
@@ -10506,7 +10516,7 @@ msgstr "Préserver le nom"
 
 #: lazarusidestrconsts.liskeepopen
 msgid "Keep open"
-msgstr ""
+msgstr "Maintenir ouvert"
 
 #: lazarusidestrconsts.liskeeprelativeindentationofmultilinetemplate
 msgid "Keep relative indentation of multi line template"
@@ -11150,7 +11160,7 @@ msgstr "Débogage de l'EDI"
 
 #: lazarusidestrconsts.lislazbuilddefines
 msgid "Defines"
-msgstr "Définitions :"
+msgstr "Définitions"
 
 #: lazarusidestrconsts.lislazbuilddefineswithoutd
 msgid "Defines without -d"
@@ -11320,10 +11330,8 @@ msgid "Left anchoring"
 msgstr "Ancrage à gauche"
 
 #: lazarusidestrconsts.lisleftsiblingcomboboxhint
-#, fuzzy
-#| msgid "This is the sibling control to which the left side is anchored. Leave empty for parent."
-msgid "This is the sibling control to which the left side is anchored. Leave empty for anchoring to parent in Delphi style (BorderSpacing and ReferenceSide does not matter)."
-msgstr "Il s'agit du contrôle auquel le côté gauche est ancré. Le laisser vide pour le parent."
+msgid "This is the sibling control to which the left side is anchored. Leave empty for anchoring to parent in Delphi style (BorderSpacing and ReferenceSide do not matter)."
+msgstr "Il s'agit du contrôle frère auquel le côté gauche est ancré. Le laisser vide pour l'ancrer au parent comme le ferait Delphi (\"BorderSpacing\" et \"ReferenceSide\" n'importent pas)."
 
 #: lazarusidestrconsts.lisleftsides
 msgid "Left sides"
@@ -11368,19 +11376,18 @@ msgid ""
 "\n"
 "This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Library General Public License for more details. \n"
 "\n"
-"You should have received a copy of the GNU Library General Public License along with this library; if not, write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.\n"
+"You should have received a copy of the GNU Library General Public License along with this library; if not, write to the Free Software Foundation, Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.\n"
 msgstr ""
 "<description>\n"
 "\n"
-"Copyright (C) <année> <nom de l'auteur> <contact>\n"
+"Copyright (C) <year> <name of author> <contact>\n"
 "\n"
-"[La version anglaise a seule une valeur légale.]\n"
-"\n"
+"[Seule la version anglaise est valable.]\n"
 "This library is free software; you can redistribute it and/or modify it under the terms of the GNU Library General Public License as published by the Free Software Foundation; either version 2 of the License, or (at your option) any later version. \n"
 "\n"
 "This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Library General Public License for more details. \n"
 "\n"
-"You should have received a copy of the GNU Library General Public License along with this library; if not, write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.\n"
+"You should have received a copy of the GNU Library General Public License along with this library; if not, write to the Free Software Foundation, Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.\n"
 
 #: lazarusidestrconsts.lislibrarypath
 msgid "library path"
@@ -11505,7 +11512,7 @@ msgstr "L'unité principale comprend des instructions \"Application.Title\""
 
 #: lazarusidestrconsts.lismainunithasusessectioncontainingallunitsofproject
 msgid "Main unit has Uses section containing all units of project"
-msgstr "L'unité principale a une section \"uses\" contenant toutes les unités du projet"
+msgstr "L'unité principale a une clause \"uses\" contenant toutes les unités du projet"
 
 #: lazarusidestrconsts.lismainunitispascalsource
 msgid "Main unit is Pascal source"
@@ -12923,7 +12930,7 @@ msgstr "Chercher"
 #: lazarusidestrconsts.lismenutemplatefindnext
 msgctxt "lazarusidestrconsts.lismenutemplatefindnext"
 msgid "Find Next"
-msgstr "Trouver l'occurence suivante"
+msgstr "Trouver l'occurrence suivante"
 
 #: lazarusidestrconsts.lismenutemplateopenrecent
 msgctxt "lazarusidestrconsts.lismenutemplateopenrecent"
@@ -13364,7 +13371,7 @@ msgstr "(valait \"%s\")"
 
 #: lazarusidestrconsts.lismmwidgetsetavailableforlclproject
 msgid "WidgetSet change is available only for LCL projects"
-msgstr ""
+msgstr "Le changement d'ensemble graphique (WidgetSet) n'est possible qu'avec les projets LCL"
 
 #: lazarusidestrconsts.lismode
 msgid ", Mode: %s"
@@ -13382,20 +13389,20 @@ msgid ""
 "\n"
 "This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Library General Public License for more details. \n"
 "\n"
-"You should have received a copy of the GNU Library General Public License along with this library; if not, write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.\n"
+"You should have received a copy of the GNU Library General Public License along with this library; if not, write to the Free Software Foundation, Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.\n"
 msgstr ""
-"[La version anglaise a seule une valeur légale.]\n"
 "<description>\n"
 "\n"
-"Copyright (C) <année> <nom de l'auteur> <contact>\n"
+"Copyright (C) <year> <name of author> <contact>\n"
 "\n"
+"[Seule la version anglaise est valable.]\n"
 "This library is free software; you can redistribute it and/or modify it under the terms of the GNU Library General Public License as published by the Free Software Foundation; either version 2 of the License, or (at your option) any later version with the following modification:\n"
 "\n"
 "As a special exception, the copyright holders of this library give you permission to link this library with independent modules to produce an executable, regardless of the license terms of these independent modules,and to copy and distribute the resulting executable under terms of your choice, provided that you also meet, for each linked independent module, the terms and conditions of the license of that module. An independent module is a module which is not derived from or based on this library. If you modify this library, you may extend this exception to your version of the library, but you are not obligated to do so. If you do not wish to do so, delete this exception statement from your version.\n"
 "\n"
 "This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Library General Public License for more details. \n"
 "\n"
-"You should have received a copy of the GNU Library General Public License along with this library; if not, write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.\n"
+"You should have received a copy of the GNU Library General Public License along with this library; if not, write to the Free Software Foundation, Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.\n"
 
 #: lazarusidestrconsts.lismodify
 msgid "&Modify"
@@ -13609,11 +13616,11 @@ msgstr "Nouveau nom de macro"
 
 #: lazarusidestrconsts.lisnewmethodimplementationsareinsertedbetweenexisting
 msgid "New method implementations are inserted between existing methods of this class. Either alphabetically, or as last, or in declaration order."
-msgstr ""
+msgstr "Les implémentations des nouvelles méthodes sont insérées entre les méthodes existantes de cette classe, soit par ordre alphabétique, soit à la fin, ou encore par ordre des déclarations."
 
 #: lazarusidestrconsts.lisnewmethodsandmembersareinsertedalphabeticallyoradd
 msgid "New method and member declarations in the class..end sections are inserted alphabetically or added last."
-msgstr ""
+msgstr "Les nouvelles méthodes et déclarations de membres dans les section class...end sont insérées par ordre alphabétique ou à la fin."
 
 #: lazarusidestrconsts.lisnewpage
 msgid "New page"
@@ -13629,7 +13636,7 @@ msgstr "Nouvelles macros enregistrées. A ne pas sauvegarder"
 
 #: lazarusidestrconsts.lisnewunitsareaddedtousessections
 msgid "New units are added to uses sections"
-msgstr "De nouvelles unités sont ajoutées aux sections \"uses\""
+msgstr "De nouvelles unités sont ajoutées aux clauses \"uses\""
 
 #: lazarusidestrconsts.lisno
 msgid "No"
@@ -13754,7 +13761,7 @@ msgstr "Haut"
 
 #: lazarusidestrconsts.lisnotecouldnotcreatedefinetemplateforfreepascal
 msgid "NOTE: Could not create Define Template for Free Pascal Sources"
-msgstr "NOTE : Incapable de créer le modèle \"Define\" pour les codes sources Free Pascal"
+msgstr "NOTE : Impossible de créer le modèle \"Define\" pour les codes sources Free Pascal"
 
 #: lazarusidestrconsts.lisnotecouldnotcreatedefinetemplateforlazarussources
 msgid "NOTE: Could not create Define Template for Lazarus Sources"
@@ -13929,7 +13936,7 @@ msgstr "En cas de saut de ligne (à savoir touche \"Entrée\")"
 
 #: lazarusidestrconsts.lisonly32bit
 msgid "only 32bit"
-msgstr ""
+msgstr "seulement 32 bits"
 
 #: lazarusidestrconsts.lisonlyavailableonwindowsrunthetoolhidden
 msgid "Only available on Windows. Run the tool hidden."
@@ -14448,7 +14455,7 @@ msgstr "Faut-il supprimer la dépendance ?"
 
 #: lazarusidestrconsts.lispckeditremovedependencyfrompackage
 msgid "Remove dependency \"%s\"%sfrom package \"%s\"?"
-msgstr "Retirer la dépendance \"%s\"%sdu paquet \"%s\" ?"
+msgstr "Faut-il retirer la dépendance \"%s\"%sdu paquet \"%s\" ?"
 
 #: lazarusidestrconsts.lispckeditremovedfiles
 msgid "Removed Files"
@@ -15191,7 +15198,7 @@ msgstr "Deux unités portent le même nom :%s1. \"%s\" de %s%s2. \"%s\" de %s"
 
 #: lazarusidestrconsts.lispkgmangthereisacirculardependency
 msgid "There is a circular dependency in the packages. See package graph."
-msgstr "Il y a une dépendance circulaire dans les paquets. Voir le graphe des paquets."
+msgstr "Il existe une dépendance circulaire dans les paquets. Voir le graphe des paquets."
 
 #: lazarusidestrconsts.lispkgmangthereisafpcunitwiththesamenameasapackage
 msgid "There is a FPC unit with the same name as a package:%s\"%s\""
@@ -15552,7 +15559,7 @@ msgstr "Priorité"
 
 #: lazarusidestrconsts.lisprivate
 msgid "Private"
-msgstr "Privé"
+msgstr "Privée"
 
 #: lazarusidestrconsts.lisprivatemethod
 msgid "Private Method"
@@ -15882,7 +15889,7 @@ msgstr "Propriétés (remplacer ou supprimer)"
 
 #: lazarusidestrconsts.lisprotected
 msgid "Protected"
-msgstr "Protégé"
+msgstr "Protégée"
 
 #: lazarusidestrconsts.lisprotectedmethod
 msgid "Protected Method"
@@ -16261,19 +16268,6 @@ msgid "Result:"
 msgstr "Résultat :"
 
 #: lazarusidestrconsts.lisreturnparameterindexedword
-#, fuzzy
-#| msgid ""
-#| "Return parameter-indexed word from the current line preceding cursor position.\n"
-#| "\n"
-#| "Words in a line are numbered 1,2,3,... from left to right, but the last word\n"
-#| "which is always a macro command to be expanded has number 0, thus $PrevWord(0)\n"
-#| "is always the current macro.\n"
-#| "\n"
-#| "Example line:\n"
-#| "i 0 count-1 forb|\n"
-#| "Here $PrevWord(0)=forb, $PrevWord(1)=i, $PrevWord(2)=0, $PrevWord(3)=count-1\n"
-#| "\n"
-#| "In the end of your template use $PrevWord(-1) which expands to an empty string, but performs an importaint operation of wiping off all of the $PrevWords found. In addition here is a regexp that is used to detect words for this macro: [\\w\\-+*\\(\\)\\[\\].^@]+\n"
 msgid ""
 "Return parameter-indexed word from the current line preceding cursor position.\n"
 "\n"
@@ -16287,7 +16281,7 @@ msgid ""
 "\n"
 "In the end of your template use $PrevWord(-1) which expands to an empty string, but performs an important operation of wiping off all of the $PrevWords found. In addition here is a regexp that is used to detect words for this macro: [\\w\\-+*\\(\\)\\[\\].^@]+\n"
 msgstr ""
-"Retourne le mot indexé selon le paramètre d'index à partir de la ligne courante précdant la position du curseur.\n"
+"Retourne le mot indexé selon le paramètre à partir de la ligne courante précédant la position du curseur.\n"
 "\n"
 "Les mots d'une ligne sont numérotés à partir de 1, de la gauche vers la droite, mais le dernier mot,\n"
 "qui est toujours une commande de macro à étendre, porte le numéro 0. Ainsi, $PrevWord(0)\n"
@@ -16297,7 +16291,7 @@ msgstr ""
 "i 0 count-1 forb|\n"
 "Ici, $PrevWord(0)=forb, $PrevWord(1)=i, $PrevWord(2)=0, $PrevWord(3)=count-1\n"
 "\n"
-"A la fin de votre modèle, utilisez $PrevWord(-1) qui ne donnera qu'une chaîne vide, mais qui opèrera à un nettoyage important de tous les $PrevWords trouvés. En bonus, voici une expression régulière utilisée afin de détecter les mots pour cette macro : [\\w\\-+*\\(\\)\\[\\].^@]+\n"
+"À la fin de votre modèle, utilisez $PrevWord(-1) qui ne donnera qu'une chaîne vide, mais qui opèrera un nettoyage important de tous les $PrevWords trouvés. En bonus, voici une expression régulière utilisée afin de détecter les mots pour cette macro : [\\w\\-+*\\(\\)\\[\\].^@]+\n"
 
 #: lazarusidestrconsts.lisreturnslistofallvaluesofcasevariableinfrontofvaria
 msgid ""
@@ -16329,10 +16323,8 @@ msgid "Right borderspace. This value is added to base borderspace and used for t
 msgstr "L'espace de bordure droit. Cette valeur est ajoutée à la base de l'espace de bordure et employée pour l'espace à droite du contrôle."
 
 #: lazarusidestrconsts.lisrightsiblingcomboboxhint
-#, fuzzy
-#| msgid "This is the sibling control to which the right side is anchored. Leave empty for parent."
-msgid "This is the sibling control to which the right side is anchored. Leave empty for anchoring to parent in Delphi style (BorderSpacing and ReferenceSide does not matter)."
-msgstr "C'est le contrôle frère auquel le côté droit est ancré. A laisser vide pour le parent."
+msgid "This is the sibling control to which the right side is anchored. Leave empty for anchoring to parent in Delphi style (BorderSpacing and ReferenceSide do not matter)."
+msgstr "C'est le contrôle frère auquel le côté droit est ancré. Le laisser vide pour l'ancrer au parent comme le ferait Delphi (\"BorderSpacing\" et \"ReferenceSide\" n'importent pas)."
 
 #: lazarusidestrconsts.lisrightsides
 msgid "Right sides"
@@ -16435,7 +16427,7 @@ msgstr "Aucune sélection"
 
 #: lazarusidestrconsts.lissamthereareabstractmethodstooverrideselectthemethodsf
 msgid "There are %s abstract methods to override.%sSelect the methods for which stubs should be created:"
-msgstr "Il y a %s méthodes abstraites à redéfinir. %sSélectionnez les méthodes pour lesquelles des souches doivent être créées :"
+msgstr "Il existe %s méthodes abstraites à redéfinir. %sSélectionnez les méthodes pour lesquelles des squelettes doivent être créés :"
 
 #: lazarusidestrconsts.lissamtherearenoabstractmethodslefttooverride
 msgid "There are no abstract methods left to override."
@@ -16443,7 +16435,7 @@ msgstr "Il n'existe pas de méthode abstraite restant à redéfinir."
 
 #: lazarusidestrconsts.lissamthismethodcannotbeoverriddenbecauseitisdefinedinth
 msgid "This method can not be overridden because it is defined in the current class"
-msgstr "Cette méthode ne peut pas être surchargée car elle est définie dans la classe courante"
+msgstr "Cette méthode ne peut pas être surchargée, car elle est définie dans la classe courante"
 
 #: lazarusidestrconsts.lissamunabletoshowabstractmethodsofthecurrentclassbecaus
 msgid "Unable to show abstract methods of the current class, because"
@@ -17206,6 +17198,14 @@ msgstr "Tabulation : déplacer le contrôle sélectionné vers le bas"
 msgid "Tab Order of %s"
 msgstr "Ordre de tabulation de %s"
 
+#: lazarusidestrconsts.listaborderrecursionhint
+msgid "Calculate tab order recursively for child controls"
+msgstr "Calculer récursivement l'ordre de tabulation pour les contrôles enfants"
+
+#: lazarusidestrconsts.listaborderrecursively
+msgid "recursively"
+msgstr "de manière récursive"
+
 #: lazarusidestrconsts.listabordersorthint
 msgid "Calculate tab order for controls by their X- and Y- positions"
 msgstr "Calculer l'ordre de tabulation selon leurs coordonnées X, Y"
@@ -17685,7 +17685,7 @@ msgstr "Il doit y avoir au moins un mode de création."
 
 #: lazarusidestrconsts.listheresourceclassdescendsfromprobablythisisatypofor
 msgid "The resource class \"%s\" descends from \"%s\". Probably this is a typo for TForm."
-msgstr "La classe de ressource \"%s\" descend de \"%s\". C'est probablement une erreur de frappe pour \"TForm\"."
+msgstr "La classe de ressource \"%s\" descend de \"%s\". Il s'agit probablement d'une erreur de frappe pour \"TForm\"."
 
 #: lazarusidestrconsts.listherewasanerrorduringwritingtheselectedcomponent
 msgid "There was an error during writing the selected component %s:%s:%s%s"
@@ -17967,10 +17967,8 @@ msgid "Tops"
 msgstr "Hauts"
 
 #: lazarusidestrconsts.listopsiblingcomboboxhint
-#, fuzzy
-#| msgid "This is the sibling control to which the top side is anchored. Leave empty for parent."
-msgid "This is the sibling control to which the top side is anchored. Leave empty for anchoring to parent in Delphi style (BorderSpacing and ReferenceSide does not matter)."
-msgstr "Il s'agit du contrôle frère auquel le côté supérieur est ancré. A laisser vide pour le parent."
+msgid "This is the sibling control to which the top side is anchored. Leave empty for anchoring to parent in Delphi style (BorderSpacing and ReferenceSide do not matter)."
+msgstr "Il s'agit du contrôle frère auquel le côté supérieur est ancré. Le laisser vide pour l'ancrer au parent comme le ferait Delphi (\"BorderSpacing\" et \"ReferenceSide\" n'importent pas)."
 
 #: lazarusidestrconsts.listopspaceequally
 msgid "Top space equally"
@@ -18380,7 +18378,7 @@ msgstr "Impossible de charger le paquet \"%s\""
 
 #: lazarusidestrconsts.lisunabletoloadthecomponentclassbecauseitdependsonits
 msgid "Unable to load the component class \"%s\", because it depends on itself."
-msgstr "Impossible de charger la classe de composant \"%s\", parce qu'elle dépend d'elle-même."
+msgstr "Impossible de charger la classe de composant \"%s\" parce qu'elle dépend d'elle-même."
 
 #: lazarusidestrconsts.lisunabletoopen
 msgid "Unable to open \"%s\""

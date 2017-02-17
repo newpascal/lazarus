@@ -32,8 +32,9 @@ uses
   // RTL / FCL
   SysUtils, Types, Classes, TypInfo, math, FPCanvas,
   // LCL
-  InterfaceBase, LCLType, LCLIntf, Forms, Buttons, Graphics, GraphType, StdCtrls,
-  Controls, ComCtrls, ExtCtrls, Menus, Dialogs, Themes, LMessages, LCLProc,
+  LCLPlatformDef, InterfaceBase, LCLType, LCLIntf, Forms, Buttons, Graphics,
+  GraphType, StdCtrls, Controls, ComCtrls, ExtCtrls, Menus, Dialogs, Themes,
+  LMessages, LCLProc,
   // LazControls
   {$IFnDEF UseOINormalCheckBox} CheckBoxThemed, {$ENDIF}
   TreeFilterEdit, ListFilterEdit,
@@ -42,7 +43,7 @@ uses
   // IdeIntf
   IDEImagesIntf, IDEHelpIntf, ObjInspStrConsts,
   PropEdits, PropEditUtils, ComponentTreeView, OIFavoriteProperties,
-  ListViewPropEdit, ImageListEditor, ComponentEditors, ChangeParentDlg;
+  ComponentEditors, ChangeParentDlg;
 
 const
   OIOptionsFileVersion = 3;
@@ -63,7 +64,7 @@ const
   DefaultOITypeKinds = [
     tkUnknown, tkInteger, tkChar, tkEnumeration, tkFloat, tkSet,{ tkMethod,}
     tkSString, tkLString, tkAString, tkWString, tkVariant,
-    {tkArray, tkRecord, tkInterface,} tkClass, tkObject, tkWChar, tkBool,
+    {tkArray, tkRecord,} tkInterface, tkClass, tkObject, tkWChar, tkBool,
     tkInt64, tkQWord, tkUString, tkUChar];
 type
   EObjectInspectorException = class(Exception);

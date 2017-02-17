@@ -84,7 +84,10 @@ end;
 
 function TCustomMemo.CanShowEmulatedTextHint: Boolean;
 begin
-  Result := (Lines.Count = 0) and inherited CanShowEmulatedTextHint;
+  Result :=
+        Assigned(Lines) // CM_EXIT is sent in destroy -> this function is called in destructor when Lines are already destroyed
+    and (Lines.Count = 0)
+    and inherited CanShowEmulatedTextHint;
 end;
 
 procedure TCustomMemo.CreateParams(var Params: TCreateParams);
@@ -201,16 +204,6 @@ procedure TCustomMemo.SetLines(const Value: TStrings);
 begin
   if (Value <> nil) then
     FLines.Assign(Value);
-end;
-
-procedure TCustomMemo.SetSelText(const Val: string);
-begin
-  Lines.BeginUpdate;
-  try
-    inherited SetSelText(Val);
-  finally
-    Lines.EndUpdate;
-  end;
 end;
 
 procedure TCustomMemo.SetScrollBars(const Value: TScrollStyle);

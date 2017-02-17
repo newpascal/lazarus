@@ -80,6 +80,7 @@ begin
   end;
   // and use the internal list
   FItems := NewStrings;
+  TStringList(FItems).Sorted := Sorted;
 
   inherited DestroyWnd;
 end;
@@ -475,6 +476,7 @@ procedure TCustomComboBox.KeyDown(var Key: Word; Shift: TShiftState);
 var
   Skip, UserDropDown, PreventDropDown: Boolean;
 begin
+  FDroppingDown := False;
   Skip := False;
   UserDropDown := ((Shift *[ssAlt] = [ssAlt]) and (Key = VK_DOWN));
   PreventDropDown := Key in [VK_TAB, VK_RETURN, VK_ESCAPE];
@@ -483,6 +485,12 @@ begin
     if DroppedDown then Key := VK_UNKNOWN; //prevent execution of DefaultAction (Delphi compatibility)
     DroppedDown := False;
   end;
+  // if AutoDropDown then don't close DropDown, like in Delphi, issue #31247
+  if AutoDropDown then
+    PreventDropDown := PreventDropDown or (ssAlt in Shift)
+                       or (Key in [VK_UNKNOWN..VK_MODECHANGE, VK_END..VK_LEFT,
+                                   VK_RIGHT, VK_SELECT..VK_HELP,
+                                   VK_LWIN..VK_SLEEP, VK_F1..VK_UNDEFINED]);
   if AutoDropDown or UserDropDown or FReturnArrowState then
   begin
     if PreventDropDown then
@@ -501,7 +509,7 @@ begin
         FReturnArrowState := True;
         Skip := True;
       end;
-      DroppedDown := True;
+      FDroppingDown := True;
       if UserDropDown then
         Skip := True;
     end;
@@ -517,6 +525,11 @@ var
   iSelStart: Integer; // char position
   sCompleteText, sPrefixText, sResultText: string;
 begin
+  if DroppingDown then
+  begin
+    FDroppingDown := False;
+    DroppedDown := True;
+  end;
   inherited KeyUp(Key, Shift);
   //SelectAll when hitting return key for AutoSelect feature
   if (Key = VK_RETURN) then
@@ -782,6 +795,7 @@ begin
   FItemWidth := 0;
   FMaxLength := 0;
   FDropDownCount := 8;
+  FDroppingDown := False;
   FCanvas := TControlCanvas.Create;
   TControlCanvas(FCanvas).Control := Self;
   ArrowKeysTraverseList := True;
@@ -930,11 +944,16 @@ procedure TCustomComboBox.RealSetText(const AValue: TCaption);
 var
   I: integer;
 begin
-  I := FItems.IndexOf(AValue);
-  if I >= 0 then
-    ItemIndex := I
-  else if (not (csLoading in ComponentState)) then
-    ItemIndex := -1;
+  // when items have same text, FItems.IndexOf(AValue) gives wrong index. Issue #28683.
+  I := ItemIndex;
+  if (I < 0) or (I >= FItems.Count) or (FItems[I] <> AValue) then
+  begin
+    I := FItems.IndexOf(AValue);
+    if I >= 0 then
+      ItemIndex := I
+    else if (not (csLoading in ComponentState)) then
+      ItemIndex := -1;
+  end;
   inherited;
 end;
 
@@ -1095,6 +1114,17 @@ begin
     if lIndex >= 0 then
       ItemIndex := lIndex;
   end;
+end;
+
+procedure TCustomComboBox.CMWantSpecialKey(var Message: TCMWantSpecialKey);
+begin
+  {$ifdef darwin}
+  // don't allow LCL to handle arrow keys for edit controls
+  if Message.CharCode in [VK_LEFT, VK_RIGHT, VK_UP, VK_DOWN] then
+    Message.Result := 1
+  else
+  {$endif}
+    inherited;
 end;
 
 // included by stdctrls.pp

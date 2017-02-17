@@ -14,7 +14,7 @@
  *   A copy of the GNU General Public License is available on the World    *
  *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
  *   obtain it by writing to the Free Software Foundation,                 *
- *   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.        *
+ *   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
  *                                                                         *
  ***************************************************************************
 
@@ -31,13 +31,16 @@ interface
 
 uses
   Classes, SysUtils, Controls, Graphics, Menus, Dialogs, Forms, LCLIntf, contnrs,
-  PackageIntf, Buttons, opkman_VirtualTrees, opkman_common, opkman_serializablepackages;
+  PackageIntf, Buttons, Math, dateutils, opkman_VirtualTrees, opkman_common,
+  opkman_serializablepackages;
 
 
 type
   PData = ^TData;
   TData = record
     DataType: Integer;
+    PID: Integer;
+    PFID: Integer;
     Repository: String;
     PackageState: TPackageState;
     PackageName: String;
@@ -69,6 +72,7 @@ type
     InstallState: Integer;
     ButtonID: Integer;
     Button: TSpeedButton;
+    Rating: Integer;
   end;
 
   TFilterBy = (fbPackageName, fbPackageFileName, fbPackageCategory, fbPackageState,
@@ -81,12 +85,14 @@ type
   private
     FVST: TVirtualStringTree;
     FHoverNode: PVirtualNode;
+    FHoverP: TPoint;
     FHoverColumn: Integer;
     FLink: String;
     FLinkClicked: Boolean;
     FSortCol: Integer;
     FSortDir: opkman_VirtualTrees.TSortDirection;
     FCheckingNodes: Boolean;
+    FLeaving: Boolean;
     FOnChecking: TOnChecking;
     FOnChecked: TNotifyEvent;
     procedure VSTBeforeCellPaint(Sender: TBaseVirtualTree;
@@ -109,6 +115,8 @@ type
       {%H-}TextType: TVSTTextType);
     procedure VSTFreeNode(Sender: TBaseVirtualTree; Node: PVirtualNode);
     procedure VSTMouseMove(Sender: TObject; {%H-}Shift: TShiftState; X, Y: Integer);
+    procedure VSTMouseEnter(Sender: TObject);
+    procedure VSTMouseLeave(Sender: TObject);
     procedure VSTMouseDown(Sender: TObject; Button: TMouseButton; {%H-}Shift: TShiftState; X, Y: Integer);
     procedure VSTGetHint(Sender: TBaseVirtualTree; Node: PVirtualNode; Column: TColumnIndex;
       var LineBreakStyle: TVTTooltipLineBreakStyle; var HintText: String);
@@ -117,13 +125,15 @@ type
     procedure VSTCollapsed(Sender: TBaseVirtualTree; {%H-}Node: PVirtualNode);
     procedure VSTExpanding(Sender: TBaseVirtualTree; {%H-}Node: PVirtualNode; var {%H-}Allowed: Boolean);
     procedure VSTCollapsing(Sender: TBaseVirtualTree; {%H-}Node: PVirtualNode; var {%H-}Allowed: Boolean);
-    procedure VSTOnDblClick(Sender: TObject);
+    procedure VSTDblClick(Sender: TObject);
     procedure VSTScroll(Sender: TBaseVirtualTree; {%H-}DeltaX, {%H-}DeltaY: Integer);
     function GetDisplayString(const AStr: String): String;
     function IsAllChecked(const AChecking: PVirtualNode): Boolean;
     procedure ButtonClick(Sender: TObject);
     procedure ShowButtons;
     procedure HideButtons;
+    procedure DrawStars(ACanvas: TCanvas; AStartIndex: Integer; P: TPoint; AAvarage: Double);
+    function GetColumn(const AX: Integer): Integer;
     function TranslateCategories(const AStr: String): String;
   public
     constructor Create(const AParent: TWinControl; const AImgList: TImageList;
@@ -173,6 +183,7 @@ begin
      DefaultText := '';
      Header.AutoSizeIndex := 4;
      Header.Height := 25;
+
      with Header.Columns.Add do
      begin
        Position := 0;
@@ -213,11 +224,18 @@ begin
      with Header.Columns.Add do
      begin
         Position := 5;
-        Width := 25;
+        Alignment := taCenter;
+        Width := 88;
         Options := Options - [coResizable];
-        Text := rsMainFrm_VSTHeaderColumn_Button;
-        Options := Options - [coResizable];
+        Text := rsMainFrm_VSTHeaderColumn_Rating;
       end;
+     with Header.Columns.Add do
+     begin
+        Position := 6;
+        Alignment := taCenter;
+        Width := 20;
+        Options := Options - [coResizable];
+     end;
      Header.Options := [hoAutoResize, hoColumnResize, hoRestrictDrag, hoShowSortGlyphs, hoVisible, hoAutoSpring];
      {$IFDEF LCLCarbon}
      Header.Options := Header.Options - [hoShowSortGlyphs];
@@ -226,9 +244,10 @@ begin
      HintMode := hmHint;
      ShowHint := True;
      TabOrder := 2;
-     TreeOptions.MiscOptions := [toCheckSupport, toFullRepaintOnResize, toInitOnSave, toToggleOnDblClick, toWheelPanning];
-     TreeOptions.PaintOptions := [toHideFocusRect, toAlwaysHideSelection, toPopupMode, toShowButtons, toShowDropmark, toShowRoot, toThemeAware, toUseBlendedImages];
+     TreeOptions.MiscOptions := [toCheckSupport, toFullRepaintOnResize, toInitOnSave, toWheelPanning];
+     TreeOptions.PaintOptions := [toHideFocusRect, toAlwaysHideSelection, toPopupMode, toShowButtons, toShowDropmark, toShowRoot, toThemeAware];
      TreeOptions.SelectionOptions := [toFullRowSelect, toRightClickSelect];
+     TreeOptions.StringOptions := [toShowStaticText];
      TreeOptions.AutoOptions := [toAutoTristateTracking];
      OnBeforeCellPaint := @VSTBeforeCellPaint;
      OnChecking := @VSTChecking;
@@ -239,8 +258,10 @@ begin
      OnGetImageIndex := @VSTGetImageIndex;
      OnHeaderClick := @VSTHeaderClick;
      OnMouseMove := @VSTMouseMove;
+     OnMouseLeave := @VSTMouseLeave;
+     OnMouseEnter := @VSTMouseEnter;
      OnMouseDown := @VSTMouseDown;
-     OnDblClick := @VSTOnDblClick;
+     OnDblClick := @VSTDblClick;
      OnGetHint := @VSTGetHint;
      OnAfterCellPaint := @VSTAfterCellPaint;
      OnCollapsed := @VSTCollapsed;
@@ -286,7 +307,7 @@ begin
     //add repository(DataType = 0)
     RootNode := FVST.AddChild(nil);
     RootData := FVST.GetNodeData(RootNode);
-    RootData^.Repository := Options.RemoteRepository;
+    RootData^.Repository := Options.RemoteRepository[Options.ActiveRepositoryIndex];
     RootData^.DataType := 0;
     for I := 0 to SerializablePackages.Count - 1 do
     begin
@@ -294,12 +315,15 @@ begin
        Node := FVST.AddChild(RootNode);
        Node^.CheckType := ctTriStateCheckBox;
        Data := FVST.GetNodeData(Node);
+       Data^.PID := I;
        Data^.PackageName := SerializablePackages.Items[I].Name;
        Data^.PackageDisplayName := SerializablePackages.Items[I].DisplayName;
        Data^.PackageState := SerializablePackages.Items[I].PackageState;
        Data^.InstallState := SerializablePackages.GetPackageInstallState(SerializablePackages.Items[I]);
        Data^.HasUpdate := SerializablePackages.Items[I].HasUpdate;
        Data^.DisableInOPM := SerializablePackages.Items[I].DisableInOPM;
+       Data^.Rating := SerializablePackages.Items[I].Rating;
+       Data^.RepositoryDate := SerializablePackages.Items[I].RepositoryDate;
        FVST.IsDisabled[Node] := Data^.DisableInOPM;
        Data^.DataType := 1;
        for J := 0 to SerializablePackages.Items[I].PackageFiles.Count - 1 do
@@ -310,6 +334,8 @@ begin
          ChildNode^.CheckType := ctTriStateCheckBox;
          FVST.IsDisabled[ChildNode] := FVST.IsDisabled[ChildNode^.Parent];
          ChildData := FVST.GetNodeData(ChildNode);
+         ChildData^.PID := I;
+         ChildData^.PFID := J;
          ChildData^.PackageFileName := PackageFile.Name;
          ChildData^.InstalledVersion := PackageFile.InstalledFileVersion;
          ChildData^.UpdateVersion := PackageFile.UpdateVersion;
@@ -321,7 +347,10 @@ begin
          GrandChildNode := FVST.AddChild(ChildNode);
          FVST.IsDisabled[GrandChildNode] := FVST.IsDisabled[GrandChildNode^.Parent];
          GrandChildData := FVST.GetNodeData(GrandChildNode);
-         GrandChildData^.Description := PackageFile.Description;
+         if ChildData^.InstalledVersion <> '' then
+           GrandChildData^.Description := PackageFile.InstalledFileDescription
+         else
+           GrandChildData^.Description := PackageFile.Description;
          GrandChildData^.DataType := 3;
          Inc(UniqueID);
          CreateButton(UniqueID, GrandChildData);
@@ -360,7 +389,10 @@ begin
          GrandChildNode := FVST.AddChild(ChildNode);
          FVST.IsDisabled[GrandChildNode] := FVST.IsDisabled[GrandChildNode^.Parent];
          GrandChildData := FVST.GetNodeData(GrandChildNode);
-         GrandChildData^.License := PackageFile.License;
+         if ChildData^.InstalledVersion <> '' then
+           GrandChildData^.License := PackageFile.InstalledFileLincese
+         else
+           GrandChildData^.License := PackageFile.License;
          GrandChildData^.DataType := 9;
          Inc(UniqueID);
          CreateButton(UniqueID, GrandChildData);
@@ -421,11 +453,11 @@ begin
        GrandChildData^.DownloadURL := SerializablePackages.Items[I].DownloadURL;
        GrandChildData^.DataType := 18;
        //add SVNURL(DataType = 19)
-       GrandChildNode := FVST.AddChild(ChildNode);
+       {GrandChildNode := FVST.AddChild(ChildNode);
        FVST.IsDisabled[GrandChildNode] := FVST.IsDisabled[GrandChildNode^.Parent];
        GrandChildData := FVST.GetNodeData(GrandChildNode);
        GrandChildData^.SVNURL := SerializablePackages.Items[I].SVNURL;
-       GrandChildData^.DataType := 19;
+       GrandChildData^.DataType := 19;}
     end;
     FVST.SortTree(0, opkman_VirtualTrees.sdAscending);
     ExpandEx;
@@ -601,6 +633,70 @@ begin
   HideButtons;
 end;
 
+procedure TVisualTree.DrawStars(ACanvas: TCanvas; AStartIndex: Integer;
+  P: TPoint; AAvarage: Double);
+
+  procedure Draw(const AX, AY: Integer; ATyp, ACnt: Integer);
+  var
+    Bmp: TBitMap;
+    I: Integer;
+  begin
+    Bmp := TBitmap.Create;
+    try
+      Bmp.Width := 16;
+      Bmp.Height := 16;
+      if AStartIndex + ATyp > 25 then
+        ShowMessage('crap');
+      TImageList(FVST.Images).GetBitmap(AStartIndex + ATyp, Bmp);
+      for I := 0 to ACnt - 1 do
+        ACanvas.Draw(AX + I*16 + 5, AY, Bmp);
+    finally
+      Bmp.Free;
+    end;
+  end;
+
+var
+  F: Double;
+  I, X, Y: Integer;
+  Stars, NoStars: Integer;
+  HalfStar: Boolean;
+begin
+  HalfStar := False;
+  F := Frac(AAvarage);
+  I := Trunc(AAvarage);
+  case CompareValue(F, 0.25, 0.005) of
+      -1:
+        begin
+            Stars := I;
+            NoStars := 5 - Stars;
+        end;
+    0, 1:
+        begin
+          if CompareValue(F, 0.75, 0.005) = -1 then
+          begin
+            Stars := I;
+            NoStars := 5 - Stars - 1;
+            HalfStar := True;
+          end
+          else
+          begin
+            Stars := I + 1;
+            NoStars := 5 - Stars;
+          end;
+        end;
+  end;
+  X := P.X;
+  Y := P.Y;
+  Draw(X, Y, 0, Stars);
+  Inc(X, Stars*16);
+  if HalfStar then
+  begin
+    Draw(X, Y, 2, 1);
+    Inc(X, 16);
+  end;
+  Draw(X, Y, 1, NoStars);
+end;
+
 procedure TVisualTree.VSTAfterCellPaint(Sender: TBaseVirtualTree;
   TargetCanvas: TCanvas; Node: PVirtualNode; Column: TColumnIndex;
   const CellRect: TRect);
@@ -608,17 +704,19 @@ var
   Data: PData;
   R: TRect;
   Text: String;
+  P: TPoint;
+  Stars: Integer;
 begin
-  if Column = 5 then
+  if Column = 4 then
   begin
     Data := FVST.GetNodeData(Node);
     if Assigned(Data^.Button)  then
     begin
-      R := FVST.GetDisplayRect(Node, Column, false);
-      Data^.Button.Left   := R.Left + 1;
-      Data^.Button.Width  := R.Right - R.Left -2;
+      R := FVST.GetDisplayRect(Node, Column, False);
+      Data^.Button.Width := 25;
+      Data^.Button.Left   := R.Right - Data^.Button.Width - 1;
       Data^.Button.Top    := R.Top + 1;
-      Data^.Button.Height := R.Bottom - R.Top - 2;
+      Data^.Button.Height := R.Bottom - R.Top - 1;
       case Data^.DataType of
         3: Text := Data^.Description;
         9: Text := Data^.License;
@@ -626,6 +724,25 @@ begin
       Data^.Button.Visible := ((R.Bottom > FVST.Top) and (R.Bottom < FVST.Top + FVST.Height)) and (Trim(Text) <> '');
       Data^.Button.Enabled := not FVST.IsDisabled[Node];
     end;
+  end
+  else if Column = 5 then
+  begin
+    Data := FVST.GetNodeData(Node);
+    if Data^.DataType = 1 then
+    begin
+      R := FVST.GetDisplayRect(Node, Column, False);
+      P.X := R.Left + 1;
+      P.Y := ((R.Bottom - R.Top - 16) div 2) + 1;
+      if (Node = FHoverNode) and (not FLeaving) and (FHoverP.X >= P.X + 1) and (Abs(FHoverP.X - P.X) <= R.Right - R.Bottom) then
+      begin
+        Stars := Trunc((FHoverP.X - P.X)/16) + 1;
+        if Stars > 5 then
+          Stars := 5;
+        DrawStars(TargetCanvas, 23, P, Stars)
+      end
+      else
+        DrawStars(TargetCanvas, 20, P, Data^.Rating);
+    end
   end;
 end;
 
@@ -934,7 +1051,7 @@ begin
     Data := FVST.GetNodeData(Node);
     if Data^.DataType = 1 then
     begin
-      Package := SerializablePackages.FindPackage(Data^.PackageName, fpbPackageName);
+      Package := SerializablePackages.Items[Data^.PID];
       if Package <> nil then
       begin
         if (FVST.CheckState[Node] = csCheckedNormal) or (FVST.CheckState[Node] = csMixedNormal) then
@@ -945,7 +1062,7 @@ begin
     end;
     if Data^.DataType = 2 then
     begin
-      PackageFile := SerializablePackages.FindPackageFile(Data^.PackageFileName);
+      PackageFile := TPackageFile(SerializablePackages.Items[Data^.PID].PackageFiles.Items[Data^.PFID]);
       if PackageFile <> nil then
       begin
         if FVST.CheckState[Node] = csCheckedNormal then
@@ -972,7 +1089,7 @@ begin
     Data := FVST.GetNodeData(Node);
     if (Data^.DataType = 1) then
     begin
-      Package := SerializablePackages.FindPackage(Data^.PackageName, fpbPackageName);
+      Package := SerializablePackages.Items[Data^.PID];
       if Package <> nil then
       begin
         Data^.PackageState := Package.PackageState;
@@ -983,7 +1100,7 @@ begin
     end;
     if Data^.DataType = 2 then
     begin
-      PackageFile := SerializablePackages.FindPackageFile(Data^.PackageFileName);
+      PackageFile := TPackageFile(SerializablePackages.Items[Data^.PID].PackageFiles.Items[Data^.PFID]);
       if PackageFile <> nil then
       begin
         Data^.InstalledVersion := PackageFile.InstalledFileVersion;
@@ -999,7 +1116,7 @@ end;
 procedure TVisualTree.UpdatePackageUStatus;
 var
   Node: PVirtualNode;
-  Data: PData;
+  Data, ParentData: PData;
   Package: TPackage;
   PackageFile: TPackageFile;
 begin
@@ -1009,12 +1126,13 @@ begin
     Data := FVST.GetNodeData(Node);
     if (Data^.DataType = 1) then
     begin
-      Package := SerializablePackages.FindPackage(Data^.PackageName, fpbPackageName);
+      Package := SerializablePackages.Items[Data^.PID];
       if Package <> nil then
       begin
         Data^.DownloadZipURL := Package.DownloadZipURL;
         Data^.HasUpdate := Package.HasUpdate;
         Data^.DisableInOPM := Package.DisableInOPM;
+        Data^.Rating := Package.Rating;
         FVST.IsDisabled[Node] := Data^.DisableInOPM;
         FVST.ReinitNode(Node, False);
         FVST.RepaintNode(Node);
@@ -1022,7 +1140,7 @@ begin
     end;
     if Data^.DataType = 2 then
     begin
-      PackageFile := SerializablePackages.FindPackageFile(Data^.PackageFileName);
+      PackageFile := TPackageFile(SerializablePackages.Items[Data^.PID].PackageFiles.Items[Data^.PFID]);
       if PackageFile <> nil then
       begin
         Data^.UpdateVersion := PackageFile.UpdateVersion;
@@ -1035,11 +1153,24 @@ begin
     if Data^.DataType in [3..19] then
     begin
       FVST.IsDisabled[Node] := FVST.IsDisabled[Node^.Parent];
-      FVST.ReinitNode(Node, False);
-      FVST.RepaintNode(Node);
+      ParentData := FVST.GetNodeData(Node^.Parent);
       if (Data^.DataType = 3) or (Data^.DataType = 9) then
+      begin
+        case Data^.DataType of
+          3: if ParentData^.InstalledVersion <> '' then
+               Data^.Description := PackageFile.InstalledFileDescription
+             else
+               Data^.Description := PackageFile.Description;
+          9: if ParentData^.InstalledVersion <> '' then
+               Data^.License := PackageFile.InstalledFileLincese
+             else
+               Data^.License := PackageFile.License;
+        end;
         if Assigned(Data^.Button) then
           Data^.Button.Enabled := not FVST.IsDisabled[Node];
+      end;
+      FVST.ReinitNode(Node, False);
+      FVST.RepaintNode(Node);
     end;
     Node := FVST.GetNext(Node);
   end;
@@ -1051,52 +1182,23 @@ procedure TVisualTree.VSTBeforeCellPaint(Sender: TBaseVirtualTree;
 var
   Data: PData;
 begin
-  Data := Sender.GetNodeData(Node);
-  if (Data^.DataType = 0) or (Data^.DataType = 1) or (Data^.DataType = 2) then
+  if CellPaintMode = cpmPaint then
   begin
-    if (Node = Sender.FocusedNode) then
-    begin
-      case Column of
-        0: begin
-             if Data^.DataType = 0 then
-               TargetCanvas.Brush.Color := $00E5E5E5 //00D8D8D8
-             else
-               TargetCanvas.Brush.Color := $00E5E5E5;
-             TargetCanvas.FillRect(CellRect);
-             TargetCanvas.Brush.Color := FVST.Colors.FocusedSelectionColor;
-             TargetCanvas.FillRect(ContentRect)
-           end
-        else
-           begin
-             TargetCanvas.Brush.Color := FVST.Colors.FocusedSelectionColor;
-             TargetCanvas.FillRect(CellRect)
-           end;
-      end;
-    end
+    Data := Sender.GetNodeData(Node);
+
+    if (Data^.DataType = 0) or (Data^.DataType = 1) or (Data^.DataType = 2) then
+      TargetCanvas.Brush.Color := $00E5E5E5
     else
-    begin
-      if Data^.DataType = 0 then
-         TargetCanvas.Brush.Color := $00E5E5E5 //00D8D8D8
-      else if Data^.DataType = 1 then
-        TargetCanvas.Brush.Color := $00E5E5E5;
-      TargetCanvas.FillRect(CellRect);
-    end;
-  end
-  else
-  begin
+      TargetCanvas.Brush.Color := clBtnFace;
+    TargetCanvas.FillRect(CellRect);
     if (Node = Sender.FocusedNode) then
     begin
       TargetCanvas.Brush.Color := FVST.Colors.FocusedSelectionColor;
       if Column = 0 then
         TargetCanvas.FillRect(ContentRect)
-      else
-        TargetCanvas.FillRect(CellRect);
+     else
+       TargetCanvas.FillRect(CellRect);
     end
-    else
-    begin
-      TargetCanvas.Brush.Style := bsClear;
-      TargetCanvas.FillRect(CellRect);
-    end;
   end;
 end;
 
@@ -1119,6 +1221,8 @@ end;
 
 procedure TVisualTree.VSTChecked(Sender: TBaseVirtualTree; Node: PVirtualNode);
 begin
+  if FCheckingNodes then
+    Exit;
   if Assigned(FOnChecked) then
     FOnChecked(Self);
 end;
@@ -1156,7 +1260,7 @@ begin
                 DataSearch := FVST.GetNodeData(NodeSearch);
                 if DataSearch^.DataType = 2 then
                 begin
-                  DependencyPackage := SerializablePackages.FindPackageFile(DataSearch^.PackageFileName);
+                  DependencyPackage := TPackageFile(SerializablePackages.Items[DataSearch^.PID].PackageFiles.Items[DataSearch^.PFID]);
                   if (FVST.CheckState[NodeSearch] <> csCheckedNormal) and
                        (UpperCase(DataSearch^.PackageFileName) = UpperCase(PackageFileName)) and
                          ((SerializablePackages.IsDependencyOk(TPackageDependency(PackageList.Items[I]), DependencyPackage)) and
@@ -1164,10 +1268,10 @@ begin
                   begin
                     if (Result = mrNone) or (Result = mrYes) then
                     begin
-                      Msg := rsProgressFrm_lbPackage_Caption + ' "' + Data^.PackageFileName + '" ' + rsMainFrm_rsPackageDependency0 + ' "' + DataSearch^.PackageFileName + '". ' + rsMainFrm_rsPackageDependency1;
+                      Msg := Format(rsMainFrm_rsPackageDependency0, [Data^.PackageFileName, DataSearch^.PackageFileName]);
                       Result := MessageDlgEx(Msg, mtConfirmation, [mbYes, mbYesToAll, mbNo, mbNoToAll, mbCancel], TForm(FVST.Parent.Parent));
                       if Result in [mrNo, mrNoToAll] then
-                        MessageDlgEx(rsMainFrm_rsPackageDependency2, mtInformation, [mbOk], TForm(FVST.Parent.Parent));
+                        MessageDlgEx(rsMainFrm_rsPackageDependency1, mtInformation, [mbOk], TForm(FVST.Parent.Parent));
                       if (Result = mrNoToAll) or (Result = mrCancel) then
                         Exit;
                     end;
@@ -1244,7 +1348,16 @@ var
 begin
   Data := FVST.GetNodeData(Node);
   if Column = 0 then
-    ImageIndex := Data^.DataType
+  begin
+    case Data^.DataType of
+      1: if (Options.DaysToShowNewPackages > 0) and (DaysBetween(Now, Data^.RepositoryDate) <= Options.DaysToShowNewPackages) then
+           ImageIndex := 25
+         else
+           ImageIndex := 1;
+      else
+        ImageIndex := Data^.DataType
+    end;
+  end;
 end;
 
 function TVisualTree.GetDisplayString(const AStr: String): String;
@@ -1272,134 +1385,149 @@ var
   Data: PData;
 begin
   Data := FVST.GetNodeData(Node);
-  if Column = 0 then
+  if TextType = ttStatic then
   begin
-    case Data^.DataType of
-      0: CellText := Data^.Repository;
-      1: if Trim(Data^.PackageDisplayName) = '' then
-           CellText := Data^.PackageName
-         else
-           CellText := Data^.PackageDisplayName;
-      2: CellText := Data^.PackageFileName;
-      3: CellText := rsMainFrm_VSTText_Description;
-      4: CellText := rsMainFrm_VSTText_Author;
-      5: CellText := rsMainFrm_VSTText_LazCompatibility;
-      6: CellText := rsMainFrm_VSTText_FPCCompatibility;
-      7: CellText := rsMainFrm_VSTText_SupportedWidgetsets;
-      8: CellText := rsMainFrm_VSTText_Packagetype;
-      9: CellText := rsMainFrm_VSTText_License;
-     10: CellText := rsMainFrm_VSTText_Dependecies;
-     11: CellText := rsMainFrm_VSTText_PackageInfo;
-     12: CellText := rsMainFrm_VSTText_Category;
-     13: CellText := rsMainFrm_VSTText_RepositoryFilename;
-     14: CellText := rsMainFrm_VSTText_RepositoryFileSize;
-     15: CellText := rsMainFrm_VSTText_RepositoryFileHash;
-     16: CellText := rsMainFrm_VSTText_RepositoryFileDate;
-     17: CellText := rsMainFrm_VSTText_HomePageURL;
-     18: CellText := rsMainFrm_VSTText_DownloadURL;
-     19: CellText := rsMainFrm_VSTText_SVNURL;
-    end;
-  end
-  else if Column = 1 then
-  begin
-    case Data^.DataType of
-      1: case Data^.InstallState of
-          //0: CellText := rsMainFrm_VSTText_Install0;
-          1: CellText := rsMainFrm_VSTText_Install1;
-          2: CellText := rsMainFrm_VSTText_Install2;
-      end;
-      2: begin
-           if Data^.InstalledVersion <> '' then
-             CellText := Data^.InstalledVersion
-           else
-             CellText := '-';
-         end
+    if Column = 0 then
+    begin
+      if (Options.DaysToShowNewPackages > 0) and (DaysBetween(Now, Data^.RepositoryDate) <= Options.DaysToShowNewPackages) then
+        CellText := '- ' + FormatDateTime('YYYY.MM.DD', Data^.RepositoryDate)
       else
         CellText := '';
     end
-  end
-  else if Column = 2 then
-  begin
-    if Data^.DataType = 2 then
-      CellText := Data^.Version
     else
       CellText := '';
   end
-  else if Column = 3 then
+  else if TextType = ttNormal then
   begin
-    case Data^.DataType of
-      1: if Data^.HasUpdate then
-           CellText := 'NEW';
-      2: begin
-           if (Data^.InstalledVersion <> '') and (Data^.UpdateVersion <> '') then
-             CellText := Data^.UpdateVersion
+    if Column = 0 then
+    begin
+      case Data^.DataType of
+        0: CellText := Data^.Repository;
+        1: if Trim(Data^.PackageDisplayName) = '' then
+             CellText := Data^.PackageName
            else
-             CellText := '-';
-         end
+             CellText := Data^.PackageDisplayName;
+        2: CellText := Data^.PackageFileName;
+        3: CellText := rsMainFrm_VSTText_Description;
+        4: CellText := rsMainFrm_VSTText_Author;
+        5: CellText := rsMainFrm_VSTText_LazCompatibility;
+        6: CellText := rsMainFrm_VSTText_FPCCompatibility;
+        7: CellText := rsMainFrm_VSTText_SupportedWidgetsets;
+        8: CellText := rsMainFrm_VSTText_Packagetype;
+        9: CellText := rsMainFrm_VSTText_License;
+       10: CellText := rsMainFrm_VSTText_Dependecies;
+       11: CellText := rsMainFrm_VSTText_PackageInfo;
+       12: CellText := rsMainFrm_VSTText_Category;
+       13: CellText := rsMainFrm_VSTText_RepositoryFilename;
+       14: CellText := rsMainFrm_VSTText_RepositoryFileSize;
+       15: CellText := rsMainFrm_VSTText_RepositoryFileHash;
+       16: CellText := rsMainFrm_VSTText_RepositoryFileDate;
+       17: CellText := rsMainFrm_VSTText_HomePageURL;
+       18: CellText := rsMainFrm_VSTText_DownloadURL;
+       19: CellText := rsMainFrm_VSTText_SVNURL;
+      end;
+    end
+    else if Column = 1 then
+    begin
+      case Data^.DataType of
+        1: case Data^.InstallState of
+            //0: CellText := rsMainFrm_VSTText_Install0;
+            1: CellText := rsMainFrm_VSTText_Install1;
+            2: CellText := rsMainFrm_VSTText_Install2;
+        end;
+        2: begin
+             if Data^.InstalledVersion <> '' then
+               CellText := Data^.InstalledVersion
+             else
+               CellText := '-';
+           end
+        else
+          CellText := '';
+      end
+    end
+    else if Column = 2 then
+    begin
+      if Data^.DataType = 2 then
+        CellText := Data^.Version
       else
         CellText := '';
     end
-  end
-  else if Column = 4 then
-  begin
-    case Data^.DataType of
-      0: CellText := '';
-      1: CellText := '';
-      2: case Ord(Data^.PackageState) of
-           0: CellText := rsMainFrm_VSTText_PackageState0;
-           1: CellText := rsMainFrm_VSTText_PackageState1;
-           2: CellText := rsMainFrm_VSTText_PackageState2;
-           3: begin
-                if not Data^.HasUpdate then
-                begin
-                  if (Data^.UpdateVersion = '') then
+    else if Column = 3 then
+    begin
+      case Data^.DataType of
+        1: if Data^.HasUpdate then
+             CellText := 'NEW';
+        2: begin
+             if (Data^.InstalledVersion <> '') and (Data^.UpdateVersion <> '') then
+               CellText := Data^.UpdateVersion
+             else
+               CellText := '-';
+           end
+        else
+          CellText := '';
+      end
+    end
+    else if Column = 4 then
+    begin
+      case Data^.DataType of
+        0: CellText := '';
+        1: CellText := '';
+        2: case Ord(Data^.PackageState) of
+             0: CellText := rsMainFrm_VSTText_PackageState0;
+             1: CellText := rsMainFrm_VSTText_PackageState1;
+             2: CellText := rsMainFrm_VSTText_PackageState2;
+             3: begin
+                  if not Data^.HasUpdate then
                   begin
-                    if Data^.InstalledVersion >= Data^.Version then
-                      CellText := rsMainFrm_VSTText_PackageState4
+                    if (Data^.UpdateVersion = '') then
+                    begin
+                      if Data^.InstalledVersion >= Data^.Version then
+                        CellText := rsMainFrm_VSTText_PackageState4
+                      else
+                        CellText := rsMainFrm_VSTText_PackageState5
+                    end
                     else
-                      CellText := rsMainFrm_VSTText_PackageState5
+                    begin
+                      if (Data^.InstalledVersion >= Data^.UpdateVersion) then
+                        CellText := rsMainFrm_VSTText_PackageState4
+                      else
+                        CellText := rsMainFrm_VSTText_PackageState6
+                    end;
                   end
                   else
-                  begin
-                    if (Data^.InstalledVersion >= Data^.UpdateVersion) then
-                      CellText := rsMainFrm_VSTText_PackageState4
-                    else
-                      CellText := rsMainFrm_VSTText_PackageState6
-                  end;
-                end
-                else
-                  CellText := rsMainFrm_VSTText_PackageState6;
-                Data^.IsUpdated := CellText = rsMainFrm_VSTText_PackageState4;
-              end;
-         end;
-      3: CellText := GetDisplayString(Data^.Description);
-      4: CellText := Data^.Author;
-      5: CellText := Data^.LazCompatibility;
-      6: CellText := Data^.FPCCompatibility;
-      7: CellText := Data^.SupportedWidgetSet;
-      8: case Data^.PackageType of
-           ptRunAndDesignTime: CellText := rsMainFrm_VSTText_PackageType0;
-           ptDesignTime:       CellText := rsMainFrm_VSTText_PackageType1;
-           ptRunTime:          CellText := rsMainFrm_VSTText_PackageType2;
-           ptRunTimeOnly:      CellText := rsMainFrm_VSTText_PackageType3;
-         end;
-      9: CellText := GetDisplayString(Data^.License);
-     10: CellText := Data^.Dependencies;
-     11: CellText := '';
-     12: CellText := TranslateCategories(Data^.Category);
-     13: CellText := Data^.RepositoryFileName;
-     14: CellText := FormatSize(Data^.RepositoryFileSize);
-     15: CellText := Data^.RepositoryFileHash;
-     16: CellText := FormatDateTime('YYYY.MM.DD', Data^.RepositoryDate);
-     17: CellText := Data^.HomePageURL;
-     18: CellText := Data^.DownloadURL;
-     19: CellText := Data^.SVNURL;
-    end;
-  end
-  else if Column = 5 then
-  begin
-    CellText := '';
-  end
+                    CellText := rsMainFrm_VSTText_PackageState6;
+                  Data^.IsUpdated := CellText = rsMainFrm_VSTText_PackageState4;
+                end;
+           end;
+        3: CellText := GetDisplayString(Data^.Description);
+        4: CellText := Data^.Author;
+        5: CellText := Data^.LazCompatibility;
+        6: CellText := Data^.FPCCompatibility;
+        7: CellText := Data^.SupportedWidgetSet;
+        8: case Data^.PackageType of
+             ptRunAndDesignTime: CellText := rsMainFrm_VSTText_PackageType0;
+             ptDesignTime:       CellText := rsMainFrm_VSTText_PackageType1;
+             ptRunTime:          CellText := rsMainFrm_VSTText_PackageType2;
+             ptRunTimeOnly:      CellText := rsMainFrm_VSTText_PackageType3;
+           end;
+        9: CellText := GetDisplayString(Data^.License);
+       10: CellText := Data^.Dependencies;
+       11: CellText := '';
+       12: CellText := TranslateCategories(Data^.Category);
+       13: CellText := Data^.RepositoryFileName;
+       14: CellText := FormatSize(Data^.RepositoryFileSize);
+       15: CellText := Data^.RepositoryFileHash;
+       16: CellText := FormatDateTime('YYYY.MM.DD', Data^.RepositoryDate);
+       17: CellText := Data^.HomePageURL;
+       18: CellText := Data^.DownloadURL;
+       19: CellText := Data^.SVNURL;
+      end;
+    end
+    else if Column = 5 then
+    begin
+      CellText := '';
+    end
+  end;
 end;
 
 procedure TVisualTree.VSTHeaderClick(Sender: TVTHeader; Column: TColumnIndex;
@@ -1437,60 +1565,81 @@ var
   Data: PData;
 begin
   Data := FVST.GetNodeData(Node);
-  case column of
-    1: begin
-         if Node <> Sender.FocusedNode then
-         begin
-           if Data^.DataType = 1 then
+  if TextType = ttStatic then
+  begin
+    if Column = 0 then
+    begin
+      if (Options.DaysToShowNewPackages > 0) and (DaysBetween(Now, Data^.RepositoryDate) <= Options.DaysToShowNewPackages) then
+        TargetCanvas.Font.Style := TargetCanvas.Font.Style - [fsBold];
+      if Node <> Sender.FocusedNode then
+        TargetCanvas.Font.Color := clBlack
+      else
+        TargetCanvas.Font.Color := clWhite;
+    end
+  end
+  else if TextType = ttNormal then
+  begin
+    case column of
+      2: begin
+           if Data^.DataType = 2 then
            begin
-             case Data^.InstallState of
-               1: TargetCanvas.Font.Color := clBlack;
-               2: TargetCanvas.Font.Color := clBlack;
-             end;
+             if (Data^.InstalledVersion = '') or ((Data^.InstalledVersion <> '') and (Data^.InstalledVersion < Data^.Version)) then
+               TargetCanvas.Font.Style := TargetCanvas.Font.Style + [fsBold]
+             else
+               TargetCanvas.Font.Style := TargetCanvas.Font.Style - [fsBold];
+           end;
+           if Node <> Sender.FocusedNode then
+             TargetCanvas.Font.Color := clBlack
+           else
+             TargetCanvas.Font.Color := clWhite;
+         end;
+      3: begin
+           case Data^.DataType of
+             1: TargetCanvas.Font.Style := TargetCanvas.Font.Style + [fsBold];
+             2: if Data^.HasUpdate then
+                  TargetCanvas.Font.Style := TargetCanvas.Font.Style + [fsBold]
+                else
+                  TargetCanvas.Font.Style := TargetCanvas.Font.Style - [fsBold];
+           end;
+           if Node <> Sender.FocusedNode then
+             TargetCanvas.Font.Color := clBlack
+           else
+             TargetCanvas.Font.Color := clWhite;
+         end;
+      4: begin
+           if (FHoverNode = Node) and (FHoverColumn = Column) and ((Data^.DataType = 17) or (Data^.DataType = 18)) then
+           begin
+             TargetCanvas.Font.Style := TargetCanvas.Font.Style + [fsUnderline];
+             if  Node <> Sender.FocusedNode then
+               TargetCanvas.Font.Color := clBlue
+             else
+               TargetCanvas.Font.Color := clWhite;
+           end
+           else if (Data^.DataType = 2) and (Data^.IsUpdated) then
+           begin
+             TargetCanvas.Font.Style := TargetCanvas.Font.Style + [fsBold];
+             if  Node <> Sender.FocusedNode then
+               TargetCanvas.Font.Color := clGreen
+             else
+               TargetCanvas.Font.Color := clWhite;
+           end
+           else
+           begin
+             if  Node <> Sender.FocusedNode then
+               TargetCanvas.Font.Color := clBlack
+             else
+               TargetCanvas.Font.Color := clWhite;
            end;
          end
-         else
-           TargetCanvas.Font.Color := clWhite;
-       end;
-    3: begin
-         case Data^.DataType of
-           1: TargetCanvas.Font.Style := TargetCanvas.Font.Style + [fsBold];
-           2: if Data^.HasUpdate then
-                TargetCanvas.Font.Style := TargetCanvas.Font.Style + [fsBold]
-              else
-                TargetCanvas.Font.Style := TargetCanvas.Font.Style - [fsBold];
-         end;
-         if Node <> Sender.FocusedNode then
-           TargetCanvas.Font.Color := clBlack
-         else
-           TargetCanvas.Font.Color := clWhite;
-       end;
-    4: begin
-         if (FHoverNode = Node) and (FHoverColumn = Column) and ((Data^.DataType = 17) or (Data^.DataType = 18)) then
-         begin
-           TargetCanvas.Font.Style := TargetCanvas.Font.Style + [fsUnderline];
-           if  Node <> Sender.FocusedNode then
-             TargetCanvas.Font.Color := clBlue
-           else
-             TargetCanvas.Font.Color := clWhite;
-         end
-         else if (Data^.DataType = 2) and (Data^.IsUpdated) then
-         begin
-           TargetCanvas.Font.Style := TargetCanvas.Font.Style + [fsBold];
-           if  Node <> Sender.FocusedNode then
-             TargetCanvas.Font.Color := clGreen
-           else
-             TargetCanvas.Font.Color := clWhite;
-         end;
-       end
-    else
-      begin
-        if  Node <> Sender.FocusedNode then
-          TargetCanvas.Font.Color := FVST.Font.Color
-        else
-          TargetCanvas.Font.Color := clWhite;
-      end;
-  end;
+      else
+        begin
+          if  Node <> Sender.FocusedNode then
+            TargetCanvas.Font.Color := FVST.Font.Color
+          else
+            TargetCanvas.Font.Color := clWhite;
+        end;
+    end;
+  end
 end;
 
 procedure TVisualTree.VSTFreeNode(Sender: TBaseVirtualTree; Node: PVirtualNode);
@@ -1503,20 +1652,50 @@ begin
   Finalize(Data^);
 end;
 
-procedure TVisualTree.VSTMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
+function TVisualTree.GetColumn(const AX: Integer): Integer;
 var
- I, L, R: Integer;
+  I: Integer;
+  L, R: Integer;
 begin
-  FHoverColumn := -1;
-  FHoverNode:= VST.GetNodeAt(X, Y);
+  Result := -1;
   for I := 0 to VST.Header.Columns.Count - 1 do
   begin
     VST.Header.Columns.GetColumnBounds(I, L, R);
-    if (X >= L) and (X <= R) then
+    if (AX >= L) and (AX <= R) then
     begin
-      FHoverColumn := I;
+      Result := I;
       Break;
     end;
+  end;
+end;
+
+
+procedure TVisualTree.VSTMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
+begin
+  FHoverColumn := -1;
+  FHoverP.X := X;
+  FHoverP.Y := Y;
+  FHoverNode:= VST.GetNodeAt(X, Y);
+  FHoverColumn := GetColumn(X);
+  if (FHoverColumn = 5) and (FHoverNode <> nil) then
+  begin
+    FVST.ReinitNode(FHoverNode, False);
+    FVST.RepaintNode(FHoverNode);
+  end;
+end;
+
+procedure TVisualTree.VSTMouseEnter(Sender: TObject);
+begin
+  FLeaving := False;
+end;
+
+procedure TVisualTree.VSTMouseLeave(Sender: TObject);
+begin
+  if Assigned(FHoverNode) then
+  begin
+    FLeaving := True;
+    FVST.ReinitNode(FHoverNode, False);
+    FVST.RepaintNode(FHoverNode)
   end;
 end;
 
@@ -1525,37 +1704,55 @@ procedure TVisualTree.VSTMouseDown(Sender: TObject; Button: TMouseButton;
 var
  Node: PVirtualNode;
  Data: PData;
- I, L, R: Integer;
+ MenuItem: TMenuItem;
+ DownColumn: Integer;
+ R: TRect;
+ PackageName: String;
+ Package: TPackage;
 begin
-  if Button = mbLeft then
+  Node := FVST.GetNodeAt(X, Y);
+  if Node <> nil then
   begin
-    Node := FVST.GetNodeAt(X, Y);
-    if Node <> nil then
+    DownColumn := GetColumn(X);
+    Data := FVST.GetNodeData(Node);
+    if Button = mbLeft then
     begin
-      Data := FVST.GetNodeData(Node);
-      if (Data^.DataType = 17) or (Data^.DataType = 18) then
-      begin
-        for I := 0 to VST.Header.Columns.Count - 1 do
-         begin
-           VST.Header.Columns.GetColumnBounds(I, L, R);
-           if (X >= L) and (X <= R) and (I = 4) then
+      case DownColumn of
+        4: if (Data^.DataType = 17) or (Data^.DataType = 18) and (DownColumn = 4) then
            begin
              FLinkClicked := True;
              if (Data^.DataType = 17) and (Trim(Data^.HomePageURL) <> '') then
-             begin
-               FLink := Data^.HomePageURL;
-               Break
-             end
+               FLink := Data^.HomePageURL
              else if (Data^.DataType = 18) and (Trim(Data^.DownloadURL) <> '') then
-             begin
                FLink := Data^.DownloadURL;
-               Break;
-             end;
            end;
-         end;
+        5: begin
+             R := FVST.GetDisplayRect(Node, DownColumn, False);
+             Data^.Rating := Trunc((FHoverP.X - R.Left - 1)/16) + 1;
+             if Data^.Rating > 5 then
+               Data^.Rating := 5;
+             Package := SerializablePackages.Items[Data^.PID];
+             if Package <> nil then
+               Package.Rating := Data^.Rating;
+             if Data^.PackageDisplayName <> '' then
+               PackageName := Data^.PackageDisplayName
+             else
+               PackageName := Data^.PackageName;
+             MessageDlgEx(Format(rsMainFrm_rsPackageRating, [PackageName, InttoStr(Data^.Rating)]), mtInformation, [mbOk],  TForm(FVST.Parent.Parent));
+           end;
       end;
+    end
+    else if Button = mbRight then
+    begin
+      MenuItem := FVST.PopupMenu.Items.Find(rsMainFrm_miCopyToClpBrd);
+      if MenuItem <> nil then
+        MenuItem.Enabled := ((Data^.DataType = 17) and (Trim(Data^.HomePageURL) <> '')) or
+                            ((Data^.DataType = 18) and (Trim(Data^.DownloadURL) <> ''));
+      MenuItem := FVST.PopupMenu.Items.Find(rsMainFrm_miResetRating);
+      if MenuItem <> nil then
+        MenuItem.Enabled := (DownColumn = 5) and (Data^.Rating <> 0);
     end;
-  end;
+  end
 end;
 
 procedure TVisualTree.VSTGetHint(Sender: TBaseVirtualTree; Node: PVirtualNode;
@@ -1567,23 +1764,43 @@ begin
   Data := FVST.GetNodeData(Node);
   if (Column <> 4) then
     Exit;
-  LineBreakStyle := hlbForceMultiLine;
+  LineBreakStyle := hlbForceSingleLine;
   case Data^.DataType of
     3: HintText := Data^.Description;
-   10: HintText := Data^.License;
+    4: HintText := Data^.Author;
+    5: HintText := Data^.LazCompatibility;
+    6: HintText := Data^.FPCCompatibility;
+    7: HintText := Data^.SupportedWidgetSet;
+    8: case Data^.PackageType of
+         ptRunAndDesignTime: HintText := rsMainFrm_VSTText_PackageType0;
+         ptDesignTime:       HintText := rsMainFrm_VSTText_PackageType1;
+         ptRunTime:          HintText := rsMainFrm_VSTText_PackageType2;
+         ptRunTimeOnly:      HintText := rsMainFrm_VSTText_PackageType3;
+       end;
+    9: HintText := GetDisplayString(Data^.License);
+    10: HintText := Data^.Dependencies;
+    11: HintText := '';
+    12: HintText := TranslateCategories(Data^.Category);
+    13: HintText := Data^.RepositoryFileName;
+    14: HintText := FormatSize(Data^.RepositoryFileSize);
+    15: HintText := Data^.RepositoryFileHash;
+    16: HintText := FormatDateTime('YYYY.MM.DD', Data^.RepositoryDate);
+    17: HintText := Data^.HomePageURL;
+    18: HintText := Data^.DownloadURL;
+    19: HintText := Data^.SVNURL;
    else
        HintText := '';
   end;
 end;
 
-procedure TVisualTree.VSTOnDblClick(Sender: TObject);
+procedure TVisualTree.VSTDblClick(Sender: TObject);
 begin
   if FLinkClicked then
   begin
     FLinkClicked := False;
     FHoverColumn := -1;
     FHoverNode := nil;
-    OpenDocument(FLink);
+    OpenURL(FLink);
   end;
 end;
 

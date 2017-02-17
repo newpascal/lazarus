@@ -15,7 +15,9 @@ unit PostScriptUnicode;
 interface
 
 uses
-  Classes, SysUtils,Math,Maps;
+  Classes, SysUtils, Math,
+  // LazUtils
+  Maps;
 
 type
   TUnicodeBlock = record

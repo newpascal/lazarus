@@ -14,8 +14,8 @@
 
   A copy of the GNU General Public License is available on the World Wide Web
   at <http://www.gnu.org/copyleft/gpl.html>. You can also obtain it by writing
-  to the Free Software Foundation, Inc., 59 Temple Place - Suite 330, Boston,
-  MA 02111-1307, USA.
+  to the Free Software Foundation, Inc., 51 Franklin Street - Fifth Floor,
+  Boston, MA 02110-1335, USA.
 }
 {
 Icons from Tango theme:
@@ -816,11 +816,7 @@ begin
   fOutputIPC := TSimpleIPCClient.Create(nil);
   fOutputIPC.ServerID := ServerName+'client';
   try
-    if fOutputIPC.ServerRunning
-{$IFDEF STALE_PIPE_WORKAROUND}
-      and not IPCPipeIsStale(fOutputIPC)
-{$ENDIF}
-    then
+    if fOutputIPC.ServerRunning then
       fOutputIPC.Active := True;
   except
     fOutputIPC.Active := False;

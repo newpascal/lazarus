@@ -14,7 +14,7 @@
  *   A copy of the GNU General Public License is available on the World    *
  *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
  *   obtain it by writing to the Free Software Foundation,                 *
- *   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.        *
+ *   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
  *                                                                         *
  ***************************************************************************
 
@@ -30,9 +30,7 @@ interface
 
 uses
   Classes, SysUtils, fpjson, opkman_httpclient, opkman_timer, opkman_common,
-  opkman_serializablepackages,
-
-  dialogs;
+  opkman_serializablepackages;
 
 type
   TDownloadType = (dtJSON, dtPackage, dtUpdate);
@@ -331,7 +329,7 @@ begin
     else
     begin
       FErrTyp := etConfig;
-      FErrMsg := rsMainFrm_rsMessageNoRepository0 + sLineBreak + rsMainFrm_rsMessageNoRepository1;
+      FErrMsg := rsMainFrm_rsMessageNoRepository0;
     end;
     if FTimer.Enabled then
       FTimer.StopTimer;
@@ -347,7 +345,7 @@ begin
       if SerializablePackages.Items[I].IsDownloadable then
       begin
         Inc(FCnt);
-        FFrom := Options.RemoteRepository + SerializablePackages.Items[I].RepositoryFileName;
+        FFrom := Options.RemoteRepository[Options.ActiveRepositoryIndex] + SerializablePackages.Items[I].RepositoryFileName;
         FTo := FDownloadTo + SerializablePackages.Items[I].RepositoryFileName;
         FCurSize := SerializablePackages.Items[I].RepositoryFileSize;
         DS := TDownloadStream.Create(TFileStream.Create(FTo, fmCreate));
@@ -416,7 +414,6 @@ begin
     end;
     if FNeedToBreak then
       Exit;
-    Sleep(2000);
     if (UpdCnt = 0) then
     begin
       FUSuccess := False;
@@ -502,7 +499,7 @@ end;
 
 procedure TThreadDownload.DownloadJSON(const ATimeOut: Integer = -1);
 begin
-  FRemoteJSONFile := Options.RemoteRepository + cRemoteJSONFile;
+  FRemoteJSONFile := Options.RemoteRepository[Options.ActiveRepositoryIndex] + cRemoteJSONFile;
   FDownloadType := dtJSON;
   FTimer := TThreadTimer.Create;
   FTimer.Interval := ATimeOut;

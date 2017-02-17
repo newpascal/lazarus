@@ -14,7 +14,7 @@
  *   A copy of the GNU General Public License is available on the World    *
  *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
  *   obtain it by writing to the Free Software Foundation,                 *
- *   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.        *
+ *   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
  *                                                                         *
  ***************************************************************************
 
@@ -40,10 +40,11 @@ interface
 
 uses
   // RTL, FCL
-  Classes, SysUtils, resource,
+  Classes, SysUtils, typinfo, resource,
   // LCL
-  Controls, ExtCtrls, Graphics, LCLProc, FileUtil, Laz2_XMLCfg, lazutf8classes,
-  LazClasses, LazFileUtils, LResources, Forms, Dialogs, ComCtrls, LCLType, LazUTF8,
+  Graphics, LCLProc, LResources, Forms, Dialogs, ComCtrls, LCLType,
+  // LazUtils
+  FileUtil, LazFileUtils, LazUTF8, LazClasses, LazUTF8Classes, Laz2_XMLCfg,
   // Synedit
   SynEdit, SynEditAutoComplete, SynEditKeyCmds, SynEditTypes,
   SynEditMiscClasses, SynBeautifier, SynEditTextTrimmer, SynEditMouseCmds,
@@ -54,18 +55,19 @@ uses
   SynEditMarkupSpecialChar,
   SourceSynEditor,
   // SynEdit Highlighters
-  SynEditHighlighter, SynEditHighlighterFoldBase,
-  SynHighlighterCPP, SynHighlighterHTML, SynHighlighterJava, SynHighlighterLFM,
-  SynHighlighterPas, SynHighlighterPerl, SynHighlighterPHP, SynHighlighterSQL,
+  SynEditHighlighter, SynEditHighlighterFoldBase, SynHighlighterCPP,
+  SynHighlighterHTML, SynHighlighterJava, SynHighlighterLFM, SynHighlighterPas,
+  SynHighlighterPerl, SynHighlighterPHP, SynHighlighterSQL,
   SynHighlighterPython, SynHighlighterUNIXShellScript, SynHighlighterXML,
-  SynHighlighterJScript, SynHighlighterDiff, SynHighlighterBat, SynHighlighterIni,
-  SynHighlighterPo, SynHighlighterPike, SynPluginMultiCaret,
+  SynHighlighterJScript, SynHighlighterDiff, SynHighlighterBat,
+  SynHighlighterIni, SynHighlighterPo, SynHighlighterPike, SynPluginMultiCaret,
+  SynEditMarkupFoldColoring, SynEditMarkup,
   // codetools
   LinkScanner, CodeToolManager,
   // IDEIntf
-  IDECommands, SrcEditorIntf, IDEOptionsIntf, IDEDialogs,
+  IDECommands, SrcEditorIntf, IDEOptionsIntf, IDEDialogs, EditorSyntaxHighlighterDef,
   // IDE
-  SourceMarks, LazarusIDEStrConsts, IDEProcs, KeyMapping, LazConf, typinfo;
+  SourceMarks, LazarusIDEStrConsts, IDEProcs, KeyMapping, LazConf;
 
 const
   DefaultCompletionLongLineHintType = sclpExtendRightOnly;
@@ -82,11 +84,6 @@ type
   TLazSynPluginSyncroEditFormSel = class(TForm)    end;
   TLazSynPluginSyncroEditForm = class(TForm)       end;
   TLazSynPluginSyncroEditFormOff = class(TForm)    end;
-
-  TLazSyntaxHighlighter =
-    (lshNone, lshText, lshFreePascal, lshDelphi, lshLFM, lshXML, lshHTML,
-    lshCPP, lshPerl, lshJava, lshBash, lshPython, lshPHP, lshSQL, lshJScript,
-    lshDiff, lshBat, lshIni, lshPo, lshPike);
 
   TColorSchemeAttributeFeature =
     ( hafBackColor, hafForeColor, hafFrameColor, hafAlpha, hafPrior,
@@ -700,8 +697,7 @@ type
     DefaultFileExtensions: string;
     ColorScheme: String;
     SampleSource: String;
-    AddAttrSampleLines: array[TAdditionalHilightAttribute] of
-    Integer; // first line = 1
+    AddAttrSampleLines: array[TAdditionalHilightAttribute] of Integer; // first line = 1
     MappedAttributes: TStringList; // map attributes to pascal
     DefaultCommentType: TCommentType;
     CaretXY: TPoint;
@@ -727,8 +723,7 @@ type
     function FindByType(AType: TLazSyntaxHighlighter): Integer;
     function GetDefaultFilextension(AType: TLazSyntaxHighlighter): String;
     function GetInfoByType(AType: TLazSyntaxHighlighter): TEditOptLanguageInfo;
-    property Items[Index: Integer]: TEditOptLanguageInfo read GetInfos;
-      default;
+    property Items[Index: Integer]: TEditOptLanguageInfo read GetInfos; default;
   end;
 
   TEditorOptions = class;
@@ -1396,6 +1391,8 @@ type
 
     // Code Folding
     FUseCodeFolding: Boolean;
+    FUseMarkupWordBracket: Boolean;
+    FUseMarkupOutline: Boolean;
     FReverseFoldPopUpOrder: Boolean;
 
     // Multi window
@@ -1459,6 +1456,7 @@ type
     procedure GetSynEditPreviewSettings(APreviewEditor: TObject);
     procedure ApplyFontSettingsTo(ASynEdit: TSynEdit);
 
+    function ExtensionToLazSyntaxHighlighter(Ext: String): TLazSyntaxHighlighter; override;
     function CreateSyn(LazSynHilighter: TLazSyntaxHighlighter): TSrcIDEHighlighter;
     function ReadColorScheme(const LanguageName: String): String;
     function ReadPascalColorScheme: String;
@@ -1605,6 +1603,10 @@ type
     // Code Folding
     property UseCodeFolding: Boolean
         read FUseCodeFolding write FUseCodeFolding default True;
+    property UseMarkupWordBracket: Boolean
+        read FUseMarkupWordBracket write FUseMarkupWordBracket default True;
+    property UseMarkupOutline: Boolean
+        read FUseMarkupOutline write FUseMarkupOutline default False;
 
     // Multi window
     property MultiWinEditAccessOrder: TEditorOptionsEditAccessOrderList
@@ -1693,39 +1695,10 @@ type
     property StringBreakPrefix: String read FStringBreakPrefix write FStringBreakPrefix;
   end;
 
-const
-  LazSyntaxHighlighterNames: array[TLazSyntaxHighlighter] of String = (
-    'None',
-    'Text',
-    'FreePascal',
-    'Delphi',
-    'LFM',
-    'XML',
-    'HTML',
-    'C++',
-    'Perl',
-    'Java',
-    'Bash',
-    'Python',
-    'PHP',
-    'SQL',
-    'JScript',
-    'Diff',
-    'Bat',
-    'Ini',
-    'PO',
-    'Pike'
-    );
-
 var
   EditorOpts: TEditorOptions;
 
-function StrToLazSyntaxHighlighter(const s: String): TLazSyntaxHighlighter;
-function ExtensionToLazSyntaxHighlighter(Ext: String): TLazSyntaxHighlighter;
-function FilenameToLazSyntaxHighlighter(Filename: String): TLazSyntaxHighlighter;
 procedure RepairEditorFontSize(var FontSize: integer);
-
-function GetSyntaxHighlighterCaption(h: TLazSyntaxHighlighter): string;
 
 function BuildBorlandDCIFile(ACustomSynAutoComplete: TCustomSynAutoComplete): Boolean;
 function ColorSchemeFactory: TColorSchemeFactory;
@@ -2239,73 +2212,8 @@ begin
     FontSize := SynDefaultFontSize;
 end;
 
-function StrToLazSyntaxHighlighter(const s: String): TLazSyntaxHighlighter;
-begin
-  for Result := Low(TLazSyntaxHighlighter) to High(TLazSyntaxHighlighter) do
-    if (CompareText(s, LazSyntaxHighlighterNames[Result]) = 0) then
-      exit;
-  Result := lshFreePascal;
-end;
-
-function ExtensionToLazSyntaxHighlighter(Ext: String): TLazSyntaxHighlighter;
-var
-  s, CurExt: String;
-  LangID, StartPos, EndPos: Integer;
-begin
-  Result := lshNone;
-  if (Ext = '') or (Ext = '.') or (EditorOpts.HighlighterList = Nil) then
-    exit;
-  Ext := lowercase(Ext);
-  if (Ext[1] = '.') then
-    Ext := copy(Ext, 2, length(Ext) - 1);
-  LangID := 0;
-  while LangID < EditorOpts.HighlighterList.Count do
-  begin
-    s := EditorOpts.HighlighterList[LangID].FileExtensions;
-    StartPos := 1;
-    while StartPos <= length(s) do
-    begin
-      Endpos := StartPos;
-      while (EndPos <= length(s)) and (s[EndPos] <> ';') do
-        inc(EndPos);
-      CurExt := copy(s, Startpos, EndPos - StartPos);
-      if (CurExt <> '') and (CurExt[1] = '.') then
-        CurExt := copy(CurExt, 2, length(CurExt) - 1);
-      if lowercase(CurExt) = Ext then
-      begin
-        Result := EditorOpts.HighlighterList[LangID].TheType;
-        exit;
-      end;
-      Startpos := EndPos + 1;
-    end;
-    inc(LangID);
-  end;
-end;
-
-function FilenameToLazSyntaxHighlighter(Filename: String): TLazSyntaxHighlighter;
-var
-  CompilerMode: TCompilerMode;
-begin
-  Result:=ExtensionToLazSyntaxHighlighter(ExtractFileExt(Filename));
-  if Result in [lshFreePascal,lshDelphi] then begin
-    CompilerMode:=CodeToolBoss.GetCompilerModeForDirectory(ExtractFilePath(Filename));
-    if CompilerMode in [cmDELPHI,cmTP] then
-      Result:=lshDelphi
-    else
-      Result:=lshFreePascal;
-  end;
-end;
-
 const
   EditOptsConfFileName = 'editoroptions.xml';
-
-function GetSyntaxHighlighterCaption(h: TLazSyntaxHighlighter): string;
-begin
-  if h=lshFreePascal then
-    Result:='Free Pascal'
-  else
-    Result:=LazSyntaxHighlighterNames[h];
-end;
 
 function BuildBorlandDCIFile(
   ACustomSynAutoComplete: TCustomSynAutoComplete): Boolean;
@@ -2578,7 +2486,6 @@ end;
 constructor TEditOptLanguageInfo.Create;
 begin
   inherited Create;
-
 end;
 
 destructor TEditOptLanguageInfo.Destroy;
@@ -4866,6 +4773,12 @@ begin
     FUseCodeFolding :=
       XMLConfig.GetValue(
       'EditorOptions/CodeFolding/UseCodeFolding', True);
+    FUseMarkupWordBracket :=
+      XMLConfig.GetValue(
+      'EditorOptions/CodeFolding/UseMarkupWordBracket', True);
+    FUseMarkupOutline :=
+      XMLConfig.GetValue(
+      'EditorOptions/CodeFolding/UseMarkupOutline', False);
 
     FUserMouseSettings.LoadFromXml(XMLConfig, 'EditorOptions/Mouse/',
                                   'EditorOptions/General/Editor/', FileVersion);
@@ -5052,6 +4965,10 @@ begin
     // Code Folding
     XMLConfig.SetDeleteValue('EditorOptions/CodeFolding/UseCodeFolding',
         FUseCodeFolding, True);
+    XMLConfig.SetDeleteValue('EditorOptions/CodeFolding/UseMarkupWordBracket',
+        FUseMarkupWordBracket, True);
+    XMLConfig.SetDeleteValue('EditorOptions/CodeFolding/UseMarkupOutline',
+        FUseMarkupOutline, False);
 
     FUserMouseSettings.SaveToXml(XMLConfig, 'EditorOptions/Mouse/');
 
@@ -5369,10 +5286,21 @@ begin
         (* if ReadForOptions=True then Enabled appies only to fmFold,fmHide.
            This allows to store what selection was previously active *)
         if not ReadForOptions then begin
-          if not FoldHl.FoldConfig[idx].Enabled then
+          if (not FoldHl.FoldConfig[idx].Enabled) or (not FUseCodeFolding) then
             FoldHl.FoldConfig[idx].Modes := FoldHl.FoldConfig[idx].Modes - [fmFold, fmHide];
+          if (not FUseMarkupWordBracket) then
+            FoldHl.FoldConfig[idx].Modes := FoldHl.FoldConfig[idx].Modes - [fmMarkup];
+          if (not FUseMarkupOutline) then
+            FoldHl.FoldConfig[idx].Modes := FoldHl.FoldConfig[idx].Modes - [fmOutline];
+
           FoldHl.FoldConfig[idx].Enabled := FoldHl.FoldConfig[idx].Modes <> [];
         end;
+
+        if (FoldHl is TSynPasSyn) and (idx = ord(cfbtIfThen)) then begin
+          FoldHl.FoldConfig[ord(cfbtIfElse)].Modes := FoldHl.FoldConfig[idx].Modes * [fmOutline];
+          FoldHl.FoldConfig[ord(cfbtIfElse)].Enabled := FoldHl.FoldConfig[idx].Enabled and (FoldHl.FoldConfig[ord(cfbtIfElse)].Modes <> []);
+        end;
+
       end;
     finally
       DefHl.Free;
@@ -5601,6 +5529,41 @@ begin
     ASynEdit.Font.Quality := fqDefault;
 end;
 
+function TEditorOptions.ExtensionToLazSyntaxHighlighter(Ext: String): TLazSyntaxHighlighter;
+var
+  s, CurExt: String;
+  LangID, StartPos, EndPos: Integer;
+begin
+  Result := lshNone;
+  if (Ext = '') or (Ext = '.') or (HighlighterList = Nil) then
+    exit;
+  Ext := lowercase(Ext);
+  if (Ext[1] = '.') then
+    Ext := copy(Ext, 2, length(Ext) - 1);
+  LangID := 0;
+  while LangID < HighlighterList.Count do
+  begin
+    s := HighlighterList[LangID].FileExtensions;
+    StartPos := 1;
+    while StartPos <= length(s) do
+    begin
+      Endpos := StartPos;
+      while (EndPos <= length(s)) and (s[EndPos] <> ';') do
+        inc(EndPos);
+      CurExt := copy(s, Startpos, EndPos - StartPos);
+      if (CurExt <> '') and (CurExt[1] = '.') then
+        CurExt := copy(CurExt, 2, length(CurExt) - 1);
+      if lowercase(CurExt) = Ext then
+      begin
+        Result := HighlighterList[LangID].TheType;
+        exit;
+      end;
+      Startpos := EndPos + 1;
+    end;
+    inc(LangID);
+  end;
+end;
+
 procedure TEditorOptions.GetSynEditSettings(ASynEdit: TSynEdit;
   SimilarEdit: TSynEdit);
 // read synedit settings from config file
@@ -5611,6 +5574,7 @@ var
   i: Integer;
   mw: TSourceSynEditMarkupHighlightAllMulti;
   TermsConf: TEditorUserDefinedWords;
+  Markup: TSynEditMarkup;
 begin
   // general options
   ASynEdit.BeginUpdate(False);
@@ -5779,6 +5743,10 @@ begin
       MarkCaret.IgnoreKeywords := FMarkupCurWordNoKeyword;
       MarkCaret.Trim := FMarkupCurWordTrim;
     end;
+
+    Markup := ASynEdit.MarkupByClass[TSynEditMarkupFoldColors];
+    if (Markup <> nil) then
+      Markup.Enabled := FUseMarkupOutline;
 
     AssignKeyMapTo(ASynEdit, SimilarEdit);
 

@@ -14,7 +14,7 @@ unit LCLTranslator;
 
   You should have received a copy of the GNU Library General Public License
   along with this library; if not, write to the Free Software Foundation,
-  Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+  Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.
 }
 {
 This unit is needed for using translated form strings made by Lazarus IDE.
@@ -35,8 +35,12 @@ in directory where your program translation files are placed.
 interface
 
 uses
-  Classes, SysUtils, LResources, GetText, Controls, typinfo, LazFileUtils,
-  Translations, Forms, LazUTF8;
+  // RTL + FCL
+  Classes, SysUtils, typinfo, GetText,
+  // LCL
+  LResources, Forms,
+  // LazUtils
+  Translations, LazFileUtils, LazUTF8;
 
 type
 
@@ -78,8 +82,6 @@ function GetDefaultLang: String;
 
 implementation
 
-uses
-  Menus;
 
 type
   TPersistentAccess = class(TPersistent);

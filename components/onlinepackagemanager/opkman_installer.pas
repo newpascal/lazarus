@@ -14,7 +14,7 @@
 *   A copy of the GNU General Public License is available on the World    *
 *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
 *   obtain it by writing to the Free Software Foundation,                 *
-*   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.        *
+*   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
 *                                                                         *
 ***************************************************************************
 
@@ -207,13 +207,13 @@ var
 begin
   case AInstallMessage of
     imOpenPackageError:
-      ErrMsg := rsProgressFrm_Error12;
+      ErrMsg := rsProgressFrm_Error7;
     imCompilePackageError:
-      ErrMsg := rsProgressFrm_Error13;
+      ErrMsg := rsProgressFrm_Error8;
     imInstallPackageError:
-      ErrMsg := rsProgressFrm_Error14;
+      ErrMsg := rsProgressFrm_Error9;
     imDependencyError:
-      ErrMsg := rsProgressFrm_Error10 + ' "' + FUnresolvedPackageFileName + '" ' + rsProgressFrm_Error11;
+      ErrMsg := Format(rsProgressFrm_Error4, [FUnresolvedPackageFileName]);
     end;
   APackageFile.PackageStates := APackageFile.PackageStates - [psInstalled];
   APackageFile.PackageStates := APackageFile.PackageStates + [psError];
@@ -299,15 +299,18 @@ begin
       DoOnPackageInstallProgress(imPackageCompleted, PackageFile);
     end;
   end;
-  if (InstallPackageList.Count > 0) and (not FNeedToBreak) then
+  if InstallPackageList.Count > 0 then
   begin
     PkgInstallInIDEFlags := [piiifQuiet];
     if PackageEditingInterface.InstallPackages(InstallPackageList, PkgInstallInIDEFlags) = mrOk then
     begin
-      if ErrCnt = 0 then
-        FInstallStatus := isSuccess
-      else
-        FInstallStatus := isPartiallyFailed;
+      if not FNeedToBreak then
+      begin
+        if ErrCnt = 0 then
+          FInstallStatus := isSuccess
+        else
+          FInstallStatus := isPartiallyFailed;
+      end;
     end;
   end;
   if Assigned(FOnPackageInstallCompleted) then

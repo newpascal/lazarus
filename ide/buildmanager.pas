@@ -21,7 +21,7 @@
  *   A copy of the GNU General Public License is available on the World    *
  *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
  *   obtain it by writing to the Free Software Foundation,                 *
- *   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.        *
+ *   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
  *                                                                         *
  ***************************************************************************
 }
@@ -34,15 +34,15 @@ unit BuildManager;
 interface
 
 uses
-  // RTL + FCL + LCL
+  // RTL + FCL
   Classes, SysUtils, AVL_Tree,
-  InterfaceBase, LCLProc, Dialogs, Forms, Controls,
+  // LCL
+  InterfaceBase, LCLPlatformDef, LCLProc, Dialogs, Forms, Controls,
   // CodeTools
   ExprEval, BasicCodeTools, CodeToolManager, DefineTemplates, CodeCache,
   FileProcs, CodeToolsCfgScript,
   // LazUtils
-  LConvEncoding, FileUtil, LazFileUtils, LazFileCache, LazUTF8,
-  Laz2_XMLCfg,
+  LConvEncoding, FileUtil, LazFileUtils, LazFileCache, LazUTF8, Laz2_XMLCfg,
   // IDEIntf
   IDEOptionsIntf, ProjectIntf, MacroIntf, IDEDialogs, IDEExternToolIntf,
   CompOptsIntf, LazIDEIntf, MacroDefIntf, IDEMsgIntf,
@@ -50,7 +50,6 @@ uses
   IDECmdLine, LazarusIDEStrConsts, DialogProcs, IDEProcs,
   InputHistory, EditDefineTree, ProjectResources, MiscOptions, LazConf,
   EnvironmentOpts, TransferMacros, CompilerOptions,
-  ExtToolEditDlg{needed for environment options ExternalUserTools},
   ExtTools, etMakeMsgParser, etFPCMsgParser,
   Compiler, FPCSrcScan, PackageDefs, PackageSystem, Project, ProjectIcon,
   ModeMatrixOpts, BaseBuildManager, ApplicationBundle;
@@ -77,6 +76,7 @@ type
     fTargetCPU: string;
     fLCLWidgetType: string;
     procedure DoOnRescanFPCDirectoryCache(Sender: TObject);
+    function GetTargetFilename: String;
     procedure OnMacroSubstitution(TheMacro: TTransferMacro;
                                const MacroName: string; var s: string;
                                const {%H-}Data: PtrInt; var Handled, {%H-}Abort: boolean;
@@ -177,7 +177,7 @@ type
     procedure TranslateMacros;
     procedure SetupExternalTools;
     procedure SetupCompilerInterface;
-    procedure SetupInputHistories;
+    procedure SetupInputHistories(aInputHist: TInputHistories);
     procedure EnvOptsChanged;
 
     function GetBuildMacroOverride(const MacroName: string): string; override;
@@ -263,8 +263,7 @@ begin
                                 Pointer(UnitFile2^.FileUnitName));
 end;
 
-function CompareUnitNameAndUnitFile(UnitName: PChar;
-  UnitFile: PUnitFile): integer;
+function CompareUnitNameAndUnitFile(UnitName: PChar; UnitFile: PUnitFile): integer;
 begin
   Result:=CompareIdentifierPtrs(Pointer(UnitName),Pointer(UnitFile^.FileUnitName));
 end;
@@ -328,7 +327,7 @@ begin
   inherited Create(AOwner);
   fTargetOS:=GetCompiledTargetOS;
   fTargetCPU:=GetCompiledTargetCPU;
-  fLCLWidgetType:=LCLPlatformDirNames[GetDefaultLCLWidgetType];
+  fLCLWidgetType:=GetLCLWidgetTypeName;
   FUnitSetChangeStamp:=TFPCUnitSetCache.GetInvalidChangeStamp;
 
   OnBackupFileInteractive:=@BackupFileForWrite;
@@ -523,14 +522,10 @@ begin
   TheCompiler := TCompiler.Create;
 end;
 
-procedure TBuildManager.SetupInputHistories;
+procedure TBuildManager.SetupInputHistories(aInputHist: TInputHistories);
 begin
-  if InputHistories<>nil then exit;
-  InputHistories:=TInputHistories.Create;
-  with InputHistories do begin
-    SetLazarusDefaultFilename;
-    Load;
-  end;
+  aInputHist.SetLazarusDefaultFilename;
+  aInputHist.Load;
 end;
 
 procedure TBuildManager.EnvOptsChanged;
@@ -579,36 +574,36 @@ begin
   Result:=fLCLWidgetType;
 end;
 
+function TBuildManager.GetTargetFilename: String;
+begin
+  Result := GetProjectTargetFilename(Project1);
+  if GetProjectUsesAppBundle then
+    // return command line to Application Bundle (darwin only)
+    Result := ExtractFileNameWithoutExt(Result) + '.app';
+end;
+
 function TBuildManager.GetRunCommandLine: string;
 var
-  TargetFileName: string;
-  
-  function GetTargetFilename: String;
-  begin
-    Result := GetProjectTargetFilename(Project1);
-    
-    if GetProjectUsesAppBundle then
-    begin
-      // return command line to Application Bundle (darwin only)
-      Result := ExtractFileNameWithoutExt(Result) + '.app';
-    end;
-  end;
-  
+  TFN: string;  // Target Filename
 begin
   Result := '';
   if Project1=nil then exit;
   if Project1.RunParameterOptions.UseLaunchingApplication then
     Result := Project1.RunParameterOptions.LaunchingApplicationPathPlusParams;
 
-  if Result=''
-  then begin
-    Result:=Project1.RunParameterOptions.CmdLineParams;
-    if GlobalMacroList.SubstituteStr(Result) then begin
-      TargetFileName:='"'+GetTargetFilename+'"';
+  if Result='' then
+  begin
+    Result := Project1.RunParameterOptions.CmdLineParams;
+    if GlobalMacroList.SubstituteStr(Result) then
+    begin
+      TFN := GetTargetFilename;
+      if (TFN <> '') and (TFN[Length(TFN)] in AllowDirectorySeparators) then
+        TFN += ExtractFileNameOnly(Project1.CompilerOptions.GetDefaultMainSourceFileName);
+      TFN := '"'+TFN+'"';
       if Result='' then
-        Result:=TargetFileName
+        Result:=TFN
       else
-        Result:=TargetFilename+' '+Result;
+        Result:=TFN+' '+Result;
     end else
       Result:='';
   end else begin
@@ -2623,7 +2618,7 @@ procedure TBuildManager.SetBuildTarget(const TargetOS, TargetCPU,
     else
       Result:='';
     if (Result='') or (SysUtils.CompareText(Result,'default')=0) then
-      Result:=LCLPlatformDirNames[GetDefaultLCLWidgetType];
+      Result:=GetLCLWidgetTypeName;
     Result:=lowercase(Result);
   end;
 

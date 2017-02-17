@@ -23,7 +23,7 @@
  *   A copy of the GNU General Public License is available on the World    *
  *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
  *   obtain it by writing to the Free Software Foundation,                 *
- *   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.        *
+ *   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
  *                                                                         *
  ***************************************************************************
 }
@@ -35,11 +35,18 @@ unit ProjectUserResources;
 interface
 
 uses
-  Classes, SysUtils, Laz2_XMLCfg, LCLProc, FileProcs, LazFileUtils, LazUTF8,
+  // RTL + LCL
+  Classes, SysUtils,
+  resource, bitmapresource, groupresource, groupiconresource, groupcursorresource,
+  // LCL
+  LCLProc,
+  // LazUtils
+  FileProcs, LazFileUtils, LazUTF8, Laz2_XMLCfg,
+  // IdeIntf
   ProjectResourcesIntf, IDEMsgIntf, MacroIntf, IDEExternToolIntf,
-  LazarusIDEStrConsts, resource, bitmapresource, groupresource,
-  groupiconresource, groupcursorresource;
-   
+  // IDE
+  LazarusIDEStrConsts;
+
 type
   TUserResourceType = (
     rtIcon,    // maps to RT_GROUP_ICON

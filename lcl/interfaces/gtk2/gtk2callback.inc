@@ -11,13 +11,14 @@
 function DoDeliverPaintMessage(const Target: TObject; var PaintMsg: TLMPaint): PtrInt;
 var
   WidgetInfo: PWidgetInfo;
+  IsCustomControl: Boolean;
 begin
   {
     erase backgound of custom controls
     use only for real custom controls that are GTKAPIWidget
   }
-
-  if (TObject(Target) is TCustomControl) then begin
+  IsCustomControl := TObject(Target) is TCustomControl;
+  if IsCustomControl then begin
     Include(TWinControlAccess(Target).FWinControlFlags, wcfEraseBackground);
     TWinControl(Target).Perform(LM_ERASEBKGND, PtrInt(PaintMsg.DC), 0);
     Exclude(TWinControlAccess(Target).FWinControlFlags, wcfEraseBackground);
@@ -25,7 +26,7 @@ begin
 
   Result := DeliverMessage(Target, PaintMsg);
 
-  if (TObject(Target) is TCustomControl) then begin
+  if IsCustomControl then begin
     WidgetInfo := GetWidgetInfo({%H-}PGtkWidget(TCustomControl(Target).Handle), False);
     if WidgetInfo <> nil then
       WidgetInfo^.UpdateRect := Rect(0,0,0,0);
@@ -123,12 +124,11 @@ end;
   gtkNoteBookCloseBtnClicked is called by the gtk, whenever a close button in
   the tab of a notebook page is clicked.
 -------------------------------------------------------------------------------}
-function gtkNoteBookCloseBtnClicked(Widget: PGtkWidget;
+function gtkNoteBookCloseBtnClicked({%H-}Widget: PGtkWidget;
   Data: Pointer): GBoolean; cdecl;
 var APage: TCustomPage;
 begin
   Result:=true; // handled = true
-  if Widget=nil then ;
   if ComponentIsDestroyingHandle(TWinControl(Data)) then exit;
   APage:=TCustomPage(Data);
   TCustomTabControl(APage.Parent).DoCloseTabClicked(APage);
@@ -288,7 +288,7 @@ begin
   end;
 end;
 
-function gtkshowCB( widget: PGtkWidget; data: gPointer) : GBoolean; cdecl;
+function gtkshowCB( {%H-}widget: PGtkWidget; data: gPointer) : GBoolean; cdecl;
 var
   Mess : TLMShowWindow;
 begin
@@ -297,7 +297,6 @@ begin
   {$IFDEF EventTrace}
   EventTrace('show', data);
   {$ENDIF}
-  if Widget=nil then ;
   FillChar(Mess{%H-},SizeOf(Mess),0);
   Mess.Msg := LM_SHOWWINDOW;
   Mess.Show := True;
@@ -305,7 +304,7 @@ begin
   Result := DeliverMessage(Data, Mess) = 0;
 end;
 
-function gtkHideCB( widget: PGtkWidget; data: gPointer) : GBoolean; cdecl;
+function gtkHideCB( {%H-}widget: PGtkWidget; data: gPointer) : GBoolean; cdecl;
 var
   Mess : TLMShowWindow;
 begin
@@ -314,7 +313,6 @@ begin
   {$IFDEF EventTrace}
   EventTrace('hide', data);
   {$ENDIF}
-  if Widget=nil then ;
   FillChar(Mess{%H-},SizeOf(Mess),0);
   Mess.Msg := LM_SHOWWINDOW;
   Mess.Show := False;
@@ -400,7 +398,7 @@ var
   Info: PWidgetInfo;
 begin
   Result := AGtkWidget <> nil;
-  if AGtkWidget <> nil then
+  if Result then
   begin
     g_idle_remove_by_data(AGtkWidget);
     Info := GetWidgetInfo(AGtkWidget);
@@ -456,21 +454,16 @@ begin
         begin
           // if we change selstart in OnChange event new cursor pos need to
           // be postponed in TGtk2WSCustomEdit.SetSelStart
-          NeedCursorCheck := True;
           if g_object_get_data(PGObject(Widget),'lcl-gtkentry-pasted-data') <> nil then
           begin
+            NeedCursorCheck := True;
             g_object_set_data(PGObject(Widget),'lcl-gtkentry-pasted-data',nil);
             gtk_editable_set_position(PGtkEditable(Widget), GStart);
           end else
           begin
-            //NeedCursorCheck := True;
-            if gtk_minor_version < 17 then
-            begin
-              g_object_set_data(PGObject(Widget),'lcl-gtkentry-pasted-data',Widget);
-              g_idle_add(@GtkEntryDelayCursorPos, Widget);
-              exit;
-            end else
-              gtk_editable_set_position(PGtkEditable(Widget), GStart + 1);
+            g_object_set_data(PGObject(Widget),'lcl-gtkentry-pasted-data',Widget);
+            g_idle_add(@GtkEntryDelayCursorPos, Widget);
+            exit;
           end;
         end;
       end;
@@ -769,7 +762,7 @@ begin
   end;
 end;
 
-function gtkfrmactivateAfter(widget: PGtkWidget; Event : PgdkEventFocus;
+function gtkfrmactivateAfter({%H-}widget: PGtkWidget; {%H-}Event : PgdkEventFocus;
   data: gPointer) : GBoolean; cdecl;
 var
   Mess: TLMActivate;
@@ -782,7 +775,6 @@ begin
   {$IFDEF EventTrace}
   EventTrace('activate after', data);
   {$ENDIF}
-  if (Widget=nil) or (Event=nil) then ;
 
   ResetDefaultIMContext;
 
@@ -825,7 +817,7 @@ begin
   {$ENDIF}
 end;
 
-function gtkfrmdeactivateAfter( widget: PGtkWidget; Event : PgdkEventFocus;
+function gtkfrmdeactivateAfter( {%H-}widget: PGtkWidget; {%H-}Event : PgdkEventFocus;
   data: gPointer) : GBoolean; cdecl;
 var
   Mess: TLMActivate;
@@ -837,7 +829,6 @@ begin
   {$IFDEF EventTrace}
   EventTrace('deactivate after', data);
   {$ENDIF}
-  if (Widget=nil) or (Event=nil) then ;
   {$IFDEF VerboseFocus}
   LCLObject := TControl(GetLCLObject(Widget));
   DebugLnEnter(['gtkfrmDeactivate INIT Widget=',DbgS(Widget),' ',Event^._in,
@@ -870,13 +861,6 @@ begin
   {$ENDIF}
 end;
 
-function GTKMap(Widget: PGTKWidget; Data: gPointer): GBoolean; cdecl;
-begin
-  Result := CallBackDefaultReturn;
-  if (Widget=nil) then ;
-  EventTrace('map', data);
-end;
-
 function GTKKeyPress(Widget: PGtkWidget; Event: PGdkEventKey; Data: gPointer) : GBoolean; cdecl;
 begin
   Result := HandleGtkKeyUpDown(Widget,Event,Data,true,True,'key-press-event');
@@ -899,7 +883,7 @@ end;
 
 
 var
-  NeedShiftUpdateAfternFocus: Boolean;
+  NeedShiftUpdateAfterFocus: Boolean;
 
 procedure UpdateShiftState(const KeyStateList: TFPList; const ShiftState: TShiftState);
 
@@ -947,7 +931,7 @@ end;
 type
   TCustomEditHack = class(TCustomEdit);
 
-function GTKFocusCB(widget: PGtkWidget; event: PGdkEventFocus; data: gPointer): GBoolean; cdecl;
+function GTKFocusCB(widget: PGtkWidget; {%H-}event: PGdkEventFocus; data: gPointer): GBoolean; cdecl;
 var
   Mess : TLMessage;
   LCLObject: TObject;
@@ -961,7 +945,6 @@ begin
   {$IFDEF EventTrace}
   EventTrace('focus', data);
   {$ENDIF}
-  if (Widget=nil) or (Event=nil) then ;
   //DebugLn('GTKFocusCB ',DbgSName(TObject(Data)),' ',GetWidgetDebugReport(Widget));
 
   LCLObject:=TObject(data);
@@ -974,9 +957,9 @@ begin
     ClearTopLevelsFocus(Widget);
   end;
 
-  NeedShiftUpdateAfternFocus := False;
+  NeedShiftUpdateAfterFocus := False;
   gdk_window_get_pointer(nil, nil, nil, @Mask);
-  UpdateShiftState(TGtk2WidgetSet(WidgetSet).KeyStateList, GTKEventStateToShiftState(Word(Mask)));
+  UpdateShiftState(GTK2WidgetSet.KeyStateList, GTKEventStateToShiftState(Word(Mask)));
 
   {$IFDEF VerboseFocus}
   DebugLnEnter(['GTKFocusCB INIT Widget=',DbgS(Widget),' Event^.theIn=',Event^._in,
@@ -1045,7 +1028,7 @@ begin
   {$ENDIF}
 end;
 
-function GTKKillFocusCB(widget: PGtkWidget; event:PGdkEventFocus;
+function GTKKillFocusCB({%H-}widget: PGtkWidget; {%H-}event:PGdkEventFocus;
   data: gPointer) : GBoolean; cdecl;
 {$IFDEF VerboseFocus}
 var
@@ -1056,7 +1039,6 @@ begin
   {$IFDEF EventTrace}
   EventTrace('killfocusCB', data);
   {$ENDIF}
-  if (Widget=nil) or (Event=nil) then ;
   //DebugLn('GTKKillFocusCB ',DbgSName(TObject(Data)),' ',GetWidgetDebugReport(Widget));
   {$IFDEF VerboseFocus}
   NeedShiftUpdateAfternFocus := True;   // <- JRA: this doesn't look like simply log !!!
@@ -1094,7 +1076,7 @@ begin
   end;
 end;
 
-function GTKKillFocusCBAfter(widget: PGtkWidget; event:PGdkEventFocus;
+function GTKKillFocusCBAfter({%H-}widget: PGtkWidget; {%H-}event:PGdkEventFocus;
   data: gPointer) : GBoolean; cdecl;
 var
   Mess : TLMessage;
@@ -1106,7 +1088,6 @@ var
   CurFocusWidget: PGtkWidget;
 {$ENDIF}
 begin
-  if (Widget=nil) or (Event=nil) then ;
   {$IFDEF EventTrace}
   EventTrace('killfocusCBAfter', data);
   {$ENDIF}
@@ -1336,23 +1317,21 @@ begin
   LastWFPMousePos := Point(High(Integer), High(Integer));
 end;
 
-function gtkdeleteCB( widget : PGtkWidget; event : PGdkEvent;
+function gtkdeleteCB( {%H-}widget : PGtkWidget; {%H-}event : PGdkEvent;
   data : gPointer) : GBoolean; cdecl;
 var Mess : TLMessage;
 begin
   FillChar(Mess{%H-},SizeOf(Mess),0);
-  if (Widget=nil) or (Event=nil) then ;
   Mess.Msg:= LM_CLOSEQUERY;
   { Message results : True - do nothing, False - destroy or hide window }
   Result:= DeliverMessage(Data, Mess) = 0;
 end;
 
-function gtkresizeCB( widget: PGtkWidget; data: gPointer) : GBoolean; cdecl;
+function gtkresizeCB( {%H-}widget: PGtkWidget; data: gPointer) : GBoolean; cdecl;
 //var
 //   Mess : TLMessage;
 begin
   Result := CallBackDefaultReturn;
-  if (Widget=nil) then ;
   {$IFDEF EventTrace}
   EventTrace('resize', data);
   {$ENDIF}
@@ -1362,12 +1341,11 @@ begin
 //TObject(data).Dispatch(Mess);
 end;
 
-function gtkMonthChanged(Widget: PGtkWidget; data: gPointer) : GBoolean; cdecl;
+function gtkMonthChanged({%H-}Widget: PGtkWidget; data: gPointer) : GBoolean; cdecl;
 var
   Mess: TLMessage;
 begin
   Result := CallBackDefaultReturn;
-  if (Widget=nil) then ;
   {$IFDEF EventTrace}
   EventTrace('month changed', data);
   {$ENDIF}
@@ -1469,14 +1447,13 @@ end;
   Returns true, if mouse move event should be sent before the widget itself
   reacts.
 -------------------------------------------------------------------------------}
-function ControlGetsMouseMoveBefore(AControl: TControl;
+function ControlGetsMouseMoveBefore({%H-}AControl: TControl;
   const ABefore: Boolean; Event: PGDKEventMotion): boolean;
 var
   ShiftState: TShiftState;
   Widget: PGtkWidget;
   MainView: PGtkWidget;
 begin
-  if (AControl=nil) then ;
   Result := True;
   // currently there are no controls, that need after events.
   if not ABefore then exit;
@@ -1573,21 +1550,18 @@ begin
 
   ShiftState := GTKEventStateToShiftState(Event^.State);
 
-  if (ShiftState*[ssShift, ssCtrl, ssAlt, ssSuper] <> LastModifierKeys) or NeedShiftUpdateAfternFocus
+  if (ShiftState*[ssShift, ssCtrl, ssAlt, ssSuper] <> LastModifierKeys) or NeedShiftUpdateAfterFocus
   then begin
-    NeedShiftUpdateAfternFocus := False;
+    NeedShiftUpdateAfterFocus := False;
     LastModifierKeys := ShiftState*[ssShift, ssCtrl, ssAlt, ssSuper];
     //DebugLn(['Adjust KeyStateList in MouseMove',Integer(LastModifierKeys)]);
-    if (WidgetSet <> nil) and (TGtk2WidgetSet(WidgetSet).KeyStateList <> nil) then
-      UpdateShiftState(TGtk2WidgetSet(WidgetSet).KeyStateList, LastModifierKeys);
+    UpdateShiftState(GTK2WidgetSet.KeyStateList, LastModifierKeys);
   end;
 
+  {$IFDEF VerboseMouseCapture}
   if (MouseCaptureWidget = Widget) and ([ssLeft,ssRight,ssMiddle]*ShiftState=[]) then
-  begin
-    {$IFDEF VerboseMouseCapture}
     DebugLn(['gtkMotionNotify gtk capture without mouse down: ',GetWidgetDebugReport(Widget)]);
-    {$ENDIF}
-  end;
+  {$ENDIF}
 
   if not (csDesigning in TComponent(Data).ComponentState) then
   begin
@@ -1657,7 +1631,7 @@ var
   ColWidth: gint;
 begin
   Result := AGtkWidget <> nil;
-  if AGtkWidget <> nil then
+  if Result then
   begin
     if g_object_get_data(PGObject(AGtkWidget),'lcl-column-resized-dblclick') <> nil then
     begin
@@ -2089,8 +2063,7 @@ begin
   then begin
     LastModifierKeys := ShiftState*[ssShift, ssCtrl, ssAlt, ssSuper];
     //DebugLn(['Adjust KeyStateList in MouseBtnDown',Integer(LastModifierKeys)]);
-    if (WidgetSet <> nil) and (TGtk2WidgetSet(WidgetSet).KeyStateList <> nil) then
-      UpdateShiftState(TGtk2WidgetSet(WidgetSet).KeyStateList, LastModifierKeys);
+    UpdateShiftState(GTK2WidgetSet.KeyStateList, LastModifierKeys);
   end;
 
   MappedXY := TranslateGdkPointToClientArea(Event^.Window, EventXY,
@@ -2208,10 +2181,10 @@ end;
   Returns true, if mouse up event should be sent before the widget istelf
   reacts.
 -------------------------------------------------------------------------------}
-function ControlGetsMouseUpBefore(AControl: TControl): boolean;
+function ControlGetsMouseUpBefore({%H-}AControl: TControl): boolean;
 begin
+  {$NOTE ControlGetsMouseUpBefore always return true. See if still necessary}
   Result:=true;
-  if AControl=nil then ;
 end;
 
 {-------------------------------------------------------------------------------
@@ -2406,6 +2379,7 @@ begin
   {$ENDIF}
 
   // stop the signal, so that it is not sent to the parent widgets
+  {$NOTE See if is necessary to stop emission. Return true is enough to avoid propagation}
   g_signal_stop_emission_by_name(PGTKObject(Widget),'button-release-event');
 
   ResetDefaultIMContext;
@@ -2556,7 +2530,7 @@ begin
   SendSizeNotificationToLCL(Widget);
 end;
 
-function gtksize_allocate_client(widget: PGtkWidget; size: pGtkAllocation;
+function gtksize_allocate_client({%H-}widget: PGtkWidget; {%H-}size: pGtkAllocation;
   data: gPointer): GBoolean; cdecl;
 var
   MainWidget: PGtkWidget;
@@ -2564,7 +2538,6 @@ var
 begin
   Result := CallBackDefaultReturn;
 
-  if (Widget=nil) or (Size=nil) then ;
   if (TObject(Data) is TWinControl) then
   begin
     {$IFDEF VerboseSizeMsg}
@@ -2649,82 +2622,74 @@ begin
       g_signal_stop_emission_by_name(PGtkObject(widget), 'insert_text');
 end;
 
-function gtkSetEditable( widget: PGtkWidget; data: gPointer) : GBoolean; cdecl;
+function gtkSetEditable( {%H-}widget: PGtkWidget; data: gPointer) : GBoolean; cdecl;
 var
   Mess : TLMessage;
 begin
   EventTrace('Set Editable', data);
-  if (Widget=nil) then ;
   Mess.msg := LM_SETEDITABLE;
   Result:= DeliverMessage(Data, Mess) = 0;
 end;
 
-function gtkMoveWord( widget: PGtkWidget; data: gPointer) : GBoolean; cdecl;
+function gtkMoveWord( {%H-}widget: PGtkWidget; data: gPointer) : GBoolean; cdecl;
 var
    Mess : TLMessage;
 begin
   EventTrace('Move Word', data);
-  if (Widget=nil) then ;
   Mess.msg := LM_MOVEWORD;
   Result:= DeliverMessage(Data, Mess) = 0;
 end;
 
-function gtkMovePage( widget: PGtkWidget; data: gPointer) : GBoolean; cdecl;
+function gtkMovePage( {%H-}widget: PGtkWidget; data: gPointer) : GBoolean; cdecl;
 var
   Mess : TLMessage;
 begin
   EventTrace('Move Page', data);
-  if (Widget=nil) then ;
   Mess.msg := LM_MOVEPAGE;
   Result:= DeliverMessage(Data, Mess) = 0;
 end;
 
-function gtkMoveToRow( widget: PGtkWidget; data: gPointer) : GBoolean; cdecl;
+function gtkMoveToRow( {%H-}widget: PGtkWidget; data: gPointer) : GBoolean; cdecl;
 var
   Mess : TLMessage;
 begin
   EventTrace('Move To Row!!', data);
-  if (Widget=nil) then ;
   Mess.msg := LM_MOVETOROW;
   Result:= DeliverMessage(Data, Mess) = 0;
 end;
 
-function gtkMoveToColumn( widget: PGtkWidget; data: gPointer) : GBoolean; cdecl;
+function gtkMoveToColumn( {%H-}widget: PGtkWidget; data: gPointer) : GBoolean; cdecl;
 var
   Mess : TLMessage;
 begin
   EventTrace('MoveToColumn', data);
-  if (Widget=nil) then ;
   Mess.msg := LM_MOVETOCOLUMN;
   Result:= DeliverMessage(Data, Mess) = 0;
 end;
 
-function gtkKillChar( widget: PGtkWidget; data: gPointer) : GBoolean; cdecl;
+function gtkKillChar( {%H-}widget: PGtkWidget; data: gPointer) : GBoolean; cdecl;
 var
   Mess : TLMessage;
 begin
   EventTrace('Kill Char', data);
-  if (Widget=nil) then ;
   Mess.msg := LM_KILLCHAR;
   Result:= DeliverMessage(Data, Mess) = 0;
 end;
 
-function gtkKillWord( widget: PGtkWidget; data: gPointer) : GBoolean; cdecl;
+function gtkKillWord( {%H-}widget: PGtkWidget; data: gPointer) : GBoolean; cdecl;
 var
   Mess : TLMessage;
 begin
   EventTrace('Kill Word', data);
-  if (Widget=nil) then ;
   Mess.msg := LM_KILLWORD;
   Result:= DeliverMessage(Data, Mess) = 0;
 end;
 
-function gtkKillLine( widget: PGtkWidget; data: gPointer) : GBoolean; cdecl;
+function gtkKillLine( {%H-}widget: PGtkWidget; data: gPointer) : GBoolean; cdecl;
 var
   Mess : TLMessage;
 begin
   EventTrace('Kill Line', data);
-  if (Widget=nil) then ;
   Mess.msg := LM_KILLLINE;
   Result:= DeliverMessage(Data, Mess) = 0;
 end;
@@ -2744,12 +2709,11 @@ begin
   Result:= DeliverMessage(Data, Mess) = 0;
 end;
 
-function gtkCopyToClip( widget: PGtkWidget; data: gPointer) : GBoolean; cdecl;
+function gtkCopyToClip( {%H-}widget: PGtkWidget; data: gPointer) : GBoolean; cdecl;
 var
   Mess : TLMessage;
 begin
   EventTrace('Copy to Clip', data);
-  if (Widget=nil) then ;
   Mess.msg := LM_COPY;
   Result:= DeliverMessage(Data, Mess) = 0;
 end;
@@ -2760,7 +2724,6 @@ var
   Info: PWidgetInfo;
 begin
   EventTrace('Paste from clip', data);
-  if (Widget=nil) then ;
 
   // we must update cursor pos with delay otherwise selStart is wrong.issue #7243
   if (Widget <> nil) and (GTK_IS_ENTRY(Widget)) then
@@ -2774,7 +2737,7 @@ begin
   Result:= DeliverMessage(Data, Mess) = 0;
 end;
 
-function gtkValueChanged(widget: PGtkWidget; data: gPointer) : GBoolean; cdecl;
+function gtkValueChanged({%H-}widget: PGtkWidget; data: gPointer) : GBoolean; cdecl;
 var
   Mess : TLMessage;
 begin
@@ -2846,7 +2809,7 @@ begin
   end;
 end;
 
-function gtkFocusInNotifyCB (widget : PGtkWidget; event : PGdkEvent;
+function gtkFocusInNotifyCB (widget : PGtkWidget; {%H-}event : PGdkEvent;
   data : gpointer) : GBoolean; cdecl;
 var
   MessI : TLMEnter;
@@ -2857,7 +2820,6 @@ begin
   EventTrace ('FocusInNotify (alias Enter)', data);
   {$ENDIF}
 
-  if (Event=nil) then ;
   if csDesigning in TControl(Data).ComponentState then begin
     // stop the signal, so that the widget does not auto react
     g_signal_stop_emission_by_name(PGTKObject(Widget),'focus-in-event');
@@ -2867,7 +2829,7 @@ begin
   DeliverMessage(Data, MessI);
 end;
 
-function gtkFocusOutNotifyCB (widget : PGtkWidget; event : PGdkEvent;
+function gtkFocusOutNotifyCB (widget : PGtkWidget; {%H-}event : PGdkEvent;
   data : gpointer) : GBoolean; cdecl;
 var
   MessI : TLMExit;
@@ -2878,7 +2840,6 @@ begin
   EventTrace ('FocusOutNotify (alias Exit)', data);
   {$ENDIF}
 
-  if (Event=nil) then ;
   if csDesigning in TControl(Data).ComponentState then begin
     // stop the signal, so that the widget does not auto react
     g_signal_stop_emission_by_name(PGTKObject(Widget),'focus-out-event');
@@ -3300,7 +3261,7 @@ end;
 function GTKKeySnooper(Widget: PGtkWidget; Event: PGdkEventKey;
   FuncData: gPointer): gInt; cdecl;
 var
-  KeyStateList: TFPList;
+  KeyStateList: TFPList absolute FuncData;
 
   procedure UpdateToggleList(const AVKeyCode: Integer);
   begin
@@ -3385,8 +3346,7 @@ begin
     Exit;
   end;
 
-  if FuncData = nil then exit;
-  KeyStateList := TObject(FuncData) as TFPList;
+  if KeyStateList = nil then exit;
   
   ShiftState := GTKEventStateToShiftState(Event^.State);
   
@@ -3434,13 +3394,12 @@ begin
   end;
 end;
 
-function gtkYearChanged(Widget: PGtkWidget; data: gPointer) : GBoolean; cdecl;
+function gtkYearChanged({%H-}Widget: PGtkWidget; data: gPointer) : GBoolean; cdecl;
 var
   MSG: TLMessage;
 begin
   Result := CallBackDefaultReturn;
 
-  if (Widget=nil) then ;
   EventTrace('year changed', data);
   MSG.Msg := LM_YEARCHANGED;
   DeliverPostMessage(Data, MSG);
@@ -3494,10 +3453,10 @@ begin
     begin
       Form := nil;
       if (TObject(Data) is TWinControl) then
-        Form := (TObject(Data) as TWinControl).IntfGetDropFilesTarget;
+        Form := TWinControl(Data).IntfGetDropFilesTarget;
         
       if Form is TCustomForm then
-        (Form as TCustomForm).IntfDropFiles(Files)
+        TCustomForm(Form).IntfDropFiles(Files)
       else
         if (Application <> nil) and (Application.MainForm <> nil) then
           Application.MainForm.IntfDropFiles(Files);
@@ -3520,15 +3479,14 @@ end;
   Copy the received selection data record and buffer to
   internal record and buffer (ClipboardSelectionData)
  ------------------------------------------------------------------------------}
-procedure ClipboardSelectionReceivedHandler(TargetWidget: PGtkWidget;
-  SelectionData: PGtkSelectionData; TimeID: guint32; Data: Pointer); cdecl;
+procedure ClipboardSelectionReceivedHandler({%H-}TargetWidget: PGtkWidget;
+  SelectionData: PGtkSelectionData; TimeID: guint32; {%H-}Data: Pointer); cdecl;
 var TempBuf: Pointer;
   c: PClipboardEventData;
   i: integer;
 begin
   // at any time there can be several requests
   // find the request with the correct TimeID
-  if (Data=nil) or (TargetWidget=nil) then ;
   i:=ClipboardSelectionData.Count-1;
   while (i>=0) do begin
     c:=PClipboardEventData(ClipboardSelectionData[i]);
@@ -3626,9 +3584,9 @@ end;
   Since the lcl clipboard caches all requests this will typically be another
   application.
  ------------------------------------------------------------------------------}
-procedure ClipboardSelectionRequestHandler(TargetWidget: PGtkWidget;
-  SelectionData: PGtkSelectionData; Info: cardinal; TimeID: cardinal;
-  Data: Pointer); cdecl;
+procedure ClipboardSelectionRequestHandler({%H-}TargetWidget: PGtkWidget;
+  SelectionData: PGtkSelectionData; {%H-}Info: cardinal; {%H-}TimeID: cardinal;
+  {%H-}Data: Pointer); cdecl;
 var
   ClipboardType: TClipboardType;
   FormatID: cardinal;
@@ -3637,7 +3595,6 @@ begin
   {$IFDEF DEBUG_CLIPBOARD}
   DebugLn('*** [ClipboardSelectionRequestHandler] START');
   {$ENDIF}
-  if (Data=nil) or (TimeID=0) or (Info=0) or (TargetWidget=nil) then ;
   if SelectionData^.Target=0 then exit;
   for ClipboardType:=Low(TClipboardType) to High(TClipboardType) do
   begin
@@ -3693,11 +3650,10 @@ end;
 
   This signal is emitted if another application gets the clipboard ownership.
  ------------------------------------------------------------------------------}
-function ClipboardSelectionLostOwnershipHandler(TargetWidget: PGtkWidget;
-  EventSelection: PGdkEventSelection;  Data: Pointer): cardinal; cdecl;
+function ClipboardSelectionLostOwnershipHandler({%H-}TargetWidget: PGtkWidget;
+  EventSelection: PGdkEventSelection;  {%H-}Data: Pointer): cardinal; cdecl;
 var ClipboardType: TClipboardType;
 begin
-  if (Data=nil) or (TargetWidget=nil) then ;
   //DebugLn('*** [ClipboardSelectionLostOwnershipHandler] ',DbgS(targetwidget));
   for ClipboardType:=Low(TClipboardType) to High(TClipboardType) do
     if EventSelection^.Selection=ClipboardTypeAtoms[ClipboardType] then begin
@@ -3728,23 +3684,18 @@ end;
   But also called on every widget realize, so it should not release all styles
   everytime.
 -------------------------------------------------------------------------------}
-procedure GTKStyleChanged(Widget: PGtkWidget; previous_style : PGTKStyle;
-  Data: Pointer); cdecl;
+{$IFDEF EventTrace}
+procedure GTKStyleChanged({%H-}Widget: PGtkWidget; {%H-}previous_style : PGTKStyle;
+  {%H-}Data: Pointer); cdecl;
 begin
-  if (Widget=nil) or (Data=nil) or (previous_style=nil) then ;
-  {$IFDEF EventTrace}
   EventTrace('style-set', nil);
-  {$ENDIF}
   //ReleaseAllStyles;
 end;
 
-procedure GTKStyleChangedAfter(Widget: PGtkWidget; previous_style : PGTKStyle;
-  Data: Pointer); cdecl;
+procedure GTKStyleChangedAfter({%H-}Widget: PGtkWidget; {%H-}previous_style : PGTKStyle;
+  {%H-}Data: Pointer); cdecl;
 begin
-  if (Widget=nil) or (Data=nil) or (previous_style=nil) then ;
-  {$IFDEF EventTrace}
   EventTrace('style-set', nil);
-  {$ENDIF}
 
   { Note:
     This event is called for many widgets but not for all.
@@ -3756,6 +3707,7 @@ begin
   //debugln('style-set after ',DbgSName(TWinControl(Data)));
   //LCLObject.InvalidateClientRectCache(False);
 end;
+{$ENDIF}
 
 
 function gtkListBoxSelectionChangedAfter(widget: PGtkWidget; data: gPointer
@@ -3780,18 +3732,17 @@ end;
 
 //DRAG CALLBACK FUNCTIONS
 
-function edit_drag_data_received(widget : pgtkWidget;
+function edit_drag_data_received({%H-}widget : pgtkWidget;
   Context : pGdkDragContext;
-  X, Y : Integer;
+  {%H-}X, {%H-}Y : Integer;
   SelData : pGtkSelectionData;
-  info : Integer;
+  {%H-}info : Integer;
   time : Integer;
   data : pointer) : GBoolean; cdecl;
 Var
   Texts : String;
 Begin
   Result:=false;
-  if (Widget=nil) or (X=0) or (Y=0) or (Info=0) then exit;
   //DebugLn('Trace:***********Drag Data Received*******************');
   if Seldata^.Length > 0 then
   Begin
@@ -3804,18 +3755,17 @@ Begin
   gtk_drag_finish(Context,false,false,time);
 end;
 
-function edit_source_drag_data_get(widget : pgtkWidget;
-  Context : pGdkDragContext;
+function edit_source_drag_data_get({%H-}widget : pgtkWidget;
+  {%H-}Context : pGdkDragContext;
   Selection_data : pGtkSelectionData;
   info : Integer;
-  time : Integer;
+  {%H-}time : Integer;
   data : pointer) : GBoolean; cdecl;
 var
   strTemp : PChar;
   Texts : String;
 Begin
   Result:=false;
-  if (Time=0) or (Context=nil) or (Widget=nil) then ;
   if (info = TARGET_ROOTWIN) then begin
     //DebugLn('Trace:I WAS DROPPED ON THE ROOTWIN')
   end
@@ -3840,28 +3790,25 @@ Begin
 end;
 
 
-function Edit_source_drag_data_delete (Widget: pGtkWidget;
-  Context: pGdkDragContext; Data: gpointer): gBoolean ; cdecl;
+function Edit_source_drag_data_delete ({%H-}Widget: pGtkWidget;
+  {%H-}Context: pGdkDragContext; {%H-}Data: gpointer): gBoolean ; cdecl;
 begin
-  if (Widget=nil) or (Context=nil) or (Data=nil) then ;
   //DebugLn('Trace:***************');
   //DebugLn('Trace:DELETE THE DATA');
   Result:=false;
 end;
 
 // combobox callbacks
-function gtkComboBoxShowAfter(widget: PGtkWidget; data: gPointer): GBoolean; cdecl;
+function gtkComboBoxShowAfter({%H-}widget: PGtkWidget; data: gPointer): GBoolean; cdecl;
 var
   Mess : TLMCommand;
-  AComboBox: TCustomComboBox;
+  AComboBox: TCustomComboBox absolute data;
 begin
   Result := True;
   EventTrace('ComboBoxShowAfter', data);
 
-  AComboBox:=TObject(Data) as TCustomComboBox;
   AComboBox.IntfGetItems;
 
-  if (Widget=nil) then ;
   FillChar(Mess{%H-},SizeOf(Mess),0);
   Mess.Msg := CN_Command;
   Mess.NotifyCode := CBN_DROPDOWN;
@@ -3869,12 +3816,11 @@ begin
   Result := DeliverMessage(Data, Mess) = 0;
 end;
 
-function gtkComboBoxHideAfter(widget: PGtkWidget; data: gPointer): GBoolean; cdecl;
+function gtkComboBoxHideAfter({%H-}widget: PGtkWidget; data: gPointer): GBoolean; cdecl;
 var
   Mess : TLMCommand;
 begin
   Result := True;
-  if (Widget=nil) then ;
   EventTrace('ComboBoxHideAfter', data);
   FillChar(Mess{%H-},SizeOf(Mess),0);
   Mess.Msg := CN_Command;
@@ -3913,13 +3859,12 @@ end;
 function PageIconWidgetExposeAfter(Widget: PGtkWidget; Event: PGDKEventExpose;
   Data: gPointer): GBoolean; cdecl;
 var
-  ThePage: TCustomPage;
+  ThePage: TCustomPage absolute Data;
 begin
   Result := false;
   //DebugLn('PageIconWidgetExposeAfter ',DbgS(Widget));
   EventTrace('PageIconWidgetExposeAfter', Data);
   if (Event^.Count > 0) then exit;
-  ThePage := TObject(Data) as TCustomPage;
   DrawNotebookPageIcon(ThePage, Widget);
 end;
 

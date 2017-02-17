@@ -14,7 +14,7 @@
  *   A copy of the GNU General Public License is available on the World    *
  *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
  *   obtain it by writing to the Free Software Foundation,                 *
- *   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.        *
+ *   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
  *                                                                         *
  ***************************************************************************
 
@@ -39,9 +39,10 @@ uses
   // LazUtils
   LConvEncoding, FileUtil, LazFileUtils, LazUTF8, LazUTF8Classes,
   // IDEIntf
-  ComponentReg, LazIDEIntf, PackageIntf, ProjectIntf, IDEDialogs, IDEExternToolIntf,
+  ComponentReg, IDEDialogs,
+  LazIDEIntf, PackageIntf, ProjectIntf, IDEExternToolIntf, IDEOptionsIntf,
   // IDE
-  IDEProcs, DialogProcs, EditorOptions, CompilerOptions,
+  IDEProcs, DialogProcs, CompilerOptions,
   ProjPackBase, Project, ProjectDefs, PackageDefs, PackageSystem, PackageEditor,
   BasePkgManager, LazarusIDEStrConsts,
   // Converter
@@ -100,6 +101,7 @@ type
     function GetDfmFileName: string;
     function CopyAndLoadFile: TModalResult;
     function FixLfmFilenameAndLoad(ADfmFilename: string): TModalResult;
+    function ReduceMissingUnits: TModalResult;
     function ConvertUnitFile: TModalResult;
     function ConvertFormFile: TModalResult;
     function FixIncludeFiles: TModalResult;
@@ -187,6 +189,7 @@ type
     function ReadDelphiConfigFiles: TModalResult;
     function ExtractOptionsFromDOF(const DOFFilename: string): TModalResult;
     function ExtractOptionsFromCFG(const CFGFilename: string): TModalResult;
+    procedure MissingUnitsSub(AUsedUnits: TUsedUnits);
     function DoMissingUnits(AUsedUnitsTool: TUsedUnitsTool): integer; override;
     function AddToProjectLater(AFileName: string): Boolean;
     function MaybeDeleteFiles: TModalResult;
@@ -617,25 +620,24 @@ begin
   end;
 end;
 
+function TDelphiUnit.ReduceMissingUnits: TModalResult;
+// Find or comment out some / all of missing units.
+begin
+  Result:=mrOK;
+  // Comment out automatically units that were commented in other files.
+  fUsedUnitsTool.MainUsedUnits.CommentAutomatic(fOwnerConverter.fAllCommentedUnits);
+  fUsedUnitsTool.ImplUsedUnits.CommentAutomatic(fOwnerConverter.fAllCommentedUnits);
+  // Remove omitted units from MissingUnits.
+  fUsedUnitsTool.MainUsedUnits.OmitUnits;
+  fUsedUnitsTool.ImplUsedUnits.OmitUnits;
+  // Try to find from subdirectories scanned earlier.
+  if fOwnerConverter.DoMissingUnits(fUsedUnitsTool)=0 then exit;
+  if fUsedUnitsTool.MissingUnitCount=0 then exit;
+  // Interactive dialog for searching unit.
+  Result:=AskUnitPathFromUser;
+end;
+
 function TDelphiUnit.ConvertUnitFile: TModalResult;
-
-  function ReduceMissingUnits: TModalResult;
-  // Find or comment out some / all of missing units.
-  begin
-    Result:=mrOK;
-    // Try to find from subdirectories scanned earlier.
-    if fOwnerConverter.DoMissingUnits(fUsedUnitsTool)=0 then exit;
-    // Comment out automatically units that were commented in other files.
-    fUsedUnitsTool.MainUsedUnits.CommentAutomatic(fOwnerConverter.fAllCommentedUnits);
-    fUsedUnitsTool.ImplUsedUnits.CommentAutomatic(fOwnerConverter.fAllCommentedUnits);
-    // Remove omitted units from MissingUnits.
-    fUsedUnitsTool.MainUsedUnits.OmitUnits;
-    fUsedUnitsTool.ImplUsedUnits.OmitUnits;
-    if fUsedUnitsTool.MissingUnitCount=0 then exit;
-    // Interactive dialog for searching unit.
-    Result:=AskUnitPathFromUser;
-  end;
-
 var
   DfmFilename: string;     // Delphi .DFM file name.
   ConvTool: TConvDelphiCodeTool;
@@ -665,9 +667,12 @@ begin
     ConvTool.HasFormFile:=DfmFilename<>'';
     ConvTool.AddUnitEvent:=@fUsedUnitsTool.AddUnitIfNeeded;
     Result:=ConvTool.Convert;
+    if Result<>mrOK then exit;
   finally
     ConvTool.Free;
   end;
+  // First pass to add, remove, fix and comment out units in uses sections.
+  Result:=fUsedUnitsTool.ConvertUsed;
 end;
 
 function TDelphiUnit.ConvertFormFile: TModalResult;
@@ -696,7 +701,8 @@ begin
     Result:=SaveCodeBufferToFile(fLFMBuffer,fLFMBuffer.Filename);
     if Result<>mrOK then exit;
   end;
-  // After other changes: add, remove, fix and comment out units in uses sections.
+  // Second pass to add, remove, fix and comment out units in uses sections.
+  // More changes to uses section can happen during form file conversion.
   Result:=fUsedUnitsTool.ConvertUsed;
   if Result<>mrOK then exit;
   Result:=mrOK;
@@ -728,8 +734,9 @@ begin
         try
           UnitDirDialog.InitialDir:=fOwnerConverter.fPrevSelectedPath;
           UnitDirDialog.Title:=lisConvDelphiAllSubDirsScanned;
-          if UnitDirDialog.Execute then begin
-            fOwnerConverter.fPrevSelectedPath:=ExtractFilePath(UnitDirDialog.Filename);
+          if UnitDirDialog.Execute then
+          begin
+            fOwnerConverter.fPrevSelectedPath:=UnitDirDialog.FileName;
             // Add the new path to project if missing units are found.
             // We use a thread here only to reuse its code. No parallel operations now.
             CacheUnitsThread:=TCacheUnitsThread.Create(fOwnerConverter,
@@ -1026,6 +1033,7 @@ begin
     Result:=mrAbort;
   end;
   finally
+    CacheUnitsThread.Free;
     EndTime:=Now;
     s:=FormatDateTime('hh:nn:ss', EndTime-StartTime);
     if (Result<>mrAbort) and (s<>'00:00:00') then
@@ -1155,11 +1163,11 @@ var
     Result:=ExpandDelphiSearchPath(SearchPath, Self);
   end;
 
-  procedure AddPackDep(const DelphiPkgName, DelphiPkgNames, LazarusPkgName: string);
+  procedure AddPackDep(const DelphiPkgName, LowerDelphiPkgNames, LazarusPkgName: string);
   begin
     if DelphiPkgName='' then exit;
-    if System.Pos(';'+lowercase(DelphiPkgName)+';',
-                  ';'+lowercase(DelphiPkgNames)+';')>0 then begin
+    if Pos(';'+lowercase(DelphiPkgName)+';', ';'+LowerDelphiPkgNames+';')>0 then
+    begin
       fProjPack.AddPackageDependency(LazarusPkgName);
       fSettings.AddLogLine(mluNote,
         Format(lisConvDelphiAddedPackageDependency,[LazarusPkgName]),
@@ -1316,38 +1324,37 @@ begin
   end;
 end;
 
+procedure TConvertDelphiProjPack.MissingUnitsSub(AUsedUnits: TUsedUnits);
+var
+  mUnit, sUnitPath, RealFileName, RealUnitName: string;
+  i: Integer;
+begin
+  for i:= AUsedUnits.MissingUnits.Count-1 downto 0 do begin
+    mUnit:=AUsedUnits.MissingUnits[i];
+    sUnitPath:=GetCachedUnitPath(mUnit);
+    if sUnitPath<>'' then begin
+      fProjPack.BaseCompilerOptions.MergeToUnitPaths(sUnitPath);
+      fProjPack.BaseCompilerOptions.MergeToIncludePaths(sUnitPath);
+      // Rename a unit with different casing if needed.
+      RealFileName:=fCachedRealFileNames[UpperCase(mUnit)];
+      RealUnitName:=ExtractFileNameOnly(RealFileName);
+      if (RealUnitName<>'') and (RealUnitName<>mUnit) then
+        AUsedUnits.UnitsToFixCase[mUnit]:=RealUnitName;
+      // Will be added later to project.
+      AddToProjectLater(sUnitPath+RealFileName);
+      AUsedUnits.MissingUnits.Delete(i);      // No more missing, delete from list.
+    end
+    else if CheckPackageDep(mUnit) then
+      AUsedUnits.MissingUnits.Delete(i);
+  end;
+end;
+
 function TConvertDelphiProjPack.DoMissingUnits(AUsedUnitsTool: TUsedUnitsTool): integer;
 // Locate unit names from earlier cached list or from packages.
 // Return the number of units still missing.
-
-  procedure DoMissingSub(AUsedUnits: TUsedUnits);
-  var
-    mUnit, sUnitPath, RealFileName, RealUnitName: string;
-    i: Integer;
-  begin
-    for i:= AUsedUnits.MissingUnits.Count-1 downto 0 do begin
-      mUnit:=AUsedUnits.MissingUnits[i];
-      sUnitPath:=GetCachedUnitPath(mUnit);
-      if sUnitPath<>'' then begin
-        fProjPack.BaseCompilerOptions.MergeToUnitPaths(sUnitPath);
-        fProjPack.BaseCompilerOptions.MergeToIncludePaths(sUnitPath);
-        // Rename a unit with different casing if needed.
-        RealFileName:=fCachedRealFileNames[UpperCase(mUnit)];
-        RealUnitName:=ExtractFileNameOnly(RealFileName);
-        if (RealUnitName<>'') and (RealUnitName<>mUnit) then
-          AUsedUnits.UnitsToFixCase[mUnit]:=RealUnitName;
-        // Will be added later to project.
-        AddToProjectLater(sUnitPath+RealFileName);
-        AUsedUnits.MissingUnits.Delete(i);      // No more missing, delete from list.
-      end
-      else if CheckPackageDep(mUnit) then
-        AUsedUnits.MissingUnits.Delete(i);
-    end;
-  end;
-
 begin
-  DoMissingSub(AUsedUnitsTool.MainUsedUnits);
-  DoMissingSub(AUsedUnitsTool.ImplUsedUnits);
+  MissingUnitsSub(AUsedUnitsTool.MainUsedUnits);
+  MissingUnitsSub(AUsedUnitsTool.ImplUsedUnits);
   Result:=AUsedUnitsTool.MissingUnitCount;
 end;
 
@@ -1410,6 +1417,7 @@ end;
 function TConvertDelphiProjPack.CheckPackageDep(AUnitName: string): Boolean;
 // Check if the given unit can be found in existing packages. Add a dependency if found.
 // This is called only if the unit is reported as missing.
+// Returns True if a dependency was really added.
 var
   Pack: TPkgFile;
   Dep: TPkgDependency;
@@ -1450,7 +1458,7 @@ begin
       if not Result then
         // Package was not found. Add a message about a package that must be installed.
         fSettings.AddLogLine(mluWarning,
-          Format(lisConvDelphiPackageRequired, [ADefaultPkgName]));
+                        Format(lisConvDelphiPackageRequired, [ADefaultPkgName]));
     end;
   end;
 end;
@@ -1514,8 +1522,9 @@ begin
   if LazProject.MainUnitInfo=nil then begin
     // add .lpr file to project as main unit
     MainUnitInfo:=TUnitInfo.Create(fMainUnitConverter.fPascalBuffer);
+    Assert(Assigned(IDEEditorOptions), 'TConvertDelphiProject.CreateMainSourceFile: IDEEditorOptions is Nil.');
     MainUnitInfo.DefaultSyntaxHighlighter:=
-                    ExtensionToLazSyntaxHighlighter(fMainUnitConverter.LazFileExt);
+      IDEEditorOptions.ExtensionToLazSyntaxHighlighter(fMainUnitConverter.LazFileExt);
     MainUnitInfo.IsPartOfProject:=true;
     LazProject.AddFile(MainUnitInfo,false);
     LazProject.MainFileID:=0;

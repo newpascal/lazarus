@@ -20,7 +20,7 @@
  *   A copy of the GNU General Public License is available on the World    *
  *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
  *   obtain it by writing to the Free Software Foundation,                 *
- *   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.        *
+ *   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
  *                                                                         *
  ***************************************************************************
 
@@ -446,7 +446,7 @@ begin
     if WarnOverwrite then begin
       Result:=IDEQuestionDialog(lisOverwriteFile,
         Format(lisAFileAlreadyExistsReplaceIt, [AFilename, LineEnding]),
-        mtConfirmation, [mrYes, lisOverwriteFileOnDisk, mbCancel]);
+        mtConfirmation, [mrYes, lisOverwriteFileOnDisk, mrCancel]);
       if Result=mrCancel then exit;
     end;
     if CreateBackup then begin
@@ -506,8 +506,7 @@ begin
   Result:=mrOk;
 end;
 
-function ChooseSymlink(var Filename: string; AskOnSymlink: boolean
-  ): TModalResult;
+function ChooseSymlink(var Filename: string; AskOnSymlink: boolean): TModalResult;
 var
   TargetFilename: String;
 begin
@@ -523,11 +522,11 @@ begin
     // ask which filename to use
     case IDEQuestionDialog(lisFileIsSymlink,
       Format(lisTheFileIsASymlinkOpenInstead,[Filename,LineEnding+LineEnding,TargetFilename]),
-      mtConfirmation, [mbYes, lisOpenTarget, mbNo, lisOpenSymlink, mbCancel])
+      mtConfirmation, [mrYes, lisOpenTarget, mrNo, lisOpenSymlink, mrCancel])
     of
-    mrYes: Filename:=TargetFilename;
-    mrNo:  ;
-    else   exit(mrCancel);
+      mrYes: Filename:=TargetFilename;
+      mrNo: ;
+      else exit(mrCancel);
     end;
   end;
   Result:=mrOk;

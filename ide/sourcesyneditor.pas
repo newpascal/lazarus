@@ -20,7 +20,7 @@
  *   A copy of the GNU General Public License is available on the World    *
  *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
  *   obtain it by writing to the Free Software Foundation,                 *
- *   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.        *
+ *   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
  *                                                                         *
  ***************************************************************************
 
@@ -59,9 +59,7 @@ uses
   SynEditHighlighter, SynEditHighlighterFoldBase, SynHighlighterPas,
   SynEditMarkupHighAll, SynEditKeyCmds, SynEditMarkupIfDef, SynEditMiscProcs,
   SynPluginMultiCaret, SynEditPointClasses,
-  {$IFDEF SynWithOutlineMarkup}
   SynEditMarkupFoldColoring,
-  {$ENDIF}
   etSrcEditMarks, LazarusIDEStrConsts;
 
 type
@@ -1636,6 +1634,7 @@ begin
 
   inherited SetHighlighter(Value);
 
+//TSynEditMarkupFoldColors(MarkupByClass[TSynEditMarkupFoldColors]).Highlighter := Highlighter; // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
   if Highlighter is TSynPasSyn then
     FMarkupIfDef.Highlighter := TSynPasSyn(Highlighter)
   else
@@ -1657,10 +1656,8 @@ begin
 end;
 
 constructor TIDESynEditor.Create(AOwner: TComponent);
-{$IFDEF SynWithOutlineMarkup}
 var
   MarkupFoldColors: TSynEditMarkupFoldColors;
-{$ENDIF}
 begin
   inherited Create(AOwner);
   FUserWordsList := TFPList.Create;
@@ -1676,11 +1673,9 @@ begin
   FMarkupForGutterMark := TSynEditMarkupGutterMark.Create(Self, FWordBreaker);
   TSynEditMarkupManager(MarkupMgr).AddMarkUp(FMarkupForGutterMark);
 
-  {$IFDEF SynWithOutlineMarkup}
   MarkupFoldColors := TSynEditMarkupFoldColors.Create(Self);
   //MarkupFoldColors.DefaultGroup := 0;
   TSynEditMarkupManager(MarkupMgr).AddMarkUp(MarkupFoldColors);
-  {$ENDIF}
 
   FMarkupIfDef := TSourceSynEditMarkupIfDef.Create(Self);
   FMarkupIfDef.FoldView := TSynEditFoldedView(FoldedTextBuffer);

@@ -1,3 +1,26 @@
+{
+ ***************************************************************************
+ *                                                                         *
+ *   This source is free software; you can redistribute it and/or modify   *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ *   This code is distributed in the hope that it will be useful, but      *
+ *   WITHOUT ANY WARRANTY; without even the implied warranty of            *
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU     *
+ *   General Public License for more details.                              *
+ *                                                                         *
+ *   A copy of the GNU General Public License is available on the World    *
+ *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
+ *   obtain it by writing to the Free Software Foundation,                 *
+ *   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
+ *                                                                         *
+ ***************************************************************************
+
+ Author: Balázs Székely
+}
+
 unit opkman_createjsonforupdates;
 
 {$mode objfpc}{$H+}
@@ -16,8 +39,8 @@ type
   TCreateJSONForUpdatesFrm = class(TForm)
     bClose: TButton;
     bCreate: TButton;
-    bTest: TButton;
     bHelp: TButton;
+    bTest: TButton;
     edLinkToZip: TEdit;
     imTree: TImageList;
     lbLinkToZip: TLabel;
@@ -25,6 +48,7 @@ type
     pnButtons: TPanel;
     SD: TSaveDialog;
     procedure bCreateClick(Sender: TObject);
+    procedure bHelpClick(Sender: TObject);
     procedure bTestClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
@@ -71,8 +95,8 @@ begin
   Caption := rsCreateJSONForUpdatesFrm_Caption;
   lbLinkToZip.Caption := rsCreateJSONForUpdatesFrm_lbLinkToZip_Caption;
   bTest.Caption := rsCreateJSONForUpdatesFrm_bTest_Caption;
-  bHelp.Caption := rsCreateJSONForUpdatesFrm_bHelp_Caption;
   bCreate.Caption := rsCreateJSONForUpdatesFrm_bCreate_Caption;
+  bHelp.Caption := rsCreateJSONForUpdatesFrm_bHelp_Caption;
   bClose.Caption := rsCreateJSONForUpdatesFrm_bClose_Caption;
 
   FVST := TVirtualStringTree.Create(nil);
@@ -163,14 +187,19 @@ var
   Ms: TMemoryStream;
   Node: PVirtualNode;
   Data: PData;
+  CanClose: Boolean;
+  ErrMsg: String;
 begin
   if FVST.CheckedCount = 0 then
   begin
     MessageDlgEx(rsCreateJSONForUpdatesFrm_Message3, mtInformation, [mbOk], Self);
     Exit;
   end;
-
-  SD.FileName := 'update_' + FPackage.DisplayName;
+  CanClose := False;
+  if FPackage.DisplayName <> '' then
+    SD.FileName := 'update_' + FPackage.DisplayName
+  else
+    SD.FileName := 'update_' + FPackage.Name;
   if SD.Execute then
   begin
     UpdatePackage := TUpdatePackage.Create;
@@ -204,11 +233,25 @@ begin
         finally
           MS.Free;
         end;
+        CanClose := True;
+        MessageDlgEx(rsCreateJSONForUpdatesFrm_Message4, mtInformation, [mbOk], Self);
+      end
+      else
+      begin
+        ErrMsg := StringReplace(UpdatePackage.LastError, '"', '', [rfReplaceAll]);
+        MessageDlgEx(rsCreateJSONForUpdatesFrm_Error1 + sLineBreak + '"' + ErrMsg + '"', mtError, [mbOk], Self);
       end;
     finally
       UpdatePackage.Free;
     end;
   end;
+  if CanClose then
+    Close
+end;
+
+procedure TCreateJSONForUpdatesFrm.bHelpClick(Sender: TObject);
+begin
+  OpenURL(cHelpPage_CreateExternalJSON);
 end;
 
 procedure TCreateJSONForUpdatesFrm.VSTGetText(Sender: TBaseVirtualTree;

@@ -24,7 +24,7 @@
  *   A copy of the GNU General Public License is available on the World    *
  *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
  *   obtain it by writing to the Free Software Foundation,                 *
- *   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.        *
+ *   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
  *                                                                         *
  ***************************************************************************
 }
@@ -397,7 +397,6 @@ type
     procedure BeginUpdate;
     procedure EndUpdate;
     procedure DoChange(ForceUpdate: Boolean = False);
-    procedure IgnoreUpdate;
     property UpdateLock: integer read FUpdateLock;
 
     // items
@@ -2087,11 +2086,6 @@ begin
     if Assigned(FOnChange) then
       FOnChange(Self, ForceUpdate);
   end;
-end;
-
-procedure TControlSelection.IgnoreUpdate;
-begin
-  FStates := FStates - cssSelectionChangeFlags;
 end;
 
 procedure TControlSelection.DoChangeProperties;

@@ -82,19 +82,23 @@ type
     FFirstCharacterColumnCache: Array of Byte;
     FEndLineCache: Array of Integer;
     FCacheCount,
-    FCacheCapacity: Integer;
+    FCacheCapacity,
+    FFoldColorInfosCount,
+    FFoldColorInfosCapacity: Integer;
 
     FDefaultGroup: integer;
     FFoldColorInfos: TMarkupFoldColorInfos;
-    FFoldColorInfosCount: Integer;
 
     Colors : array of TColor;
     FPreparedRow: integer;
     FLastNode: TSynFoldNodeInfo;
+    FLastEnabled: Boolean;
+
     procedure DoMarkupParentFoldAtRow(aRow: Integer);
     procedure DoMarkupParentCloseFoldAtRow(aRow: Integer);
     procedure SetDefaultGroup(AValue: integer);
     procedure SetCacheCount(pNewCount: Integer);
+    procedure SetFoldColorInfosCount(pNewCount: Integer);
     procedure InitCache;
     procedure ClearCache;
     property FirstCharacterColumn[index: Integer]: Byte read GetFirstCharacterColumn;
@@ -104,9 +108,11 @@ type
     procedure SetLines(const AValue: TSynEditStrings); override;
     procedure LinesChanged(Sender: TSynEditStrings; aIndex, aCount: Integer);
     procedure HighlightChanged(Sender: TSynEditStrings; aIndex, aCount: Integer);
+    procedure DoEnabledChanged(Sender: TObject); override;
   public
     constructor Create(ASynEdit : TSynEditBase);
     destructor Destroy; override;
+    procedure BeginMarkup; override;
     function GetMarkupAttributeAtRowCol(const aRow: Integer;
                                         const aStartCol: TLazSynDisplayTokenBound;
                                         const {%H-}AnRtlInfo: TLazSynDisplayRtlInfo): TSynSelectedColor; override;
@@ -116,13 +122,19 @@ type
                                          out   ANextPhys, ANextLog: Integer); override;
 
     procedure PrepareMarkupForRow(aRow : Integer); override;
-    procedure EndMarkup; override;
     property DefaultGroup : integer read FDefaultGroup write SetDefaultGroup;
   end;
 
 implementation
 uses
-  SynEdit, SynEditTypes, SynEditMiscProcs, Dialogs;
+  SynEdit,
+  SynEditTypes,
+  SynEditMiscProcs,
+  {$IFDEF SynEditMarkupFoldColoringDebug}
+  SynHighlighterPas,
+  strutils,
+  {$endif}
+  Dialogs;
 
 
 {$IFDEF SynEditMarkupFoldColoringDebug}
@@ -150,6 +162,7 @@ begin
   FDefaultGroup := 0;
   FFoldColorInfosCount := 0;
   SetLength(FFoldColorInfos, 50);
+  FFoldColorInfosCapacity := 50;
 
   FNestList := TLazSynEditNestedFoldsList.Create(Lines, FHighlighter);
   FNestList.ResetFilter;
@@ -163,12 +176,13 @@ begin
   MarkupInfo.StyleMask := [];
   MarkupInfo.FrameEdges:= sfeLeft;
 
-  SetLength(Colors, 5);
+  SetLength(Colors, 6);
   Colors[0] := clRed;
   Colors[1] := $000098F7; //orange
   Colors[2] := $0022CC40; //green
-  Colors[3] := $00FF682A; //blue
-  Colors[4] := $00CF00C4; //purple
+  Colors[3] := $00CCCC00;   //cyan
+  Colors[4] := $00FF682A; //blue
+  Colors[5] := $00CF00C4; //purple
 end;
 
 destructor TSynEditMarkupFoldColors.Destroy;
@@ -180,6 +194,17 @@ begin
   end;
   FreeAndNil(FNestList);
   inherited Destroy;
+end;
+
+procedure TSynEditMarkupFoldColors.BeginMarkup;
+begin
+  {$IFDEF SynEditMarkupFoldColoringDebug}
+  //DebugLn('BeginMarkup');
+  {$ENDIF}
+  inherited BeginMarkup;
+  if not Assigned(FHighlighter) then
+    exit;
+  FNestList.Clear; // for next markup start
 end;
 
 function TSynEditMarkupFoldColors.GetMarkupAttributeAtRowCol(
@@ -268,6 +293,9 @@ end;
 procedure TSynEditMarkupFoldColors.TextBufferChanged(Sender: TSynEditStrings;
   aIndex, aCount: Integer);
 begin
+  if not Enabled then
+    exit;
+
   InitCache;
 end;
 
@@ -298,7 +326,7 @@ var
         DebugLn('!!! TSynEditMarkupFoldColors.DoMarkupParentFoldAtRow: FEndLine-Array too small !!!');
       end;
     end;
-    inc(FFoldColorInfosCount);
+    SetFoldColorInfosCount(FFoldColorInfosCount + 1);
     with FFoldColorInfos[FFoldColorInfosCount - 1] do begin
 
       SrcNode:= ANode; //needed by close node
@@ -336,6 +364,9 @@ begin
   i := 0;
   while i < NestCount do begin
     TmpNode := FNestList.HLNode[i];
+    {$IFDEF SynEditMarkupFoldColoringDebug}
+    //DebugLn('  O: %s %s %s', [IfThen(sfaOutline in TmpNode.FoldAction, 'X', '-'), IfThen(sfaClose in TmpNode.FoldAction, 'C ', IfThen(sfaOpen in TmpNode.FoldAction, 'O ', '??')),FoldTypeToStr(TmpNode.FoldType)]);
+    {$ENDIF}
     if (sfaOutline in TmpNode.FoldAction)
     and not (sfaInvalid in TmpNode.FoldAction) then
       //avoid bug of IncludeOpeningOnLine := False;
@@ -349,22 +380,22 @@ begin
           inc(lvl)
         else if ( sfaOutlineMergeParent in TmpNode.FoldAction) then
           dec(lvl);
-        //if (FLastNode.LineIndex >= 0)
-        //and (sfaOutlineKeepLevelOnSameLine in FLastNode.FoldAction)
-        //and (FLastNode.LineIndex < TmpNode.LineIndex) then
-        // inc(lvl);
+        if (FLastNode.LineIndex >= 0)
+        and (sfaOutlineKeepLevel in FLastNode.FoldAction)
+        and (FLastNode.LineIndex < TmpNode.LineIndex) then
+         inc(lvl);
 
         AddVerticalLine(TmpNode, i);
 
-        //if (FFoldColorInfosCount - 1 > 0)
-        //and (FFoldColorInfos[FFoldColorInfosCount - 1].X = FFoldColorInfos[FFoldColorInfosCount - 2].X) then begin
-        //  // if child is on same x-pos keep level
-        //  if sfaOutlineMergeLevelOnWrongCol in FFoldColorInfos[FFoldColorInfosCount - 1].SrcNode.FoldAction then begin
-        //    lvl := FFoldColorInfos[FFoldColorInfosCount - 2].Level;
-        //    FFoldColorInfos[FFoldColorInfosCount - 1].Level := lvl;
-        //    FFoldColorInfos[FFoldColorInfosCount - 1].ColorIdx := Max(0, lvl) mod (length(Colors));
-        //  end;
-        //end;
+        if (FFoldColorInfosCount - 1 > 0)
+        and (FFoldColorInfos[FFoldColorInfosCount - 1].X = FFoldColorInfos[FFoldColorInfosCount - 2].X) then begin
+          // if child is on same x-pos keep level
+          if sfaOutlineKeepLevel in FFoldColorInfos[FFoldColorInfosCount - 2].SrcNode.FoldAction then begin
+            lvl := FFoldColorInfos[FFoldColorInfosCount - 2].Level;
+            FFoldColorInfos[FFoldColorInfosCount - 1].Level := lvl;
+            FFoldColorInfos[FFoldColorInfosCount - 1].ColorIdx := Max(0, lvl) mod (length(Colors));
+          end;
+        end;
 
         if not (sfaOutlineKeepLevel in TmpNode.FoldAction)
         {and not (sfaOutlineKeepLevelOnSameLine in TmpNode.FoldAction)} then
@@ -392,29 +423,40 @@ var
   var x,j : integer;
   begin
     x  := ANode.LogXStart + 1;
-    if ANode.LogXStart < ANode.LogXEnd then
-    for j := 0 to FFoldColorInfosCount - 1 do
-      if (FFoldColorInfos[j].X = x)
-      and (FFoldColorInfos[j].Border)
-      and (FFoldColorInfos[j].SrcNode.FoldType = ANode.FoldType )
-      and (FFoldColorInfos[j].SrcNode.FoldLvlEnd = ANode.FoldLvlStart )
-      then begin
-       FFoldColorInfos[j].X2 := ANode.LogXEnd + 1;
-       FFoldColorInfos[j].Border := False
-      end;
+    if ANode.LogXStart < ANode.LogXEnd then begin
+      {$IFDEF SynEditMarkupFoldColoringDebug}
+      //DebugLn('    %d < %d', [ANode.LogXStart, ANode.LogXEnd]);
+      {$ENDIF}
+      for j := 0 to FFoldColorInfosCount - 1 do
+        if (FFoldColorInfos[j].X = x)
+        and (FFoldColorInfos[j].Border)
+        and (FFoldColorInfos[j].SrcNode.FoldType = ANode.FoldType )
+        and (FFoldColorInfos[j].SrcNode.FoldLvlEnd = ANode.FoldLvlStart ) then begin
+          {$IFDEF SynEditMarkupFoldColoringDebug}
+          //DebugLn('      X2: %d->%d', [FFoldColorInfos[j].X2, ANode.LogXEnd + 1]);
+          {$ENDIF}
+          FFoldColorInfos[j].X2 := ANode.LogXEnd + 1;
+          FFoldColorInfos[j].Border := False
+        end;
+    end;
 
-    inc(FFoldColorInfosCount);
-    with FFoldColorInfos[FFoldColorInfosCount - 1] do begin
-      Border := False;
-      SrcNode:= ANode; //needed by close node
-      Y  := ANode.LineIndex + 1;
-      X  := ANode.LogXStart + 1;
-      X2 := ANode.LogXEnd + 1;
-      Level := lvl;
-      if not (sfaOutlineNocolor in ANode.FoldAction) then
-         ColorIdx := Max(0, lvl) mod (length(Colors))
-      else
-         ColorIdx := -1;
+
+    // ignore implicit close nodes at end of line, especially if line is empty
+    // or at least has less characters as vertical line is on
+    if not(sfaCloseForNextLine in ANode.FoldAction) then begin
+      SetFoldColorInfosCount(FFoldColorInfosCount + 1);
+      with FFoldColorInfos[FFoldColorInfosCount - 1] do begin
+        Border := False;
+        SrcNode:= ANode; //needed by close node
+        Y  := ANode.LineIndex + 1;
+        X  := ANode.LogXStart + 1;
+        X2 := ANode.LogXEnd + 1;
+        Level := lvl;
+        if not (sfaOutlineNocolor in ANode.FoldAction) then
+           ColorIdx := Max(0, lvl) mod (length(Colors))
+        else
+           ColorIdx := -1;
+      end;
     end;
   end;
 
@@ -441,6 +483,11 @@ begin
     repeat
       TmpNode := NodeList[i];
 
+      {$IFDEF SynEditMarkupFoldColoringDebug}
+      if not (sfaInvalid in TmpNode.FoldAction) then
+        DebugLn('  C: %s %s %s', [IfThen(sfaOutline in TmpNode.FoldAction, 'X', '-'), IfThen(sfaClose in TmpNode.FoldAction, 'C ', IfThen(sfaOpen in TmpNode.FoldAction, 'O ', '??')),FoldTypeToStr(TmpNode.FoldType)]);
+      {$ENDIF}
+
       if not (sfaInvalid in TmpNode.FoldAction)
       and (sfaOutline in TmpNode.FoldAction) then begin
         if sfaOpen in TmpNode.FoldAction then begin
@@ -450,24 +497,24 @@ begin
             inc(lvl)
           else if ( sfaOutlineMergeParent in TmpNode.FoldAction) then
             dec(lvl);
-          //if (FLastNode.LineIndex >= 0)
-          //and (sfaOutlineKeepLevelOnSameLine in FLastNode.FoldAction)
-          //and (FLastNode.LineIndex < TmpNode.LineIndex) then
-          // inc(lvl);
+          if (FLastNode.LineIndex >= 0)
+          and (sfaOutlineKeepLevel in FLastNode.FoldAction)
+          and (FLastNode.LineIndex < TmpNode.LineIndex) then
+           inc(lvl);
 
           AddHighlight(TmpNode);
 
-          //if (FFoldColorInfosCount - 1 > 0)
-          //and (FFoldColorInfos[FFoldColorInfosCount - 1].X = FFoldColorInfos[FFoldColorInfosCount - 2].X) then
-          //begin
-          //  // if child is on same x-pos keep level
-          //  if (sfaClose in FFoldColorInfos[FFoldColorInfosCount - 1].SrcNode.FoldAction)
-          //  or (sfaOutlineMergeLevelOnWrongCol in FFoldColorInfos[FFoldColorInfosCount - 1].SrcNode.FoldAction) then begin
-          //    lvl := FFoldColorInfos[FFoldColorInfosCount - 2].Level;
-          //    FFoldColorInfos[FFoldColorInfosCount - 1].Level := lvl;
-          //    FFoldColorInfos[FFoldColorInfosCount - 1].ColorIdx := Max(0, lvl) mod (length(Colors));
-          //  end;
-          //end;
+          if (FFoldColorInfosCount - 1 > 0)
+          and (FFoldColorInfos[FFoldColorInfosCount - 1].X = FFoldColorInfos[FFoldColorInfosCount - 2].X) then
+          begin
+            // if child is on same x-pos keep level
+            if (sfaClose in FFoldColorInfos[FFoldColorInfosCount - 1].SrcNode.FoldAction)
+            or (sfaOutlineKeepLevel in FFoldColorInfos[FFoldColorInfosCount - 2].SrcNode.FoldAction) then begin
+              lvl := FFoldColorInfos[FFoldColorInfosCount - 2].Level;
+              FFoldColorInfos[FFoldColorInfosCount - 1].Level := lvl;
+              FFoldColorInfos[FFoldColorInfosCount - 1].ColorIdx := Max(0, lvl) mod (length(Colors));
+            end;
+          end;
 
           if not (sfaOutlineKeepLevel in TmpNode.FoldAction)
           {and not (sfaOutlineKeepLevelOnSameLine in TmpNode.FoldAction)} then
@@ -532,15 +579,6 @@ begin
   //DebugLn('PrepareMarkupForRow %d', [aRow]);
   {$ENDIF}
   if not Assigned(FHighlighter) then exit;
-//  if length(FFirstCharacterColumnCache) = 0 then begin
-//    // array should have been initialized due to a call to SetLines before
-//    // but with a cloned TextBuffer this is not the case
-//    // therefore init it here
-//    {$IFDEF SynEditMarkupFoldColoringDebug}
-//    DebugLn('!!! SetLines not called before PrepareMarkupForRow (cloned TextBuffer)!!!');
-//    {$ENDIF}
-//    InitCache;
-//  end;
   FPreparedRow := aRow;
   FFoldColorInfosCount := 0; //reset needed to prevent using of invalid area
 
@@ -552,6 +590,12 @@ begin
 
   DoMarkupParentFoldAtRow(aRow);
   DoMarkupParentCloseFoldAtRow(aRow);
+
+  {$IFDEF SynEditMarkupFoldColoringDebug}
+  for i := 0 to FFoldColorInfosCount - 1 do with FFoldColorInfos[i] do begin
+    DebugLn('  %.5d %.2d-%.2d: %d - %s %s', [y, x, X2, ColorIdx, IfThen(sfaClose in SrcNode.FoldAction, 'C ', IfThen(sfaOpen in SrcNode.FoldAction, 'O ', '??')),FoldTypeToStr(SrcNode.FoldType)]);
+  end;
+  {$ENDIF}
 
   // delete parents with bigger x
   // to keep out mis indented blocks
@@ -565,16 +609,6 @@ begin
     end;
     LastX := FFoldColorInfos[i].X;
   end;
-end;
-
-procedure TSynEditMarkupFoldColors.EndMarkup;
-begin
-  {$IFDEF SynEditMarkupFoldColoringDebug}
-  //DebugLn('EndMarkup');
-  {$ENDIF}
-  inherited EndMarkup;
-  if not Assigned(FHighlighter) then exit;
-  FNestList.Clear; // for next markup start
 end;
 
 procedure TSynEditMarkupFoldColors.SetDefaultGroup(AValue: integer);
@@ -602,6 +636,16 @@ begin
     end;
   end;
   FCacheCount := pNewCount;
+end;
+
+procedure TSynEditMarkupFoldColors.SetFoldColorInfosCount(pNewCount: Integer);
+begin
+  if pNewCount > FFoldColorInfosCapacity then begin
+    // expand array
+    FFoldColorInfosCapacity := pNewCount + 49;
+    SetLength(FFoldColorInfos, FFoldColorInfosCapacity);
+  end;
+  FFoldColorInfosCount := pNewCount;
 end;
 
 procedure TSynEditMarkupFoldColors.InitCache;
@@ -656,8 +700,11 @@ var
   i, lMinAnz, lEndLine, j, l: Integer;
   lStartNestList, lEndNestList: array of TSynFoldNodeInfo;
 begin
+  if not Enabled then
+    exit;
+
   {$IFDEF SynEditMarkupFoldColoringDebug}
-  DebugLn('DoTextChanged %d-%d: %d', [StartLine, EndLine, ACountDiff]);
+  DebugLn('   DoTextChanged %d-%d: %d', [StartLine, EndLine, ACountDiff]);
   {$ENDIF}
 
   // lines available?
@@ -673,6 +720,12 @@ begin
     exit;
 
   FHighlighter.CurrentLines := Lines;
+  // highlighter still scanning
+  if FHighlighter.NeedScan then
+    exit;
+
+  FNestList.Clear;
+
   if EndLine < 0 then
     EndLine := StartLine
   else
@@ -685,16 +738,16 @@ begin
 
   FillNestList(lStartNestList, StartLine, FNestList);
   {$IFDEF SynEditMarkupFoldColoringDebug}
-  DebugLn('   Nodes at Start:');
-  for i := 0 to length(lStartNestList) - 1 do with lStartNestList[i] do
-    DebugLn('      x=%.03d l=%.5d %s %s %s %s lvl=%d/%d endline=%d (cache) -> %d (HL)', [LogXStart, ToPos(LineIndex), IfThen(sfaOpen in FoldAction, 'O', IfThen(sfaClose in FoldAction, 'C', ' ')), IfThen(sfaOutlineKeepLevel{OnSameLine} in FoldAction ,'K', ' '), IfThen(sfaOutlineForceIndent in FoldAction, '+', IfThen(sfaOutlineMergeParent in FoldAction, '-', ' ')) ,FoldTypeToStr(FoldType), FoldLvlStart, FoldLvlEnd, FEndLine[LineIndex], ToPos(FHighlighter.FoldEndLine(LineIndex, 0))]);
+  //DebugLn('   Nodes at Start:');
+  //for i := 0 to length(lStartNestList) - 1 do with lStartNestList[i] do
+  //  DebugLn('      x=%.03d l=%.5d %s %s %s %s lvl=%d/%d endline=%d (cache) -> %d (HL)', [LogXStart, ToPos(LineIndex), IfThen(sfaOpen in FoldAction, 'O', IfThen(sfaClose in FoldAction, 'C', ' ')), IfThen(sfaOutlineKeepLevel{OnSameLine} in FoldAction ,'K', ' '), IfThen(sfaOutlineForceIndent in FoldAction, '+', IfThen(sfaOutlineMergeParent in FoldAction, '-', ' ')) ,FoldTypeToStr(FoldType), FoldLvlStart, FoldLvlEnd, ToPos(NodeIndex), ToPos(FHighlighter.FoldEndLine(LineIndex, 0))]);
   {$ENDIF}
 
   FillNestList(lEndNestList, EndLine + 1, FNestList);
   {$IFDEF SynEditMarkupFoldColoringDebug}
-  DebugLn('   Nodes at End:');
-  for i := 0 to length(lEndNestList) - 1 do with lEndNestList[i] do
-    DebugLn('      x=%.03d l=%.5d %s %s %s %s lvl=%d/%d endline=%d (cache) -> %d (HL)', [LogXStart, ToPos(LineIndex), IfThen(sfaOpen in FoldAction, 'O', IfThen(sfaClose in FoldAction, 'C', ' ')), IfThen(sfaOutlineKeepLevel{OnSameLine} in FoldAction ,'K', ' '), IfThen(sfaOutlineForceIndent in FoldAction, '+', IfThen(sfaOutlineMergeParent in FoldAction, '-', ' ')) ,FoldTypeToStr(FoldType), FoldLvlStart, FoldLvlEnd, FEndLine[LineIndex], ToPos(FHighlighter.FoldEndLine(LineIndex, 0))]);
+  //DebugLn('   Nodes at End:');
+  //for i := 0 to length(lEndNestList) - 1 do with lEndNestList[i] do
+  //  DebugLn('      x=%.03d l=%.5d %s %s %s %s lvl=%d/%d endline=%d (cache) -> %d (HL)', [LogXStart, ToPos(LineIndex), IfThen(sfaOpen in FoldAction, 'O', IfThen(sfaClose in FoldAction, 'C', ' ')), IfThen(sfaOutlineKeepLevel{OnSameLine} in FoldAction ,'K', ' '), IfThen(sfaOutlineForceIndent in FoldAction, '+', IfThen(sfaOutlineMergeParent in FoldAction, '-', ' ')) ,FoldTypeToStr(FoldType), FoldLvlStart, FoldLvlEnd, ToPos(NodeIndex), ToPos(FHighlighter.FoldEndLine(LineIndex, 0))]);
   {$ENDIF}
 
   // delete all nodes in lEndNodeList which where active at StartLine
@@ -718,9 +771,9 @@ begin
     // deeper fold group than StartLine: fold group ends after EndLine
     // find real EndLine (end line of first remaining fold node)
     {$IFDEF SynEditMarkupFoldColoringDebug}
-    DebugLn('   Remaining Nodes:');
-    for i := 0 to length(lEndNestList) - 1 do with lEndNestList[i] do
-      DebugLn('      x=%.03d l=%.5d %s %s %s %s lvl=%d/%d endline=%d (cache) -> %d (HL)', [LogXStart, ToPos(LineIndex), IfThen(sfaOpen in FoldAction, 'O', IfThen(sfaClose in FoldAction, 'C', ' ')), IfThen(sfaOutlineKeepLevel{OnSameLine} in FoldAction ,'K', ' '), IfThen(sfaOutlineForceIndent in FoldAction, '+', IfThen(sfaOutlineMergeParent in FoldAction, '-', ' ')) ,FoldTypeToStr(FoldType), FoldLvlStart, FoldLvlEnd, FEndLine[LineIndex], ToPos(FHighlighter.FoldEndLine(LineIndex, 0))]);
+    //DebugLn('   Remaining Nodes:');
+    //for i := 0 to length(lEndNestList) - 1 do with lEndNestList[i] do
+    //  DebugLn('      x=%.03d l=%.5d %s %s %s %s lvl=%d/%d endline=%d (cache) -> %d (HL)', [LogXStart, ToPos(LineIndex), IfThen(sfaOpen in FoldAction, 'O', IfThen(sfaClose in FoldAction, 'C', ' ')), IfThen(sfaOutlineKeepLevel{OnSameLine} in FoldAction ,'K', ' '), IfThen(sfaOutlineForceIndent in FoldAction, '+', IfThen(sfaOutlineMergeParent in FoldAction, '-', ' ')) ,FoldTypeToStr(FoldType), FoldLvlStart, FoldLvlEnd, ToPos(NodeIndex), ToPos(FHighlighter.FoldEndLine(LineIndex, 0))]);
     {$ENDIF}
     // does position of first character change for remaining node?
     if FirstCharacterColumn[lEndNestList[0].LineIndex] <> FFirstCharacterColumnCache[lEndNestList[0].LineIndex] then
@@ -737,7 +790,7 @@ begin
         lEndLine := Max(lEndLine, Max(l, FEndLineCache[LineIndex]));
         FEndLineCache[LineIndex] := l;
         {$IFDEF SynEditMarkupFoldColoringDebug}
-        DebugLn('   ** x=%.03d l=%.5d %s %s %s %s lvl=%d/%d endline=%d -> %d', [LogXStart, ToPos(LineIndex), IfThen(sfaOpen in FoldAction, 'O', IfThen(sfaClose in FoldAction, 'C', ' ')), IfThen(sfaOutlineKeepLevel{OnSameLine} in FoldAction ,'K', ' '), IfThen(sfaOutlineForceIndent in FoldAction, '+', IfThen(sfaOutlineMergeParent in FoldAction, '-', ' ')) ,FoldTypeToStr(FoldType), FoldLvlStart, FoldLvlEnd, FEndLine[LineIndex], ToPos(FHighlighter.FoldEndLine(LineIndex, 0))]);
+        //DebugLn('   ** x=%.03d l=%.5d %s %s %s %s lvl=%d/%d endline=%d -> %d', [LogXStart, ToPos(LineIndex), IfThen(sfaOpen in FoldAction, 'O', IfThen(sfaClose in FoldAction, 'C', ' ')), IfThen(sfaOutlineKeepLevel{OnSameLine} in FoldAction ,'K', ' '), IfThen(sfaOutlineForceIndent in FoldAction, '+', IfThen(sfaOutlineMergeParent in FoldAction, '-', ' ')) ,FoldTypeToStr(FoldType), FoldLvlStart, FoldLvlEnd, ToPos(NodeIndex), ToPos(FHighlighter.FoldEndLine(LineIndex, 0))]);
         {$ENDIF}
       end;
     end;
@@ -754,36 +807,41 @@ begin
     {$ENDIF}
     InvalidateSynLines(EndLine + 1 , lEndLine);
   end;
+
 end;
 
 procedure TSynEditMarkupFoldColors.SetLines(const AValue: TSynEditStrings);
 var
   old: TSynEditStrings;
 begin
-  old := Lines;
-  if Assigned(old)
-  and (AValue <> old) then begin
-    // change:
-    // remove Changehandler
-    old.RemoveChangeHandler(senrLineCount, @LinesChanged);
-    old.RemoveChangeHandler(senrHighlightChanged, @HighlightChanged);
-    old.RemoveChangeHandler(senrTextBufferChanged, @TextBufferChanged);
-    ClearCache;
+  if Enabled then begin
+    old := Lines;
+    if Assigned(old)
+    and (AValue <> old) then begin
+      // change:
+      // remove Changehandler
+      old.RemoveChangeHandler(senrLineCount, @LinesChanged);
+      old.RemoveChangeHandler(senrHighlightChanged, @HighlightChanged);
+      old.RemoveChangeHandler(senrTextBufferChanged, @TextBufferChanged);
+      ClearCache;
+    end;
   end;
   inherited SetLines(AValue);
-  if (AValue <> old) then begin
-    // change:
-    if Assigned(AValue) then begin
-      // add Changehandler
-      AValue.AddChangeHandler(senrLineCount, @LinesChanged);
-      AValue.AddChangeHandler(senrHighlightChanged, @HighlightChanged);
-      AValue.AddChangeHandler(senrTextBufferChanged, @TextBufferChanged);
-      InitCache;
-    end else begin
-      // clear cache
-      SetCacheCount(0);
-      if Assigned(FNestList) then
-        FNestList.Lines := nil;
+  if Enabled then begin
+    if (AValue <> old) then begin
+      // change:
+      if Assigned(AValue) then begin
+        // add Changehandler
+        AValue.AddChangeHandler(senrLineCount, @LinesChanged);
+        AValue.AddChangeHandler(senrHighlightChanged, @HighlightChanged);
+        AValue.AddChangeHandler(senrTextBufferChanged, @TextBufferChanged);
+        InitCache;
+      end else begin
+        // clear cache
+        SetCacheCount(0);
+        if Assigned(FNestList) then
+          FNestList.Lines := nil;
+      end;
     end;
   end;
 end;
@@ -794,9 +852,13 @@ var
   absCount,
   idx, i: Integer;
 begin
+  if not Enabled then
+    exit;
+
   {$IFDEF SynEditMarkupFoldColoringDebug}
   DebugLn('   LinesChanged: aIndex=%d aCount=%d', [aIndex, aCount]);
   {$ENDIF}
+
   idx := ToIdx(aIndex);
   if (aCount < 0)
   and (idx >= 0) then begin
@@ -837,6 +899,7 @@ begin
   {$IFDEF SynEditMarkupFoldColoringDebug}
   DebugLn('   HighlightChanged: aIndex=%d aCount=%d', [aIndex, aCount]);
   {$ENDIF}
+
   if (aIndex <> -1)
   or (aCount <> -1) then
     exit;
@@ -853,7 +916,42 @@ begin
 
   FNestList.HighLighter := FHighlighter;
 
+  if not Enabled then
+    exit;
+
   ClearCache;
+end;
+
+procedure TSynEditMarkupFoldColors.DoEnabledChanged(Sender: TObject);
+begin
+  if Enabled = FLastEnabled then
+    exit;
+  FLastEnabled := Enabled;
+  if FLastEnabled then begin
+    {$IFDEF SynEditMarkupFoldColoringDebug}
+    DebugLn('   *** TSynEditMarkupFoldColors Enabled');
+    {$ENDIF}
+    if Assigned(Lines) then begin
+      // add Changehandler
+      Lines.AddChangeHandler(senrLineCount, @LinesChanged);
+      Lines.AddChangeHandler(senrHighlightChanged, @HighlightChanged);
+      Lines.AddChangeHandler(senrTextBufferChanged, @TextBufferChanged);
+      InitCache;
+    end;
+  end else begin
+    {$IFDEF SynEditMarkupFoldColoringDebug}
+    DebugLn('   *** TSynEditMarkupFoldColors Disabled');
+    {$ENDIF}
+    if Assigned(Lines) then begin
+      // remove Changehandler
+      Lines.RemoveChangeHandler(senrLineCount, @LinesChanged);
+      Lines.RemoveChangeHandler(senrHighlightChanged, @HighlightChanged);
+      Lines.RemoveChangeHandler(senrTextBufferChanged, @TextBufferChanged);
+      ClearCache;
+    end;
+  end;
+  if Assigned(Lines) then
+    InvalidateSynLines(1, Lines.Count);
 end;
 
 end.

@@ -14,7 +14,7 @@
  *   A copy of the GNU General Public License is available on the World    *
  *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
  *   obtain it by writing to the Free Software Foundation,                 *
- *   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.        *
+ *   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
  *                                                                         *
  ***************************************************************************
 
@@ -906,12 +906,18 @@ begin
 end;
 
 procedure TSourceChangeCache.ConsistencyCheck;
+{$IF FPC_FULLVERSION<30101}
 var
   CurResult: LongInt;
+{$ENDIF}
 begin
+  {$IF FPC_FULLVERSION<30101}
   CurResult:=FEntries.ConsistencyCheck;
   if CurResult<>0 then
     RaiseCatchableException(IntToStr(CurResult));
+  {$ELSE}
+  FEntries.ConsistencyCheck;
+  {$ENDIF}
   BeautifyCodeOptions.ConsistencyCheck;
 end;
 

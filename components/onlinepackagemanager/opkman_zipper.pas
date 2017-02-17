@@ -14,7 +14,7 @@
 *   A copy of the GNU General Public License is available on the World    *
 *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
 *   obtain it by writing to the Free Software Foundation,                 *
-*   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.        *
+*   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
 *                                                                         *
 ***************************************************************************
 
@@ -165,6 +165,11 @@ begin
         FUnZipper.Examine;
         FUnZipper.UnZipAllFiles;
         SerializablePackages.Items[I].ChangePackageStates(ctAdd, psExtracted);
+        if (SerializablePackages.Items[I].IsDirZipped ) and (SerializablePackages.Items[I].PackageBaseDir <> SerializablePackages.Items[I].ZippedBaseDir) then
+        begin
+          CopyDirTree(FUnZipper.OutputPath + SerializablePackages.Items[I].ZippedBaseDir, DelDir, [cffOverwriteFile]);
+          DeleteDirectory(FUnZipper.OutputPath + SerializablePackages.Items[I].ZippedBaseDir, False);
+        end;
         Synchronize(@DoOnZipProgress);
         FTotPos := FTotPos + FCurSize;
       except
@@ -226,6 +231,7 @@ procedure TPackageUnzipper.StartUnZip(const ASrcDir, ADstDir: String;
 var
   I: Integer;
   IsDirZipped: Boolean;
+  BaseDir: String;
 begin
   if FStarted then
     Exit;
@@ -243,8 +249,12 @@ begin
         FUnZipper.FileName := FSrcDir + SerializablePackages.Items[I].RepositoryFileName;
         FUnZipper.Examine;
         IsDirZipped := True;
-        FTotSize := FTotSize + FUnZipper.GetZipSize(IsDirZipped);
+        BaseDir := '';
+        FTotSize := FTotSize + FUnZipper.GetZipSize(IsDirZipped, BaseDir);
         SerializablePackages.Items[I].IsDirZipped := IsDirZipped;
+        if BaseDir <> '' then
+          BaseDir := AppendPathDelim(BaseDir);
+        SerializablePackages.Items[I].ZippedBaseDir := BaseDir;
         Inc(FTotCnt);
       except
         on E: Exception do

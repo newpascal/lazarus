@@ -440,16 +440,12 @@ begin
          ConnectSenderSignal(gObject, 'value-changed', @gtkchanged_editbox);
        end else
        begin
-         {$IFDEF VerboseTWinControlRealText}
-         ConnectSenderSignalAfter(gObject, 'changed', @gtkchanged_editbox);
-         {$ELSE}
          if GTK_IS_ENTRY(gObject) then
          begin
            ConnectSenderSignal(gObject,'backspace', @gtkchanged_editbox_backspace);
            ConnectSenderSignal(gObject,'delete-from-cursor', @gtkchanged_editbox_delete);
          end;
          ConnectSenderSignal(gObject, 'changed', @gtkchanged_editbox);
-         {$ENDIF}
        end;
     end;
 
@@ -473,9 +469,11 @@ begin
     begin
       //DebugLn(['TGtkWidgetSet.SetCallback ',DbgSName(ALCLObject),' ',GetWidgetDebugReport(PGtkWIdget(gfixed))]);
       ConnectSenderSignal(gFixed,'expose-event', @GTKExposeEvent);
-      ConnectSenderSignalAfter(gFixed,'style-set', @GTKStyleChangedAfter);
       ConnectSenderSignalAfter(gFixed,'expose-event', @GTKExposeEventAfter);
+      {$IFDEF EventTrace}
       ConnectSenderSignal(gFixed,'style-set', @GTKStyleChanged);
+      ConnectSenderSignalAfter(gFixed,'style-set', @GTKStyleChangedAfter);
+      {$ENDIF}
     end;
 
 
@@ -6391,7 +6389,10 @@ begin
   end;
   ReallocMem(Lines, 0);
   If TmpStr <> nil then
-    Result := StrNew(TmpStr^.str)
+  begin
+    Result := StrNew(TmpStr^.str);
+    g_string_free(TmpStr, True);
+  end
   else
     Result:=nil;
 end;

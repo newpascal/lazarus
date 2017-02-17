@@ -239,10 +239,10 @@ begin
 end;
 
 procedure TCustomTaskDialog.DoOnButtonClicked(AModalResult: Integer;
-  var CanClose: Boolean);
+  var ACanClose: Boolean);
 begin
   if Assigned(FOnButtonClicked) then
-    FOnButtonClicked(Self, AModalResult, CanClose);
+    FOnButtonClicked(Self, AModalResult, ACanClose);
 end;
 
 procedure TCustomTaskDialog.DoOnButtonClickedHandler(Sender: PTaskDialog;
@@ -289,7 +289,7 @@ begin
   Result := TaskButtonCollection.DefaultButton = Self;
 end;
 
-function TTaskDialogBaseButtonItem.GetDisplayName: string;
+function TTaskDialogBaseButtonItem.GetDisplayName: TTranslateString;
 begin
   if FCaption <> '' then
     Result := FCaption
@@ -297,7 +297,7 @@ begin
     Result := inherited GetDisplayName;
 end;
 
-procedure TTaskDialogBaseButtonItem.SetCaption(const ACaption: string);
+procedure TTaskDialogBaseButtonItem.SetCaption(const ACaption: TTranslateString);
 begin
   if FCaption = ACaption then Exit;
   FCaption := ACaption;

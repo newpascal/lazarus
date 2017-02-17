@@ -21,7 +21,7 @@
  *   A copy of the GNU General Public License is available on the World    *
  *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
  *   obtain it by writing to the Free Software Foundation,                 *
- *   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.        *
+ *   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
  *                                                                         *
  ***************************************************************************
 
@@ -37,9 +37,16 @@ unit ProjectDefs;
 interface
 
 uses
-  Classes, SysUtils, Controls, Forms,
-  FileProcs, LazFileUtils, Laz2_XMLCfg, LazUTF8,
+  Classes, SysUtils,
+  // LCL
+  Controls, Forms,
+  // Codetools
+  FileProcs,
+  // LazUtils
+  LazFileUtils, LazUTF8, Laz2_XMLCfg,
+  // IdeIntf
   CompOptsIntf, ProjectIntf, LazIDEIntf,
+  // IDE
   frmCustomApplicationOptions, PublishModule, IDEProcs, LazarusIDEStrConsts;
 
 type

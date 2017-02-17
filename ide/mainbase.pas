@@ -39,7 +39,7 @@
  *   A copy of the GNU General Public License is available on the World    *
  *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
  *   obtain it by writing to the Free Software Foundation,                 *
- *   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.        *
+ *   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
  *                                                                         *
  ***************************************************************************
 }
@@ -52,23 +52,26 @@ interface
 {$I ide.inc}
 
 uses
-{$IFDEF IDE_MEM_CHECK}
+  {$IFDEF IDE_MEM_CHECK}
   MemCheck,
-{$ENDIF}
-  Math, Classes, LCLType, LCLProc, LCLIntf, Buttons, Menus, ComCtrls,
-  SysUtils, types, Controls, Graphics, ExtCtrls, Dialogs, LazFileUtils, Forms,
-  CodeToolManager, AVL_Tree, SynEditKeyCmds, PackageIntf,
+  {$ENDIF}
+  Classes, SysUtils, Types, Math,
+  // LCL
+  LCLProc, Buttons, Menus, ComCtrls, Controls, Graphics, Dialogs, Forms, ImgList,
+  // LazUtils
+  LazFileUtils,
+  // Codetools
+  CodeToolManager,
+  // SynEdit
+  SynEditKeyCmds,
   // IDEIntf
-  IDEImagesIntf, SrcEditorIntf, LazIDEIntf, MenuIntf, NewItemIntf,
-  IDECommands, IDEWindowIntf, ProjectIntf, ToolBarIntf,
+  IDEImagesIntf, SrcEditorIntf, LazIDEIntf, MenuIntf, NewItemIntf, PackageIntf,
+  IDECommands, IDEWindowIntf, ProjectIntf, ToolBarIntf, ObjectInspector,
+  PropEdits, IDEDialogs, EditorSyntaxHighlighterDef,
   // IDE
-  LazConf, LazarusIDEStrConsts, ProjectDefs, Project, IDEDialogs,
-  TransferMacros, ObjectInspector, PropEdits, BuildManager,
-  EnvironmentOpts, EditorOptions, CompilerOptions, KeyMapping, IDEProcs,
-  Debugger, IDEOptionDefs, Splash, Designer,
-  SourceEditor, FindInFilesDlg,
-  MainBar, MainIntf, SourceSynEditor, PseudoTerminalDlg,
-  DesktopManager, ImgList;
+  LazConf, LazarusIDEStrConsts, Project, BuildManager, IDEProcs,
+  EnvironmentOpts, EditorOptions, CompilerOptions, SourceEditor, SourceSynEditor,
+  FindInFilesDlg, DesktopManager, Splash, MainBar, MainIntf, Designer, Debugger;
 
 type
   TResetToolFlag = (
@@ -207,9 +210,17 @@ type
   { TSetBuildModeToolButton }
 
   TSetBuildModeToolButton = class(TIDEToolButton)
-  private
-    procedure RefreshMenu(Sender: TObject);
-    procedure mnuSetBuildModeClick(Sender: TObject);
+  public type
+    TBuildModeMenuItem = class(TMenuItem)
+    public
+      BuildModeIndex: Integer;
+      procedure Click; override;
+    end;
+
+    TBuildModeMenu = class(TPopupMenu)
+    protected
+      procedure DoPopup(Sender: TObject); override;
+    end;
   public
     procedure DoOnAdded; override;
   end;
@@ -294,6 +305,66 @@ implementation
 function GetMainIde: TMainIDEBase;
 begin
   Result := TMainIDEBase(MainIDEInterface)
+end;
+
+{ TSetBuildModeToolButton.TBuildModeMenu }
+
+procedure TSetBuildModeToolButton.TBuildModeMenu.DoPopup(Sender: TObject);
+var
+  CurIndex: Integer;
+  i: Integer;
+
+  procedure AddMode(BuildModeIndex: Integer; CurMode: TProjectBuildMode);
+  var
+    AMenuItem: TBuildModeMenuItem;
+  begin
+    if Items.Count > CurIndex then
+      AMenuItem := Items[CurIndex] as TBuildModeMenuItem
+    else
+    begin
+      AMenuItem := TBuildModeMenuItem.Create(Self);
+      AMenuItem.Name := Name + 'Mode' + IntToStr(CurIndex);
+      Items.Add(AMenuItem);
+    end;
+    AMenuItem.BuildModeIndex := BuildModeIndex;
+    AMenuItem.Caption := CurMode.GetCaption;
+    AMenuItem.Checked := (Project1<>nil) and (Project1.ActiveBuildMode=CurMode);
+    AMenuItem.ShowAlwaysCheckable:=true;
+    inc(CurIndex);
+  end;
+
+begin
+  // fill the PopupMenu
+  CurIndex := 0;
+  if Project1<>nil then
+    for i:=0 to Project1.BuildModes.Count-1 do
+      AddMode(i, Project1.BuildModes[i]);
+  // remove unused menuitems
+  while Items.Count > CurIndex do
+    Items[Items.Count - 1].Free;
+
+  inherited DoPopup(Sender);
+end;
+
+{ TSetBuildModeToolButton.TBuildModeMenuItem }
+
+procedure TSetBuildModeToolButton.TBuildModeMenuItem.Click;
+var
+  NewMode: TProjectBuildMode;
+begin
+  inherited Click;
+
+  NewMode := Project1.BuildModes[BuildModeIndex];
+  if NewMode = Project1.ActiveBuildMode then exit;
+  if not (MainIDE.ToolStatus in [itNone,itDebugger]) then begin
+    IDEMessageDialog('Error','You can not change the build mode while compiling.',
+      mtError,[mbOk]);
+    exit;
+  end;
+
+  Project1.ActiveBuildMode := NewMode;
+  MainBuildBoss.SetBuildTargetProject1(false);
+  MainIDE.UpdateCaption;
 end;
 
 { TNewFormUnitToolButton }
@@ -502,69 +573,8 @@ procedure TSetBuildModeToolButton.DoOnAdded;
 begin
   inherited DoOnAdded;
 
-  DropdownMenu := TPopupMenu.Create(Self);
-  DropdownMenu.OnPopup := @RefreshMenu;
+  DropdownMenu := TBuildModeMenu.Create(Self);
   Style := tbsDropDown;
-end;
-
-procedure TSetBuildModeToolButton.mnuSetBuildModeClick(Sender: TObject);
-var
-  TheMenuItem: TMenuItem;
-  TheIndex: LongInt;
-  NewMode: TProjectBuildMode;
-begin
-  TheMenuItem := (Sender as TMenuItem);
-  if TheMenuItem.Caption = '-' then exit;
-  TheIndex := TheMenuItem.MenuIndex;
-  if (TheIndex < 0) or (TheIndex >= Project1.BuildModes.Count) then exit;
-  NewMode := Project1.BuildModes[TheIndex];
-  if NewMode = Project1.ActiveBuildMode then exit;
-  if not (MainIDE.ToolStatus in [itNone,itDebugger]) then begin
-    IDEMessageDialog('Error','You can not change the build mode while compiling.',
-      mtError,[mbOk]);
-    exit;
-  end;
-
-  Project1.ActiveBuildMode := NewMode;
-  MainBuildBoss.SetBuildTargetProject1(false);
-  MainIDE.UpdateCaption;
-end;
-
-procedure TSetBuildModeToolButton.RefreshMenu(Sender: TObject);
-var
-  aMenu: TPopupMenu;
-  CurIndex: Integer;
-  i: Integer;
-
-  procedure AddMode(CurMode: TProjectBuildMode);
-  var
-    AMenuItem: TMenuItem;
-  begin
-    if aMenu.Items.Count > CurIndex then
-      AMenuItem := aMenu.Items[CurIndex]
-    else
-    begin
-      AMenuItem := TMenuItem.Create(DropdownMenu);
-      AMenuItem.Name := aMenu.Name + 'Mode' + IntToStr(CurIndex);
-      AMenuItem.OnClick := @mnuSetBuildModeClick;
-      aMenu.Items.Add(AMenuItem);
-    end;
-    AMenuItem.Caption := CurMode.GetCaption;
-    AMenuItem.Checked := (Project1<>nil) and (Project1.ActiveBuildMode=CurMode);
-    AMenuItem.ShowAlwaysCheckable:=true;
-    inc(CurIndex);
-  end;
-
-begin
-  // fill the PopupMenu:
-  CurIndex := 0;
-  aMenu := DropdownMenu;
-  if Project1<>nil then
-    for i:=0 to Project1.BuildModes.Count-1 do
-      AddMode(Project1.BuildModes[i]);
-  // remove unused menuitems
-  while aMenu.Items.Count > CurIndex do
-    aMenu.Items[aMenu.Items.Count - 1].Free;
 end;
 
 { TJumpToSectionToolButton }

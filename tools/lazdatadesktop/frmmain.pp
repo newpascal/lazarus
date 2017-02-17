@@ -14,7 +14,7 @@
  *   A copy of the GNU General Public License is available on the World    *
  *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
  *   obtain it by writing to the Free Software Foundation,                 *
- *   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.        *
+ *   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
  *                                                                         *
  ***************************************************************************
 }
@@ -37,10 +37,14 @@ unit frmmain;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, Dialogs, Menus, ActnList, StdActns,
-  ComCtrls, IniPropStorage, LCLType, ExtCtrls, LCLProc, Translations,
-  dicteditor, fraconnection, ddfiles, fpdatadict, lazdatadeskstr,
-  FileUtil, LazFileUtils, LazUTF8;
+  Classes, SysUtils, fpdatadict,
+  // LCL
+  Forms, Controls, Dialogs, Menus, ActnList, StdActns, ComCtrls, ExtCtrls,
+  IniPropStorage, LCLType, LCLProc,
+  // LazUtils
+  FileUtil, LazFileUtils, LazUTF8, Translations,
+  // LazDataDesktop
+  dicteditor, fraconnection, ddfiles, lazdatadeskstr;
 
 type
   TEngineMenuItem = Class(TMenuItem)

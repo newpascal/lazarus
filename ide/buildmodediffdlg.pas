@@ -14,7 +14,7 @@
  *   A copy of the GNU General Public License is available on the World    *
  *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
  *   obtain it by writing to the Free Software Foundation,                 *
- *   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.        *
+ *   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
  *                                                                         *
  ***************************************************************************
 
@@ -30,10 +30,13 @@ unit BuildModeDiffDlg;
 interface
 
 uses
-  Classes, sysutils, LazUTF8, LazLogger, AvgLvlTree, Forms, ButtonPanel,
-  StdCtrls, ComCtrls,
-  LazarusIDEStrConsts, EnvironmentOpts, Project, ModeMatrixOpts,
-  CompOptsModes;
+  Classes, sysutils,
+  // LCL
+  StdCtrls, ComCtrls, Forms, ButtonPanel,
+  // LazUtils
+  LazUTF8, LazLogger, AvgLvlTree,
+  // IDE
+  LazarusIDEStrConsts, EnvironmentOpts, Project, ModeMatrixOpts, CompOptsModes;
 
 type
 

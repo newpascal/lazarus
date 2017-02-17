@@ -885,7 +885,9 @@ begin
     NewHeight:=Result.Height-Result.ClientHeight+NewClientHeight;
     Result.SetBounds(Bounds.Left,Bounds.Top,NewWidth,NewHeight);
     Result.SetClientSize(Point(NewClientWidth,NewClientHeight));
+    {$IFDEF DebugDisableAutoSizing}
     debugln('TControl.CreateFloatingDockSite A ',DbgSName(Self),' ',DbgSName(Result),' ',dbgs(Result.BoundsRect));
+    {$ENDIF}
     Result.EnableAutoSizing{$IFDEF DebugDisableAutoSizing}('TControl.CreateFloatingDockSite'){$ENDIF};
   end;
 end;
@@ -2948,11 +2950,15 @@ procedure TControl.DoAutoAdjustLayout(const AMode: TLayoutAdjustmentPolicy;
   const AXProportion, AYProportion: Double; const AScale0Fonts: Boolean);
 var
   AAWidth, AAHeight: Boolean;
-  NewLeft, NewTop, NewWidth, NewHeight, OldWidth, OldHeight: Integer;
-  NewRight, NewBottom: Int64;
+  NewLeft, NewTop, NewWidth, NewHeight, NewRight, NewBottom, OldWidth, OldHeight: Integer;
 begin
   if (AScale0Fonts or (Font.Height<>0)) and (not ParentFont or (Parent=nil)) then
-    Font.Height := Round(GetFontData(Font.Reference.Handle).Height*AYProportion);
+  begin
+    if Font.Size<>0 then
+      Font.Size := Round(Font.Size*AYProportion)
+    else
+      Font.Height := Round(GetFontData(Font.Reference.Handle).Height*AYProportion);
+  end;
 
   // Apply the changes
   if AMode in [lapAutoAdjustWithoutHorizontalScrolling, lapAutoAdjustForDPI] then
@@ -3828,31 +3834,34 @@ var
 begin
   if FAlign = Value then exit;
   //DebugLn(['TControl.SetAlign ',DbgSName(Self),' Old=',DbgS(FAlign),' New=',DbgS(Value),' ',Anchors<>AnchorAlign[FAlign]]);
-  DisableAutoSizing{$IFDEF DebugDisableAutoSizing}('TControl.setalign'){$ENDIF};
-  OldBaseBounds:=BaseBounds;
-  OldAlign := FAlign;
-  FAlign := Value;
-  if (not (csLoading in ComponentState))
-  and (Align in [alLeft,alTop,alRight,alBottom,alClient]) then begin
-    // Align for alLeft,alTop,alRight,alBottom,alClient takes precedence
-    // over AnchorSides => clean up
-    for a:=low(TAnchorKind) to High(TAnchorKind) do
-    begin
-      if not (a in AnchorAlign[FAlign]) then continue;
-      AnchorSide[a].Control:=nil;
-      AnchorSide[a].Side:=asrTop;
+  DisableAutoSizing{$IFDEF DebugDisableAutoSizing}('TControl.SetAlign'){$ENDIF};
+  try
+    OldBaseBounds:=BaseBounds;
+    OldAlign := FAlign;
+    FAlign := Value;
+    if (not (csLoading in ComponentState))
+    and (Align in [alLeft,alTop,alRight,alBottom,alClient]) then begin
+      // Align for alLeft,alTop,alRight,alBottom,alClient takes precedence
+      // over AnchorSides => clean up
+      for a:=low(TAnchorKind) to High(TAnchorKind) do
+      begin
+        if not (a in AnchorAlign[FAlign]) then continue;
+        AnchorSide[a].Control:=nil;
+        AnchorSide[a].Side:=asrTop;
+      end;
     end;
+    // Notes:
+    // - if anchors had default values then change them to new default values
+    //   This is done for Delphi compatibility.
+    // - Anchors are not stored if they are AnchorAlign[Align]
+    if (Anchors = AnchorAlign[OldAlign]) and (Anchors <> AnchorAlign[FAlign]) then
+      Anchors := AnchorAlign[FAlign];
+    if not (csLoading in ComponentState) then
+      BoundsRect:=OldBaseBounds;
+    //DebugLn(['TControl.SetAlign ',DbgSName(Self),' Cur=',DbgS(FAlign),' New=',DbgS(Value),' ',Anchors<>AnchorAlign[FAlign],' Anchors=',dbgs(Anchors)]);
+  finally
+    EnableAutoSizing{$IFDEF DebugDisableAutoSizing}('TControl.SetAlign'){$ENDIF};
   end;
-  // Notes:
-  // - if anchors had default values then change them to new default values
-  //   This is done for Delphi compatibility.
-  // - Anchors are not stored if they are AnchorAlign[Align]
-  if (Anchors = AnchorAlign[OldAlign]) and (Anchors <> AnchorAlign[FAlign]) then
-    Anchors := AnchorAlign[FAlign];
-  if not (csLoading in ComponentState) then
-    BoundsRect:=OldBaseBounds;
-  //DebugLn(['TControl.SetAlign ',DbgSName(Self),' Cur=',DbgS(FAlign),' New=',DbgS(Value),' ',Anchors<>AnchorAlign[FAlign],' Anchors=',dbgs(Anchors)]);
-  EnableAutoSizing{$IFDEF DebugDisableAutoSizing}('TControl.setalign'){$ENDIF};
 end;
 
 {------------------------------------------------------------------------------

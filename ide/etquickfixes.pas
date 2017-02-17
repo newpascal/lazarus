@@ -14,7 +14,7 @@
  *   A copy of the GNU General Public License is available on the World    *
  *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
  *   obtain it by writing to the Free Software Foundation,                 *
- *   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.        *
+ *   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
  *                                                                         *
  ***************************************************************************
 
@@ -54,14 +54,17 @@ interface
 
 uses
   Classes, SysUtils,
-  LazLogger, AvgLvlTree, LazFileUtils, LazUTF8,
+  // LCL
   Menus, Dialogs, Controls,
-  CodeToolManager, CodeCache, CodeTree, CodeAtom, BasicCodeTools,
-  KeywordFuncLists,
+  // LazUtils
+  LazLogger, AvgLvlTree, LazFileUtils, LazUTF8,
+  // Codetools
+  CodeToolManager, CodeCache, CodeTree, CodeAtom, BasicCodeTools, KeywordFuncLists,
+  // IdeIntf
   IDEExternToolIntf, IDEMsgIntf, LazIDEIntf, IDEDialogs, MenuIntf,
   ProjectIntf, PackageIntf, CompOptsIntf,
-  LazarusIDEStrConsts,
-  etFPCMsgParser, AbstractsMethodsDlg, QFInitLocalVarDlg;
+  // IDE
+  LazarusIDEStrConsts, etFPCMsgParser, AbstractsMethodsDlg, QFInitLocalVarDlg;
 
 type
 

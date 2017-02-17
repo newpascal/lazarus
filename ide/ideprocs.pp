@@ -14,7 +14,7 @@
  *   A copy of the GNU General Public License is available on the World    *
  *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
  *   obtain it by writing to the Free Software Foundation,                 *
- *   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.        *
+ *   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
  *                                                                         *
  ***************************************************************************
 
@@ -270,9 +270,11 @@ implementation
 
 
 {$IfNdef MSWindows}
+{$ifNdef HASAMIGA}
 // to get more detailed error messages consider the os
 uses
   Unix, BaseUnix;
+{$EndIf}
 {$EndIf}
 
 function AddToRecentList(const s: string; RecentList: TStrings; Max: integer;
@@ -1430,7 +1432,7 @@ function BackupFileForWrite(const Filename, BackupFilename: string): boolean;
 var
   FHandle: THandle;
   Code: TCodeBuffer;
-  {$IFdef MSWindows}
+  {$IF defined(MSWindows) or defined(HASAMIGA)}
   OldAttr: Longint;
   {$ELSE}
   OldInfo: Stat;
@@ -1439,7 +1441,7 @@ begin
   Result := False;
 
   // store file attributes
-  {$IFdef MSWindows}
+  {$IF defined(MSWindows) or defined(HASAMIGA)}
   OldAttr := FileGetAttrUTF8(Filename);
   {$ELSE}
   if FpStat(Filename, OldInfo{%H-})<>0 then

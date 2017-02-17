@@ -95,6 +95,15 @@ type
   TPointBoolArr = array [Boolean] of Integer;
   TDoublePointBoolArr = array [Boolean] of Double;
 
+  TNearestPointTarget = (
+    nptPoint,   // Look for the nearest point at (x, y)
+    nptXList,   // Check additional x values in XList
+    nptYList,   // Check additional y values in YList
+    nptCustom   // Depends on series type (e.g., TBarSeries --> click inside bar.)
+  );
+
+  TNearestPointTargets = set of TNearestPointTarget;
+
   { TIntervalList }
 
   TIntervalList = class
@@ -339,6 +348,7 @@ function StrToFloatDefSep(const AStr: String): Double;
 // Call this to silence 'parameter is unused' hint
 procedure Unused(const A1);
 procedure Unused(const A1, A2);
+procedure Unused(const A1, A2, A3);
 
 procedure UpdateMinMax(AValue: Double; var AMin, AMax: Double); overload;
 procedure UpdateMinMax(AValue: Integer; var AMin, AMax: Integer); overload;
@@ -521,6 +531,10 @@ begin
 end;
 
 procedure Unused(const A1, A2);
+begin
+end;
+
+procedure Unused(const A1, A2, A3);
 begin
 end;
 {$POP}

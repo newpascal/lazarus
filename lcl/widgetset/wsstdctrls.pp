@@ -42,7 +42,7 @@ uses
 ////////////////////////////////////////////////////
   Graphics, Controls, StdCtrls,
 ////////////////////////////////////////////////////
-  Clipbrd, WSLCLClasses, WSControls, WSFactory;
+  Clipbrd, LazUTF8, WSLCLClasses, WSControls, WSFactory;
 
 type
   { TWSScrollBar }
@@ -159,6 +159,7 @@ type
     class procedure SetReadOnly(const ACustomEdit: TCustomEdit; NewReadOnly: boolean); virtual;
     class procedure SetSelStart(const ACustomEdit: TCustomEdit; NewStart: integer); virtual;
     class procedure SetSelLength(const ACustomEdit: TCustomEdit; NewLength: integer); virtual;
+    class procedure SetSelText(const ACustomEdit: TCustomEdit; const NewSelText: string); virtual;
     class procedure SetTextHint(const ACustomEdit: TCustomEdit; const ATextHint: string); virtual;
     class function CreateEmulatedTextHintFont(const ACustomEdit: TCustomEdit): TFont; virtual;
 
@@ -180,6 +181,7 @@ type
     class procedure SetWantTabs(const ACustomMemo: TCustomMemo; const NewWantTabs: boolean); virtual;
     class procedure SetWantReturns(const ACustomMemo: TCustomMemo; const NewWantReturns: boolean); virtual;
     class procedure SetWordWrap(const ACustomMemo: TCustomMemo; const NewWordWrap: boolean); virtual;
+    class procedure SetSelText(const ACustomEdit: TCustomEdit; const NewSelText: string); override;
   end;
   TWSCustomMemoClass = class of TWSCustomMemo;
 
@@ -575,6 +577,21 @@ class procedure TWSCustomEdit.SetSelLength(const ACustomEdit: TCustomEdit; NewLe
 begin
 end;
 
+class procedure TWSCustomEdit.SetSelText(const ACustomEdit: TCustomEdit;
+  const NewSelText: string);
+var
+  OldText, NewText: string;
+  OldPos: Integer;
+begin
+  OldPos := ACustomEdit.SelStart;
+  OldText := ACustomEdit.Text;
+  NewText := UTF8Copy(OldText, 1, OldPos) +
+             NewSelText +
+             UTF8Copy(OldText, OldPos + ACustomEdit.SelLength + 1, MaxInt);
+  ACustomEdit.Text := NewText;
+  ACustomEdit.SelStart := OldPos + UTF8Length(NewSelText);
+end;
+
 class procedure TWSCustomEdit.Cut(const ACustomEdit: TCustomEdit);
 begin
   ACustomEdit.CopyToClipboard;
@@ -631,6 +648,17 @@ end;
 
 class procedure TWSCustomMemo.SetScrollbars(const ACustomMemo: TCustomMemo; const NewScrollbars: TScrollStyle);
 begin
+end;
+
+class procedure TWSCustomMemo.SetSelText(const ACustomEdit: TCustomEdit;
+  const NewSelText: string);
+begin
+  TCustomMemo(ACustomEdit).Lines.BeginUpdate;
+  try
+    TWSCustomEdit.SetSelText(ACustomEdit, NewSelText);
+  finally
+    TCustomMemo(ACustomEdit).Lines.EndUpdate;
+  end;
 end;
 
 class procedure TWSCustomMemo.SetWantTabs(const ACustomMemo: TCustomMemo; const NewWantTabs: boolean);

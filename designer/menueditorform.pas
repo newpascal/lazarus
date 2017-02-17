@@ -13,7 +13,7 @@
  *   A copy of the GNU General Public License is available on the World    *
  *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
  *   obtain it by writing to the Free Software Foundation,                 *
- *   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.        *
+ *   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
  *                                                                         *
  ***************************************************************************
 
@@ -31,7 +31,7 @@ uses
   Controls, StdCtrls, ExtCtrls, Forms, Graphics, Buttons, Menus, ButtonPanel,
   ImgList, Themes, LCLintf, LCLProc,
   // IdeIntf
-  FormEditingIntf, PropEdits,
+  FormEditingIntf, PropEdits, ObjectInspector,
   // IDE
   LazarusIDEStrConsts, MenuDesignerBase, MenuShortcuts;
 
@@ -262,6 +262,7 @@ end;
 
 procedure TMenuDesignerForm.FormHide(Sender: TObject);
 begin
+  FDesigner.FreeShadowMenu;
   GlobalDesignHook.RemoveHandlerSetSelection(@OnDesignerSetSelection);
 end;
 
@@ -567,8 +568,7 @@ begin
       end
       else if (aMenu <> FEditedMenu) then
       begin
-        FDesigner.ShadowMenu.Free;
-        FDesigner.ShadowMenu := Nil;
+        FDesigner.FreeShadowMenu;
         FEditedMenu := aMenu;
         selection := aMenuItem;
       end;
@@ -587,12 +587,18 @@ begin
 end;
 
 procedure TMenuDesignerForm.EndUpdate;
+var
+  OI: TObjectInspectorDlg;
 begin
   if FUpdateCount<=0 then
     RaiseGDBException('');
   Dec(FUpdateCount);
   if FUpdateCount = 0 then
-    OnDesignerSetSelection(FormEditingHook.GetCurrentObjectInspector.Selection);
+  begin
+    OI := FormEditingHook.GetCurrentObjectInspector;
+    if Assigned(OI) then
+      OnDesignerSetSelection(OI.Selection);
+  end;
 end;
 
 function TMenuDesignerForm.IsUpdate: Boolean;
