@@ -2696,10 +2696,45 @@ end;
 
 procedure TTreeNodes.MultiSelect(Node: TTreeNode; ClearWholeSelection: Boolean);
 var
+  bGoNext, bOnlySiblings, bOnlyVisible: Boolean;
+  //
+  procedure _TakeNext(var N: TTreeNode);
+  begin
+    if bGoNext then
+    begin
+      if bOnlySiblings and bOnlyVisible then
+        N := N.GetNextVisibleSibling
+      else
+      if bOnlySiblings and not bOnlyVisible then
+        N := N.GetNextSibling
+      else
+      if not bOnlySiblings and bOnlyVisible then
+        N := N.GetNextVisible
+      else
+        N := N.GetNext;
+    end
+    else
+    begin
+      if bOnlySiblings and bOnlyVisible then
+        N := N.GetPrevVisibleSibling
+      else
+      if bOnlySiblings and not bOnlyVisible then
+        N := N.GetPrevSibling
+      else
+      if not bOnlySiblings and bOnlyVisible then
+        N := N.GetPrevVisible
+      else
+        N := N.GetPrev;
+    end;
+  end;
+  //
+var
   I, FirstNode, LastNode: TTreeNode;
-  GetNext: Boolean;
 begin
   if Owner<>nil then Owner.LockSelectionChangeEvent;
+  bOnlySiblings := Assigned(Owner) and (msSiblingOnly in Owner.MultiSelectStyle);
+  bOnlyVisible := Assigned(Owner) and (msVisibleOnly in Owner.MultiSelectStyle);
+
   try
     if FStartMultiSelected=nil then
     begin
@@ -2717,15 +2752,12 @@ begin
       if Assigned(FLastMultiSelected) then
       begin
         LastNode := FLastMultiSelected;
-        GetNext := (FirstNode.Index <= LastNode.Index);
+        bGoNext := (FirstNode.Index <= LastNode.Index);
         I := FirstNode;
         I.MultiSelected:=False;
         while (I<>LastNode) do
         begin
-          if GetNext then
-            I:=I.GetNextSibling
-          else
-            I:=I.GetPrevSibling;
+          _TakeNext(I);
           if I=nil then Break;
           I.MultiSelected:=False;
         end;
@@ -2735,15 +2767,12 @@ begin
     end;
 
     //select again
-    GetNext := (FirstNode.Index <= Node.Index);
+    bGoNext := (FirstNode.Index <= Node.Index);
     I := FirstNode;
     I.Selected:=True;
     while (I<>Node) do
     begin
-      if GetNext then
-        I:=I.GetNextSibling
-      else
-        I:=I.GetPrevSibling;
+      _TakeNext(I);
       if I=nil then Break;
       I.Selected:=True;
     end;
@@ -4041,37 +4070,37 @@ begin
 
   VK_DOWN:
   begin
-    MoveToNextNode(ssShift in Shift);
+    MoveToNextNode(AllowMultiSelectWithShift(Shift));
     Key:=VK_UNKNOWN;
   end;
 
   VK_UP:
   begin
-    MoveToPrevNode(ssShift in Shift);
+    MoveToPrevNode(AllowMultiSelectWithShift(Shift));
     Key:=VK_UNKNOWN;
   end;
 
   VK_HOME:
   begin
-    MoveHome(ssShift in Shift);
+    MoveHome(AllowMultiSelectWithShift(Shift));
     Key:=VK_UNKNOWN;
   end;
 
   VK_END:
   begin
-    MoveEnd(ssShift in Shift);
+    MoveEnd(AllowMultiSelectWithShift(Shift));
     Key:=VK_UNKNOWN;
   end;
 
   VK_PRIOR: // Page Up
   begin
-    MovePageUp(ssShift in Shift);
+    MovePageUp(AllowMultiSelectWithShift(Shift));
     Key:=VK_UNKNOWN;
   end;
 
   VK_NEXT: // Page Down
   begin
-    MovePageDown(ssShift in Shift);
+    MovePageDown(AllowMultiSelectWithShift(Shift));
     Key:=VK_UNKNOWN;
   end;
 
@@ -4079,7 +4108,7 @@ begin
     if not (Key in [VK_LEFT,VK_RIGHT,VK_ADD,VK_SUBTRACT]) then
       Exit;
 
-    if (tvoAllowMultiSelect in FOptions) and (ssShift in Shift) then
+    if (tvoAllowMultiSelect in FOptions) and AllowMultiSelectWithShift(Shift) then
       lNode := FTreeNodes.FLastMultiSelected
     else
       lNode := Selected;
@@ -4121,7 +4150,7 @@ begin
     end;
 
     if lNode <> nil then
-      MoveSelection(lNode, ([ssShift] * Shift) <> []);
+      MoveSelection(lNode, AllowMultiSelectWithShift(Shift));
   end;
 end;
 
@@ -5361,7 +5390,7 @@ begin
   //change selection on right click
   if (Button = mbRight) and RightClickSelect and//right click
      (([ssDouble, ssTriple, ssQuad] * Shift) = []) and//single or first of a multi click
-     not(ssCtrl in Shift) and//only when CTRL is not pressed
+     not AllowMultiSelectWithCtrl(Shift) and//only when CTRL is not pressed
      (CursorNode <> nil) and
      (LogicalX >= CursorNode.DisplayStateIconLeft)//only after expand sign
   then
@@ -5409,17 +5438,17 @@ begin
         Selected := CursorNode
       else
       begin
-        if (ssShift in Shift) then
+        if AllowMultiSelectWithShift(Shift) then
         begin
           Exclude(FStates,tvsEditOnMouseUp);
           LockSelectionChangeEvent;
           try
-            Items.MultiSelect(CursorNode, not(ssCtrl in Shift));
+            Items.MultiSelect(CursorNode, not AllowMultiSelectWithCtrl(Shift));
           finally
             UnlockSelectionChangeEvent;
           end;
         end
-        else if (ssCtrl in Shift) then
+        else if AllowMultiSelectWithCtrl(Shift) then
         begin
           Exclude(FStates,tvsEditOnMouseUp);
           CursorNode.MultiSelected:=not CursorNode.MultiSelected;
@@ -5820,6 +5849,16 @@ begin
   end;
 end;
 
+function TCustomTreeView.AllowMultiSelectWithCtrl(AState: TShiftState): Boolean;
+begin
+  Result := (ssCtrl in AState) and (msControlSelect in FMultiSelectStyle);
+end;
+
+function TCustomTreeView.AllowMultiSelectWithShift(AState: TShiftState): Boolean;
+begin
+  Result := (ssShift in AState) and (msShiftSelect in FMultiSelectStyle);
+end;
+
 class procedure TCustomTreeView.WSRegisterClass;
 begin
   inherited WSRegisterClass;
@@ -6022,7 +6061,7 @@ end;
 
 procedure TCustomTreeView.Select(Node: TTreeNode; ShiftState: TShiftState = []);
 begin
-  if (tvoAllowMultiSelect in FOptions) and (ssCtrl in ShiftState) then
+  if (tvoAllowMultiSelect in FOptions) and AllowMultiSelectWithCtrl(ShiftState) then
     Node.Selected := True
   else begin
     ClearSelection;

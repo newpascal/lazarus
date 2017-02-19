@@ -1520,7 +1520,7 @@ resourcestring
 
   dlgOIMiscellaneous = 'Miscellaneous';
   dlgOISpeedSettings = 'Speed settings';
-  dlgOIItemHeight = 'Item height';
+  dlgOIItemHeight = 'Item height (0 = auto)';
   dlgHeightOfOnePropertyInGrid = 'Height of one property in the grid.';
   dlgOIUseDefaultLazarusSettings = 'Use default Lazarus settings';
   dlgOIUseDefaultDelphiSettings = 'Use default Delphi settings';
@@ -2580,6 +2580,7 @@ resourcestring
   dlgPOTitle = 'Title:';
   lisHint = 'Hint';
   lisNote = 'Note';
+  dlgPOUseLCLScaling = 'Use LCL scaling (Hi-DPI)';
   lisTheContainsAStarCharacterLazarusUsesThisAsNormalCh = 'The %s contains a '
     +'star * character.%sLazarus uses this as normal character and does not '
     +'expand this as file mask.';
@@ -3856,7 +3857,11 @@ resourcestring
     +'source.%s%s';
   lisUnableToRemoveProjectTitleFromSource = 'Unable to remove project title '
     +'from source.%s%s';
-  
+  lisUnableToChangeProjectScaledInSource = 'Unable to change project scaled in '
+    +'source.%s%s';
+  lisUnableToRemoveProjectScaledFromSource = 'Unable to remove project scaled '
+    +'from source.%s%s';
+
   // path edit dialog
   lisPathEditSearchPaths = 'Search paths:';
   lisPckSearchPathsForFpdocXmlFilesMultiplePathsMustBeSepa = 'Search paths for'
