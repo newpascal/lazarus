@@ -2982,7 +2982,8 @@ begin
 
     if (Align=alNone) and (akLeft in Anchors) then
       NewLeft := Round(NewLeft * AXProportion);
-    if (Align=alNone) and (akRight in Anchors) and (Parent<>nil) then
+    if (Align=alNone) and (akRight in Anchors) and (Parent<>nil)
+    and (AnchorSideRight.Control=nil) then
     begin
       if not(akLeft in Anchors) then
       begin
@@ -2997,7 +2998,8 @@ begin
 
     if (Align=alNone) and (akTop in Anchors) then
       NewTop := Round(NewTop * AYProportion);
-    if (Align=alNone) and (akBottom in Anchors) and (Parent<>nil) then
+    if (Align=alNone) and (akBottom in Anchors) and (Parent<>nil)
+    and (AnchorSideBottom.Control=nil) then
     begin
       if not(akTop in Anchors) then
       begin
@@ -3010,22 +3012,10 @@ begin
       end;
     end;
 
-    // Give a shake at the autosize to recalculate font sizes for example
-    if (not AAWidth or not AAHeight) and AutoSize then
-    begin
-      if AutoSize then AdjustSize();
-      NewWidth := Width;
-      NewHeight := Height;
-    end;
     if AAWidth then
       NewWidth := Round(Width * AXProportion);
     if AAHeight then
       NewHeight := Round(Height * AYProportion);
-
-    if Anchors*[akLeft, akRight] = [akRight] then
-      NewLeft := NewLeft+Width-NewWidth;
-    if Anchors*[akTop, akBottom] = [akBottom] then
-      NewTop := NewTop+Height-NewHeight;
 
     if AAWidth then
     begin
