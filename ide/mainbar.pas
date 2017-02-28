@@ -562,10 +562,12 @@ begin
   AllowDropFiles:=true;
   Scaled:=true;
   OnDropFiles:=@MainIDEBarDropFiles;
+  {$IFNDEF LCLGtk2}
   try
     Icon.LoadFromResourceName(HInstance, 'WIN_MAIN');
   except
   end;
+  {$ENDIF}
 end;
 
 procedure TMainIDEBar.HideIDE;
@@ -710,7 +712,7 @@ begin
     CoolBand.FixedSize := True;
     IDECoolBar.ToolBars[I].UseCurrentOptions;
   end;
-  CoolBar.AutoAdjustLayout(lapAutoAdjustForDPI, 96, PixelsPerInch, 0, 0, False);
+  CoolBar.AutoAdjustLayout(lapAutoAdjustForDPI, 96, PixelsPerInch, 0, 0);
   CoolBar.AutosizeBands;
 
   CoolBar.Visible := CoolBarOpts.Visible;

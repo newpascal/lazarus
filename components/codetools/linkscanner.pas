@@ -157,7 +157,8 @@ type
     cmTP,
     cmOBJFPC,
     cmMacPas,
-    cmISO);
+    cmISO
+    );
   { TCompilerModeSwitch - see fpc/compiler/globtype.pas  tmodeswitch }
   TCompilerModeSwitch = (
     cmsAdd_pointer,        { ? }
@@ -753,8 +754,15 @@ type
 const
   // upper case
   CompilerModeNames: array[TCompilerMode] of shortstring=(
-        'FPC', 'DELPHI', 'DELPHIUNICODE', 'GPC', 'TP', 'OBJFPC', 'MACPAS', 'ISO'
-     );
+    'FPC',
+    'DELPHI',
+    'DELPHIUNICODE',
+    'GPC',
+    'TP',
+    'OBJFPC',
+    'MACPAS',
+    'ISO'
+    );
 
   // upper case (see fpc/compiler/globtype.pas  modeswitchstr )
   CompilerModeSwitchNames: array[TCompilerModeSwitch] of shortstring=(
@@ -3405,7 +3413,7 @@ begin
     FDirectives[FDirectivesCount-1].Kind:=lsdkMode;
   ReadSpace;
   ValStart:=SrcPos;
-  while (SrcPos<=SrcLen) and (IsWordChar[Src[SrcPos]]) do
+  while (SrcPos<=SrcLen) and (IsIdentChar[Src[SrcPos]]) do
     inc(SrcPos);
   // undefine all mode macros
   for AMode:=Low(TCompilerMode) to High(TCompilerMode) do

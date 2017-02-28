@@ -111,22 +111,25 @@ type
 
   { TPolarSeries }
 
-  TPolarSeries = class(TChartSeries)
+  TPolarSeries = class(TBasicPointSeries)
   strict private
     FCloseCircle: Boolean;
     FLinePen: TPen;
     FOriginX: Double;
     FOriginY: Double;
+    FShowPoints: Boolean;
     function IsOriginXStored: Boolean;
     function IsOriginYStored: Boolean;
     procedure SetCloseCircle(AValue: Boolean);
     procedure SetLinePen(AValue: TPen);
     procedure SetOriginX(AValue: Double);
     procedure SetOriginY(AValue: Double);
+    procedure SetShowPoints(AValue: Boolean);
   strict private
     FAngleCache: array of TSinCos;
     function GraphPoint(AIndex: Integer): TDoublePoint;
     procedure PrepareAngleCache;
+    procedure PrepareGraphPoints;
   protected
     procedure GetLegendItems(AItems: TChartLegendItems); override;
     procedure SourceChanged(ASender: TObject); override;
@@ -137,12 +140,20 @@ type
   public
     procedure Draw(ADrawer: IChartDrawer); override;
     function Extent: TDoubleRect; override;
+    function GetNearestPoint(
+      const AParams: TNearestPointParams;
+      out AResults: TNearestPointResults): Boolean; override;
+    procedure MovePoint(var AIndex: Integer; const ANewPos: TDoublePoint); override;
+    procedure MovePointEx(var AIndex: Integer; AXIndex, AYIndex: Integer;
+        const ANewPos: TDoublePoint); override;
   published
     property CloseCircle: Boolean
       read FCloseCircle write SetCloseCircle default false;
     property LinePen: TPen read FLinePen write SetLinePen;
     property OriginX: Double read FOriginX write SetOriginX stored IsOriginXStored;
     property OriginY: Double read FOriginY write SetOriginY stored IsOriginYStored;
+    property Pointer;
+    property ShowPoints: Boolean read FShowPoints write SetShowPoints default false;
     property Source;
   end;
 
@@ -150,7 +161,7 @@ implementation
 
 uses
   Math,
-  TAChartStrConsts, TACustomSource, TAGeometry, TAGraph;
+  TAChartStrConsts, TATypes, TACustomSource, TAGeometry, TAGraph;
 
 { TPieSlice }
 
@@ -601,6 +612,7 @@ begin
       Self.LinePen := FLinePen;
       Self.FOriginX := FOriginX;
       Self.FOriginY := FOriginY;
+      Self.FShowPoints := FShowPoints;
     end;
   inherited Assign(ASource);
 end;
@@ -611,6 +623,7 @@ begin
 
   FLinePen := TPen.Create;
   FLinePen.OnChange := @StyleChanged;
+  FPointer := TSeriesPointer.Create(FChart);
 end;
 
 destructor TPolarSeries.Destroy;
@@ -628,7 +641,8 @@ var
   firstPoint, lastPoint: TPoint;
   firstPointSet: Boolean = false;
 begin
-  PrepareAngleCache;
+  PrepareGraphPoints;
+
   SetLength(pts, Count);
   ADrawer.Pen := LinePen;
   for i := 0 to Count - 1 do begin
@@ -652,12 +666,15 @@ begin
     ADrawer.Polyline(pts, 0, cnt);
   if firstPointSet and CloseCircle then
     ADrawer.Line(lastPoint, firstPoint);
+
+  DrawPointers(ADrawer);
 end;
 
 function TPolarSeries.Extent: TDoubleRect;
 var
   i: Integer;
 begin
+  FindExtentInterval(DoubleRect(0, 0, 0, 0), false);
   PrepareAngleCache;
   Result := EmptyExtent;
   for i := 0 to Count - 1 do
@@ -665,8 +682,48 @@ begin
 end;
 
 procedure TPolarSeries.GetLegendItems(AItems: TChartLegendItems);
+var
+  p: TSeriesPointer;
 begin
-  AItems.Add(TLegendItemLine.Create(LinePen, LegendTextSingle));
+  if ShowPoints then
+    p := Pointer
+  else
+    p := nil;
+  AItems.Add(TLegendItemLinePointer.Create(LinePen, p, LegendTextSingle));
+end;
+
+function TPolarSeries.GetNearestPoint(const AParams: TNearestPointParams;
+  out AResults: TNearestPointResults): Boolean;
+var
+  dist: Integer;
+  gp: TDoublePoint;
+  i: Integer;
+begin
+  AResults.FDist := Sqr(AParams.FRadius) + 1;  // the dist func does not calc sqrt
+  AResults.FIndex := -1;
+  AResults.FXIndex := 0;
+  AResults.FYIndex := 0;
+
+  dist := AResults.FDist;
+  for i := 0 to Count - 1 do begin
+    gp := GraphPoint(i);
+    if IsNan(gp) then
+      continue;
+    // Find nearest point of datapoint at (x, y)
+    if (nptPoint in AParams.FTargets) and (nptPoint in ToolTargets) then
+    begin
+      dist := Min(dist, ToolTargetDistance(AParams, gp, i, 0, 0));
+    end;
+    if dist >= AResults.FDist then
+      continue;
+
+    AResults.FDist := dist;
+    AResults.FIndex := i;
+    AResults.FValue := DoublePoint(gp.y*cos(gp.x), gp.y*sin(gp.x)); //gp;
+    AResults.FImg := ParentChart.GraphToImage(gp);
+    if dist = 0 then break;
+  end;
+  Result := AResults.FIndex >= 0;
 end;
 
 function TPolarSeries.GraphPoint(AIndex: Integer): TDoublePoint;
@@ -685,6 +742,31 @@ begin
   Result := OriginY <> 0;
 end;
 
+{ ANewPos is in cartesioan coordinates. Convert to polar coordinates and store
+ in ListSource }
+procedure TPolarSeries.MovePoint(var AIndex: Integer;
+  const ANewPos: TDoublePoint);
+var
+  p: TDoublePoint;
+  r, phi: Double;
+begin
+  if not InRange(AIndex, 0, Count - 1) then exit;
+  p := GraphToAxis(ANewPos) - DoublePoint(OriginX, OriginY);
+  r := Sqrt(sqr(p.x) + sqr(p.y));
+  phi := arctan2(p.y, p.x);
+  with ListSource do begin
+    AIndex := SetXValue(AIndex, phi);
+    SetYValue(AIndex, r);
+  end;
+end;
+
+procedure TPolarSeries.MovePointEx(var AIndex: Integer;
+  AXIndex, AYIndex: Integer; const ANewPos: TDoublePoint);
+begin
+  Unused(AXIndex, AYIndex);
+  MovePoint(AIndex, ANewPos);
+end;
+
 procedure TPolarSeries.PrepareAngleCache;
 var
   i: Integer;
@@ -697,6 +779,16 @@ begin
     FAngleCache[i].FSin := s;
     FAngleCache[i].FCos := c;
   end;
+end;
+
+procedure TPolarSeries.PrepareGraphPoints;
+var
+  s, c: Extended;
+  i: Integer;
+begin
+  SetLength(FGraphPoints, Count);
+  for i := 0 to Count - 1 do
+    FGraphPoints[i] := GraphPoint(i);
 end;
 
 procedure TPolarSeries.SetCloseCircle(AValue: Boolean);
@@ -726,11 +818,20 @@ begin
   UpdateParentChart;
 end;
 
+procedure TPolarSeries.SetShowPoints(AValue: Boolean);
+begin
+  if ShowPoints = AValue then exit;
+  FShowPoints := AValue;
+  Pointer.Visible := FShowPoints;;
+  UpdateParentChart;
+end;
+
 procedure TPolarSeries.SourceChanged(ASender: TObject);
 begin
   FAngleCache := nil;
   inherited;
 end;
+
 
 initialization
 
