@@ -99,6 +99,7 @@ type
       read GetSeriesColor write SetSeriesColor stored false default clRed;
     property Source;
     property Styles;
+    property ToolTargets default [nptPoint, nptYList, nptCustom];
     property UseReticule;
     property ZeroLevel: Double
       read FZeroLevel write SetZeroLevel stored IsZeroLevelStored;
@@ -170,6 +171,7 @@ type
     property Source;
     property Stacked default true;
     property Styles;
+    property ToolTargets;
     property UseReticule;
     property UseZeroLevel: Boolean
       read FUseZeroLevel write SetUseZeroLevel default false;
@@ -209,9 +211,6 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure Draw(ADrawer: IChartDrawer); override;
-  public
-    procedure BeginUpdate;
-    procedure EndUpdate;
   published
     property AxisIndexX;
     property AxisIndexY;
@@ -230,6 +229,7 @@ type
     property Stacked default false;
     property Source;
     property Styles;
+    property ToolTargets;
     property UseReticule default true;
     // Events
     property OnDrawPointer: TSeriesPointerDrawEvent
@@ -376,11 +376,6 @@ begin
       Self.FShowPoints := FShowPoints;
     end;
   inherited Assign(ASource);
-end;
-
-procedure TLineSeries.BeginUpdate;
-begin
-  ListSource.BeginUpdate;
 end;
 
 constructor TLineSeries.Create(AOwner: TComponent);
@@ -566,12 +561,6 @@ begin
   DrawLabels(ADrawer);
   if ShowPoints then
     DrawPointers(ADrawer);
-end;
-
-procedure TLineSeries.EndUpdate;
-begin
-  ListSource.EndUpdate;
-  UpdateParentChart;
 end;
 
 procedure TLineSeries.GetLegendItems(AItems: TChartLegendItems);
@@ -948,6 +937,8 @@ end;
 constructor TBarSeries.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
+  ToolTargets := [nptPoint, nptYList, nptCustom];
+
   FBarWidthPercent := DEF_BAR_WIDTH_PERCENT;
 
   FBarBrush := TBrush.Create;
@@ -1148,7 +1139,8 @@ begin
   AResults.FXIndex := 0;
   AResults.FYIndex := 0;
 
-  if not (nptCustom in AParams.FTargets) then begin
+  if not ((nptCustom in AParams.FTargets) and (nptCustom in ToolTargets))
+  then begin
     Result := inherited;
     exit;
   end;

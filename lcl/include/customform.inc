@@ -161,8 +161,7 @@ begin
 
   if Application.Scaled and Scaled and (Monitor.PixelsPerInch<>PixelsPerInch) then
     AutoAdjustLayout(lapAutoAdjustForDPI, PixelsPerInch, Monitor.PixelsPerInch,
-      Width, MulDiv(Width, Monitor.PixelsPerInch, PixelsPerInch),
-      Screen.PixelsPerInch<>Monitor.PixelsPerInch);
+      Width, MulDiv(Width, Monitor.PixelsPerInch, PixelsPerInch));
 end;
 
 {------------------------------------------------------------------------------
@@ -504,7 +503,7 @@ begin
     MoveToDefaultPosition;
 end;
 
-procedure TCustomForm.AutoScale(const AScale0Fonts: Boolean);
+procedure TCustomForm.AutoScale;
 begin
   if not Scaled then
   begin
@@ -512,10 +511,10 @@ begin
     Exit;
   end;
 
-  if PixelsPerInch<>Monitor.PixelsPerInch then
+  if Application.Scaled and (PixelsPerInch<>Monitor.PixelsPerInch) then
     AutoAdjustLayout(lapAutoAdjustForDPI, PixelsPerInch, Monitor.PixelsPerInch,
       MulDiv(Width, Monitor.PixelsPerInch, PixelsPerInch),
-      MulDiv(Height, Monitor.PixelsPerInch, PixelsPerInch), AScale0Fonts);
+      MulDiv(Height, Monitor.PixelsPerInch, PixelsPerInch));
 end;
 
 {------------------------------------------------------------------------------
@@ -1569,27 +1568,22 @@ begin
 end;
 
 procedure TCustomForm.DoAutoAdjustLayout(const AMode: TLayoutAdjustmentPolicy;
-  const AXProportion, AYProportion: Double; const AScale0Fonts: Boolean);
+  const AXProportion, AYProportion: Double);
 var
   NewWidth, NewHeight, OldWidth, OldHeight: Integer;
 begin
   if Assigned(Parent) then
   begin
-    inherited DoAutoAdjustLayout(AMode, AXProportion, AYProportion, AScale0Fonts);
+    inherited;
     Exit;
-  end;
-
-  if (AScale0Fonts or (Font.Height<>0)) and (not ParentFont or (Parent=nil)) then
-  begin
-    if Font.Size<>0 then
-      Font.Size := Round(Font.Size*AYProportion)
-    else
-      Font.Height := Round(GetFontData(Font.Reference.Handle).Height*AYProportion);
   end;
 
   // Apply the changes
   if AMode in [lapAutoAdjustWithoutHorizontalScrolling, lapAutoAdjustForDPI] then
   begin
+    if not ParentFont or (Parent=nil) then
+      ScaleFontsPPI(AYProportion);
+
     BorderSpacing.AutoAdjustLayout(AXProportion, AYProportion);
     Constraints.AutoAdjustLayout(AXProportion, AYProportion);
 
@@ -1915,7 +1909,7 @@ begin
   inherited SetScaled(AScaled);
   if not OldScaled and Scaled
   and (ComponentState * [csDesigning, csLoading] = []) then // not in designtime and not when loading
-    AutoScale(Screen.PixelsPerInch<>Monitor.PixelsPerInch);
+    AutoScale;
 end;
 
 {------------------------------------------------------------------------------
@@ -2299,9 +2293,9 @@ begin
   if Parent=nil then
   begin
     NewDpi := hi(Msg.wParam);
-    if Scaled and (NewDpi<>PixelsPerInch) then
+    if Application.Scaled and Scaled and (NewDpi<>PixelsPerInch) then
       AutoAdjustLayout(lapAutoAdjustForDPI, PixelsPerInch, NewDpi,
-        Width, MulDiv(Width, NewDpi, PixelsPerInch), True);
+        Width, MulDiv(Width, NewDpi, PixelsPerInch));
   end;
 end;
 
@@ -2318,9 +2312,9 @@ end;
 ------------------------------------------------------------------------------}
 procedure TCustomForm.Show;
 begin
-  if Scaled and (Monitor.PixelsPerInch<>PixelsPerInch) then
+  if Application.Scaled and Scaled and (Monitor.PixelsPerInch<>PixelsPerInch) then
     AutoAdjustLayout(lapAutoAdjustForDPI, PixelsPerInch, Monitor.PixelsPerInch,
-      Width, MulDiv(Width, Monitor.PixelsPerInch, PixelsPerInch), True);
+      Width, MulDiv(Width, Monitor.PixelsPerInch, PixelsPerInch));
 
   Visible := True;
   BringToFront;

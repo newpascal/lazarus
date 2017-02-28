@@ -179,8 +179,7 @@ type
     procedure SetTextHint(AValue: TTranslateString);
   protected
     procedure DoAutoAdjustLayout(const AMode: TLayoutAdjustmentPolicy;
-      const AXProportion, AYProportion: Double; const AScale0Fonts: Boolean);
-      override;
+      const AXProportion, AYProportion: Double); override;
     procedure CalculatePreferredSize(var PreferredWidth, PreferredHeight: integer;
                 WithThemeSpace: Boolean); override;
     function CreateBuddy: TControl; virtual;
@@ -1247,10 +1246,10 @@ begin
 end;
 
 procedure TCustomAbstractGroupedEdit.DoAutoAdjustLayout(
-  const AMode: TLayoutAdjustmentPolicy; const AXProportion,
-  AYProportion: Double; const AScale0Fonts: Boolean);
+  const AMode: TLayoutAdjustmentPolicy; const AXProportion, AYProportion: Double
+  );
 begin
-  inherited DoAutoAdjustLayout(AMode, AXProportion, AYProportion, AScale0Fonts);
+  inherited;
 
   if AMode in [lapAutoAdjustWithoutHorizontalScrolling, lapAutoAdjustForDPI] then
   begin

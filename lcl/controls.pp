@@ -1419,8 +1419,9 @@ type
     class function GetControlClassDefaultSize: TSize; virtual;
     function ColorIsStored: boolean; virtual;
     procedure DoAutoAdjustLayout(const AMode: TLayoutAdjustmentPolicy;
-      const AXProportion, AYProportion: Double;
-      const AScale0Fonts: Boolean); virtual;
+      const AXProportion, AYProportion: Double); virtual;
+    procedure DoFixDesignFontPPI(const AFont: TFont; const ADesignTimePPI: Integer);
+    procedure DoScaleFontPPI(const AFont: TFont; const AProportion: Double);
   protected
     // actions
     function GetActionLinkClass: TControlActionLinkClass; virtual;
@@ -1536,10 +1537,13 @@ type
     property ReadBounds: TRect read FReadBounds;
     property BaseParentClientSize: TSize read FBaseParentClientSize;
     procedure WriteLayoutDebugReport(const Prefix: string); virtual;
+  public
+    // LCL Scaling (High-DPI)
     procedure AutoAdjustLayout(AMode: TLayoutAdjustmentPolicy;
-      const AFromDPI, AToDPI, AOldFormWidth, ANewFormWidth: Integer;
-      const AScale0Fonts: Boolean); virtual;
+      const AFromPPI, AToPPI, AOldFormWidth, ANewFormWidth: Integer); virtual;
     procedure ShouldAutoAdjust(var AWidth, AHeight: Boolean); virtual;
+    procedure FixDesignFontsPPI(const ADesignTimePPI: Integer); virtual;
+    procedure ScaleFontsPPI(const AProportion: Double); virtual;
   public
     constructor Create(TheOwner: TComponent);override;
     destructor Destroy; override;
@@ -2210,9 +2214,8 @@ type
     procedure ScrollBy_WS(DeltaX, DeltaY: Integer);
     procedure ScrollBy(DeltaX, DeltaY: Integer); virtual;
     procedure WriteLayoutDebugReport(const Prefix: string); override;
-    procedure AutoAdjustLayout(AMode: TLayoutAdjustmentPolicy; const AFromDPI,
-      AToDPI, AOldFormWidth, ANewFormWidth: Integer;
-      const AScale0Fonts: Boolean); override;
+    procedure AutoAdjustLayout(AMode: TLayoutAdjustmentPolicy; const AFromPPI,
+      AToPPI, AOldFormWidth, ANewFormWidth: Integer); override;
   public
     constructor Create(TheOwner: TComponent);override;
     constructor CreateParented(AParentWindow: HWND);

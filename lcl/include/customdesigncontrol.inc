@@ -18,23 +18,40 @@ begin
   FScaled := True;
   FDesignTimePPI := 96;
   FPixelsPerInch := FDesignTimePPI;
+  Font.PixelsPerInch := FDesignTimePPI;
 end;
 
 procedure TCustomDesignControl.AutoAdjustLayout(AMode: TLayoutAdjustmentPolicy;
-  const AFromDPI, AToDPI, AOldFormWidth, ANewFormWidth: Integer;
-  const AScale0Fonts: Boolean);
+  const AFromPPI, AToPPI, AOldFormWidth, ANewFormWidth: Integer);
 begin
-  inherited AutoAdjustLayout(AMode, AFromDPI, AToDPI, AOldFormWidth,
-    ANewFormWidth, AScale0Fonts);
+  inherited;
 
-  FPixelsPerInch := AToDPI;
+  if AMode = lapAutoAdjustForDPI then
+    FPixelsPerInch := AToPPI;
 end;
 
 procedure TCustomDesignControl.Loaded;
+  procedure FixChildren(const AParent: TWinControl);
+  var
+    I: Integer;
+  begin
+    for I := 0 to AParent.ControlCount-1 do
+    begin
+      AParent.Controls[I].FixDesignFontsPPI(FDesignTimePPI);
+      if AParent.Controls[I] is TWinControl then
+        FixChildren(TWinControl(AParent.Controls[I]));
+    end;
+  end;
 begin
   inherited Loaded;
 
   FPixelsPerInch := FDesignTimePPI;
+
+  if Application.Scaled and Scaled then
+  begin
+    FixDesignFontsPPI(FDesignTimePPI);
+    FixChildren(Self);
+  end;
 end;
 
 procedure TCustomDesignControl.SetDesignTimePPI(const ADesignTimePPI: Integer);

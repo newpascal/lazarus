@@ -20,6 +20,11 @@
 const
   HintBorderWidth = 2;
 
+class destructor THintWindow.Destroy;
+begin
+  FreeAndNil(FSysHintFont);
+end;
+
 constructor THintWindow.Create(AOwner: TComponent);
 begin
   // THintWindow has no resource => must be constructed using CreateNew
@@ -27,7 +32,7 @@ begin
   fCompStyle := csHintWindow;
   Parent := nil;
   Color := clInfoBk;
-  Canvas.Font := Screen.HintFont;
+  Font := Screen.HintFont;
   Canvas.Brush.Style := bsClear;
   FAlignment := taLeftJustify;
   BorderStyle := bsNone;
@@ -61,6 +66,20 @@ begin
   // Add border
   inc(FHintRect.Right, 4 * HintBorderWidth);
   inc(FHintRect.Bottom, 4 * HintBorderWidth);
+end;
+
+class function THintWindow.SysHintFont: TFont;
+begin
+  if (FSysHintFont = nil) then
+  begin
+    FSysHintFont := TFont.Create;
+    if not WidgetSet.InitStockFont(FSysHintFont, sfHint) then
+    begin
+      FSysHintFont.FontData := DefFontData;
+      FSysHintFont.Color := clInfoText;
+    end;
+  end;
+  Result := FSysHintFont;
 end;
 
 class procedure THintWindow.WSRegisterClass;
@@ -108,7 +127,7 @@ end;
 
 function THintWindow.UseFGThemes: Boolean;
 begin
-  Result := (Font.Size = 0) and (Font.Name = '') and (Font.Color = clInfoText);
+  Result := Font.IsEqual(SysHintFont);
 end;
 
 procedure THintWindow.SetColor(Value: TColor);
@@ -265,12 +284,19 @@ function THintWindow.CalcHintRect(MaxWidth: Integer; const AHint: String;
 var
   Flags: Cardinal;
   uh: HDC;
+  Mon: TMonitor;
 begin
+  Mon := Screen.MonitorFromPoint(Point(Left, Top)); // don't use Monitor property - it returns wrong monitor for invisible windows.
+  if Mon=nil then
+    Mon := Screen.Monitors[0];
+  if Application.Scaled and Scaled and (Mon<>nil) and (PixelsPerInch<>Mon.PixelsPerInch) then
+    AutoAdjustLayout(lapAutoAdjustForDPI, PixelsPerInch, Mon.PixelsPerInch, 0, 0);
+
   if AHint = '' then
     Exit(Rect(0, 0, 0, 0));
   if MaxWidth <= 0 then
-    MaxWidth := Screen.Width - 4 * HintBorderWidth;
-  Result := Rect(0, 0, MaxWidth, Screen.Height - 4 * HintBorderWidth);
+    MaxWidth := Mon.Width - 4 * HintBorderWidth;
+  Result := Rect(0, 0, MaxWidth, Mon.Height - 4 * HintBorderWidth);
   Flags := DT_CALCRECT or DT_NOPREFIX or DT_WORDBREAK;
   if UseRightToLeftAlignment then Flags := Flags or DT_RTLREADING;
   uh := Canvas.GetUpdatedHandle([csFontValid]);

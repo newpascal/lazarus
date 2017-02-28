@@ -3811,9 +3811,13 @@ begin
   OldHeight:=Height;
   inherited DoSetBounds(ALeft, ATop, AWidth, AHeight);
   // adapt Clientrect
-  inc(FClientWidth,Width-OldWidth);
+  if not(cfLoading in FControlFlags)
+  or (cfWidthLoaded in FControlFlags) then // adapt only if Width is valid
+    inc(FClientWidth,Width-OldWidth);
+  if not(cfLoading in FControlFlags)
+  or (cfHeightLoaded in FControlFlags) then // adapt only if Height is valid
+    inc(FClientHeight,Height-OldHeight);
   if FClientWidth<0 then FClientWidth:=0;
-  inc(FClientHeight,Height-OldHeight);
   if FClientHeight<0 then FClientHeight:=0;
   Exclude(FWinControlFlags,wcfAdjustedLogicalClientRectValid);
 end;
@@ -3836,15 +3840,14 @@ begin
 end;
 
 procedure TWinControl.AutoAdjustLayout(AMode: TLayoutAdjustmentPolicy;
-  const AFromDPI, AToDPI, AOldFormWidth, ANewFormWidth: Integer;
-  const AScale0Fonts: Boolean);
+  const AFromPPI, AToPPI, AOldFormWidth, ANewFormWidth: Integer);
 var
   i: Integer;
 begin
   for i:=0 to ControlCount-1 do
-    Controls[i].AutoAdjustLayout(AMode, AFromDPI, AToDPI, AOldFormWidth, ANewFormWidth, AScale0Fonts);
+    Controls[i].AutoAdjustLayout(AMode, AFromPPI, AToPPI, AOldFormWidth, ANewFormWidth);
 
-  inherited AutoAdjustLayout(AMode, AFromDPI, AToDPI, AOldFormWidth, ANewFormWidth, AScale0Fonts);
+  inherited;
 end;
 
 {------------------------------------------------------------------------------

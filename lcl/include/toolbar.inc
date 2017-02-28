@@ -89,9 +89,6 @@ begin
     csDoubleClicks, csMenuEvents, csSetCaption, csParentBackground, csOpaque];
   FFlat := True;
   Height := 32;
-  FButtonWidth := cDefButtonWidth;
-  FButtonHeight := cDefButtonHeight;
-  FDropDownWidth := cDropDownWidth;
   Details := ThemeServices.GetElementDetails(ttbSplitButtonDropDownNormal);
   FThemeDropDownWidth := ThemeServices.GetDetailSize(Details).cx;
   Details := ThemeServices.GetElementDetails(ttbDropDownButtonNormal);
@@ -342,19 +339,16 @@ begin
 end;
 
 procedure TToolBar.DoAutoAdjustLayout(const AMode: TLayoutAdjustmentPolicy;
-  const AXProportion, AYProportion: Double; const AScale0Fonts: Boolean);
+  const AXProportion, AYProportion: Double);
 begin
-  inherited DoAutoAdjustLayout(AMode, AXProportion, AYProportion, AScale0Fonts);
+  inherited;
 
   if AMode in [lapAutoAdjustWithoutHorizontalScrolling, lapAutoAdjustForDPI] then
   begin
     BeginUpdate;
     try
       SetButtonSize(Round(ButtonWidth * AXProportion), Round(ButtonHeight * AYProportion));
-      FThemeButtonDropWidth := Round(FThemeButtonDropWidth * AXProportion);
-      FThemeDropDownWidth := Round(FThemeDropDownWidth * AXProportion);
-      if DropDownWidth<>cDropDownWidth then
-        DropDownWidth := Round(DropDownWidth * AXProportion);
+      DropDownWidth := Round(DropDownWidth * AXProportion);
       FToolBarFlags := FToolBarFlags + [tbfUpdateVisibleBarNeeded];
     finally
       EndUpdate;
@@ -376,10 +370,10 @@ begin
   UpdateVisibleBar;
 end;
 
-procedure TToolBar.SetDropDownWidth(const aDropDownWidth: Integer);
+procedure TToolBar.SetDropDownWidth(const ADropDownWidth: Integer);
 begin
-  if FDropDownWidth = aDropDownWidth then Exit;
-  FDropDownWidth := aDropDownWidth;
+  if FDropDownWidth = ADropDownWidth then Exit;
+  FDropDownWidth := ADropDownWidth;
   UpdateVisibleBar;
 end;
 
@@ -450,18 +444,34 @@ end;
 
 function TToolBar.GetRealDropDownWidth: Integer;
 begin
-  if FDropDownWidth < 0 then
-    Result := FThemeDropDownWidth
+  if FDropDownWidth = 0 then
+    Result := MulDiv(FThemeDropDownWidth, Font.PixelsPerInch, Screen.PixelsPerInch)
   else
     Result := FDropDownWidth;
 end;
 
 function TToolBar.GetRealButtonDropWidth: Integer;
 begin
-  if FDropDownWidth < 0 then
-    Result := FThemeButtonDropWidth
+  if FDropDownWidth = 0 then
+    Result := MulDiv(FThemeButtonDropWidth, Font.PixelsPerInch, Screen.PixelsPerInch)
   else
     Result := FDropDownWidth+FThemeButtonDropWidth-FThemeDropDownWidth;
+end;
+
+function TToolBar.GetRealButtonHeight: Integer;
+begin
+  if FButtonHeight = 0 then
+    Result := MulDiv(cDefButtonHeight, Font.PixelsPerInch, 96)
+  else
+    Result := FButtonHeight;
+end;
+
+function TToolBar.GetRealButtonWidth: Integer;
+begin
+  if FButtonWidth = 0 then
+    Result := MulDiv(cDefButtonWidth, Font.PixelsPerInch, 96)
+  else
+    Result := FButtonWidth;
 end;
 
 procedure TToolBar.Paint;
@@ -481,7 +491,7 @@ var
   CurControl: TControl;
   NewWidth: Integer;
   NewHeight: Integer;
-  i: Integer;
+  i, RealButtonWidth, RealButtonHeight: Integer;
   ChangeW, ChangeH: Boolean;
 begin
   ChangeW := FButtonWidth <> NewButtonWidth;
@@ -490,6 +500,8 @@ begin
   
   FButtonWidth:=NewButtonWidth;
   FButtonHeight:=NewButtonHeight;
+  RealButtonWidth := GetRealButtonWidth;
+  RealButtonHeight := GetRealButtonHeight;
   if FUpdateCount > 0 then Exit;
   if [csLoading, csDestroying] * ComponentState <> [] then Exit;
 
@@ -505,7 +517,7 @@ begin
 
       // width
       if ChangeW
-      and (ButtonWidth > 0)
+      and (RealButtonWidth > 0)
       and not CurControl.AutoSize
       and (CurControl is TToolButton)
       and (CurControl.Align in [alNone, alLeft, alRight])
@@ -513,17 +525,17 @@ begin
         if TToolButton(CurControl).Style in [tbsButton,tbsCheck,tbsDropDown]
         then begin
           CurControl.GetPreferredSize(NewWidth,NewHeight);
-          if NewWidth < ButtonWidth then
-            NewWidth := ButtonWidth;
+          if NewWidth < RealButtonWidth then
+            NewWidth := RealButtonWidth;
         end;
       end;
       
       // height
       // in horizontal toolbars the height is set by the toolbar independent of autosize
       if ChangeH
-      and (ButtonHeight > 0)
+      and (RealButtonHeight > 0)
       and ((Align in [alTop, alBottom]) or not CurControl.AutoSize)
-      then NewHeight := ButtonHeight;
+      then NewHeight := RealButtonHeight;
         
       CurControl.SetBounds(CurControl.Left, CurControl.Top, NewWidth, NewHeight);
     end;
@@ -595,6 +607,7 @@ var
   StartX, StartY: Integer;
   Vertical: Boolean; // true = ToolBar is vertical, controls are put in rows
   RowsLeftToRight: Boolean; // rows are left to right
+  RealButtonWidth, RealButtonHeight: Integer;
 
   procedure CalculatePosition;
   var
@@ -617,12 +630,12 @@ var
       begin
         // column layout
         NewControlHeight := PreferredBtnHeight;
-        NewControlWidth := ButtonWidth;
+        NewControlWidth := RealButtonWidth;
       end
       else
       begin
         // row layout
-        NewControlHeight := ButtonHeight;
+        NewControlHeight := RealButtonHeight;
         NewControlWidth := PreferredBtnWidth;
       end;
       if (TToolButton(CurControl).Style in [tbsButton, tbsDropDown, tbsCheck]) then
@@ -630,13 +643,13 @@ var
         if Vertical then
         begin
           // column layout
-          if (NewControlHeight < ButtonHeight) then
-            NewControlHeight := ButtonHeight;
+          if (NewControlHeight < RealButtonHeight) then
+            NewControlHeight := RealButtonHeight;
         end
         else begin
           // row layout
-          if (NewControlWidth < ButtonWidth) then
-            NewControlWidth := ButtonWidth;
+          if (NewControlWidth < RealButtonWidth) then
+            NewControlWidth := RealButtonWidth;
         end;
       end;
       //debugln(['CalculatePosition preferred toolbutton size ',DbgSName(CurControl),' ',NewControlWidth,' ',NewControlHeight]);
@@ -645,14 +658,14 @@ var
     if Vertical then
     begin
       // column layout
-      NewControlWidth := ButtonWidth;
+      NewControlWidth := RealButtonWidth;
       NewControlHeight := CurControl.Height;
     end
     else
     begin
       // row layout
       NewControlWidth := CurControl.Width;
-      NewControlHeight := ButtonHeight;
+      NewControlHeight := RealButtonHeight;
     end;
 
     if Vertical or RowsLeftToRight then
@@ -723,8 +736,8 @@ var
         // try next row
         NewBounds.Top := StartY;
         NewBounds.Bottom := NewBounds.Top + NewControlHeight;
-        inc(NewBounds.Left, ButtonWidth);
-        inc(NewBounds.Right, ButtonWidth);
+        inc(NewBounds.Left, RealButtonWidth);
+        inc(NewBounds.Right, RealButtonWidth);
       end
       else
       begin
@@ -744,8 +757,8 @@ var
         //debugln(['CalculatePosition overlaps: ',DbgSName(CurControl),' ',dbgs(NewBounds),' ARect=',DbgS(ARect),' StartX=',StartX]);
 
         // try next row
-        inc(NewBounds.Top, ButtonHeight);
-        inc(NewBounds.Bottom, ButtonHeight);
+        inc(NewBounds.Top, RealButtonHeight);
+        inc(NewBounds.Bottom, RealButtonHeight);
         if RowsLeftToRight then
         begin
           NewBounds.Left := StartX;
@@ -784,6 +797,8 @@ var
 begin
   //DebugLn(['WrapButtons ',DbgSName(Self),' Wrapable=',Wrapable,' ',dbgs(BoundsRect),' Vertical=',IsVertical,' RTL=',UseRightToLeftAlignment,' Simulate=',Simulate]);
   Result := True;
+  RealButtonWidth := GetRealButtonWidth;
+  RealButtonHeight := GetRealButtonHeight;
   Vertical := IsVertical;
   NewWidth := 0;
   NewHeight := 0;
@@ -828,9 +843,9 @@ begin
     end;
     // sort OrderedControls
     if FRealizedButtonHeight = 0 then
-      FRealizedButtonHeight := FButtonHeight;
+      FRealizedButtonHeight := RealButtonHeight;
     if FRealizedButtonWidth = 0 then
-      FRealizedButtonWidth := FButtonWidth;
+      FRealizedButtonWidth := RealButtonWidth;
     if Vertical then
       OrderedControls.Sort(TListSortCompare(@CompareToolBarControlVert))
     else
@@ -933,7 +948,7 @@ begin
         begin
           // user forced wrap -> start new line
           y := StartY;
-          inc(x, ButtonWidth);
+          inc(x, RealButtonWidth);
           if not Simulate then
             inc(FRowCount);
         end;
@@ -948,13 +963,13 @@ begin
         begin
           // user forced wrap -> start new line
           x := StartX;
-          inc(y, ButtonHeight);
+          inc(y, RealButtonHeight);
           if not Simulate then
             inc(FRowCount);
         end;
       end;
     end;
-    FRealizedButtonHeight := FButtonHeight;
+    FRealizedButtonHeight := RealButtonHeight;
   finally
     ObstacleControls.Free;
     OrderedControls.Free;

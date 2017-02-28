@@ -551,8 +551,7 @@ type
     procedure SetStyle(Val: TListBoxStyle); virtual;
     procedure DrawItem(Index: Integer; ARect: TRect; State: TOwnerDrawState); virtual;
     procedure DoAutoAdjustLayout(const AMode: TLayoutAdjustmentPolicy;
-      const AXProportion, AYProportion: Double; const AScale0Fonts: Boolean);
-      override;
+      const AXProportion, AYProportion: Double); override;
     procedure DoSelectionChange(User: Boolean); virtual;
     procedure SendItemIndex;
   public
@@ -775,6 +774,8 @@ type
     procedure CMWantSpecialKey(var Message: TCMWantSpecialKey); message CM_WANTSPECIALKEY;
     procedure WndProc(var Message: TLMessage); override;
     procedure ShouldAutoAdjust(var AWidth, AHeight: Boolean); override;
+    procedure WMSetFocus(var Message: TLMSetFocus); message LM_SETFOCUS;
+    procedure WMKillFocus(var Message: TLMKillFocus); message LM_KILLFOCUS;
 
     property AutoSelect: Boolean read FAutoSelect write FAutoSelect default True;
     property AutoSelected: Boolean read FAutoSelected write FAutoSelected;

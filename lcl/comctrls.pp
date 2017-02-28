@@ -159,7 +159,7 @@ type
     procedure LMDrawItem(var Message: TLMDrawItems); message LM_DRAWITEM;
 
     procedure DoAutoAdjustLayout(const AMode: TLayoutAdjustmentPolicy;
-      const AXProportion, AYProportion: Double; const AScale0Fonts: Boolean); override;
+      const AXProportion, AYProportion: Double); override;
   public
     constructor Create(TheOwner: TComponent); override;
     destructor Destroy; override;
@@ -1490,7 +1490,7 @@ type
     procedure DoItemChecked(AItem: TListItem);
     procedure DoSelectItem(AItem: TListItem; ASelected: Boolean); virtual;
     procedure DoAutoAdjustLayout(const AMode: TLayoutAdjustmentPolicy;
-      const AXProportion, AYProportion: Double; const AScale0Fonts: Boolean); override;
+      const AXProportion, AYProportion: Double); override;
     procedure DoSetBounds(ALeft, ATop, AWidth, AHeight: integer); override;
 
     procedure DoEndEdit(AItem: TListItem; const AValue: String); virtual;
@@ -2206,7 +2206,7 @@ type
     procedure SetButtonHeight(const AValue: Integer);
     procedure SetButtonWidth(const AValue: Integer);
     procedure SetDisabledImages(const AValue: TCustomImageList);
-    procedure SetDropDownWidth(const aDropDownWidth: Integer);
+    procedure SetDropDownWidth(const ADropDownWidth: Integer);
     procedure SetFlat(const AValue: Boolean);
     procedure SetHotImages(const AValue: TCustomImageList);
     procedure SetImages(const AValue: TCustomImageList);
@@ -2226,7 +2226,6 @@ type
   protected const
     cDefButtonWidth = 23;
     cDefButtonHeight = 22;
-    cDropDownWidth = -1;
   protected
     FPrevVertical: Boolean;
     function IsVertical: Boolean; virtual;
@@ -2252,7 +2251,7 @@ type
                          Simulate: boolean): Boolean;
     procedure CNDropDownClosed(var Message: TLMessage); message CN_DROPDOWNCLOSED;
     procedure DoAutoAdjustLayout(const AMode: TLayoutAdjustmentPolicy;
-      const AXProportion, AYProportion: Double; const AScale0Fonts: Boolean); override;
+      const AXProportion, AYProportion: Double); override;
   public
     constructor Create(TheOwner: TComponent); override;
     destructor Destroy; override;
@@ -2263,6 +2262,8 @@ type
     function CanFocus: Boolean; override;
     function GetRealDropDownWidth: Integer;
     function GetRealButtonDropWidth: Integer;
+    function GetRealButtonWidth: Integer;
+    function GetRealButtonHeight: Integer;
   public
     property ButtonCount: Integer read GetButtonCount;
     property Buttons[Index: Integer]: TToolButton read GetButton;
@@ -2274,8 +2275,8 @@ type
     property AutoSize;
     property BorderSpacing;
     property BorderWidth;
-    property ButtonHeight: Integer read FButtonHeight write SetButtonHeight default cDefButtonHeight;
-    property ButtonWidth: Integer read FButtonWidth write SetButtonWidth default cDefButtonWidth;
+    property ButtonHeight: Integer read FButtonHeight write SetButtonHeight default 0;
+    property ButtonWidth: Integer read FButtonWidth write SetButtonWidth default 0;
     property Caption;
     property ChildSizing;
     property Constraints;
@@ -2285,7 +2286,7 @@ type
     property DragCursor;
     property DragKind;
     property DragMode;
-    property DropDownWidth: Integer read FDropDownWidth write SetDropDownWidth default cDropDownWidth;
+    property DropDownWidth: Integer read FDropDownWidth write SetDropDownWidth default 0;
     property EdgeBorders default [ebTop];
     property EdgeInner;
     property EdgeOuter;
@@ -3251,6 +3252,7 @@ type
     FEditingItem: TTreeNode;
     FExpandSignType: TTreeViewExpandSignType;
     FExpandSignSize: integer;
+    FThemeExpandSignSize: integer;
     FDefItemHeight: integer;
     FDragImage: TDragImageList;
     FDragNode: TTreeNode;
@@ -3323,6 +3325,7 @@ type
     function GetKeepCollapsedNodes: boolean;
     function GetMultiSelect: Boolean;
     function GetReadOnly: boolean;
+    function GetRealExpandSignSize: integer;
     function GetRightClickSelect: boolean;
     function GetRowSelect: boolean;
     function GetSelection: TTreeNode;
@@ -3376,7 +3379,6 @@ type
     procedure SetTopItem(Value: TTreeNode);
     procedure UpdateAllTops;
     procedure UpdateBottomItem;
-    procedure UpdateExpandSignSize;
     procedure UpdateMaxLvl;
     procedure UpdateMaxRight;
     procedure UpdateTopItem;
@@ -3385,6 +3387,7 @@ type
     procedure InternalSelectionChanged;
     function AllowMultiSelectWithCtrl(AState: TShiftState): Boolean;
     function AllowMultiSelectWithShift(AState: TShiftState): Boolean;
+    procedure SetExpandSignSize(const AExpandSignSize: integer);
   protected
     FChangeTimer: TTimer;
     FEditor: TEdit;
@@ -3571,7 +3574,7 @@ type
     property DefaultItemHeight: integer read FDefItemHeight write SetDefaultItemHeight default DefaultTreeNodeHeight;
     property DropTarget: TTreeNode read GetDropTarget write SetDropTarget;
     property ExpandSignColor: TColor read FExpandSignColor write FExpandSignColor default clWindowFrame;
-    property ExpandSignSize: integer read FExpandSignSize write FExpandSignSize default DefaultTreeNodeExpandSignSize;
+    property ExpandSignSize: integer read FExpandSignSize write SetExpandSignSize default 0; // use 0 for default
     property ExpandSignType: TTreeViewExpandSignType
       read FExpandSignType write SetExpandSignType default tvestTheme;
     property Images: TCustomImageList read FImages write SetImages;
@@ -3874,6 +3877,8 @@ type
       X, Y: Integer); override;
     procedure UpdateState;
     class function GetControlClassDefaultSize: TSize; override;
+    procedure DoAutoAdjustLayout(const AMode: TLayoutAdjustmentPolicy;
+      const AXProportion, AYProportion: Double); override;
   public
     property SectionFromOriginalIndex[OriginalIndex: Integer]: THeaderSection read GetSectionFromOriginalIndex;
 

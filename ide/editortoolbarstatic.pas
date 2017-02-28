@@ -204,7 +204,7 @@ begin
   // Toolbar must be created with Align = alTop, then initial positioning of buttons is correct.
   FToolBar := TToolbar.Create(FWindow);
   FToolBar.Parent   := FWindow;
-  FToolBar.Height   := 26;
+  FToolBar.AutoSize := True;
   FToolBar.Align    := alTop;
   FToolBar.Flat     := True;
   FToolBar.Images   := IDEImages.Images_16;
@@ -221,7 +221,7 @@ begin
   FToolBar.PopupMenu  := xPM;
 
   if FWindow.PixelsPerInch<>96 then
-    FToolBar.AutoAdjustLayout(lapAutoAdjustForDPI, 96, FWindow.PixelsPerInch, 0, 0, False);
+    FToolBar.AutoAdjustLayout(lapAutoAdjustForDPI, 96, FWindow.PixelsPerInch, 0, 0);
 end;
 
 destructor TEditorToolbar.Destroy;

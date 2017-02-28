@@ -265,8 +265,8 @@ type
   protected
     procedure SetScaled(const AScaled: Boolean); virtual;
 
-    procedure AutoAdjustLayout(AMode: TLayoutAdjustmentPolicy; const AFromDPI,
-      AToDPI, AOldFormWidth, ANewFormWidth: Integer; const AScale0Fonts: Boolean); override;
+    procedure AutoAdjustLayout(AMode: TLayoutAdjustmentPolicy; const AFromPPI,
+      AToPPI, AOldFormWidth, ANewFormWidth: Integer); override;
     procedure Loaded; override;
   public
     constructor Create(TheOwner: TComponent); override;
@@ -549,8 +549,7 @@ type
     procedure CreateWnd; override;
     procedure Deactivate; virtual;
     procedure DoAutoAdjustLayout(const AMode: TLayoutAdjustmentPolicy;
-      const AXProportion, AYProportion: Double;
-      const AScale0Fonts: Boolean); override;
+      const AXProportion, AYProportion: Double); override;
     procedure DoClose(var CloseAction: TCloseAction); virtual;
     procedure DoCreate; virtual;
     procedure DoDestroy; virtual;
@@ -665,7 +664,7 @@ type
     function GetMDIChildren(AIndex: Integer): TCustomForm; virtual;
     function MDIChildCount: Integer; virtual;
   public
-    procedure AutoScale(const AScale0Fonts: Boolean); // set scaled to True and AutoAdjustLayout to current monitor PPI
+    procedure AutoScale; // set scaled to True and AutoAdjustLayout to current monitor PPI
   public
     // drag and dock
     procedure Dock(NewDockSite: TWinControl; ARect: TRect); override;
@@ -896,6 +895,12 @@ type
     procedure SetColor(Value: TColor); override;
     function UseBGThemes: Boolean;
     function UseFGThemes: Boolean;
+  private class var
+    FSysHintFont: TFont;
+  protected
+    class function SysHintFont: TFont;
+  public
+    class destructor Destroy;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;

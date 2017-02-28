@@ -461,6 +461,8 @@ end;
 function VistaPopupMenuItemSize(AMenuItem: TMenuItem; ADC: HDC): TSize;
 var
   Metrics: TVistaPopupMenuMetrics;
+  IconSize: TPoint;
+  IconWidth: Integer;
 begin
   Metrics := GetVistaPopupMenuMetrics(AMenuItem, ADC);
   // count check
@@ -472,12 +474,16 @@ begin
   end
   else
   begin
-    Result.cy := Metrics.CheckSize.cy + ScaleY(Metrics.CheckMargins.cyTopHeight + Metrics.CheckMargins.cyBottomHeight, 96);
+    Result.cy := Metrics.CheckSize.cy + Metrics.CheckMargins.cyTopHeight + Metrics.CheckMargins.cyBottomHeight;
     if AMenuItem.HasIcon then
     begin
-      Result.cy := Max(Result.cy, AMenuItem.GetIconSize.y);
-      Result.cx := Max(Result.cx, AMenuItem.GetIconSize.x);
+      IconSize := AMenuItem.GetIconSize;
+      Result.cy := Max(Result.cy, IconSize.y);
+      Result.cx := Max(Result.cx, IconSize.x);
     end;
+    IconWidth := MenuIconWidth(AMenuItem);
+    Result.cx := Max(Result.cx, IconWidth);
+    Result.cy := Max(Result.cy, IconWidth);
   end;
   // count gutter
   Result.cx := Result.cx + (Metrics.CheckBgMargins.cxRightWidth - Metrics.CheckMargins.cxRightWidth) +
@@ -694,11 +700,12 @@ procedure DrawVistaPopupMenu(const AMenuItem: TMenuItem; const AHDC: HDC; const 
 var
   Details, Tmp: TThemedElementDetails;
   Metrics: TVistaPopupMenuMetrics;
-  CheckRect, GutterRect, TextRect, SeparatorRect, ImageRect, SubMenuRect: TRect;
+  CheckRect, CheckRect2, GutterRect, TextRect, SeparatorRect, ImageRect, SubMenuRect: TRect;
   IconSize: TPoint;
   TextFlags: DWord;
   AFont, OldFont: HFONT;
   IsRightToLeft: Boolean;
+  IconWidth: Integer;
 begin
   Metrics := GetVistaPopupMenuMetrics(AMenuItem, AHDC);
   // draw backgound
@@ -714,7 +721,15 @@ begin
   // calc check/image rect
   CheckRect := ARect;
   CheckRect.Right := CheckRect.Left + Metrics.CheckSize.cx + Metrics.CheckMargins.cxRightWidth + Metrics.CheckMargins.cxLeftWidth;
-  CheckRect.Bottom := CheckRect.Top + Metrics.CheckSize.cy + ScaleY(Metrics.CheckMargins.cyTopHeight + Metrics.CheckMargins.cyBottomHeight, 96);
+  CheckRect.Bottom := CheckRect.Top + Metrics.CheckSize.cy + Metrics.CheckMargins.cyTopHeight + Metrics.CheckMargins.cyBottomHeight;
+  if AMenuItem.HasIcon then
+  begin
+    IconSize := AMenuItem.GetIconSize;
+    CheckRect.Bottom := Max(CheckRect.Bottom, CheckRect.Top+IconSize.y);
+  end;
+  IconWidth := MenuIconWidth(AMenuItem);
+  CheckRect.Right := Max(CheckRect.Right, CheckRect.Left+IconWidth);
+  CheckRect.Bottom := Max(CheckRect.Bottom, CheckRect.Top+IconWidth);
   // draw gutter
   GutterRect := CheckRect;
   GutterRect.Left := GutterRect.Right + Metrics.CheckBgMargins.cxRightWidth - Metrics.CheckMargins.cxRightWidth;
@@ -752,7 +767,6 @@ begin
     if AMenuItem.HasIcon then
     begin
       ImageRect := CheckRect;
-      IconSize := AMenuItem.GetIconSize;
       if AMenuItem.Checked then // draw checked rectangle around
       begin
         Tmp := ThemeServices.GetElementDetails(PopupCheckBgStates[AMenuItem.Enabled]);
@@ -778,12 +792,12 @@ begin
     begin
       Tmp := ThemeServices.GetElementDetails(PopupCheckBgStates[AMenuItem.Enabled]);
       ThemeDrawElement(AHDC, Tmp, CheckRect, nil);
-      CheckRect.Left := CheckRect.Left + Metrics.CheckMargins.cxLeftWidth;
-      CheckRect.Top := CheckRect.Top + Metrics.CheckMargins.cyTopHeight;
-      CheckRect.Right := CheckRect.Left + Metrics.CheckSize.cx;
-      CheckRect.Bottom := CheckRect.Top + Metrics.CheckSize.cy;
+      CheckRect2.Left := CheckRect.Left + (CheckRect.Right-CheckRect.Left-Metrics.CheckSize.cx) div 2;
+      CheckRect2.Top := CheckRect.Top + (CheckRect.Bottom-CheckRect.Top-Metrics.CheckSize.cy) div 2;
+      CheckRect2.Right := CheckRect2.Left + Metrics.CheckSize.cx;
+      CheckRect2.Bottom := CheckRect2.Top + Metrics.CheckSize.cy;
       Tmp := ThemeServices.GetElementDetails(PopupCheckStates[AMenuItem.Enabled, AMenuItem.RadioItem]);
-      ThemeDrawElement(AHDC, Tmp, CheckRect, nil);
+      ThemeDrawElement(AHDC, Tmp, CheckRect2, nil);
     end;
     // draw text
     TextFlags := DT_SINGLELINE or DT_EXPANDTABS;

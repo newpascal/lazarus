@@ -1,5 +1,9 @@
 {%MainUnit lazutf8.pas}
 
+{$IF DEFINED(UTF8_RTL) AND NOT DEFINED(WINCE)}
+  {$DEFINE ArgsWAsUTF8}
+{$ENDIF}
+
 var
   //Function prototypes
   _ParamStrUtf8: Function(Param: Integer): string;
@@ -7,7 +11,7 @@ var
 var
   ArgsW: Array of WideString;
   ArgsWCount: Integer; // length(ArgsW)+1
-  {$IF DEFINED(UTF8_RTL) AND NOT DEFINED(WINCE)}
+  {$IFDEF ArgsWAsUTF8}
   ArgsUTF8: Array of String; // the ArgsW array as UTF8
   OldArgV: PPChar = nil;
   {$IFEND}
@@ -38,7 +42,7 @@ end;
 //*************** START WideString impementations
 
 
-{$IF DEFINED(UTF8_RTL) AND NOT DEFINED(WINCE)}
+{$IFDEF ArgsWAsUTF8}
 procedure SetupArgvAsUtf8;
 var
   i: Integer;
@@ -192,7 +196,7 @@ begin
   //Note:
   //On WinCe Argsv is a static function, so we cannot change it.
   //This might change in the future if Argsv on WinCE will be declared as a function variable
-  {$IF DEFINED(UTF8_RTL) AND NOT DEFINED(WINCE)}
+  {$IFDEF ArgsWAsUTF8}
   if DefaultSystemCodePage=CP_UTF8 then
     SetupArgvAsUtf8;
   {$IFEND}
@@ -218,19 +222,83 @@ begin
   end;
 end;
 
+function GetGetEnvironmentVariableCountWide: integer;
+var
+  hp,p : PWideChar;
+begin
+  Result:=0;
+  p:=GetEnvironmentStringsW;
+  if p=nil then exit;
+  hp:=p;
+  while hp^<>#0 do
+  begin
+    Inc(Result);
+    hp:=hp+strlen(hp)+1;
+  end;
+  FreeEnvironmentStringsW(p);
+end;
+
+function GetEnvironmentStringWide(Index: Integer): UnicodeString;
+var
+  hp,p : PWideChar;
+begin
+  Result:='';
+  p:=GetEnvironmentStringsW;
+  if p=nil then exit;
+  hp:=p;
+  while (hp^<>#0) and (Index>1) do
+  begin
+    Dec(Index);
+    hp:=hp+strlen(hp)+1;
+  end;
+  if (hp^<>#0) then
+    Result:=hp;
+  FreeEnvironmentStringsW(p);
+end;
+
+function GetEnvironmentVariableWide(const EnvVar: string): UnicodeString;
+{$IF FPC_FULLVERSION>=30000}
+begin
+  Result:=GetEnvironmentVariable(UTF8ToUTF16(EnvVar));
+end;
+{$ELSE}
+var
+  s, upperenv : Unicodestring;
+  i : longint;
+  hp,p : pwidechar;
+begin
+  Result:='';
+  p:=GetEnvironmentStringsW;
+  hp:=p;
+  upperenv:=uppercase(envvar);
+  while hp^<>#0 do
+  begin
+    s:=hp;
+    i:=pos('=',s);
+    if uppercase(copy(s,1,i-1))=upperenv then
+    begin
+      Result:=copy(s,i+1,length(s)-i);
+      break;
+    end;
+    { next string entry}
+    hp:=hp+strlen(hp)+1;
+  end;
+  FreeEnvironmentStringsW(p);
+end;
+{$ENDIF}
+
 //*************** END WideString impementations
 
-
-
-function ConsoleToUTF8(const s: string): string;// converts UTF8 string to console encoding (used by Write, WriteLn)
-{$ifNdef WinCE}
+{$ifdef WinCE}
+function ConsoleToUTF8(const s: string): string;// converts console encoding to UTF8
+begin
+  Result := SysToUTF8(s);
+end;
+{$else}
+function ConsoleToUTF8(const s: string): string;// converts console encoding to UTF8
 var
   Dst: PChar;
-{$endif}
 begin
-  {$ifdef WinCE}
-  Result := SysToUTF8(s);
-  {$else}
   Dst := AllocMem((Length(s) + 1) * SizeOf(Char));
   if OemToChar(PChar(s), Dst) then
     Result := StrPas(Dst)
@@ -238,18 +306,19 @@ begin
     Result := s;
   FreeMem(Dst);
   Result := WinCPToUTF8(Result);
-  {$endif}
 end;
+{$endif not wince}
 
-function UTF8ToConsole(const s: string): string;
-{$ifNdef WinCE}
+{$ifdef WinCe}
+function UTF8ToConsole(const s: string): string; // converts UTF8 to console string (used by Write, WriteLn)
+begin
+  Result := UTF8ToSys(s);
+end;
+{$else}
+function UTF8ToConsole(const s: string): string; // converts UTF8 to console string (used by Write, WriteLn)
 var
   Dst: PChar;
-{$endif}
 begin
-  {$ifdef WinCE}
-  Result := UTF8ToSys(s);
-  {$else WinCE}
   {$ifndef NO_CP_RTL}
   Result := UTF8ToWinCP(s);
   {$else NO_CP_RTL}
@@ -262,20 +331,22 @@ begin
   {$ifndef NO_CP_RTL}
   SetCodePage(RawByteString(Result), CP_OEMCP, False);
   {$endif NO_CP_RTL}
-  {$endif WinCE}
 end;
+{$endif not WinCE}
 
-{$IFDEF Windows}
+{$ifdef WinCE}
+function WinCPToUTF8(const s: string): string; inline;
+begin
+  Result := SysToUtf8(s);
+end;
+{$else}
 // for all Windows supporting 8bit codepages (e.g. not WinCE)
-function WinCPToUTF8(const s: string): string; {$ifdef WinCe}inline;{$endif}
+function WinCPToUTF8(const s: string): string;
 // result has codepage CP_ACP
 var
   UTF16WordCnt: SizeInt;
   UTF16Str: UnicodeString;
 begin
-  {$ifdef WinCE}
-  Result := SysToUtf8(s);
-  {$else}
   Result:=s;
   if IsASCII(Result) then begin
     {$ifdef FPC_HAS_CPSTRING}
@@ -296,18 +367,21 @@ begin
     SetCodePage(RawByteString(Result), CP_ACP, False);
     {$endif}
   end;
-  {$endif}
 end;
+{$endif not wince}
 
-function UTF8ToWinCP(const s: string): string; {$ifdef WinCe}inline;{$endif}
+{$ifdef WinCe}
+function UTF8ToWinCP(const s: string): string; inline;
+begin
+  Result := Utf8ToSys(s);
+end;
+{$else}
+function UTF8ToWinCP(const s: string): string;
 // result has codepage CP_ACP
 var
   src: UnicodeString;
   len: LongInt;
 begin
-  {$ifdef WinCE}
-  Result := Utf8ToSys(s);
-  {$else}
   Result:=s;
   if IsASCII(Result) then begin
     {$ifdef FPC_HAS_CPSTRING}
@@ -328,9 +402,8 @@ begin
     SetCodePage(RawByteString(Result), CP_ACP, False);
     {$endif}
   end;
-  {$endif}
 end;
-{$ENDIF}
+{$endif not wince}
 
 {$ifdef debugparamstrutf8}
 procedure ParamStrUtf8Error;
@@ -348,7 +421,10 @@ end;
 
 function GetLocaleStr(aLocaleID, aLCType: Longint; const Def: string): String;
 var
-  L, ResultLen: Integer;
+  L: Integer;
+  {$IF FPC_FULLVERSION < 30000}
+  ResultLen: Integer;
+  {$ENDIF}
   Buf: array[0..255] of WideChar;
 begin
   L := GetLocaleInfoW(aLocaleID, aLCType, Buf, SizeOf(Buf));
@@ -562,12 +638,12 @@ begin
 end;
 
 procedure FinalizeLazUTF8;
-{$IFDEF UTF8_RTL}
+{$IFDEF ArgsWAsUTF8}
 var
   p: PPChar;
 {$ENDIF}
 begin
-  {$IF DEFINED(UTF8_RTL) AND NOT DEFINED(WINCE)}
+  {$IFDEF ArgsWAsUTF8}
   // restore argv and free memory
   if OldArgV<>nil then
   begin

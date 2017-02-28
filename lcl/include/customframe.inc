@@ -131,9 +131,9 @@ begin
     UpdateActionLists(Self,opInsert);
 
     ParentForm := GetParentForm(Self);
-    if (ParentForm<>nil) and ParentForm.Scaled
+    if Application.Scaled and (ParentForm<>nil) and ParentForm.Scaled
     and (ParentForm.PixelsPerInch<>PixelsPerInch) then
-      AutoAdjustLayout(lapAutoAdjustForDPI, PixelsPerInch, ParentForm.PixelsPerInch, 0, 0, False);
+      AutoAdjustLayout(lapAutoAdjustForDPI, PixelsPerInch, ParentForm.PixelsPerInch, 0, 0);
   end;
 end;
 

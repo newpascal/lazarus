@@ -312,6 +312,7 @@ type
     property ParamCount: Integer
       read GetParamCount write SetParamCount default DEF_FIT_PARAM_COUNT;
     property Pen: TChartPen read FPen write SetPen;
+    property Pointer;
     property Source;
     property Step: TFuncSeriesStep read FStep write SetStep default DEF_FIT_STEP;
     property OnCalcGoodnessOfFit: TCalcGoodnessOfFitEvent
@@ -522,6 +523,7 @@ begin
     calc := @DoCalcIdentity
   else
     exit;
+  ADrawer.SetBrushParams(bsClear, clTAColor);
   ADrawer.Pen := Pen;
   with TDrawFuncHelper.Create(Self, DomainExclusions, calc, Step) do
     try
@@ -668,6 +670,7 @@ begin
     calc := @DoCalcIdentity
   else
     exit;
+  ADrawer.SetBrushParams(bsClear, clTAColor);
   ADrawer.Pen := Pen;
 
   t := ParamMin;
@@ -938,6 +941,7 @@ begin
   InternalPrepareGraphPoints;
 
   SetLength(p, Degree + 1);
+  ADrawer.SetBrushParams(bsClear, clTAColor);
   ADrawer.Pen := Pen;
   while NextNumberSeq(FGraphPoints, splineStart, splineEnd) do begin
     ADrawer.MoveTo(ParentChart.GraphToImage(FGraphPoints[splineStart]));
@@ -1142,6 +1146,7 @@ procedure TCubicSplineSeries.Draw(ADrawer: IChartDrawer);
 
   procedure DrawSpline(ASpline: TSpline);
   begin
+    ADrawer.SetBrushParams(bsClear, clTAColor);
     if ASpline.FIsUnorderedX then begin
       if not IsUnorderedVisible then exit;
       ADrawer.Pen := BadDataPen;
@@ -1400,6 +1405,7 @@ begin
   FFitEquation := fePolynomial;
   FFitRange := TFitSeriesRange.Create(Self);
   FDrawFitRangeOnly := true;
+  FPointer := TSeriesPointer.Create(ParentChart);
   FPen := TChartPen.Create;
   FPen.OnChange := @StyleChanged;
   FStep := DEF_FIT_STEP;
@@ -1421,15 +1427,19 @@ begin
   if IsEmpty then exit;
   ExecFit;
   if State <> fpsValid then exit;
+  ADrawer.SetBrushParams(bsClear, clTAColor);
   ADrawer.Pen := Pen;
   de := PrepareIntervals;
   try
+    PrepareGraphPoints(FChart.CurrentExtent, true);
     with TDrawFuncHelper.Create(Self, de, @Calculate, Step) do
       try
         DrawFunction(ADrawer);
       finally
         Free;
       end;
+    DrawLabels(ADrawer);
+    DrawPointers(ADrawer);
   finally
     de.Free;
   end;
@@ -1523,13 +1533,25 @@ end;
 
 procedure TFitSeries.GetLegendItems(AItems: TChartLegendItems);
 var
+  cp: TChartPen;
+  p: TSeriesPointer;
   t: String;
 begin
+  if FPen.Visible and (FPen.Style <> psClear) then
+    cp := FPen
+  else
+    cp := nil;
+
+  if FPointer.Visible then
+    p := FPointer
+  else
+    p := nil;
+
   if Legend.Format = '' then
     t := Title
   else
     t := Format(Legend.Format, [Title, Index, EquationText.NumFormat('%f').Get]);
-  AItems.Add(TLegendItemLine.Create(Pen, t));
+  AItems.Add(TLegendItemLinePointer.Create(cp, p, t));
 end;
 
 function TFitSeries.GetNearestPoint(
