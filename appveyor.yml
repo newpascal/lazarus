@@ -28,7 +28,7 @@ configuration:
 
 environment:
   APPVEYOR_RDP_PASSWORD:
-    secure: kBUOx4ER4aHlxqZZlLTOGg==
+    secure: sfWumdEBETqbpMK6aVyw8w==
   nodejs_version: "7"
   BINW32_PATH: '%APPVEYOR_BUILD_FOLDER%\..\binw32'
   PPDIR: '%APPVEYOR_BUILD_FOLDER%\..\freepascal\fpc\bin\i386-win32'
