@@ -268,34 +268,34 @@ begin
 
   actStepOverInstr.Caption := lisMenuStepOverInstr;
   actStepOverInstr.Hint := lisMenuStepOverInstrHint;
-  actStepOverInstr.ImageIndex := IDEImages.LoadImage(16, 'menu_stepover_instr');
+  actStepOverInstr.ImageIndex := IDEImages.LoadImage('menu_stepover_instr');
 
   actStepIntoInstr.Caption := lisMenuStepIntoInstr;
   actStepIntoInstr.Hint := lisMenuStepIntoInstrHint;
-  actStepIntoInstr.ImageIndex := IDEImages.LoadImage(16, 'menu_stepinto_instr');
+  actStepIntoInstr.ImageIndex := IDEImages.LoadImage('menu_stepinto_instr');
 
   actCurrentInstr.Caption := lisDisAssGotoCurrentAddress;
   actCurrentInstr.Hint := lisDisAssGotoCurrentAddressHint;
-  actCurrentInstr.ImageIndex := IDEImages.LoadImage(16, 'debugger_current_line');
+  actCurrentInstr.ImageIndex := IDEImages.LoadImage('debugger_current_line');
 
   actGotoAddr.Caption := lisDisAssGotoAddress;
   actGotoAddr.Hint := lisDisAssGotoAddressHint;
-  actGotoAddr.ImageIndex := IDEImages.LoadImage(16, 'callstack_show');
+  actGotoAddr.ImageIndex := IDEImages.LoadImage('callstack_show');
 
   actCopy.Caption := lisCopy;
   actCopy.Hint := lisCopy;
-  actCopy.ImageIndex := IDEImages.LoadImage(16, 'laz_copy');
+  actCopy.ImageIndex := IDEImages.LoadImage('laz_copy');
 
 
-  FPowerImgIdx := IDEImages.LoadImage(16, 'debugger_power');
-  FPowerImgIdxGrey := IDEImages.LoadImage(16, 'debugger_power_grey');
+  FPowerImgIdx := IDEImages.LoadImage('debugger_power');
+  FPowerImgIdxGrey := IDEImages.LoadImage('debugger_power_grey');
   ToolButtonPower.ImageIndex := FPowerImgIdx;
 
-  FCurLineImgIdx := IDEImages.LoadImage(16, 'debugger_current_line');
+  FCurLineImgIdx := IDEImages.LoadImage('debugger_current_line');
   //
 
-  FImgSourceLine := IDEImages.LoadImage(16, 'debugger_source_line');
-  FImgNoSourceLine := IDEImages.LoadImage(16, 'debugger_nosource_line');
+  FImgSourceLine := IDEImages.LoadImage('debugger_source_line');
+  FImgNoSourceLine := IDEImages.LoadImage('debugger_nosource_line');
 end;
 
 destructor TAssemblerDlg.Destroy;
@@ -970,7 +970,8 @@ begin
   then exit;
 
   Editor := SourceEditorManager.SourceEditorIntfWithFilename(SrcFileName);
-  if Editor <> nil then SrcLineNumber := Editor.DebugToSourceLine(SrcLineNumber);
+  if Editor <> nil then
+    SrcLineNumber := Editor.DebugToSourceLine(SrcLineNumber);
 
   Result := Trim(PasSource.GetLine(SrcLineNumber - 1,false));
 end;
@@ -1140,17 +1141,17 @@ begin
       if ( (Line = 0) and LineIsSrc )
       or ( (Line <> 0) and IsSourceBeforeItem(Itm, PrevItm) )
       then begin
-        ALineMap[Line].Dump       := '';
-        ALineMap[Line].Statement  := '';
+        ALineMap[Line].Dump      := '';
+        ALineMap[Line].Statement := '';
         if Itm^.SrcFileName <> ''
         then begin
           s := Itm^.SrcFileName;
-		  if not FDebugManager.GetFullFilename(s, False)
+          if not FDebugManager.GetFullFilename(s, False)
           then s := Itm^.SrcFileName;
           ALineMap[Line].State := lmsSource;
           ALineMap[Line].SourceLine := Itm^.SrcFileLine;
           ALineMap[Line].FileName   := Itm^.SrcFileName;
-          ALineMap[Line].FullFileName   := s;
+          ALineMap[Line].FullFileName := s;
           ALineMap[Line].PasCode := GetSourceCodeLine(Itm^.SrcFileName, Itm^.SrcFileLine);
         end
         else begin
@@ -1166,20 +1167,20 @@ begin
          or ( (Itm^.SrcFileName = '') and (Itm^.FuncName <> '') and (NextItm <> nil) and (Itm^.Offset < NextItm^.Offset) )
       )
       then begin
-        ALineMap[Line].Dump       := '';
-        ALineMap[Line].Statement  := '';
+        ALineMap[Line].Dump      := '';
+        ALineMap[Line].Statement := '';
         if Itm^.SrcFileName <> ''
         then begin
           s := Itm^.SrcFileName;
-		  if not FDebugManager.GetFullFilename(s, False)
+          if not FDebugManager.GetFullFilename(s, False)
           then s := Itm^.SrcFileName;
           ALineMap[Line].State := lmsSource;
           ALineMap[Line].SourceLine := Itm^.SrcFileLine;
           ALineMap[Line].FileName   := Itm^.SrcFileName;
-          ALineMap[Line].FullFileName   := s;
+          ALineMap[Line].FullFileName := s;
           if NextItm <> nil
-          then ALineMap[Line].Statement  := Format('(%d of %d)', [NextItm^.SrcStatementIndex, NextItm^.SrcStatementCount])
-          else ALineMap[Line].Statement  := Format('(??? of %d)', [Itm^.SrcStatementCount]);
+          then ALineMap[Line].Statement := Format('(%d of %d)', [NextItm^.SrcStatementIndex, NextItm^.SrcStatementCount])
+          else ALineMap[Line].Statement := Format('(??? of %d)', [Itm^.SrcStatementCount]);
           ALineMap[Line].PasCode := GetSourceCodeLine(Itm^.SrcFileName, Itm^.SrcFileLine);
         end
         else begin
@@ -1187,10 +1188,10 @@ begin
           ALineMap[Line].SourceLine := 0;
           if NextItm <> nil
           then ALineMap[Line].SourceLine := NextItm^.Offset;
-          ALineMap[Line].FileName   := Itm^.FuncName;
+          ALineMap[Line].FileName := Itm^.FuncName;
           if NextItm <> nil
-          then ALineMap[Line].Statement  := Format('(%d)', [NextItm^.Offset])
-          else ALineMap[Line].Statement  := '(???)';
+          then ALineMap[Line].Statement := Format('(%d)', [NextItm^.Offset])
+          else ALineMap[Line].Statement := '(???)';
         end;
         inc(Line);
         inc(idx); // displayed source-info, instead of asm (topline substituted)

@@ -101,6 +101,11 @@ begin
   if FUpdatePending then UpdateControl;
 end;
 
+function TCustomFloatSpinEdit.MaxValueStored: Boolean;
+begin
+  Result := not SameValue(FMaxValue, DefMaxValue);
+end;
+
 procedure TCustomFloatSpinEdit.KeyPress(var Key: char);
 {Disallow any key that is not a digit, decimalseparator, + or -
  For ease of use translate any decimalpoint or comma to DecimalSeparator
@@ -124,18 +129,24 @@ end;
 
 procedure TCustomFloatSpinEdit.SetValue(const AValue: Double);
 var
-  ValueFromText: Extended;
+  ValueFromText, OldValue: Double;
 begin
-  if (FValue = AValue)
+  if SameValue(FValue, AValue)
     //if you set text by code (or paste it) and text is not a valid float, then FValue will hold the previous value
     //and in that case we should not exit here...
-    and (TryStrToFloat(Text, ValueFromText) and (ValueFromText = FValue)) then Exit;
+    and (TryStrToFloat(Text, ValueFromText) and SameValue(ValueFromText, FValue)) then Exit;
+  OldValue := FValue;
   FValue := AValue;
   
   // clear FValueChanged to prevent getting the old value from the widget
   FValueChanged := False;
   FUpdatePending := True;
   UpdateControl;
+
+  if not HandleAllocated
+  and ([csLoading, csDestroying] * ComponentState = [])
+  and not SameValue(OldValue, FValue) then
+    Change;
 end;
 
 function TCustomFloatSpinEdit.GetValue: Double;
@@ -147,6 +158,11 @@ begin
     FValueChanged := False;
   end;
   Result := FValue;
+end;
+
+function TCustomFloatSpinEdit.IncrementStored: Boolean;
+begin
+  Result := not SameValue(FIncrement, DefIncrement);
 end;
 
 procedure TCustomFloatSpinEdit.SetDecimals(ADecimals: Integer);
@@ -161,11 +177,9 @@ begin
   inherited Create(TheOwner);
   FCompStyle := csSpinEdit;
   
-  FIncrement := 1;
-  FDecimals := 2;
-  FValue := 0;
-  FMinValue := 0;
-  FMaxValue := 100;
+  FIncrement := DefIncrement;
+  FDecimals := DefDecimals;
+  FMaxValue := DefMaxValue;
   FUpdatePending := True;
   FValueChanged := True;
 

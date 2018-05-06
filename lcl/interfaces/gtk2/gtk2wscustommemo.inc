@@ -44,14 +44,26 @@ begin
   if (Widget=nil) then ;
   Mess.msg := LM_PASTE;
   DeliverMessage(WidgetInfo^.LCLObject, Mess);
+  g_object_set_data(PGObject(widget), 'lcl-memo-paste-from-clip', gPointer(-1));
 end;
 
 procedure Gtk2WS_MemoTextInserting (Textbuffer: PGtkTextBuffer; StartIter: PGtkTextIter;
              thetext: pgchar; NewTextLength: gint;  WidgetInfo: PWidgetInfo); cdecl;
 var
+  BeginIter, EndIter: TGtkTextIter;
   Memo: TCustomMemo;
   CurrLength, CutLength: integer;
 begin
+  if g_object_get_data(PGObject(WidgetInfo^.CoreWidget), 'lcl-memo-paste-from-clip') <> nil then
+  begin
+    g_object_set_data(PGObject(WidgetInfo^.CoreWidget), 'lcl-memo-paste-from-clip', nil);
+    gtk_text_buffer_get_selection_bounds(TextBuffer, @BeginIter, @EndIter);
+    gtk_text_buffer_delete(TextBuffer, @BeginIter, @EndIter);
+    gtk_text_buffer_insert(TextBuffer, @BeginIter, theText, NewTextLength);
+    g_signal_stop_emission_by_name(PGtkObject(Textbuffer), 'insert-text');
+    Exit;
+  end;
+
   { GTK2 does not provide its own max. length for memos
     so we have to do our own. }
 
@@ -143,7 +155,9 @@ begin
   
   gtk_widget_show_all(Widget);
 
-  Set_RC_Name(AWinControl, Widget);  
+  Set_RC_Name(AWinControl, Widget);
+  if not AWinControl.HandleObjectShouldBeVisible and not (csDesigning in AWinControl.ComponentState) then
+    gtk_widget_hide(Widget);
   SetCallbacks(Widget, WidgetInfo);
 end;
 
@@ -210,6 +224,7 @@ begin
 
   MemoStrings := TCustomMemo(ACustomEdit).Lines as TGtk2MemoStrings;
   MemoStrings.QueueCursorMove(NewStart);
+  MemoStrings.QueueSelectLength(0);
 end;
 
 class procedure TGtk2WSCustomMemo.SetSelLength(const ACustomEdit: TCustomEdit;
@@ -303,6 +318,40 @@ begin
     gtk_text_view_set_editable(TextView, not NewReadOnly);
 end;
 
+class procedure TGtk2WSCustomMemo.SetSelText(const ACustomEdit: TCustomEdit;
+  const NewSelText: string);
+var
+  MemoStrings: TGtk2MemoStrings;
+  TextBuf: PGtkTextBuffer;
+  SelStart, SelLength, Utf8Len, CutLen: Integer;
+  StartIter, EndIter: TGtkTextIter;
+begin
+  if not WSCheckHandleAllocated(ACustomEdit, 'SetSelText') then
+    Exit;
+  MemoStrings := TCustomMemo(ACustomEdit).Lines as TGtk2MemoStrings;
+  with GetWidgetInfo({%H-}Pointer(ACustomEdit.Handle), True)^ do
+    TextBuf := gtk_text_view_get_buffer(PGtkTextView(CoreWidget));
+  SelStart := GetSelStart(ACustomEdit);
+  SelLength := GetSelLength(ACustomEdit);
+  gtk_text_buffer_get_iter_at_offset(TextBuf, @StartIter, SelStart);
+  if SelLength > 0 then
+  begin
+    gtk_text_buffer_get_iter_at_offset(TextBuf, @EndIter, SelStart + SelLength);
+    MemoStrings.QueueSelectLength(0);
+    gtk_text_buffer_delete(TextBuf, @StartIter, @EndIter);
+  end;
+  Utf8Len := UTF8Length(NewSelText);
+  SelStart := SelStart + Utf8Len;
+  if ACustomEdit.MaxLength > 0 then
+  begin
+    CutLen := gtk_text_buffer_get_char_count(TextBuf) + Utf8Len - ACustomEdit.MaxLength;
+    if CutLen > 0 then
+      Dec(SelStart, CutLen)
+  end;
+  MemoStrings.QueueCursorMove(SelStart);
+  gtk_text_buffer_insert(TextBuf, @StartIter, PChar(NewSelText), -1);
+end;
+
 class procedure TGtk2WSCustomMemo.SetText(const AWinControl: TWinControl;
   const AText: string);
 var
@@ -328,6 +377,7 @@ end;
 class function TGtk2WSCustomMemo.GetSelStart(const ACustomEdit: TCustomEdit
   ): integer;
 var
+  MemoStrings: TGtk2MemoStrings;
   TextView: PGtkTextView;
   TextBuffer: PGtkTextBuffer;
   TextMark: PGtkTextMark;
@@ -337,6 +387,11 @@ var
 begin
   Result := 0;
   if not WSCheckHandleAllocated(ACustomEdit, 'GetSelStart') then
+    Exit;
+
+  MemoStrings := TCustomMemo(ACustomEdit).Lines as TGtk2MemoStrings;
+  Result := MemoStrings.QueueCursorMovePos;
+  if Result > -1 then
     Exit;
 
   TextView := PGtkTextView(GetWidgetInfo({%H-}Pointer(ACustomEdit.Handle), False)^.CoreWidget);
@@ -384,7 +439,7 @@ class function TGtk2WSCustomMemo.GetCaretPos(const ACustomEdit: TCustomEdit): TP
 var
   TextView: PGtkTextView;
   TextBuffer: PGtkTextBuffer;
-  TextMark: PGtkTextMark;
+  Offset: Integer;
   TextIter: TGtkTextIter;
 begin
   Result := Point(0, 0);
@@ -392,8 +447,8 @@ begin
     Exit;
   TextView := PGtkTextView(GetWidgetInfo({%H-}Pointer(ACustomEdit.Handle), False)^.CoreWidget);
   TextBuffer := gtk_text_view_get_buffer(TextView);
-  TextMark := gtk_text_buffer_get_insert(TextBuffer);
-  gtk_text_buffer_get_iter_at_mark(TextBuffer, @TextIter, TextMark);
+  Offset := GetSelStart(ACustomEdit) + GetSelLength(ACustomEdit);
+  gtk_text_buffer_get_iter_at_offset(TextBuffer, @TextIter, Offset);
 
   Result.X := gtk_text_iter_get_line_offset(@TextIter);
   Result.Y := gtk_text_iter_get_line(@TextIter);
@@ -424,5 +479,5 @@ begin
     then Exit;
   gtk_text_iter_set_line_offset(@TextIter, NewPos.X);
 
-  gtk_text_buffer_place_cursor(TextBuffer, @TextIter);
+  SetSelStart(ACustomEdit, gtk_text_iter_get_offset(@TextIter));
 end;

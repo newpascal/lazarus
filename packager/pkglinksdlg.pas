@@ -37,16 +37,23 @@ unit PkgLinksDlg;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, StdCtrls,
-  Buttons, Grids, ExtCtrls, ComCtrls, Menus, AvgLvlTree, LazUTF8,
-  FileProcs, LazFileUtils, LazFileCache, PackageIntf,
+  Classes, SysUtils, Laz_AVL_Tree,
+  // LCL
+  Forms, Controls, StdCtrls, Buttons, Grids, ExtCtrls, ComCtrls, Menus,
+  // Codetools
+  FileProcs,
+  // LazUtils
+  LazUTF8, LazFileUtils, LazFileCache,
+  // IdeIntf
+  PackageLinkIntf, PackageIntf,
+  // IDE
   LazarusIDEStrConsts, PackageLinks, LPKCache;
 
 type
 
   { TPkgLinkInfo }
 
-  TPkgLinkInfo = class(TPackageLink)
+  TPkgLinkInfo = class(TLazPackageLink)
   private
     FEffectiveFilename: string;
     FIsValid: boolean;
@@ -57,10 +64,12 @@ type
     destructor Destroy; override;
     procedure Assign(Source: TPersistent); override;
     property Origin;
+    property LPKUrl;
     property LPKInfo: TLPKInfo read FLPKInfo;
     property Visible: boolean read FVisible write FVisible;
     property IsValid: boolean read FIsValid write FIsValid;
     property EffectiveFilename: string read FEffectiveFilename write FEffectiveFilename;
+    property OPMFileDate;
   end;
 
   { TPackageLinksDialog }
@@ -75,11 +84,12 @@ type
     LPKParsingTimer: TTimer;
     CopyCellToClipboardMenuItem: TMenuItem;
     GridPopupMenu: TPopupMenu;
-    ProgressBar1: TProgressBar;
-    ShowUserLinksCheckBox: TCheckBox;
     ShowGlobalLinksCheckBox: TCheckBox;
+    ShowOnlineLinksCheckBox: TCheckBox;
+    ShowUserLinksCheckBox: TCheckBox;
     ScopeGroupBox: TGroupBox;
     PkgStringGrid: TStringGrid;
+    ProgressBar1: TProgressBar;
     UpdateGlobalLinksButton: TButton;
     procedure CopyCellToClipboardMenuItemClick(Sender: TObject);
     procedure DeleteSelectedButtonClick(Sender: TObject);
@@ -90,15 +100,15 @@ type
     procedure LPKFileInvalidCheckBoxChange(Sender: TObject);
     procedure LPKParsingTimerTimer(Sender: TObject);
     procedure OnAllLPKParsed(Sender: TObject);
-    procedure ShowGlobalLinksCheckBoxChange(Sender: TObject);
-    procedure ShowUserLinksCheckBoxChange(Sender: TObject);
+    procedure ShowLinksCheckBoxChange(Sender: TObject);
     procedure UpdateGlobalLinksButtonClick(Sender: TObject);
   private
     FCountGlobalLinks: integer;
     FCountLPKValid: integer;
     FCountLPKInvalid: integer;
+    FCountOnlineLinks: Integer;
     FCountUserLinks: Integer;
-    FLinks: TAvglVLTree;// tree of TPkgLinkInfo sorted for name and version
+    FLinks: TAVLTree;// tree of TPkgLinkInfo sorted for name and version
     FCollectingOrigin: TPkgLinkOrigin;
     procedure RescanGlobalLinks;
     procedure UpdateFacets;
@@ -111,6 +121,7 @@ type
   public
     property CountLPKValid: integer read FCountLPKValid;
     property CountLPKInvalid: integer read FCountLPKInvalid;
+    property CountOnlineLinks: Integer read FCountOnlineLinks;
     property CountUserLinks: Integer read FCountUserLinks;
     property CountGlobalLinks: integer read FCountGlobalLinks;
   end;
@@ -170,26 +181,28 @@ var
   ErrMsg: String;
 begin
   ErrMsg:='';
-  for i:=1 to PkgStringGrid.RowCount-1 do begin
-    if PkgStringGrid.Cells[0,i]=PkgStringGrid.Columns[0].ValueChecked then begin
+  for i:=1 to PkgStringGrid.RowCount-1 do
+  begin
+    if PkgStringGrid.Cells[0,i]=PkgStringGrid.Columns[0].ValueChecked then
+    begin
       Link:=GetLinkAtRow(i);
       if Link=nil then exit;
-      if Link.Origin=ploGlobal then begin
-        // delete lpl file
-        if FileExistsCached(Link.LPLFilename) then begin
-          if not DeleteFileUTF8(Link.LPLFilename) then
-            ErrMsg+=Format(lrsPLDUnableToDeleteFile, [Link.LPLFilename])+
-              LineEnding;
+      case Link.Origin of
+        ploGlobal: begin
+          // delete lpl file
+          if FileExistsCached(Link.LPLFilename) then begin
+            if not DeleteFileUTF8(Link.LPLFilename) then
+              ErrMsg+=Format(lrsPLDUnableToDeleteFile, [Link.LPLFilename])+LineEnding;
+          end;
         end;
-      end else begin
-        // delete user link
-        PkgLinks.RemoveUserLinks(Link);
+        ploOnline: begin { What to do here? } end;
+        ploUser: LazPackageLinks.RemoveUserLinks(Link); // delete user link
       end;
     end;
   end;
   RescanGlobalLinks;
   UpdatePackageList;
-  PkgLinks.SaveUserLinks;
+  LazPackageLinks.SaveUserLinks;
 end;
 
 procedure TPackageLinksDialog.FormDestroy(Sender: TObject);
@@ -222,12 +235,7 @@ begin
   UpdatePackageList;
 end;
 
-procedure TPackageLinksDialog.ShowGlobalLinksCheckBoxChange(Sender: TObject);
-begin
-  UpdatePackageList;
-end;
-
-procedure TPackageLinksDialog.ShowUserLinksCheckBoxChange(Sender: TObject);
+procedure TPackageLinksDialog.ShowLinksCheckBoxChange(Sender: TObject);
 begin
   UpdatePackageList;
 end;
@@ -261,26 +269,30 @@ var
   end;
 
 var
-  Node: TAvgLvlTreeNode;
+  Node: TAvlTreeNode;
   Link: TPkgLinkInfo;
   i: Integer;
   OriginStr: String;
   Info: TLPKInfo;
-  NextNode: TAvgLvlTreeNode;
+  NextNode: TAvlTreeNode;
   s: String;
 begin
   // collect links
   ClearLinks;
 
   if FLinks=nil then
-    FLinks:=TAvgLvlTree.Create(@ComparePackageLinks);
+    FLinks:=TAVLTree.Create(@ComparePackageLinks);
   if ShowGlobalLinksCheckBox.Checked then begin
     FCollectingOrigin:=ploGlobal;
-    PkgLinks.IteratePackages(false,@IteratePackages,[ploGlobal]);
+    LazPackageLinks.IteratePackages(false,@IteratePackages,[ploGlobal]);
+  end;
+  if ShowOnlineLinksCheckBox.Checked then begin
+    FCollectingOrigin:=ploOnline;
+    LazPackageLinks.IteratePackages(false,@IteratePackages,[ploOnline]);
   end;
   if ShowUserLinksCheckBox.Checked then begin
     FCollectingOrigin:=ploUser;
-    PkgLinks.IteratePackages(false,@IteratePackages,[ploUser]);
+    LazPackageLinks.IteratePackages(false,@IteratePackages,[ploUser]);
   end;
 
   // query additional information from lpk files
@@ -290,6 +302,7 @@ begin
     FCountLPKInvalid:=0;
     FCountGlobalLinks:=0;
     FCountUserLinks:=0;
+    FCountOnlineLinks:=0;
     Node:=FLinks.FindLowest;
     FilterCase:=FilterEdit.Text;
     FilterLo:=UTF8LowerCase(FilterCase);
@@ -327,10 +340,11 @@ begin
           inc(FCountLPKValid)
         else
           inc(FCountLPKInvalid);
-        if Link.Origin=ploGlobal then
-          inc(FCountGlobalLinks)
-        else
-          inc(FCountUserLinks);
+        case Link.Origin of
+          ploGlobal: inc(FCountGlobalLinks);
+          ploOnline: inc(FCountOnlineLinks);
+          ploUser  : inc(FCountUserLinks);
+        end;
       end else begin
         // delete link
         Link.Free;
@@ -361,24 +375,40 @@ begin
     PkgStringGrid.Cells[0,i]:=PkgStringGrid.Columns[0].ValueUnchecked;
     PkgStringGrid.Cells[1,i]:=Link.Name;
     PkgStringGrid.Cells[2,i]:=Link.Version.AsString;
-    if Link.Origin=ploGlobal then
-      OriginStr:=lisPLDGlobal
-    else
-      OriginStr:=lisPLDUser;
+    case Link.Origin of
+      ploGlobal: OriginStr:=lisPLDGlobal;
+      ploOnline: OriginStr:=lisPLDOnline;
+      ploUser  : OriginStr:=lisPLDUser;
+    end;
     PkgStringGrid.Cells[3,i]:=OriginStr;
-    if Link.IsValid then
-      s:=lrsPLDValid
-    else if (Info<>nil) and (Info.LPKError<>'') then
-      s:=Info.LPKError
-    else
-      s:=lrsPLDInvalid;
-    PkgStringGrid.Cells[4,i]:=s;
-    PkgStringGrid.Cells[5,i]:=Link.EffectiveFilename;
 
-    if Link.LastUsed=0 then
-      PkgStringGrid.Cells[6,i]:= lisNever
+    if Link.Origin = ploOnline then
+      s:=lrsPLDValid
     else
-      PkgStringGrid.Cells[6,i]:= DateTimeToStr(Link.LastUsed);
+    begin
+      if Link.IsValid then
+        s:=lrsPLDValid
+      else if (Info<>nil) and (Info.LPKError<>'') then
+        s:=Info.LPKError
+      else
+        s:=lrsPLDInvalid;
+    end;
+    PkgStringGrid.Cells[4,i]:=s;
+
+    if Link.Origin = ploOnline then
+      PkgStringGrid.Cells[5,i]:=Link.LPKUrl
+    else
+      PkgStringGrid.Cells[5,i]:=Link.EffectiveFilename;
+
+    if Link.Origin = ploOnline then
+      PkgStringGrid.Cells[6,i]:= FormatDateTime('YYYY/MM/DD  hh:mm:ss', Link.OPMFileDate)
+    else
+    begin
+      if Link.LastUsed=0 then
+        PkgStringGrid.Cells[6,i]:= lisNever
+      else
+        PkgStringGrid.Cells[6,i]:= FormatDateTime('YYYY/MM/DD  hh:mm:ss', Link.LastUsed);
+    end;
 
     inc(i);
   end;
@@ -392,20 +422,20 @@ end;
 procedure TPackageLinksDialog.UpdateFacets;
 begin
   ShowGlobalLinksCheckBox.Caption:=lisPLDShowGlobalLinksIn
-     +PkgLinks.GetGlobalLinkDirectory+'*.lpl'
+     +LazPackageLinks.GetGlobalLinkDirectory+'*.lpl'
      +' ('+IntToStr(CountGlobalLinks)+')';
+  ShowOnlineLinksCheckBox.Caption:=lisPLDShowOnlineLinks
+     +' ('+IntToStr(CountOnlineLinks)+')';
   ShowUserLinksCheckBox.Caption:=lisPLDShowUserLinksIn
-     +PkgLinks.GetUserLinkFile
+     +LazPackageLinks.GetUserLinkFile
      +' ('+IntToStr(CountUserLinks)+')';
-  LPKFileValidCheckBox.Caption:=Format(lrsPLDLpkFileValid, [IntToStr(
-    CountLPKValid)]);
-  LPKFileInvalidCheckBox.Caption:=Format(lrsPLDLpkFileInvalid, [IntToStr(
-    CountLPKInvalid)]);
+  LPKFileValidCheckBox.Caption:=Format(lrsPLDLpkFileValid, [IntToStr(CountLPKValid)]);
+  LPKFileInvalidCheckBox.Caption:=Format(lrsPLDLpkFileInvalid, [IntToStr(CountLPKInvalid)]);
 end;
 
 procedure TPackageLinksDialog.RescanGlobalLinks;
 begin
-  PkgLinks.UpdateGlobalLinks;
+  LazPackageLinks.UpdateGlobalLinks;
 end;
 
 procedure TPackageLinksDialog.ClearLinks;
@@ -429,14 +459,17 @@ end;
 function TPackageLinksDialog.GetLinkAtRow(Row: integer): TPkgLinkInfo;
 var
   Origin: TPkgLinkOrigin;
-  EffectiveFilename: String;
+  EffectiveFilename, S: String;
 begin
   Result:=nil;
   if (Row<1) or (Row>=PkgStringGrid.RowCount) then exit;
   EffectiveFilename:=PkgStringGrid.Cells[5,Row];
-  if PkgStringGrid.Cells[3,Row]=lisPLDGlobal then
+  S := PkgStringGrid.Cells[3,Row];
+  if S = lisPLDGlobal then
     Origin:=ploGlobal
-  else
+  else if S = lisPLDOnline then
+    Origin:=ploOnline
+  else // lisPLDUser
     Origin:=ploUser;
   Result:=GetLinkWithEffectiveFilename(EffectiveFilename,[Origin]);
 end;
@@ -444,7 +477,7 @@ end;
 function TPackageLinksDialog.GetLinkWithEffectiveFilename(Filename: string;
   Origins: TPkgLinkOrigins): TPkgLinkInfo;
 var
-  Node: TAvgLvlTreeNode;
+  Node: TAvlTreeNode;
 begin
   Node:=FLinks.FindLowest;
   while Node<>nil do begin
@@ -461,7 +494,7 @@ end;
 constructor TPkgLinkInfo.Create;
 begin
   inherited Create;
-  FLPKInfo:=TLPKInfo.Create(TLazPackageID.Create,false);
+  FLPKInfo:=TLPKInfo.Create(TLazPackageID.Create);
 end;
 
 destructor TPkgLinkInfo.Destroy;
@@ -472,20 +505,22 @@ end;
 
 procedure TPkgLinkInfo.Assign(Source: TPersistent);
 var
-  Link: TPackageLink;
+  Link: TLazPackageLink;
 begin
   if Source is TLazPackageID then begin
     AssignID(TLazPackageID(Source));
     LPKInfo.Assign(Source);
-    if Source is TPackageLink then begin
-      Link:=TPackageLink(Source);
+    if Source is TLazPackageLink then begin
+      Link:=TLazPackageLink(Source);
       Origin:=Link.Origin;
+      LPKUrl := Link.LPKUrl;
       LPKFilename:=Link.LPKFilename;
       LPLFilename:=Link.LPLFilename;
       AutoCheckExists:=Link.AutoCheckExists;
       LPKFileDateValid:=Link.LPKFileDateValid;
       LPKFileDate:=Link.LPKFileDate;
       LastUsed:=Link.LastUsed;
+      OPMFileDate:=Link.OPMFileDate;
     end;
   end else
     inherited Assign(Source);

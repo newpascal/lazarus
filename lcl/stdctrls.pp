@@ -248,7 +248,9 @@ type
     csSimple,           // like an TEdit plus a TListBox
     csDropDownList,     // like TLabel plus a button to drop down the list
     csOwnerDrawFixed,   // like csDropDownList, but custom drawn
-    csOwnerDrawVariable // like csDropDownList, but custom drawn and with each item can have another height
+    csOwnerDrawVariable,// like csDropDownList, but custom drawn and with each item can have another height
+    csOwnerDrawEditableFixed,// like csOwnerDrawFixed, but with TEdit
+    csOwnerDrawEditableVariable// like csOwnerDrawVariable, but with TEdit
   );
 
   TOwnerDrawState = LCLType.TOwnerDrawState;
@@ -283,7 +285,6 @@ type
     FOnGetItems: TNotifyEvent;
     FOnMeasureItem: TMeasureItemEvent;
     FOnSelect: TNotifyEvent;
-    FReadOnly: Boolean;
     FSelLength: integer;
     FSelStart: integer;
     FSorted: boolean;
@@ -293,6 +294,7 @@ type
     function GetAutoComplete: boolean;
     function GetDroppedDown: Boolean;
     function GetItemWidth: Integer;
+    function GetReadOnly: Boolean;
     procedure SetAutoComplete(const AValue: boolean);
     procedure SetItemWidth(const AValue: Integer);
     procedure LMDrawListItem(var TheMessage: TLMDrawListItem); message LM_DrawListItem;
@@ -325,6 +327,8 @@ type
     procedure SetItems(const Value: TStrings); virtual;
     procedure CloseUp; virtual;
     procedure AdjustDropDown; virtual;
+    procedure DoAutoAdjustLayout(const AMode: TLayoutAdjustmentPolicy;
+      const AXProportion, AYProportion: Double); override;
 
     function GetItemCount: Integer; //override;
     function GetItemHeight: Integer; virtual;
@@ -333,7 +337,6 @@ type
     function GetSelText: string; virtual;
     function GetItemIndex: integer; virtual;
     function GetMaxLength: integer; virtual;
-    function IsReadOnlyStored: boolean;
     procedure SetDropDownCount(const AValue: Integer); virtual;
     procedure SetDroppedDown(const AValue: Boolean); virtual;
     procedure SetItemHeight(const AValue: Integer); virtual;
@@ -396,7 +399,7 @@ type
     property DropDownCount: Integer read FDropDownCount write SetDropDownCount default 8;
     property Items: TStrings read FItems write SetItems;
     property ItemIndex: integer read GetItemIndex write SetItemIndex default -1;
-    property ReadOnly: Boolean read FReadOnly write SetReadOnly stored IsReadOnlyStored;
+    property ReadOnly: Boolean read GetReadOnly write SetReadOnly stored False;
     property SelLength: integer read GetSelLength write SetSelLength;// UTF-8 length
     property SelStart: integer read GetSelStart write SetSelStart;// UTF-8 position
     property SelText: String read GetSelText write SetSelText;
@@ -470,7 +473,7 @@ type
     property ParentFont;
     property ParentShowHint;
     property PopupMenu;
-    property ReadOnly;
+    property ReadOnly; deprecated 'Will be removed in 1.10 - use extended Style values instead.';
     property ShowHint;
     property Sorted;
     property Style;
@@ -485,10 +488,16 @@ type
 
   TListBoxStyle = (lbStandard, lbOwnerDrawFixed, lbOwnerDrawVariable, lbVirtual);
   TSelectionChangeEvent = procedure(Sender: TObject; User: boolean) of object;
+  TListBoxOption = (
+    lboDrawFocusRect // draw focus rect in case of owner drawing
+    );
+  TListBoxOptions = set of TListBoxOption;
 
   { TCustomListBox }
 
   TCustomListBox = class(TWinControl)
+  private const
+    DefOptions = [lboDrawFocusRect];
   private
     FCacheValid: Boolean;
     FCanvas: TCanvas;
@@ -505,6 +514,7 @@ type
     FOnDrawItem: TDrawItemEvent;
     FOnMeasureItem: TMeasureItemEvent;
     FOnSelectionChange: TSelectionChangeEvent;
+    FOptions: TListBoxOptions;
     FScrollWidth: Integer;
     FSorted: boolean;
     FStyle: TListBoxStyle;
@@ -554,6 +564,7 @@ type
       const AXProportion, AYProportion: Double); override;
     procedure DoSelectionChange(User: Boolean); virtual;
     procedure SendItemIndex;
+    procedure WMGetDlgCode(var Message: TLMNoParams); message LM_GETDLGCODE;
   public
     constructor Create(TheOwner: TComponent); override;
     destructor Destroy; override;
@@ -613,6 +624,7 @@ type
     property OnSelectionChange: TSelectionChangeEvent read FOnSelectionChange
                                                       write FOnSelectionChange;
     property OnUTF8KeyPress;
+    property Options: TListBoxOptions read FOptions write FOptions default DefOptions;
     property ParentColor default False;
     property ParentFont;
     property ParentShowHint;
@@ -681,6 +693,7 @@ type
     property OnShowHint;
     property OnStartDrag;
     property OnUTF8KeyPress;
+    property Options;
     property ParentBidiMode;
     property ParentColor;
     property ParentShowHint;
@@ -710,6 +723,7 @@ type
     FHideSelection: Boolean;
     FMaxLength: Integer;
     FModified: Boolean;
+    FOnChangeHandler: TMethodList;
     FPasswordChar: Char;
     FReadOnly: Boolean;
     FNumbersOnly: Boolean;
@@ -717,10 +731,9 @@ type
     FSelLength: integer;
     FSelStart: integer;
     FTextChangedByRealSetText: Boolean;
+    FTextChangedLock: Boolean;
     FTextHint: TTranslateString;
-    function GetTextHintFontColor: TColor;       //Remove in 1.9
-    function GetTextHintFontStyle: TFontStyles;  //Remove in 1.9
-    procedure ShowEmulatedTextHint;
+    procedure ShowEmulatedTextHint(const ForceShow: Boolean = False);
     procedure HideEmulatedTextHint;
     procedure SetAlignment(const AValue: TAlignment);
     function GetCanUndo: Boolean;
@@ -730,8 +743,6 @@ type
     procedure SetMaxLength(Value: Integer);
     procedure SetModified(Value: Boolean);
     procedure SetPasswordChar(const AValue: Char);
-    procedure SetTextHintFontColor(const aTextHintFontColor: TColor);
-    procedure SetTextHintFontStyle(const aTextHintFontStyle: TFontStyles);
   protected type
     TEmulatedTextHintStatus = (thsHidden, thsShowing, thsChanging);
   protected
@@ -749,6 +760,7 @@ type
     procedure Change; virtual;
     procedure DoEnter; override;
     procedure DoExit; override;
+    procedure EditingDone; override;
     function GetCaretPos: TPoint; virtual;
     function GetNumbersOnly: Boolean; virtual;
     function GetReadOnly: Boolean; virtual;
@@ -782,6 +794,7 @@ type
     property ParentColor default False;
   public
     constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
     procedure Clear;
     procedure SelectAll;
     procedure ClearSelection; virtual;
@@ -789,6 +802,11 @@ type
     procedure CutToClipboard; virtual;
     procedure PasteFromClipboard; virtual;
     procedure Undo; virtual;
+
+    procedure RemoveAllHandlersOfObject(AnObject: TObject); override;
+    procedure AddHandlerOnChange(const AnOnChangeEvent: TNotifyEvent;
+      AsFirst: Boolean = False);
+    procedure RemoveHandlerOnChange(const AnOnChangeEvent: TNotifyEvent);
   public
     property Alignment: TAlignment read FAlignment write SetAlignment default taLeftJustify;
     property AutoSize default True;
@@ -812,8 +830,6 @@ type
     property TabStop default true;
     property Text;
     property TextHint: TTranslateString read GetTextHint write SetTextHint;
-    property TextHintFontColor: TColor read GetTextHintFontColor write SetTextHintFontColor default clGrayText; deprecated 'Will be removed in the future'; //deprecated in 1.7
-    property TextHintFontStyle: TFontStyles read GetTextHintFontStyle write SetTextHintFontStyle default [fsItalic]; deprecated 'Will be removed in the future';
   end;
 
 
@@ -891,7 +907,6 @@ type
   public
     property AutoSelected;
   published
-    property Action;
     property Align;
     property Alignment;
     property Anchors;
@@ -1523,8 +1538,8 @@ type
   public
     constructor Create(TheOwner: TComponent); override;
     function CalcFittingFontHeight(const TheText: string;
-                                   MaxWidth, MaxHeight: Integer; var FontHeight,
-                                   NeededWidth, NeededHeight: integer): Boolean;
+      MaxWidth, MaxHeight: Integer;
+      out FontHeight, NeededWidth, NeededHeight: Integer): Boolean;
     function ColorIsStored: boolean; override;
     function AdjustFontForOptimalFill: Boolean;
     procedure Paint; override;

@@ -21,7 +21,7 @@ unit LazUnicode;
 
 // For testing the UTF16 version.
 {$IF DEFINED(FPC) and DEFINED(UseUTF16)}
- {$ModeSwitch UnicodeStrings}   // Sets also FPC_UNICODESTRINGS ...
+ {$ModeSwitch UnicodeStrings}   // Sets also FPC_UNICODESTRINGS.
 {$ENDIF}
 
 {$IF DEFINED(FPC_UNICODESTRINGS) or not DEFINED(FPC)}
@@ -45,18 +45,27 @@ uses
   function CodePointLength(const s: string): NativeInt; inline;
   function CodePointPos(const SearchForText, SearchInText: string; StartPos: NativeInt = 1): NativeInt; inline;
   function CodePointSize(p: PChar): integer; inline;
-  function IsCombining(const AChar: PChar): Boolean; inline;
+  function IsCombining(const AChar: PChar): Boolean; {$IFDEF FPC}inline;{$ENDIF}
 
   function UnicodeToWinCP(const s: string): AnsiString;
   function WinCPToUnicode(const s: AnsiString): string;
 
+  function StringOfCodePoint(ACodePoint: String; N: Integer): String;
+
 type
   // Base class for CodePoint and Character enumerators.
+
+  { TUnicodeEnumeratorBase }
+
   TUnicodeEnumeratorBase = class
   private
-    fCurrent: String;
-    fCurrentPos, fEndPos: PChar;
-    fCurrentCodeUnitCount: Integer;
+    fSrcPos, fEndPos: PChar;        // Pointers to source string.
+    // Preset variables for different codepoint/character lengths.
+    // Current will be assigned to one of them.
+    fCurOne, fCurTwo, fCurThree, fCurLong: String;
+    fCurrent: String;               // Current separated codepoint/character.
+    fCurrentCodeUnitCount: Integer; // Number of CodeUnits (Pascal Char) in Current.
+    procedure UpdateCurrent(aCount: integer);
   public
     constructor Create(const A: String);
     property Current: String read fCurrent;
@@ -77,19 +86,20 @@ type
   //  with combined codepoints. Uses UTF-8 or UTF-16 depending on $ModeSwitch.
   TUnicodeCharacterEnumerator = class(TUnicodeEnumeratorBase)
   private
-    fCurrentCodePointCount: Integer;
+    fCurrentCodePointCount: Integer; // Number of CodePoints in Current.
   public
     property CurrentCodePointCount: Integer read fCurrentCodePointCount;
     function MoveNext: Boolean;
   end;
 
   {$IFDEF FPC}
-  // Enumerator for CodePoints is used for for-in loop now.
-  operator Enumerator(A: String): TCodePointEnumerator;
+  // Enumerator for CodePoints could be used for the for-in loop.
+  //operator Enumerator(A: String): TCodePointEnumerator;
 
-  // This enumerator combines diacritical marks. Not enabled by default because
-  //  there are many more rules for combining codepoints.
-  //operator Enumerator(A: String): TUnicodeCharacterEnumerator;
+  // This enumerator combines diacritical marks.
+  // It is used by default although there are more rules for combining codepoints.
+  // Diacritical marks cover rules for most western languages.
+  operator Enumerator(A: String): TUnicodeCharacterEnumerator;
   {$ENDIF}
 
 implementation
@@ -177,13 +187,13 @@ begin
   else
     Result := 1
   {$ELSE}
-  Result := UTF8CharacterLengthFast(p);
+  Result := UTF8CodepointSizeFast(p);
   {$ENDIF}
 end;
 
 function IsCombining(const AChar: PChar): Boolean;
 // Note: there are many more rules for combining codepoints.
-//  The diacritical marks hare are only a subset.
+//  The diacritical marks here are only a subset.
 begin
   {$IFDEF ReallyUseUTF16}
   Result := UTF16IsCombining(AChar);
@@ -222,27 +232,59 @@ begin
   {$ENDIF}
 end;
 
+function StringOfCodePoint(ACodePoint: String; N: Integer): String;
+// Like StringOfChar
+{$IFDEF ReallyUseUTF16}
+var
+  i: Integer;
+{$ENDIF}
+begin
+  {$IFDEF ReallyUseUTF16}
+  Result := '';
+  for i := 1 to N do
+    Result := Result + ACodePoint;
+  {$ELSE}
+  Result := Utf8StringOfChar(ACodePoint, N);
+  {$ENDIF}
+end;
+
 { TUnicodeEnumeratorBase }
 
 constructor TUnicodeEnumeratorBase.Create(const A: String);
 begin
-  fCurrentPos := PChar(A); // Note: if A='' then PChar(A) returns a pointer to a #0 string
-  fEndPos := fCurrentPos + length(A);
+  fSrcPos := PChar(A); // Note: if A='' then PChar(A) returns a pointer to a #0 string
+  fEndPos := fSrcPos + length(A);
+  SetLength(fCurOne, 1); // Space for the most common codepoint/character lengths.
+  SetLength(fCurTwo, 2);
+  SetLength(fCurThree, 3);
+end;
+
+procedure TUnicodeEnumeratorBase.UpdateCurrent(aCount: integer);
+// Copy the needed bytes to fCurrent which then holds a codepoint or "character".
+begin
+  fCurrentCodeUnitCount := aCount;
+  Assert(aCount<>0, 'TUnicodeEnumeratorBase.UpdateCurrent: aCount=0.');
+  case aCount of
+    1: fCurrent := fCurOne; // Assignment does not copy but reference count changes.
+    2: fCurrent := fCurTwo;
+    3: fCurrent := fCurThree;
+    else begin
+      SetLength(fCurLong, aCount);
+      fCurrent := fCurLong;
+    end;
+  end;
+  Move(fSrcPos^, fCurrent[1], aCount*SizeOf(Char));
+  Assert(Length(fCurrent)=aCount, 'TUnicodeEnumeratorBase.UpdateCurrent: Length(fCurrent)<>aCount.');
+  inc(fSrcPos, aCount);
 end;
 
 { TCodePointEnumerator }
 
 function TCodePointEnumerator.MoveNext: Boolean;
 begin
-  if fCurrentPos < fEndPos then
-  begin
-    fCurrentCodeUnitCount := CodePointSize(fCurrentPos);
-    SetLength(fCurrent, fCurrentCodeUnitCount);
-    Move(fCurrentPos^, fCurrent[1], fCurrentCodeUnitCount*SizeOf(Char));
-    inc(fCurrentPos, fCurrentCodeUnitCount);
-    Result := true;
-  end else
-    Result := false;
+  Result := fSrcPos < fEndPos;
+  if Result then
+    UpdateCurrent(CodePointSize(fSrcPos));
 end;
 
 { TUnicodeCharacterEnumerator }
@@ -252,31 +294,27 @@ var
   NextCP: PChar;
   NextCUCount: Integer;
 begin
-  if fCurrentPos < fEndPos then
+  Result := fSrcPos < fEndPos;
+  if Result then
   begin
     fCurrentCodePointCount := 0;
-    NextCP := fCurrentPos;
+    NextCP := fSrcPos;
     repeat
-      NextCUCount := CodePointSize(NextCP); // Prepare for combining diacritical marks.
-      Inc(NextCP, NextCUCount); // Prepare for combining diacritical marks.
+      NextCUCount := CodePointSize(NextCP);
+      Inc(NextCP, NextCUCount);       // Prepare for combining diacritical marks.
       Inc(fCurrentCodePointCount);
     until not IsCombining(NextCP);
-    fCurrentCodeUnitCount := NextCP - fCurrentPos;  // Pointer arithmetics.
-    SetLength(fCurrent, fCurrentCodeUnitCount);
-    Move(fCurrentPos^, fCurrent[1], fCurrentCodeUnitCount*SizeOf(Char));
-    inc(fCurrentPos, fCurrentCodeUnitCount);
-    Result := true;
-  end else
-    Result := false;
+    UpdateCurrent(NextCP - fSrcPos);  // Pointer arithmetics.
+  end;
 end;
 
 //---
 // Enumerator
 //---
 {$IFDEF FPC}
-operator Enumerator(A: String): TCodePointEnumerator;
+operator Enumerator(A: String): TUnicodeCharacterEnumerator;
 begin
-  Result := TCodePointEnumerator.Create(A);
+  Result := TUnicodeCharacterEnumerator.Create(A);
 end;
 {$ENDIF}
 

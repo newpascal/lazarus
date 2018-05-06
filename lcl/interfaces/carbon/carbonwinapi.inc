@@ -1455,8 +1455,8 @@ begin
   case Index of
   LOGPIXELSX,
   LOGPIXELSY:
-    // logical is always 96 dpi (to correspond with 100% scaling on Windows), although physical can differ
-    Result := 96;
+    // logical is allways 72 dpi, although physical can differ
+    Result := 72; // TODO: test scaling and magnification
   BITSPIXEL:  Result := CGDisplayBitsPerPixel(CGMainDisplayID);
   else
     DebugLn('TCarbonWidgetSet.GetDeviceCaps TODO Index: ' + DbgS(Index));
@@ -2626,7 +2626,7 @@ begin
   //todo: better code?!
   obj:=TObject(Handle);
   try
-    Result:=Assigned(obj) and (obj is TCarbonWidget);
+    Result:=obj is TCarbonWidget;
   except
     Result:=False;
   end;

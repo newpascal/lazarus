@@ -104,8 +104,6 @@ begin
 end;
 
 procedure TGtk3WidgetSet.Gtk3Destroy;
-var
-  AList: PGList;
 begin
   Gtk3MPF := nil;
   GTK3WidgetSet := nil;
@@ -114,23 +112,6 @@ begin
   if Assigned(FAppIcon) then
     FAppIcon^.unref;
   FAppIcon := nil;
-
-  if Assigned(FGtk3Application) then
-  begin
-    AList := FGtk3Application^.get_windows;
-    if Assigned(AList) then
-    begin
-      DebugLn('TGtk3WidgetSet.Gtk3Destroy app Windows list ',dbgs(g_list_length(AList)));
-      g_list_free(AList);
-    end else
-    begin
-      DebugLn('TGtk3WidgetSet.Gtk3Destroy app Windows list is null ');
-    end;
-
-    FGtk3Application^.release;
-    FGtk3Application^.unref;
-    FGtk3Application := nil;
-  end;
 end;
 
 procedure TGtk3WidgetSet.SetDefaultAppFontName;
@@ -305,7 +286,6 @@ begin
   thrash:='l';
   fpwrite(threadsync_pipeout, thrash, 1);
 end;
-
 {$ENDIF}
 
 constructor TGtk3WidgetSet.Create;
@@ -315,6 +295,8 @@ var
 begin
   SetExceptionMask([exInvalidOp, exDenormalized, exZeroDivide, exOverflow, exUnderflow, exPrecision]);
   inherited Create;
+  FCSSTheme := TStringList.Create;
+  FThemeName := '';
   FTimerData := TFPList.Create;
   {$IFDEF GTK3DEBUGCORE}
   DebugLn('** TGtk3WidgetSet.Create **');
@@ -388,6 +370,7 @@ begin
     FreeAndNil(CharSetEncodingList);
   end;
   FreeSysColorBrushes;
+  FCSSTheme.Free;
   inherited Destroy;
 end;
 
@@ -413,6 +396,45 @@ begin
   finally
     ReleaseDC(0, ScreenDC);
   end;
+end;
+
+procedure TGtk3WidgetSet.LoadCSSTheme;
+var
+  ACSSProvider: PGtkCssProvider;
+  ASettings: PGtkSettings;
+  AValue: TGValue;
+begin
+  ASettings := gtk_settings_get_default;
+  FillByte(AValue, SizeOf(AValue), 0);
+  AValue.init(G_TYPE_STRING);
+  ASettings^.get_property('gtk-theme-name', @AValue);
+  FThemeName := AValue.get_string;
+  AValue.unset;
+  ACSSProvider := gtk_css_provider_get_named(PGChar(FThemeName), '');
+  if not Assigned(ACSSProvider) then
+    exit;
+  {$note from here we must parse css and get eg tooltip background-color and color etc.}
+  FCSSTheme.Text := gtk_css_provider_to_string(ACSSProvider);
+end;
+
+procedure TGtk3WidgetSet.ClearCSSTheme;
+begin
+  FCSSTheme.Clear;
+end;
+
+function TGtk3WidgetSet.GetCSSTheme(AList: TStrings): boolean;
+begin
+  Result := FCSSTheme.Count > 0;
+  if not Result then
+    LoadCSSTheme;
+  AList.Assign(FCSSTheme);
+end;
+
+function TGtk3WidgetSet.GetThemeName: string;
+begin
+  if FThemeName = '' then
+    LoadCSSTheme;
+  Result := FThemeName;
 end;
 
 procedure TGtk3WidgetSet.AppRun(const ALoop: TApplicationMainLoop);
@@ -442,13 +464,33 @@ begin
 end;
 
 procedure TGtk3WidgetSet.AppTerminate;
+var
+  AList: PGList;
 begin
-  {.$IFDEF GTK3DEBUGCORE}
+  {$IFDEF GTK3DEBUGCORE}
   DebugLn('TGtk3WidgetSet.AppTerminate ',dbgs(gtk_main_level));
-  {.$ENDIF}
+  {$ENDIF}
   // g_main_context_release(g_main_context_default);
   if Assigned(FGtk3Application) then
+  begin
     FGtk3Application^.quit;
+    AList := FGtk3Application^.get_windows;
+    if Assigned(AList) then
+    begin
+      {$IFDEF GTK3DEBUGCORE}
+      DebugLn('TGtk3WidgetSet.Gtk3Destroy app Windows list ',dbgs(g_list_length(AList)));
+      {$ENDIF}
+      g_list_free(AList);
+    end else
+    begin
+      {$IFDEF GTK3DEBUGCORE}
+      DebugLn('TGtk3WidgetSet.Gtk3Destroy app Windows list is null ');
+      {$ENDIF}
+    end;
+    FGtk3Application^.release;
+    FGtk3Application^.unref;
+    FGtk3Application := nil;
+  end;
   if gtk_main_level > 0 then
     gtk_main_quit;
 end;

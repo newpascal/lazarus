@@ -892,18 +892,11 @@ begin
 end;
 
 procedure TCustomForm.UpdateShowInTaskBar;
-var
-  Value: TShowInTaskBar;
 begin
   if (Assigned(Application) and (Application.MainForm = Self)) or
      (not HandleAllocated) or Assigned(Parent) or
      (FormStyle = fsMDIChild) or not Showing then Exit;
-  Value := GetEffectiveShowInTaskBar;
-  if FRealizedShowInTaskBar <> Value then
-  begin
-    FRealizedShowInTaskBar := Value;
-    TWSCustomFormClass(WidgetSetClass).SetShowInTaskbar(Self, Value);
-  end;
+  TWSCustomFormClass(WidgetSetClass).SetShowInTaskbar(Self, GetEffectiveShowInTaskBar);
 end;
 
 class procedure TCustomForm.WSRegisterClass;
@@ -1215,6 +1208,8 @@ begin
 end;
 
 procedure TCustomForm.SetParent(NewParent: TWinControl);
+var
+  ParentForm: TCustomForm;
 begin
   if Parent = NewParent then exit;
   DisableAutoSizing{$IFDEF DebugDisableAutoSizing}('TCustomForm.SetParent'){$ENDIF};
@@ -1223,6 +1218,14 @@ begin
     inherited SetParent(NewParent);
     if (Parent = nil) and Visible then
       HandleNeeded;
+
+    if Parent <> nil then
+    begin
+      ParentForm := GetParentForm(Self);
+      if Application.Scaled and (ParentForm<>nil) and ParentForm.Scaled
+      and (ParentForm.PixelsPerInch<>PixelsPerInch) then
+        AutoAdjustLayout(lapAutoAdjustForDPI, PixelsPerInch, ParentForm.PixelsPerInch, 0, 0);
+    end;
   finally
     EnableAutoSizing{$IFDEF DebugDisableAutoSizing}('TCustomForm.SetParent'){$ENDIF};
   end;
@@ -1567,30 +1570,6 @@ begin
   end;
 end;
 
-procedure TCustomForm.DoAutoAdjustLayout(const AMode: TLayoutAdjustmentPolicy;
-  const AXProportion, AYProportion: Double);
-var
-  NewWidth, NewHeight, OldWidth, OldHeight: Integer;
-begin
-  if Assigned(Parent) then
-  begin
-    inherited;
-    Exit;
-  end;
-
-  // Apply the changes
-  if AMode in [lapAutoAdjustWithoutHorizontalScrolling, lapAutoAdjustForDPI] then
-  begin
-    if not ParentFont or (Parent=nil) then
-      ScaleFontsPPI(AYProportion);
-
-    BorderSpacing.AutoAdjustLayout(AXProportion, AYProportion);
-    Constraints.AutoAdjustLayout(AXProportion, AYProportion);
-
-    SetBounds(Left, Top, Round(Width*AXProportion), Round(Height*AYProportion));
-  end;
-end;
-
 procedure TCustomForm.DoRemoveActionList(List: TCustomActionList);
 begin
   if FActionLists<>nil then
@@ -1740,7 +1719,7 @@ procedure TCustomForm.UpdateActions;
     i: Integer;
     CurControl: TControl;
   begin
-    if not Container.Showing then exit;
+    if not Container.Showing or (csDesigning in Container.ComponentState) then exit;
     //DebugLn(['RecursiveInitiate ',DbgSName(Container)]);
     for i := 0 to Container.ControlCount - 1 do begin
       CurControl := Container.Controls[i];
@@ -1942,6 +1921,8 @@ begin
   Debugln(['TCustomForm.SetActiveControl ',DbgSName(Self),' FActive=',DbgS(FActive),' OldActiveControl=',DbgSName(FActiveControl),' NewActiveControl=',DbgSName(AWinControl)]);
   {$ENDIF}
   FActiveControl := AWinControl;
+  if (FActiveControl<>nil) and (FActiveControl<>Self) and not (FActiveControl is TCustomForm) then
+    FLastActiveControl := FActiveControl;
   if Assigned(FActiveControl) then FreeNotification(FActiveControl);
   if ([csLoading, csDestroying] * ComponentState = []) then
   begin
@@ -2185,7 +2166,7 @@ begin
   begin
     if CloseQuery then
     begin
-      // IsMainForm flag set if we are closeing MainForm or its parent
+      // IsMainForm flag set if we are closing MainForm or its parent
       IsMainForm := (Application.MainForm = Self) or (Self.IsParentOf(Application.MainForm));
       // Prepare default close action
       if FormStyle = fsMDIChild then
@@ -2288,14 +2269,33 @@ end;
 
 procedure TCustomForm.WMDPIChanged(var Msg: TLMessage);
 var
-  NewDpi: integer;
+  NewDpi, I, L: integer;
 begin
   if Parent=nil then
   begin
     NewDpi := hi(Msg.wParam);
     if Application.Scaled and Scaled and (NewDpi<>PixelsPerInch) then
-      AutoAdjustLayout(lapAutoAdjustForDPI, PixelsPerInch, NewDpi,
-        Width, MulDiv(Width, NewDpi, PixelsPerInch));
+    begin
+      { Problem (Windows): if the form is shown the first time on a secondary monitor
+        with a different DPI settings, the WM_DPICHANGED message is sent within
+        UpdateBounds when BoundsLockCount>0 which means the bounds are not scaled.
+        We force to update the bounds. See issue 32162.
+        (A better solution is welcome.)
+      }
+      I := -1;
+      while BoundsLockCount>0 do
+      begin
+        EndUpdateBounds;
+        Inc(I);
+      end;
+      try
+        AutoAdjustLayout(lapAutoAdjustForDPI, PixelsPerInch, NewDpi,
+          Width, MulDiv(Width, NewDpi, PixelsPerInch));
+      finally
+        for L := 0 to I do
+          BeginUpdateBounds;
+      end;
+    end;
   end;
 end;
 
@@ -2376,11 +2376,23 @@ begin
 end;
 
 function TCustomForm.GetMonitor: TMonitor;
+var
+  ParentForm: TCustomForm;
 begin
-  if HandleAllocated then
-  Result := Screen.MonitorFromWindow(Handle, mdNearest)
-  else
-  Result :=Screen.MonitorFromPoint(point(Left,Top));
+  if Assigned(Parent) then
+  begin
+    ParentForm := GetParentForm(Self);
+    if Assigned(ParentForm) then
+      Result := ParentForm.Monitor
+    else
+      Result := nil;
+  end else
+  begin
+    if HandleAllocated then
+      Result := Screen.MonitorFromWindow(Handle, mdNearest)
+    else
+      Result := Screen.MonitorFromPoint(point(Left,Top));
+  end;
 end;
 
 {------------------------------------------------------------------------------
@@ -2490,6 +2502,8 @@ begin
         debugln(['TCustomForm.SetFocusedControl ',DbgSName(Self),' OldActiveControl=',DbgSName(FActiveControl),' New=',DbgSName(Control)]);
         {$ENDIF}
         FActiveControl := Control;
+        if (FActiveControl<>nil) and not (FActiveControl is TCustomForm) then
+          FLastActiveControl := FActiveControl;
         if Assigned(FActiveControl) then
           FreeNotification(FActiveControl);
       end;

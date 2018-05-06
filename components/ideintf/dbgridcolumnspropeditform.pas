@@ -5,7 +5,11 @@ unit DBGridColumnsPropEditForm;
 interface
 
 uses
-  Classes, SysUtils, Forms, ComCtrls, StdCtrls, ActnList, LCLType, typinfo, DBGrids;
+  Classes, SysUtils, typinfo, db,
+  // LCL
+  Controls, Dialogs, LCLProc, Forms, ComCtrls, StdCtrls, ActnList, LCLType, DBGrids,
+  // IdeIntf
+  IDEImagesIntf, ObjInspStrConsts, PropEdits, PropEditUtils;
 
 type
   { TDBGridColumnsPropertyEditorForm }
@@ -47,6 +51,11 @@ type
     FOwnerComponent: TPersistent;
     FOwnerPersistent: TPersistent;
     FPropertyName: String;
+    procedure FillCollectionListBox;
+    function GetDataSet: TDataSet;
+    procedure SelectInObjectInspector;
+    procedure UnSelectInObjectInspector;
+    procedure UpdDesignHook(aSelection: TPersistentSelectionList);
   protected
     procedure UpdateCaption;
     procedure UpdateButtons;
@@ -55,48 +64,35 @@ type
     procedure PersistentDeleting(APersistent: TPersistent);
     procedure RefreshPropertyValues;
   public
-    procedure FillCollectionListBox;
-    procedure SelectInObjectInspector(ForceUpdate, UnselectAll: Boolean);
     procedure SetCollection(NewCollection: TCollection;
                     NewOwnerPersistent: TPersistent; const NewPropName: String);
     procedure Modified;
-  public
-    property Collection: TCollection read FCollection;
-    property OwnerComponent: TPersistent read FOwnerComponent;
-    property OwnerPersistent: TPersistent read FOwnerPersistent;
-    property PropertyName: String read FPropertyName;
   end;
 
 implementation
 
 {$R *.lfm}
 
-uses
-  Controls, Dialogs, LCLProc, IDEImagesIntf, ObjInspStrConsts, PropEdits,
-  PropEditUtils;
-
 type
-  TPersistentAccess = class(TPersistent)
-
-  end;
+  TPersistentAccess = class(TPersistent);
 
 procedure TDBGridColumnsPropertyEditorForm.FormCreate(Sender: TObject);
 begin
   ToolBar1.Images := IDEImages.Images_16;
   actAdd.Caption := oiColEditAdd;
   actAddFields.Caption := dceAddFields;
-  actAddFields.ImageIndex := IDEImages.LoadImage(16, 'laz_add');
+  actAddFields.ImageIndex := IDEImages.LoadImage('laz_add');
   actFetchLabels.Caption := dceFetchLabels;
-  actFetchLabels.ImageIndex := IDEImages.LoadImage(16, 'laz_add');
+  actFetchLabels.ImageIndex := IDEImages.LoadImage('laz_add');
   actDel.Caption := oiColEditDelete;
   actMoveUp.Caption := oiColEditUp;
   actMoveDown.Caption := oiColEditDown;
-  actAdd.ImageIndex := IDEImages.LoadImage(16, 'laz_add');
-  actDel.ImageIndex := IDEImages.LoadImage(16, 'laz_delete');
+  actAdd.ImageIndex := IDEImages.LoadImage('laz_add');
+  actDel.ImageIndex := IDEImages.LoadImage('laz_delete');
   actDeleteAll.Caption := dceDeleteAll;
-  actDeleteAll.ImageIndex := IDEImages.LoadImage(16, 'laz_delete');
-  actMoveUp.ImageIndex := IDEImages.LoadImage(16, 'arrow_up');
-  actMoveDown.ImageIndex := IDEImages.LoadImage(16, 'arrow_down');
+  actDeleteAll.ImageIndex := IDEImages.LoadImage('laz_delete');
+  actMoveUp.ImageIndex := IDEImages.LoadImage('arrow_up');
+  actMoveDown.ImageIndex := IDEImages.LoadImage('arrow_down');
   actMoveUp.ShortCut := scCtrl or VK_UP;
   actMoveDown.ShortCut := scCtrl or VK_DOWN;
 
@@ -114,203 +110,144 @@ end;
 
 procedure TDBGridColumnsPropertyEditorForm.CollectionListBoxClick(Sender: TObject);
 begin
+  // Do not use OnSelectionChange because it fires on changing ItemIndex by code
+  // (OnClick does not)
   UpdateButtons;
   UpdateCaption;
-  SelectInObjectInspector(False, False);
+  SelectInObjectInspector;
 end;
 
 procedure TDBGridColumnsPropertyEditorForm.actAddExecute(Sender: TObject);
 begin
-  if Collection = nil then Exit;
-  Collection.Add;
+  if FCollection = nil then Exit;
+  FCollection.Add;
 
   FillCollectionListBox;
   if CollectionListBox.Items.Count > 0 then
     CollectionListBox.ItemIndex := CollectionListBox.Items.Count - 1;
-  SelectInObjectInspector(True, False);
+  SelectInObjectInspector;
   UpdateButtons;
   UpdateCaption;
   Modified;
 end;
 
 procedure TDBGridColumnsPropertyEditorForm.actAddFieldsExecute(Sender: TObject);
-var It : TCollectionItem;
-  flChanged : Boolean;
-  flEmpty : Boolean;
-  i : Integer;
+var
+  DataSet: TDataSet;
+  Item: TColumn;
+  i: Integer;
 begin
-  //
-    if Collection = nil then Exit;
-    if not ( Collection is TDBGridColumns ) then Exit;
+  if FCollection=nil then Exit;
+  if not (FCollection is TDBGridColumns) then Exit;
+  DataSet:=GetDataSet;
+  if DataSet=nil then Exit;
 
-    flChanged := False;
-    flEmpty := False;
-  //Collection.Add;
-  //
-  //FillCollectionListBox;
-  //if CollectionListBox.Items.Count > 0 then
-  //  CollectionListBox.ItemIndex := CollectionListBox.Items.Count - 1;
-  //SelectInObjectInspector(True, False);
-  //UpdateButtons;
-  //UpdateCaption;
-  //Modified;
-  if Collection.Count > 0 then
-    It := Collection.Items[ 0 ]
-  else begin
-    It := Collection.Add;
-    flEmpty:=True;
+  if FCollection.Count>0 then
+    if (MessageDlg(dceColumnEditor, dceOkToDelete, mtConfirmation, [mbYes, mbNo], 0) <> mrYes) then
+      Exit;
+
+  try
+    FCollection.Clear;
+    for i:=0 to DataSet.Fields.Count-1 do
+    begin
+      Item:=FCollection.Add as TColumn;
+      Item.Field:=DataSet.Fields[i];
+      Item.Title.Caption:=DataSet.Fields[i].DisplayLabel;
+    end;
+  finally
+    RefreshPropertyValues;
+    UpdateButtons;
+    UpdateCaption;
+    Modified;
   end;
-
-  if flEmpty or ( MessageDlg( dceColumnEditor, dceOkToDelete,
-      mtConfirmation, [mbYes, mbNo], 0) = mrYes ) then begin
-
-      try
-        if (It is TColumn) and ( Assigned( TDBGrid( TColumn( It ).Grid).DataSource ) ) and
-          Assigned ( TDBGrid( TColumn( It ).Grid).DataSource.DataSet ) then begin
-          flChanged:=True;
-          BeginFormUpdate;
-          Collection.Clear;
-          It := Collection.Add;
-//          TDBGrid( TColumn( It ).Grid).DataSource.DataSet.Open;
-          if TDBGrid( TColumn( It ).Grid).DataSource.DataSet.Fields.Count > 0 then begin
-            for i := 0 to TDBGrid( TColumn( It ).Grid).DataSource.DataSet.Fields.Count - 1 do begin
-              if i > 0 then begin
-                It := Collection.Add;
-              end;
-              TColumn( It ).Field:=TDBGrid( TColumn( It ).Grid).DataSource.DataSet.Fields[ i ];
-              TColumn( It ).Title.Caption:=TDBGrid( TColumn( It ).Grid).DataSource.DataSet.Fields[ i ].DisplayLabel;
-              end;
-            end;
-          end;
-
-
-      finally
-        if flChanged then begin
-          RefreshPropertyValues;
-          UpdateButtons;
-          UpdateCaption;
-          Modified;
-          EndFormUpdate;
-          end
-        else
-          if flEmpty then begin
-            Collection.Clear;
-            RefreshPropertyValues;
-            UpdateButtons;
-            UpdateCaption;
-            Modified;
-            EndFormUpdate;
-            end;
-          end;
-      end;
-
 end;
 
 procedure TDBGridColumnsPropertyEditorForm.actDeleteAllExecute(Sender: TObject);
 begin
-  //
-    if Collection = nil then Exit;
-      if  ( MessageDlg( dceColumnEditor, dceOkToDelete,
-      mtConfirmation, [mbYes, mbNo], 0) = mrYes ) then begin
-        try
-          BeginFormUpdate;
-          Collection.Clear;
-        finally
-          RefreshPropertyValues;
-          UpdateButtons;
-          UpdateCaption;
-          Modified;
-          EndFormUpdate;
-        end;
-        end;
+  if FCollection = nil then
+    Exit;
+  if (MessageDlg(dceColumnEditor, dceOkToDelete, mtConfirmation,
+                 [mbYes, mbNo], 0) = mrYes) then
+    try
+      UnSelectInObjectInspector;
+      FCollection.Clear;
+    finally
+      RefreshPropertyValues;
+      UpdateButtons;
+      UpdateCaption;
+      Modified;
+    end;
 end;
 
 procedure TDBGridColumnsPropertyEditorForm.actDelExecute(Sender: TObject);
 var
   I : Integer;
-  NewItemIndex: Integer;
 begin
-  if Collection = nil then Exit;
-
+  if FCollection = nil then Exit;
   I := CollectionListBox.ItemIndex;
-  if (I >= 0) and (I < Collection.Count) then
+  if (I < 0) or (I >= FCollection.Count) then Exit;
+  if MessageDlg(oisConfirmDelete,
+                Format(oisDeleteItem, [FCollection.Items[I].DisplayName]),
+                mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
+    Exit;
+
+  CollectionListBox.ItemIndex := -1;
+  // unselect all items in OI (collections can act strange on delete)
+  UnSelectInObjectInspector;
+  // now delete
+  FCollection.Items[I].Free;
+  // update listbox after whatever happened
+  FillCollectionListBox;
+  // set new ItemIndex
+  if I >= CollectionListBox.Items.Count then
+    I := CollectionListBox.Items.Count-1;
+  if I >= 0 then
   begin
-    if MessageDlg(oisConfirmDelete,
-      Format(oisDeleteItem, [Collection.Items[I].DisplayName]),
-      mtConfirmation, [mbYes, mbNo], 0) = mrYes then
-    begin
-      // select other item, or unselect
-      NewItemIndex := I + 1;
-      while (NewItemIndex < CollectionListBox.Items.Count)
-      and (CollectionListBox.Selected[NewItemIndex]) do Inc(NewItemIndex);
-
-      if NewItemIndex = CollectionListBox.Items.Count then
-      begin
-        NewItemIndex := 0;
-        while (NewItemIndex < Pred(I))
-        and not (CollectionListBox.Selected[NewItemIndex]) do Inc(NewItemIndex);
-
-        if NewItemIndex = I then NewItemIndex := -1;
-      end;
-
-      CollectionListBox.ItemIndex := -1;
-
-      if NewItemIndex > I then Dec(NewItemIndex);
-      //debugln('TDBGridColumnsPropertyEditorForm.DeleteClick A NewItemIndex=',dbgs(NewItemIndex),' ItemIndex=',dbgs(CollectionListBox.ItemIndex),' CollectionListBox.Items.Count=',dbgs(CollectionListBox.Items.Count),' Collection.Count=',dbgs(Collection.Count));
-      // unselect all items in OI (collections can act strange on delete)
-      SelectInObjectInspector(True, True);
-      // now delete
-      Collection.Items[I].Free;
-      // update listbox after whatever happened
-      FillCollectionListBox;
-      // set NewItemIndex
-      if NewItemIndex < CollectionListBox.Items.Count then
-      begin
-        CollectionListBox.ItemIndex := NewItemIndex;
-        SelectInObjectInspector(False, False);
-      end;
-      //debugln('TDBGridColumnsPropertyEditorForm.DeleteClick B');
-      Modified;
-    end;
+    CollectionListBox.ItemIndex := I;
+    SelectInObjectInspector;
   end;
+  //debugln('TDBGridColumnsPropertyEditorForm.DeleteClick B');
+  Modified;
   UpdateButtons;
   UpdateCaption;
 end;
 
-procedure TDBGridColumnsPropertyEditorForm.actFetchLabelsExecute(Sender: TObject
-  );
-var It : TColumn;
-    i : Integer;
+procedure TDBGridColumnsPropertyEditorForm.actFetchLabelsExecute(Sender: TObject);
+var
+  Column: TColumn;
+  DataSet: TDataSet;
+  Field: TField;
+  i: Integer;
 begin
-  //
-  if (Collection.Count > 0) and ( MessageDlg( dceColumnEditor, dceWillReplaceContinue,
-      mtConfirmation, [mbYes, mbNo], 0) = mrYes ) then begin
+  DataSet:=GetDataSet;
+  if DataSet=nil then Exit;
 
-    It := TColumn (Collection.Items[ 0 ]);
-    if Assigned ( It.Grid ) and Assigned (TDBGrid(It.Grid).DataSource) and Assigned (TDBGrid(It.Grid).DataSource.DataSet) then begin
-      for i := 0 to Collection.Count - 1 do
-        TColumn(Collection.Items[ i ]).Title.Caption:=TDBGrid(TColumn(Collection.Items[I]).Grid).DataSource.DataSet.FieldByName( TColumn(Collection.Items[I]).FieldName ).DisplayLabel;
-      end;
+  if MessageDlg(dceColumnEditor, dceWillReplaceContinue, mtConfirmation,
+    [mbYes, mbNo], 0)<>mrYes then Exit;
 
-
-    end;
-
+  for i:=0 to FCollection.Count-1 do
+  begin
+    Column:=FCollection.Items[i] as TColumn;
+    Field:= DataSet.FindField(Column.FieldName);
+    if Field<>nil then
+      Column.Title.Caption:=Field.DisplayLabel;
+  end;
 end;
 
 procedure TDBGridColumnsPropertyEditorForm.actMoveDownExecute(Sender: TObject);
 var
   I: Integer;
 begin
-  if Collection = nil then Exit;
+  if FCollection = nil then Exit;
 
   I := CollectionListBox.ItemIndex;
-  if I >= Collection.Count - 1 then Exit;
+  if I >= FCollection.Count - 1 then Exit;
 
-  Collection.Items[I].Index := I + 1;
+  FCollection.Items[I].Index := I + 1;
   CollectionListBox.ItemIndex := I + 1;
 
   FillCollectionListBox;
-  SelectInObjectInspector(True, False);
+  SelectInObjectInspector;
   Modified;
 end;
 
@@ -318,16 +255,16 @@ procedure TDBGridColumnsPropertyEditorForm.actMoveUpExecute(Sender: TObject);
 var
   I: Integer;
 begin
-  if Collection = nil then Exit;
+  if FCollection = nil then Exit;
 
   I := CollectionListBox.ItemIndex;
   if I < 0 then Exit;
 
-  Collection.Items[I].Index := I - 1;
+  FCollection.Items[I].Index := I - 1;
   CollectionListBox.ItemIndex := I - 1;
 
   FillCollectionListBox;
-  SelectInObjectInspector(True, False);
+  SelectInObjectInspector;
   Modified;
 end;
 
@@ -337,16 +274,16 @@ var
 begin
   //I think to match Delphi this should be formatted like
   //"Editing ComponentName.PropertyName[Index]"
-  if OwnerPersistent is TComponent then
-    NewCaption := TComponent(OwnerPersistent).Name
+  if FOwnerPersistent is TComponent then
+    NewCaption := TComponent(FOwnerPersistent).Name
   else
-    if OwnerPersistent <> nil then
-      NewCaption := OwnerPersistent.GetNamePath
+    if FOwnerPersistent <> nil then
+      NewCaption := FOwnerPersistent.GetNamePath
     else
       NewCaption := '';
 
   if NewCaption <> '' then NewCaption := NewCaption + '.';
-  NewCaption := oiColEditEditing + ' ' + NewCaption + PropertyName;
+  NewCaption := oiColEditEditing + ' ' + NewCaption + FPropertyName;
 
   if CollectionListBox.ItemIndex > -1 then
     NewCaption := NewCaption + '[' + IntToStr(CollectionListBox.ItemIndex) + ']';
@@ -358,11 +295,14 @@ var
   I: Integer;
 begin
   I := CollectionListBox.ItemIndex;
-  actAdd.Enabled := Collection <> nil;
+  actAdd.Enabled := FCollection <> nil;
   actFetchLabels.Enabled:=actAdd.Enabled and (CollectionListBox.Items.Count > 0);
   actDel.Enabled := I > -1;
   actMoveUp.Enabled := I > 0;
   actMoveDown.Enabled := (I >= 0) and (I < CollectionListBox.Items.Count - 1);
+  DividerToolButton1.Visible := (FCollection is TDBGridColumns);
+  btAddFlds.Visible := DividerToolButton1.Visible;
+  actAddFields.Enabled := DividerToolButton1.Visible;
 end;
 
 procedure TDBGridColumnsPropertyEditorForm.PersistentAdded(APersistent: TPersistent; Select: boolean);
@@ -374,7 +314,7 @@ end;
 procedure TDBGridColumnsPropertyEditorForm.ComponentRenamed(AComponent: TComponent);
 begin
   //DebugLn('*** TDBGridColumnsPropertyEditorForm.ComponentRenamed called ***');
-  if AComponent = OwnerPersistent then
+  if AComponent = FOwnerPersistent then
     UpdateCaption;
 end;
 
@@ -383,7 +323,7 @@ begin
   // For some reason this is called only when the whole collection is deleted,
   // for example when changing to another project. Thus clear the whole collection.
   DebugLn(['TDBGridColumnsPropertyEditorForm.PersistentDeleting: APersistent=', APersistent,
-           ', OwnerPersistent=', OwnerPersistent, ', OwnerComponent=', OwnerComponent]);
+           ', FOwnerPersistent=', FOwnerPersistent, ', FOwnerComponent=', FOwnerComponent]);
   SetCollection(nil, nil, '');
   Hide;
   UpdateButtons;
@@ -398,41 +338,20 @@ end;
 
 procedure TDBGridColumnsPropertyEditorForm.FillCollectionListBox;
 var
-  I: Integer;
-  CurItem: String;
-  Cnt: Integer;
+  ItemIndex: Integer;
+  i: Integer;
 begin
   CollectionListBox.Items.BeginUpdate;
   try
-    if Collection <> nil then Cnt := Collection.Count
-    else Cnt := 0;
-
-    // add or replace list items
-    for I := 0 to Cnt - 1 do
-    begin
-      CurItem := IntToStr(I) + ' - ' + Collection.Items[I].DisplayName;// +' '+ TDBGrid(TColumn(Collection.Items[I]).Grid).DataSource.DataSet.FieldByName( TColumn(Collection.Items[I]).FieldName ).DisplayLabel ;// + ' - '+Collection.Items[I].ClassName +' - ' + Collection.ClassName;
-
-      DividerToolButton1.Visible := (Collection is TDBGridColumns);
-      btAddFlds.Visible := DividerToolButton1.Visible;
-      actAddFields.Enabled := DividerToolButton1.Visible;
-      if I >= CollectionListBox.Items.Count then
-        CollectionListBox.Items.Add(CurItem)
-      else
-        CollectionListBox.Items[I] := CurItem;
-    end;
-
-    // delete unneeded list items
-    if Cnt > 0 then
-    begin
-      while CollectionListBox.Items.Count > Cnt do
-      begin
-        CollectionListBox.Items.Delete(CollectionListBox.Items.Count - 1);
-      end;
-    end
+    ItemIndex:=CollectionListBox.ItemIndex;
+    CollectionListBox.Clear;
+    if FCollection<>nil then
+      for i:=0 to FCollection.Count-1 do
+        CollectionListBox.Items.Add(Format('%d - %s', [i, FCollection.Items[i].DisplayName]));
+    if ItemIndex<CollectionListBox.Count then
+      CollectionListBox.ItemIndex:=ItemIndex  // OnClick not fires
     else
-    begin
-      CollectionListBox.Items.Clear;
-    end;
+      CollectionListBox.ItemIndex:=-1;
   finally
     CollectionListBox.Items.EndUpdate;
     UpdateButtons;
@@ -440,30 +359,47 @@ begin
   end;
 end;
 
-procedure TDBGridColumnsPropertyEditorForm.SelectInObjectInspector(ForceUpdate, UnselectAll: Boolean);
+function TDBGridColumnsPropertyEditorForm.GetDataSet: TDataSet;
+begin
+  if (FOwnerPersistent as TCustomDBGrid).DataSource=nil then Exit(nil);
+  Result:=TCustomDBGrid(FOwnerPersistent).DataSource.DataSet;
+end;
+
+procedure TDBGridColumnsPropertyEditorForm.SelectInObjectInspector;
 var
   I: Integer;
   NewSelection: TPersistentSelectionList;
 begin
-  if Collection = nil then Exit;
+  Assert(Assigned(FCollection), 'SelectInObjectInspector: FCollection=Nil.');
   // select in OI
   NewSelection := TPersistentSelectionList.Create;
-  NewSelection.ForceUpdate := ForceUpdate;
   try
-    if not UnselectAll then
-    begin
-      for I := 0 to CollectionListBox.Items.Count - 1 do
-        if CollectionListBox.Selected[I] then
-          NewSelection.Add(Collection.Items[I]);
-    end;
-    if GlobalDesignHook <> nil then
-    begin
-      GlobalDesignHook.SetSelection(NewSelection);
-      GlobalDesignHook.LookupRoot := GetLookupRootForComponent(OwnerPersistent);
-    end;
+    for I := 0 to CollectionListBox.Items.Count - 1 do
+      if CollectionListBox.Selected[I] then
+        NewSelection.Add(FCollection.Items[I]);
+    UpdDesignHook(NewSelection);
   finally
     NewSelection.Free;
   end;
+end;
+
+procedure TDBGridColumnsPropertyEditorForm.UnSelectInObjectInspector;
+var
+  EmptySelection: TPersistentSelectionList;
+begin
+  EmptySelection := TPersistentSelectionList.Create;
+  try
+    UpdDesignHook(EmptySelection);
+  finally
+    EmptySelection.Free;
+  end;
+end;
+
+procedure TDBGridColumnsPropertyEditorForm.UpdDesignHook(aSelection: TPersistentSelectionList);
+begin
+  if GlobalDesignHook = nil then Exit;
+  GlobalDesignHook.SetSelection(aSelection);
+  GlobalDesignHook.LookupRoot := GetLookupRootForComponent(FOwnerPersistent);
 end;
 
 procedure TDBGridColumnsPropertyEditorForm.SetCollection(NewCollection: TCollection;
@@ -483,7 +419,7 @@ begin
       break;
     FOwnerComponent := TPersistentAccess(FOwnerComponent).GetOwner;
   end;
-  //debugln('TDBGridColumnsPropertyEditorForm.SetCollection A Collection=',dbgsName(FCollection),' OwnerPersistent=',dbgsName(OwnerPersistent),' PropName=',PropertyName);
+  //debugln('TDBGridColumnsPropertyEditorForm.SetCollection A Collection=',dbgsName(FCollection),' OwnerPersistent=',dbgsName(FOwnerPersistent),' PropName=',FPropertyName);
   if GlobalDesignHook <> nil then
   begin
     GlobalDesignHook.RemoveAllHandlersForObject(Self);

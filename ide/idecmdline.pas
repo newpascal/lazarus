@@ -86,9 +86,6 @@ function ParamsAndCfgCount: Integer;
 function ParamsAndCfgStr(Idx: Integer): String;
 procedure ResetParamsAndCfg;
 
-var
-  ConsoleVerbosity: integer = 0; // 0=normal, -1=quiet, 1=verbose, 2=very verbose
-
 implementation
 
 var
@@ -136,7 +133,7 @@ begin
           s := Trim(s);
           {$ifdef windows}
           //cfg file is made by Windows installer and probably is Windows default codepage
-          if FindInvalidUTF8Character(PChar(s), Length(s), True) > 0 then
+          if FindInvalidUTF8Codepoint(PChar(s), Length(s), True) > 0 then
             s := WinCPToUtf8(s);
           {$endif windows}
           ParamsAndCfgFileContent.Add(s)

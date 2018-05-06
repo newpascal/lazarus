@@ -33,7 +33,8 @@ program updatemakefiles;
 {$mode objfpc}{$H+}
 
 uses
-  Classes, sysutils, FileProcs, DefineTemplates, LazFileUtils, Laz2_XMLCfg;
+  Classes, sysutils, FileProcs, DefineTemplates, LazFileUtils, Laz2_XMLCfg,
+  FileUtil;
 
 var
   LazarusDir: String;
@@ -138,6 +139,24 @@ begin
   FindCloseUTF8(FileInfo);
 end;
 
+procedure CheckFPCMake;
+const
+  LastTarget = 'aarch64-darwin';
+var
+  FPCMake: String;
+  Lines: TStringList;
+begin
+  FPCMake:=FindDefaultExecutablePath('fpcmake');
+  if FPCMake='' then
+    raise Exception.Create('missing fpcmake');
+  Lines:=RunTool(FPCMake,'-TAll -v');
+  if Pos(' '+LastTarget,Lines.Text)<1 then begin
+    writeln(Lines.Text);
+    raise Exception.Create('fpcmake does not support target '+LastTarget+'. Did you set PATH to the devel version of fpcmake?');
+  end;
+  Lines.Free;
+end;
+
 var
   LPKFiles: TStringList;
   LazbuildOut: TStringList;
@@ -145,9 +164,12 @@ begin
   if Paramcount>0 then begin
     writeln('Updates for every lpk in the lazarus directory the Makefile.fpc, Makefile.compiled and Makefile.');
     writeln;
-    writeln('Usage: ./tools/updatemakefiles');
+    writeln('Usage: FPCDIR=/path/fpc/src/trunk PATH=/path/to/trunk/fpc/utils/fpcm/bin/cpu-os/:$PATH ./tools/updatemakefiles');
+    writeln;
+    writeln('IMPORTANT: this needs the fpc trunk version to support all targets');
     exit;
   end;
+  CheckFPCMake;
   LazarusDir:=CleanAndExpandDirectory(GetCurrentDirUTF8);
   if ExtractFileName(ChompPathDelim(LazarusDir))='tools' then
     LazarusDir:=ExtractFilePath(ChompPathDelim(LazarusDir));

@@ -8,7 +8,7 @@
  ***************************************************************************
 
  *****************************************************************************
-  This file is part of the Lazarus Component Library (LCL)
+  This file is part of the Printer4Lazarus package
 
   See the file COPYING.modifiedLGPL.txt, included in this distribution,
   for details about the license.
@@ -27,6 +27,10 @@ unit OSPrinters;
 {$mode objfpc}{$H+}
 
 interface
+
+{$IFDEF WinCE}
+{$FATAL This unit (and therefore the Printers4Lazarus package) cannot be built for WinCE}
+{$ENDIF}
 
 {$IFDEF UNIX}
   {$IFDEF DARWIN}

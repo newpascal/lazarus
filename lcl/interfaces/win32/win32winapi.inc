@@ -180,13 +180,6 @@ var
     ClientToScreen(Handle, Pos);
     SystemWParam := Windows.WParam(Longint(PointToSmallPointNoChecks(Pos)));
 
-    if Sender is TListView then
-    begin // we need this workaround to make TListView scroll -> forward WM_MOUSEWHEEL directly to it
-      MMessage^.Result := CallDefaultWindowProc(Handle, MMessage^.Msg, TLMessage(Message).WParam, TLMessage(Message).LParam);
-      // Windows handled it, so exit here.
-      if MMessage^.Result<>0 then exit;
-    end;
-
     // send scroll message
     FillChar(ScrollInfo, sizeof(ScrollInfo), #0);
     ScrollInfo.cbSize := sizeof(ScrollInfo);
@@ -234,7 +227,15 @@ var
 
       MMessage^.Result := Windows.SendMessage(Handle, ScrollMsg, SystemWParam, HWND(nil));
     end;
-    if (MMessage^.Result = 0) and (TControl(Sender).Parent <> nil) then
+
+    if (MMessage^.Result = 0)
+    and ((Sender is TCustomListView)
+      or (Sender is TCustomComboBox)
+      or (Sender is TCustomFloatSpinEdit))
+    then // the above 3 controls need windows to handle wheel messages
+      MMessage^.Result := CallDefaultWindowProc(Handle, MMessage^.Msg, TLMessage(Message).WParam, TLMessage(Message).LParam);
+
+    if (MMessage^.Result = 0) and (TControl(Sender).Parent <> nil) then // send unhandled scroll messages to parent
       TControl(Sender).Parent.WindowProc(TLMessage(Message));
   end;
 
@@ -243,7 +244,8 @@ begin
   case TLMessage(Message).Msg of
     LM_PAINT:
       CallWin32PaintHandler;
-    LM_MOUSEWHEEL: // provide default wheel scrolling functionality
+    LM_MOUSEWHEEL,
+    LM_MOUSEHWHEEL: // provide default wheel scrolling functionality
       CallMouseWheelHandler;
     LM_ERASEBKGND,
     LM_GETDLGCODE,
@@ -343,7 +345,7 @@ begin
     SetLength(Result,1000);
     FormatLength:= Windows.GetClipboardFormatName(FormatID, PChar(Result), 1000);
     if FormatLength = 0 then
-      raise Exception.CreateFmt('Unknown clipboard format: %d', [FormatID]);
+      exit(''); // do not raise an exception!
     SetLength(Result,FormatLength);
     {$IFDEF VerboseWin32Clipbrd}
     debugln('TWin32WidgetSet.ClipboardFormatToMimeType FormatID=',dbgs(FormatID),' ',Result);
@@ -406,8 +408,6 @@ begin
   until (DbgFormatID=0);
   Windows.CloseClipboard;
   {$ENDIF}
-  if FormatID=PredefinedClipboardFormat(pcfDelphiBitmap)
-    then FormatID := CF_BITMAP;
   if (FormatID=0) or (Stream=nil) or
     not Windows.IsClipboardFormatAvailable(FormatID) then exit;
 
@@ -849,7 +849,7 @@ begin
   FontName := LogFont.lfFaceName;
 
   TempLogFont := LogFont;
-  if FontName = DefFontData.Name then
+  if SameText(FontName, DefFontData.Name) then
   begin
     TempLogFontW.lfFaceName := UTF8ToUTF16(FMetrics.lfMessageFont.lfFaceName); // FMetrics must be UTF16
     if TempLogFont.lfHeight = 0 then
@@ -1351,6 +1351,11 @@ begin
   LB.lbColor := ColorToRGB(TColor(lplb.lbColor));
   LB.lbHatch := lplb.lbHatch;
   Result := Windows.ExtCreatePen(dwPenStyle, dwWidth, LB, dwStyleCount, lpStyle);
+
+  // Note Michl: When style PS_USERSTYLE is used, lpStyle can't be nil, there
+  //             must be dwSytleCount >= 1, see issue #30661
+  if Result = 0 then
+    DebugLn('TWin32WidgetSet.ExtCreatePen returns 0. Reason = ' + GetLastErrorText(Windows.GetLastError));
 end;
 
 {------------------------------------------------------------------------------

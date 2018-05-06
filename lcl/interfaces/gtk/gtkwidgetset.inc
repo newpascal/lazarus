@@ -3597,7 +3597,8 @@ begin
     LM_LBUTTONDOWN,
     LM_RBUTTONDOWN,
     LM_MBUTTONDOWN,
-    LM_MOUSEWHEEL :
+    LM_MOUSEWHEEL,
+    LM_MOUSEHWHEEL:
     begin
       {$IFDEF GTK1}
       if (ALCLObject is TCustomComboBox) then
@@ -3858,6 +3859,7 @@ begin
   SetCallback(LM_MBUTTONDOWN, AGTKObject, ALCLObject);
   SetCallback(LM_MBUTTONUP, AGTKObject, ALCLObject);
   SetCallback(LM_MOUSEWHEEL, AGTKObject, ALCLObject);
+  SetCallback(LM_MOUSEHWHEEL, AGTKObject, ALCLObject);
   SetCallback(LM_DROPFILES, AGTKObject, ALCLObject);
   SetCallback(LM_CONTEXTMENU, AGtkObject, ALCLObject);
 end;
@@ -5756,7 +5758,7 @@ var
         Result:=LineStart;
         LineWidth:=0;
         repeat
-          charLen:=UTF8CharacterLength(@AText[result]);
+          charLen:=UTF8CodepointSize(@AText[result]);
           CharWidth:=GetLineWidthInPixel(Result,charLen);
           inc(LineWidth,CharWidth);
           if LineWidth>MaxWidthInPixel then break;
@@ -5765,7 +5767,7 @@ var
         until false;
         // at least one char
         if Result=LineStart then begin
-          charLen:=UTF8CharacterLength(@AText[result]);
+          charLen:=UTF8CodepointSize(@AText[result]);
           inc(Result,charLen);
         end;
       end;

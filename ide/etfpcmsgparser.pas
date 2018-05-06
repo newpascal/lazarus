@@ -35,10 +35,10 @@ uses
   // RTL
   Classes, SysUtils, strutils, math,
   // CodeTools
-  KeywordFuncLists, CodeToolsFPCMsgs, CodeToolsStructs, CodeCache, FileProcs,
+  KeywordFuncLists, CodeToolsFPCMsgs, CodeCache, FileProcs,
   CodeToolManager, DirectoryCacher, BasicCodeTools, DefineTemplates, SourceLog,
   // LazUtils
-  LConvEncoding, LazUTF8, FileUtil, LazFileUtils,
+  LConvEncoding, LazUTF8, FileUtil, LazFileUtils, AvgLvlTree,
   // IDEIntf
   IDEExternToolIntf, PackageIntf, LazIDEIntf, ProjectIntf, MacroIntf,
   IDEUtils, LazFileCache,
@@ -235,7 +235,7 @@ type
     function GetFPCMsgIDPattern(MsgID: integer): string; override;
     function IsMsgID(MsgLine: TMessageLine; MsgID: integer;
       var Item: TFPCMsgItem): boolean;
-    class function IsSubTool(const SubTool: string): boolean; override;
+    class function CanParseSubTool(const SubTool: string): boolean; override;
     class function DefaultSubTool: string; override;
     class function GetMsgPattern(SubTool: string; MsgID: integer;
       out Urgency: TMessageLineUrgency): string; override;
@@ -1010,7 +1010,7 @@ begin
     // => use fpcsrcdir/compiler/msg/errore.msg
     // the fpcsrcdir might depend on the FPC version
     if IsFPCExecutable(CompilerFilename,ErrMsg) then
-      FPCVer:=CodeToolBoss.FPCDefinesCache.GetFPCVersion(CompilerFilename,TargetOS,TargetCPU,false)
+      FPCVer:=CodeToolBoss.CompilerDefinesCache.GetFPCVersion(CompilerFilename,TargetOS,TargetCPU,false)
     else
       FPCVer:='';
     FPCSrcDir:=EnvironmentOptions.GetParsedFPCSourceDirectory(FPCVer);
@@ -1504,8 +1504,9 @@ const
 var
   MsgLine: TMessageLine;
 begin
-  if CompareMem(PChar(pat),p,length(pat)) then begin
-    Result:=true;
+  Result:=CompareMem(PChar(pat),p,length(pat));
+  if Result then
+  begin
     MsgLine:=CreateMsgLine;
     MsgLine.MsgID:=0;
     MsgLine.SubTool:=SubToolFPCLinker;
@@ -2534,7 +2535,7 @@ begin
   if TranslatedItem<>nil then begin
     if System.Pos('$',TranslatedItem.Pattern)<1 then begin
       TranslatedMsg:=TranslatedItem.Pattern;
-      LazUTF8.UTF8FixBroken(TranslatedMsg);
+      UTF8FixBroken(TranslatedMsg);
     end
     else if MsgItem<>nil then
       TranslatedMsg:=TranslateFPCMsg(p,MsgItem.Pattern,TranslatedItem.Pattern);
@@ -2699,6 +2700,7 @@ var
   i: Integer;
   LastMsgLine, MsgLine: TMessageLine;
 begin
+  Result:=false;
   if (p^=' ') then begin
     i:=Tool.WorkerMessages.Count-1;
     if i<0 then exit;
@@ -2896,12 +2898,12 @@ var
 begin
   if Line='' then exit;
   if FPC_FullVersion>=20701 then
-    Line:=LazUTF8.ConsoleToUTF8(Line)
+    Line:=ConsoleToUTF8(Line)
   else begin
     {$IFDEF MSWINDOWS}
-    Line:=LazUTF8.WinCPToUTF8(Line);
+    Line:=WinCPToUTF8(Line);
     {$ELSE}
-    Line:=LazUTF8.SysToUTF8(Line);
+    Line:=SysToUTF8(Line);
     {$ENDIF}
   end;
   p:=PChar(Line);
@@ -3200,7 +3202,7 @@ begin
   fLastWorkerImprovedMessage[aPhase]:=Tool.WorkerMessages.Count-1;
 end;
 
-class function TIDEFPCParser.IsSubTool(const SubTool: string): boolean;
+class function TIDEFPCParser.CanParseSubTool(const SubTool: string): boolean;
 begin
   Result:=(CompareText(SubTool,SubToolFPC)=0)
        or (CompareText(SubTool,SubToolFPCLinker)=0)

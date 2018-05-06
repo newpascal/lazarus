@@ -38,6 +38,7 @@ type
   public
     //property Sorted: boolean read FSorted write SetSorted;
     property Owner: TWinControl read FOwner;
+    property QueueCursorMovePos: Integer read FQueueCursorMove;
     property QueueSelLength: Integer read FQueueSelLength;
   end;
 {$ELSE}
@@ -56,7 +57,7 @@ begin
 
   AStrings.FTimerMove:=0; // to know if this timer is active when destroyed
 
-  if AStrings.FQueueCursorMove = -1 then
+  if AStrings.FQueueCursorMove = -2 then
   begin
     // always scroll so the cursor is visible
     TextMark := gtk_text_buffer_get_insert(AStrings.FGtkBuf);
@@ -70,7 +71,7 @@ begin
   end;
   gtk_text_view_scroll_to_mark(AStrings.FGtkText, TextMark, 0, True, 0, 1);
 
-  AStrings.FQueueCursorMove := 0;
+  AStrings.FQueueCursorMove := -1;
 end;
 
 function UpdateMemoSelLengthCB(AStrings: TGtk2MemoStrings): gboolean; cdecl;
@@ -152,6 +153,7 @@ begin
   if TheOwner = nil then RaiseGDBException(
     'TGtk2MemoStrings.Create Unspecified owner');
   FOwner:=TheOwner;
+  FQueueCursorMove := -1;
   FQueueSelLength := -1;
   FTimerMove := 0;
   FTimerSel := 0;
@@ -230,12 +232,12 @@ begin
       NewLine := S+LineEnding;
   end;
 
-  if FQueueCursorMove = 0 then
+  if FQueueCursorMove = -1 then
   begin
     TextMark := gtk_text_buffer_get_insert(FGtkBuf);
     gtk_text_buffer_get_iter_at_mark(FGtkBuf, @CursorIter, TextMark);
     if gtk_text_iter_equal(@StartIter, @CursorIter) then
-      QueueCursorMove(-1);
+      QueueCursorMove(-2);
   end;
   
   // and finally insert the new text
@@ -244,11 +246,11 @@ end;
 
 procedure TGtk2MemoStrings.SetTextStr(const Value: string);
 begin
-  if (Value <> Text) then
-  begin
+  QueueCursorMove(0);
+  QueueSelectLength(0);
+  if (Value <> '') and (Text <> '') then
     LockOnChange({%H-}PGtkObject(Owner.Handle), 1);
-    gtk_text_buffer_set_text(FGtkBuf, PChar(Value), -1);
-  end;
+  gtk_text_buffer_set_text(FGtkBuf, PChar(Value), -1);
 end;
 
 procedure TGtk2MemoStrings.LoadFromFile(const FileName: string);
@@ -279,7 +281,7 @@ procedure TGtk2MemoStrings.QueueCursorMove(APosition: Integer);
 begin
   // needed because there is a callback that updates the GtkBuffer
   // internally so that it actually knows where the cursor is
-  if FQueueCursorMove = 0 then
+  if FQueueCursorMove = -1 then
     FTimerMove := gtk_timeout_add(0,TGSourceFunc(@UpdateMemoCursorCB), Pointer(Self));
   FQueueCursorMove := APosition;
 end;

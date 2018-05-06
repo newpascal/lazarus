@@ -28,19 +28,20 @@ unit opkman_categoriesfrm;
 interface
 
 uses
-  Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, ExtCtrls,
-  StdCtrls, opkman_VirtualTrees;
+  Classes, SysUtils,
+  // LCL
+  Forms, Controls, Graphics, ExtCtrls, StdCtrls, ButtonPanel, VirtualTrees,
+  // OpkMan
+  opkman_const, opkman_common, opkman_options;
 
 type
 
   { TCategoriesFrm }
 
   TCategoriesFrm = class(TForm)
-    bCancel: TButton;
-    bOk: TButton;
+    ButtonPanel1: TButtonPanel;
     imTree: TImageList;
     lbMessage: TLabel;
-    pnButtons: TPanel;
     pnMessage: TPanel;
     procedure bOkClick(Sender: TObject);
     procedure FormClose(Sender: TObject; var {%H-}CloseAction: TCloseAction);
@@ -72,7 +73,7 @@ var
   CategoriesFrm: TCategoriesFrm;
 
 implementation
-uses opkman_const, opkman_common;
+
 {$R *.lfm}
 
 type
@@ -115,6 +116,8 @@ end;
 
 procedure TCategoriesFrm.FormCreate(Sender: TObject);
 begin
+  if not Options.UseDefaultTheme then
+    Self.Color := clBtnFace;
   FVST := TVirtualStringTree.Create(nil);
   with FVST do
   begin
@@ -122,7 +125,8 @@ begin
     Align := alClient;
     Anchors := [akLeft, akTop, akRight];
     Images := imTree;
-    Color := clBtnFace;
+    if not Options.UseDefaultTheme then
+      Color := clBtnFace;
     DefaultNodeHeight := 25;
     Indent := 0;
     TabOrder := 1;
@@ -233,11 +237,11 @@ begin
   FModRes := mrNone;
   Caption := rsCategoriesFrm_Caption;
   lbMessage.Caption := rsCategoriesFrm_lbMessage_Caption;
-  bOk.Caption := rsCategoriesFrm_bYes_Caption;
-  bCancel.Caption := rsCategoriesFrm_bCancel_Caption;
-  bOk.Top := (pnButtons.Height - bOk.Height) div 2;
-  bCancel.Top := (pnButtons.Height - bCancel.Height) div 2;
-  pnMessage.Height := lbMessage.Top + lbMessage.Height + 5;
+  //bOk.Caption := rsCategoriesFrm_bYes_Caption;
+  //bCancel.Caption := rsCategoriesFrm_bCancel_Caption;
+  //bOk.Top := (pnButtons.Height - bOk.Height) div 2;
+  //bCancel.Top := (pnButtons.Height - bCancel.Height) div 2;
+  //pnMessage.Height := lbMessage.Top + lbMessage.Height + 5;
 end;
 
 function TCategoriesFrm.CheckNode(const AName: String): Boolean;
@@ -280,7 +284,7 @@ begin
     else
       Data^.FType := 0;
   end;
-  FVST.SortTree(0, opkman_VirtualTrees.sdAscending);
+  FVST.SortTree(0, VirtualTrees.sdAscending);
 
   SL := TStringList.Create;
   try

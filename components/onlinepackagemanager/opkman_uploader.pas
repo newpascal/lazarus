@@ -26,43 +26,46 @@ unit opkman_uploader;
 
 {$mode objfpc}{$H+}
 
+{$INCLUDE opkman_fpcdef.inc}
+
 interface
 
 uses
- Classes, SysUtils, fpjson, base64, LazFileUtils, opkman_httpclient,
-
- dialogs;
+  Classes, SysUtils, base64,
+  // OpkMan
+  opkman_options, opkman_const,
+  {$IFDEF FPC311}fphttpclient{$ELSE}opkman_httpclient{$ENDIF};
 
 type
- TOnUploadProgress = procedure(Sender: TObject; AFileName: String) of object;
- TOnUploadError = procedure(Sender: TObject; AErrMsg: String) of object;
+  TOnUploadProgress = procedure(Sender: TObject; AFileName: String) of object;
+  TOnUploadError = procedure(Sender: TObject; AErrMsg: String) of object;
 
- { TUploader }
+  { TUploader }
 
- TUploader = class(TThread)
- private
-   FOnUploadProgress: TOnUploadProgress;
-   FOnUploadError: TOnUploadError;
-   FOnUploadCompleted: TNotifyEvent;
-   FHTTPClient: TFPHTTPClient;
-   FNeedToBreak: Boolean;
-   FFileName: String;
-   FURLZip: String;
-   FURLJSON: String;
-   FZip: String;
-   FJSON: String;
-   FJSONUpdate: String;
-   procedure DoOnUploadProgress;
-   procedure DoOnUploadError;
-   procedure DoOnUploadCompleted;
-   function PostFile(const AURL, AFieldName, AFileName: String): Boolean;
- protected
+  TUploader = class(TThread)
+  private
+    FOnUploadProgress: TOnUploadProgress;
+    FOnUploadError: TOnUploadError;
+    FOnUploadCompleted: TNotifyEvent;
+    FHTTPClient: TFPHTTPClient;
+    FNeedToBreak: Boolean;
+    FFileName: String;
+    FURLZip: String;
+    FURLJSON: String;
+    FZip: String;
+    FJSON: String;
+    FJSONUpdate: String;
+    procedure DoOnUploadProgress;
+    procedure DoOnUploadError;
+    procedure DoOnUploadCompleted;
+    function PostFile(const AURL, AFieldName, AFileName: String): Boolean;
+  protected
     procedure Execute; override;
- public
-   constructor Create;
-   destructor Destroy; override;
-   procedure StartUpload(AURLZip, AURLJSON, AZip, AJSON, AJSONUpdate: String);
-   procedure StopUpload;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    procedure StartUpload(AURLZip, AURLJSON, AZip, AJSON, AJSONUpdate: String);
+    procedure StopUpload;
   published
     property OnUploadProgress: TOnUploadProgress read FOnUploadProgress write FOnUploadProgress;
     property OnUploadError: TOnUploadError read FOnUploadError write FOnUploadError;
@@ -70,12 +73,10 @@ type
     property NeedToBreak: Boolean read FNeedToBreak write FNeedToBreak;
  end;
 
-
 var
  Uploader: TUploader = nil;
 
 implementation
-uses opkman_options, opkman_const;
 
 { TUploader }
 
@@ -135,7 +136,7 @@ var
   CanGo: Boolean;
 begin
   FFileName := ExtractFileName(FZip);
-  CanGo := FileExistsUTF8(FZip);
+  CanGo := FileExists(FZip);
   if CanGo then
   begin
     Synchronize(@DoOnUploadProgress);
@@ -150,7 +151,7 @@ begin
     Exit;
 
   FFileName := ExtractFileName(FJSON);
-  CanGo := FileExistsUTF8(FJSON);
+  CanGo := FileExists(FJSON);
   if CanGo then
   begin
     Synchronize(@DoOnUploadProgress);
@@ -168,7 +169,7 @@ begin
   if FJSONUpdate <> '' then
   begin
     FFileName := ExtractFileName(FJSONUpdate);
-    CanGo := FileExistsUTF8(FJSONUpdate);
+    CanGo := FileExists(FJSONUpdate);
     if CanGo then
     begin
       Synchronize(@DoOnUploadProgress);
@@ -210,7 +211,7 @@ end;
 procedure TUploader.StopUpload;
 begin
   if Assigned(FHTTPClient) then
-    FHTTPClient.NeedToBreak := True;
+    FHTTPClient.Terminate;
   FNeedToBreak := True;
 end;
 

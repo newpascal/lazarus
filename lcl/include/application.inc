@@ -104,6 +104,7 @@ begin
   FOnIdle := nil;
   FIcon := TIcon.Create;
   FIcon.OnChange := @IconChanged;
+  FLastKeyDownKeys := TWordList.Create;
   FNavigation := [anoTabToSelectNext,anoReturnForDefaultControl,
                   anoEscapeForCancelControl,anoF1ForHelp,anoArrowToSelectNextInParent];
   FUpdateFormatSettings := True;
@@ -155,6 +156,7 @@ begin
   ApplicationActionComponent:=nil;
   FreeThenNil(FIcon);
   FreeIconHandles;
+  FreeThenNil(FLastKeyDownKeys);
   FreeThenNil(FRestoreStayOnTop);
 
   for HandlerType:=Low(TApplicationHandlerType) to High(TApplicationHandlerType) do
@@ -1562,7 +1564,7 @@ var
 begin
   if AppNoExceptionMessages in FFlags then exit;
   Msg := E.Message;
-  if FindInvalidUTF8Character(PChar(Msg), Length(Msg)) > 0 then
+  if FindInvalidUTF8Codepoint(PChar(Msg), Length(Msg)) > 0 then
     Msg := AnsiToUtf8(Msg);
   if (Msg <> '') and (Msg[length(Msg)] <> '.') then Msg := Msg + '.';
   if (not Terminated) and (Self <> nil) and (AppInitialized in FFlags) then
@@ -1672,6 +1674,8 @@ begin
   begin
     AControl := TWinControl(Sender);
     //debugln('TApplication.ControlKeyDown A ',DbgSName(AControl));
+    if FLastKeyDownSender <> AControl then
+      FLastKeyDownKeys.Clear;
     FLastKeyDownSender := AControl;
 
     // handle navigation key
@@ -1679,41 +1683,59 @@ begin
     DoArrowKey(AControl, Key, Shift);
   end
   else
+  begin
+    if FLastKeyDownSender <> nil then
+      FLastKeyDownKeys.Clear;
     FLastKeyDownSender := nil;
+  end;
   //DebugLn(['TApplication.ControlKeyDown Sender=',DbgSName(Sender),' Key=',Key,' Shift=',dbgs(Shift)]);
-  FLastKeyDownKey := Key;
   FLastKeyDownShift := Shift;
+  if FLastKeyDownShift <> Shift then
+    FLastKeyDownKeys.Clear;
+  FLastKeyDownKeys.Add(Key);
 end;
 
 procedure TApplication.ControlKeyUp(Sender: TObject; var Key: Word;
   Shift: TShiftState);
 var
   AControl: TWinControl;
+  AIndex: Integer;
 begin
   if Key = VK_UNKNOWN then exit;
 
-  if Sender is TWinControl then
-  begin
-    AControl := TWinControl(Sender);
-    //debugln('TApplication.ControlKeyUp A ',DbgSName(AControl),' Key=',dbgs(Key),' Shift=',dbgs(Shift));
-    if FLastKeyDownKey = VK_UNKNOWN then
+  try
+    if Sender is TWinControl then
     begin
-      // key was already handled in key down
-      //debugln('TApplication.ControlKeyUp key was handled in key down');
-      Exit;
-    end;
-    if (Key <> FLastKeyDownKey) or (Shift <> FLastKeyDownShift) or (AControl <> FLastKeyDownSender) then
-    begin
-      // a key up, without key down
-      //debugln('TApplication.ControlKeyUp key was handled in key down or in key up');
-      Exit;
-    end;
+      AControl := TWinControl(Sender);
+      //debugln('TApplication.ControlKeyUp A ',DbgSName(AControl),' Key=',dbgs(Key),' Shift=',dbgs(Shift));
 
-    // handle special navigation keys
-    DoReturnKey(AControl, Key, Shift);
-    DoEscapeKey(AControl, Key, Shift);
+      AIndex := FLastKeyDownKeys.IndexOf(Key);
+      if (AIndex = -1) and (FLastKeyDownKeys.Count > 0) then
+        FLastKeyDownKeys.Clear;
+
+      if FLastKeyDownKeys.Count = 0 then
+      begin
+        // key was already handled in key down
+        //debugln('TApplication.ControlKeyUp key was handled in key down');
+        Exit;
+      end;
+
+      if (Shift <> FLastKeyDownShift) or (AControl <> FLastKeyDownSender) then
+      begin
+        FLastKeyDownKeys.Clear;
+        //debugln('TApplication.ControlKeyUp key was handled in key down or in key up');
+        Exit;
+      end;
+
+      // handle special navigation keys
+      DoReturnKey(AControl, Key, Shift);
+      DoEscapeKey(AControl, Key, Shift);
+    end;
+  finally
+    AIndex := FLastKeyDownKeys.IndexOf(Key);
+    if AIndex <> -1 then
+      FLastKeyDownKeys.Delete(AIndex);
   end;
-  FLastKeyDownKey := VK_UNKNOWN;
 end;
 
 procedure TApplication.AddOnIdleHandler(Handler: TIdleEvent;
@@ -2099,6 +2121,7 @@ procedure TApplication.DoEscapeKey(AControl: TWinControl; var Key: Word;
   Shift: TShiftState);
 var
   Form: TCustomForm;
+  lCancelControl: TControl;
 begin
   if (Shift = []) and (Key = VK_ESCAPE) and
      (AControl.Perform(CM_WANTSPECIALKEY, Key, 0) = 0) and
@@ -2106,11 +2129,19 @@ begin
      (anoEscapeForCancelControl in Navigation) then
   begin
     Form := GetParentForm(AControl);
-    if Assigned(Form) and Assigned(Form.CancelControl) then
+    if Assigned(Form) then
     begin
-      //debugln('TApplication.ControlKeyUp VK_ESCAPE ', Acontrol.Name);
-      Form.CancelControl.ExecuteCancelAction;
-      Key := VK_UNKNOWN;
+      lCancelControl := Form.CancelControl;
+      if Assigned(lCancelControl)
+        and lCancelControl.Enabled and lCancelControl.Visible then
+      begin
+        //debugln('TApplication.ControlKeyUp VK_ESCAPE ', Acontrol.Name);
+        try
+          lCancelControl.ExecuteCancelAction;
+        finally
+          Key := VK_UNKNOWN;
+        end;
+      end;
     end;
   end;
 end;
@@ -2140,9 +2171,12 @@ begin
         //debugln('TApplication.DoReturnKey VK_RETURN ', Acontrol.Name);
         //Setting Key to VK_UKNOWN prevents the calling of KeyUpAfterInterface,
         //which tiggers EditingDone when Key = VK_RETURN, so we call it here
-        AControl.EditingDone;
-        lDefaultControl.ExecuteDefaultAction;
-        Key := VK_UNKNOWN;
+        try
+          AControl.EditingDone;
+          lDefaultControl.ExecuteDefaultAction;
+        finally
+          Key := VK_UNKNOWN;
+        end;
       end;
     end;
   end;

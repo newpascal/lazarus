@@ -263,16 +263,21 @@ end;
 procedure TIDEInfoDialog.GatherEnvironmentVars(sl: TStrings);
 var
   i: Integer;
+  l: TStringList;
 begin
   sl.Add('Environment variables:');
+  l:=TStringList.Create;
   for i:=0 to GetEnvironmentVariableCount-1 do
-    sl.Add(GetEnvironmentStringUTF8(i));
+    l.Add(GetEnvironmentStringUTF8(i));
+  l.Sort;
+  sl.AddStrings(l);
+  l.free;
   sl.Add('');
 end;
 
 procedure TIDEInfoDialog.GatherGlobalOptions(sl: TStrings);
 var
-  CfgCache: TFPCTargetConfigCache;
+  CfgCache: TPCTargetConfigCache;
   Note: string;
 begin
   sl.add('Global IDE options:');
@@ -288,7 +293,7 @@ begin
   sl.Add('Default CompilerFilename='+EnvironmentOptions.CompilerFilename);
   sl.Add('Real Default CompilerFilename='+EnvironmentOptions.GetParsedCompilerFilename);
   if CheckCompilerQuality(EnvironmentOptions.GetParsedCompilerFilename,Note,
-                       CodeToolBoss.FPCDefinesCache.TestFilename)<>sddqCompatible
+                       CodeToolBoss.CompilerDefinesCache.TestFilename)<>sddqCompatible
   then
     sl.Add('WARNING: '+Note);
 
@@ -296,7 +301,7 @@ begin
     sl.Add('Project CompilerFilename='+Project1.CompilerOptions.CompilerPath);
     sl.Add('Real Project CompilerFilename='+LazarusIDE.GetFPCompilerFilename);
     if CheckCompilerQuality(LazarusIDE.GetFPCompilerFilename,Note,
-                         CodeToolBoss.FPCDefinesCache.TestFilename)<>sddqCompatible
+                         CodeToolBoss.CompilerDefinesCache.TestFilename)<>sddqCompatible
     then
       sl.Add('WARNING: '+Note);
   end;
@@ -306,7 +311,7 @@ begin
 
   sl.Add('FPC source directory='+EnvironmentOptions.FPCSourceDirectory);
   sl.Add('Real FPC source directory='+EnvironmentOptions.GetParsedFPCSourceDirectory);
-  CfgCache:=CodeToolBoss.FPCDefinesCache.ConfigCaches.Find(
+  CfgCache:=CodeToolBoss.CompilerDefinesCache.ConfigCaches.Find(
     LazarusIDE.GetFPCompilerFilename,'','','',true);
   if CheckFPCSrcDirQuality(EnvironmentOptions.GetParsedFPCSourceDirectory,Note,
     CfgCache.GetFPCVer)<>sddqCompatible

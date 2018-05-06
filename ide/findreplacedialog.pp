@@ -43,6 +43,12 @@ type
   TOnFindDlgKey = procedure(Sender: TObject; var Key: Word; Shift:TShiftState;
                            FindDlgComponent: TFindDlgComponent) of Object;
 
+  TLazFindReplaceState = record
+    FindText: string;
+    ReplaceText: string;
+    Options: TSynSearchOptions;
+  end;
+
   { TLazFindReplaceDialog }
 
   TLazFindReplaceDialog = class(TForm)
@@ -102,6 +108,8 @@ type
     destructor Destroy; override;
     procedure UpdateHints;
     procedure ResetUserHistory;
+    procedure RestoreState(const AState: TLazFindReplaceState);
+    procedure SaveState(out AState: TLazFindReplaceState);
   public
     property Options: TSynSearchOptions read GetOptions write SetOptions;
     property EnableAutoComplete: boolean read GetEnableAutoComplete
@@ -131,7 +139,7 @@ begin
   TextToFindLabel.Caption:=dlgTextToFind;
   ReplaceTextComboBox.Text:='';
   ReplaceWithCheckbox.Caption:=dlgReplaceWith;
-  EnableAutoCompleteSpeedButton.LoadGlyphFromResourceName(HInstance, 'menu_stepinto');
+  TIDEImages.AssignImage(EnableAutoCompleteSpeedButton.Glyph, 'autocomplete');
   OptionsGroupBox.Caption:=lisOptions;
 
   with CaseSensitiveCheckBox do begin
@@ -173,7 +181,7 @@ begin
 
   // CloseButton works now as ReplaceAllButton
   BtnPanel.CloseButton.Caption := dlgReplaceAll;
-  BtnPanel.CloseButton.LoadGlyphFromResourceName(hInstance, 'btn_all');
+  TIDEImages.AssignImage(BtnPanel.CloseButton.Glyph, 'btn_all');
 
   fReplaceAllClickedLast:=false;
   UpdateHints;
@@ -212,8 +220,23 @@ begin
     DlgHistoryIndex[c] := -1;
 end;
 
-procedure TLazFindReplaceDialog.TextToFindComboBoxKeyDown(
-  Sender: TObject; var Key:Word; Shift:TShiftState);
+procedure TLazFindReplaceDialog.RestoreState(const AState: TLazFindReplaceState);
+begin
+  Options:=AState.Options;
+  FindText:=AState.FindText;
+  ReplaceText:=AState.ReplaceText;
+end;
+
+procedure TLazFindReplaceDialog.SaveState(out AState: TLazFindReplaceState);
+begin
+  FillChar(AState{%H-}, SizeOf(TLazFindReplaceState), 0);
+  AState.Options:=Options;
+  AState.FindText:=FindText;
+  AState.ReplaceText:=ReplaceText;
+end;
+
+procedure TLazFindReplaceDialog.TextToFindComboboxKeyDown(Sender: TObject;
+  var Key: Word; Shift: TShiftState);
 var
   Component: TFindDlgComponent;
   HistoryList: TStringList;

@@ -28,8 +28,14 @@ program AddMethod;
 {$mode objfpc}{$H+}
 
 uses
-  SysUtils, CodeCache, CodeToolManager, CodeCompletionTool, SimpleUnit1;
+  SysUtils,
+  // LazUtils
+  LazFileUtils,
+  // CodeTools
+  CodeCache, CodeToolsConfig, CodeToolManager, CodeCompletionTool, SimpleUnit1;
   
+const
+  ConfigFilename = 'codetools.config';
 type
   TMyMethodType = function(Sender: TObject; AValue: integer): string of object;
 
@@ -45,13 +51,16 @@ var
 begin
   // Example: find declaration of 'TObject'
 
+  // init the codetools
+  CodeToolBoss.SimpleInit(ConfigFilename);
+
   // load the file
   Filename:=AppendPathDelim(GetCurrentDir)+'scanexamples'+PathDelim
     +'simpleunit1.pas';
   Code:=CodeToolBoss.LoadFile(Filename,false,false);
   if Code=nil then
     raise Exception.Create('loading failed '+Filename);
-    
+
   // Example 1: add a method compatible to TMyMethodType
   if CodeToolBoss.CreatePublishedMethod(Code,'TMyClass','NewMethod',
     typeinfo(TMyMethodType),true) then

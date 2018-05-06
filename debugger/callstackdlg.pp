@@ -289,7 +289,6 @@ begin
   try DebugLnEnter(DBG_DATA_MONITORS, ['DebugDataWindow: >>ENTER: TCallStackDlg.UpdateView']);
   Exclude(FUpdateFlags, ufNeedUpdating);
 
-
   BeginUpdate;
   lvCallStack.BeginUpdate;
   try
@@ -305,7 +304,6 @@ begin
     FInUpdateView := False;
     // TODO: must make CStack ref-counted
     if CStack <> GetSelectedCallstack then exit; // Something changed, maybe debugger stopped
-
 
     if (CStack = nil) or ((Snap <> nil) and (CStack.CountLimited(MaxCnt) = 0)) then begin
       lvCallStack.Items.Clear;
@@ -323,7 +321,6 @@ begin
       lvCallStack.Items.Clear;
       exit;
     end;
-
 
     if Snap <> nil then begin
       First := 0;
@@ -764,19 +761,19 @@ begin
   lvCallStack.Columns[4].Caption:= lisFunction;
 
   ToolBar1.Images := IDEImages.Images_16;
-  ToolButtonShow.ImageIndex := IDEImages.LoadImage(16, 'callstack_show');
-  ToolButtonMore.ImageIndex := IDEImages.LoadImage(16, 'callstack_more');
-  ToolButtonTop.ImageIndex := IDEImages.LoadImage(16, 'callstack_top');
-  ToolButtonBottom.ImageIndex := IDEImages.LoadImage(16, 'callstack_bottom');
-  ToolButtonGoto.ImageIndex := IDEImages.LoadImage(16, 'callstack_goto');
-  ToolButtonCopyAll.ImageIndex := IDEImages.LoadImage(16, 'laz_copy');
-  FPowerImgIdx := IDEImages.LoadImage(16, 'debugger_power');
-  FPowerImgIdxGrey := IDEImages.LoadImage(16, 'debugger_power_grey');
+  ToolButtonShow.ImageIndex := IDEImages.LoadImage('callstack_show');
+  ToolButtonMore.ImageIndex := IDEImages.LoadImage('callstack_more');
+  ToolButtonTop.ImageIndex := IDEImages.LoadImage('callstack_top');
+  ToolButtonBottom.ImageIndex := IDEImages.LoadImage('callstack_bottom');
+  ToolButtonGoto.ImageIndex := IDEImages.LoadImage('callstack_goto');
+  ToolButtonCopyAll.ImageIndex := IDEImages.LoadImage('laz_copy');
+  FPowerImgIdx := IDEImages.LoadImage('debugger_power');
+  FPowerImgIdxGrey := IDEImages.LoadImage('debugger_power_grey');
   ToolButtonPower.ImageIndex := FPowerImgIdx;
 
   lvCallStack.SmallImages := IDEImages.Images_16;
-  imgSourceLine := IDEImages.LoadImage(16, 'debugger_source_line');
-  imgNoSourceLine := IDEImages.LoadImage(16, 'debugger_nosource_line');
+  imgSourceLine := IDEImages.LoadImage('debugger_source_line');
+  imgNoSourceLine := IDEImages.LoadImage('debugger_nosource_line');
 
 end;
 

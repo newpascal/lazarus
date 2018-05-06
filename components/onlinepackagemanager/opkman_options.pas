@@ -27,10 +27,17 @@ unit opkman_options;
 interface
 
 uses
-  Classes, SysUtils, LazIDEIntf, Laz2_XMLCfg, LazFileUtils;
+  Classes, SysUtils, Graphics,
+  // LazUtils
+  Laz2_XMLCfg, LazFileUtils,
+  // IdeIntf
+  LazIDEIntf,
+  // OpkMan
+  opkman_const;
 
 const
   OpkVersion = 1;
+  HintColCnt = 3;
 
 type
   { TOptions }
@@ -43,71 +50,83 @@ type
   end;
 
   TOptions = class
-   private
-     FProxySettings: TProxySettings;
-     FXML: TXMLConfig;
-     FVersion: Integer;
-     FRemoteRepository: TStringList;
-     FRemoteRepositoryTmp: TStringList;
-     FActiveRepositoryIndex: Integer;
-     FForceDownloadAndExtract: Boolean;
-     FDeleteZipAfterInstall: Boolean;
-     FCheckForUpdates: Integer;
-     FLastUpdate: TDateTime;
-     FDaysToShowNewPackages: Integer;
-     FChanged: Boolean;
-     FLastDownloadDir: String;
-     FLastPackageDirSrc: String;
-     FLastPackageDirDst: String;
-     // Default values for local repositories.
-     FLocalPackagesDefault: String;
-     FLocalArchiveDefault: String;
-     FLocalUpdateDefault: String;
-     // Actual local repositories.
-     FLocalRepositoryPackages: String;
-     FLocalRepositoryArchive: String;
-     FLocalRepositoryUpdate: String;
-     FUserProfile: Integer;
-     FExcludedFiles: String;
-     FExcludedFolders: String;
-   public
-     constructor Create(const AFileName: String);
-     destructor Destroy; override;
-     procedure Load;
-     procedure Save;
-     procedure LoadDefault;
-     procedure CreateMissingPaths;
-   published
-     property Changed: Boolean read FChanged write FChanged;
-     property RemoteRepository: TStringList read FRemoteRepository write FRemoteRepository;
-     property RemoteRepositoryTmp: TStringList read FRemoteRepositoryTmp write FRemoteRepositoryTmp;
-     property ActiveRepositoryIndex: Integer read FActiveRepositoryIndex write FActiveRepositoryIndex;
-     property ForceDownloadAndExtract: Boolean read FForceDownloadAndExtract write FForceDownloadAndExtract;
-     property DeleteZipAfterInstall: Boolean read FDeleteZipAfterInstall write FDeleteZipAfterInstall;
-     property CheckForUpdates: Integer read FCheckForUpdates write FCheckForUpdates;
-     property LastUpdate: TDateTime read FLastUpdate write FLastUpdate;
-     property DaysToShowNewPackages: Integer read FDaysToShowNewPackages write FDaysToShowNewPackages;
-     property UserProfile: Integer read FUserProfile write FUserProfile;
-     property LastDownloadDir: String read FLastDownloadDir write FLastDownloadDir;
-     property LastPackagedirSrc: String read FLastPackageDirSrc write FLastPackageDirSrc;
-     property LastPackagedirDst: String read FLastPackageDirDst write FLastPackageDirDst;
-     property ProxyEnabled: Boolean read FProxySettings.FEnabled write FProxySettings.FEnabled;
-     property ProxyServer: String read FProxySettings.FServer write FProxySettings.FServer;
-     property ProxyPort: Word read FProxySettings.FPort write FProxySettings.FPort;
-     property ProxyUser: String read FProxySettings.FUser write FProxySettings.FUser;
-     property ProxyPassword: String read FProxySettings.FPassword write FProxySettings.FPassword;
-     property LocalRepositoryPackages: String read FLocalRepositoryPackages write FLocalRepositoryPackages;
-     property LocalRepositoryArchive: String read FLocalRepositoryArchive write FLocalRepositoryArchive;
-     property LocalRepositoryUpdate: String read FLocalRepositoryUpdate write FLocalRepositoryUpdate;
-     property ExcludedFiles: String read FExcludedFiles write FExcludedFiles;
-     property ExcludedFolders: String read FExcludedFolders write FExcludedFolders;
+  private
+    FProxySettings: TProxySettings;
+    FXML: TXMLConfig;
+    FVersion: Integer;
+    FRemoteRepository: TStringList;
+    FRemoteRepositoryTmp: TStringList;
+    FActiveRepositoryIndex: Integer;
+    FForceDownloadAndExtract: Boolean;
+    FDeleteZipAfterInstall: Boolean;
+    FCheckForUpdates: Integer;
+    FLastUpdate: TDateTime;
+    FConTimeOut: Integer;
+    FDaysToShowNewPackages: Integer;
+    FShowRegularIcons: Boolean;
+    FUseDefaultTheme: Boolean;
+    FHintFormOption: Integer;
+    FHintFormOptionColors: TStringList;
+    FChanged: Boolean;
+    FLastDownloadDir: String;
+    FLastPackageDirSrc: String;
+    FLastPackageDirDst: String;
+    FLastPrivateRepository: String;
+    // Default values for local repositories.
+    FLocalPackagesDefault: String;
+    FLocalArchiveDefault: String;
+    FLocalUpdateDefault: String;
+    // Actual local repositories.
+    FLocalRepositoryPackages: String;
+    FLocalRepositoryArchive: String;
+    FLocalRepositoryUpdate: String;
+    FUserProfile: Integer;
+    FExcludedFiles: String;
+    FExcludedFolders: String;
+    procedure CheckColors;
+  public
+    constructor Create(const AFileName: String);
+    destructor Destroy; override;
+    procedure Load;
+    procedure Save;
+    procedure LoadDefault;
+    procedure CreateMissingPaths;
+  published
+    property Changed: Boolean read FChanged write FChanged;
+    property RemoteRepository: TStringList read FRemoteRepository write FRemoteRepository;
+    property RemoteRepositoryTmp: TStringList read FRemoteRepositoryTmp write FRemoteRepositoryTmp;
+    property ActiveRepositoryIndex: Integer read FActiveRepositoryIndex write FActiveRepositoryIndex;
+    property ForceDownloadAndExtract: Boolean read FForceDownloadAndExtract write FForceDownloadAndExtract;
+    property DeleteZipAfterInstall: Boolean read FDeleteZipAfterInstall write FDeleteZipAfterInstall;
+    property CheckForUpdates: Integer read FCheckForUpdates write FCheckForUpdates;
+    property LastUpdate: TDateTime read FLastUpdate write FLastUpdate;
+    property ConTimeOut: Integer read FConTimeOut write FConTimeOut;
+    property DaysToShowNewPackages: Integer read FDaysToShowNewPackages write FDaysToShowNewPackages;
+    property ShowRegularIcons: Boolean read FShowRegularIcons write FShowRegularIcons;
+    property UseDefaultTheme: Boolean read FUseDefaultTheme write FUseDefaultTheme;
+    property HintFormOption: Integer read FHintFormOption write FHintFormOption;
+    property HintFormOptionColors: TStringList read FHintFormOptionColors write FHintFormOptionColors;
+    property UserProfile: Integer read FUserProfile write FUserProfile;
+    property LastDownloadDir: String read FLastDownloadDir write FLastDownloadDir;
+    property LastPackagedirSrc: String read FLastPackageDirSrc write FLastPackageDirSrc;
+    property LastPackagedirDst: String read FLastPackageDirDst write FLastPackageDirDst;
+    property LastPrivateRepository: String read FLastPrivateRepository write FLastPrivateRepository;
+    property ProxyEnabled: Boolean read FProxySettings.FEnabled write FProxySettings.FEnabled;
+    property ProxyServer: String read FProxySettings.FServer write FProxySettings.FServer;
+    property ProxyPort: Word read FProxySettings.FPort write FProxySettings.FPort;
+    property ProxyUser: String read FProxySettings.FUser write FProxySettings.FUser;
+    property ProxyPassword: String read FProxySettings.FPassword write FProxySettings.FPassword;
+    property LocalRepositoryPackages: String read FLocalRepositoryPackages write FLocalRepositoryPackages;
+    property LocalRepositoryArchive: String read FLocalRepositoryArchive write FLocalRepositoryArchive;
+    property LocalRepositoryUpdate: String read FLocalRepositoryUpdate write FLocalRepositoryUpdate;
+    property ExcludedFiles: String read FExcludedFiles write FExcludedFiles;
+    property ExcludedFolders: String read FExcludedFolders write FExcludedFolders;
   end;
 
 var
   Options: TOptions = nil;
 
 implementation
-uses opkman_const;
 
 { TOptions }
 
@@ -117,15 +136,17 @@ var
 begin
   FRemoteRepository := TStringList.Create;
   FRemoteRepositoryTmp := TStringList.Create;
+  FHintFormOptionColors := TStringList.Create;
   LocalRepo := AppendPathDelim(AppendPathDelim(LazarusIDE.GetPrimaryConfigPath) + cLocalRepository);
   FLocalPackagesDefault := LocalRepo + AppendPathDelim(cLocalRepositoryPackages);
   FLocalArchiveDefault := LocalRepo + AppendPathDelim(cLocalRepositoryArchive);
   FLocalUpdateDefault := LocalRepo + AppendPathDelim(cLocalRepositoryUpdate);
 
   FXML := TXMLConfig.Create(AFileName);
-  if FileExistsUTF8(AFileName) then
+  if FileExists(AFileName) then
   begin
     Load;
+    CheckColors;
     if FLocalRepositoryPackages = '' then
       FLocalRepositoryPackages := FLocalPackagesDefault;
     if FLocalRepositoryArchive = '' then
@@ -148,6 +169,7 @@ begin
     Save;
   FRemoteRepository.Free;
   FRemoteRepositoryTmp.Free;
+  FHintFormOptionColors.Free;
   FXML.Free;
   inherited Destroy;
 end;
@@ -167,9 +189,15 @@ begin
   FLastDownloadDir := FXML.GetValue('General/LastDownloadDir/Value', '');
   FLastPackageDirSrc := FXML.GetValue('General/LastPackageDirSrc/Value', '');
   FLastPackageDirDst := FXML.GetValue('General/LastPackageDirDst/Value', '');
+  FLastPrivateRepository := FXML.GetValue('General/LastPrivateRepository/Value', '');
   FCheckForUpdates := FXML.GetValue('General/CheckForUpdates/Value', 0);
   FLastUpdate := FXML.GetExtendedValue('General/LastUpdate/Value', 0.0);
+  FConTimeOut := FXML.GetValue('General/ConTimeOut/Value', 10);
   FDaysToShowNewPackages := FXML.GetValue('General/DaysToShowNewPackages/Value', 31);
+  FShowRegularIcons := FXML.GetValue('General/ShowRegularIcons/Value', True);
+  FUseDefaultTheme := FXML.GetValue('General/UseDefaultTheme/Value', True);
+  FHintFormOption := FXML.GetValue('General/HintFormOption/Value', 0);
+  FHintFormOptionColors.Text := FXML.GetValue('General/HintFormOptionColors/Value', '');
 
   FProxySettings.FEnabled := FXML.GetValue('Proxy/Enabled/Value', False);
   FProxySettings.FServer := FXML.GetValue('Proxy/Server/Value', '');
@@ -196,9 +224,15 @@ begin
   FXML.SetDeleteValue('General/LastDownloadDir/Value', FLastDownloadDir, '');
   FXML.SetDeleteValue('General/LastPackageDirSrc/Value', FLastPackageDirSrc, '');
   FXML.SetDeleteValue('General/LastPackageDirDst/Value', FLastPackageDirDst, '');
+  FXML.SetDeleteValue('General/LastPrivateRepository/Value', FLastPrivateRepository, '');
   FXML.SetDeleteValue('General/CheckForUpdates/Value', FCheckForUpdates, 0);
   FXML.SetDeleteExtendedValue('General/LastUpdate/Value', FLastUpdate, 0.0);
+  FXML.SetDeleteValue('General/ConTimeOut/Value', FConTimeOut, 10);
   FXML.SetDeleteValue('General/DaysToShowNewPackages/Value', FDaysToShowNewPackages, 31);
+  FXML.SetDeleteValue('General/ShowRegularIcons/Value', FShowRegularIcons, True);
+  FXML.SetDeleteValue('General/UseDefaultTheme/Value', FUseDefaultTheme, True);
+  FXML.SetDeleteValue('General/HintFormOption/Value', FHintFormOption, 0);
+  FXML.SetDeleteValue('General/HintFormOptionColors/Value', FHintFormOptionColors.Text, '');
 
   FXML.SetDeleteValue('Proxy/Enabled/Value', FProxySettings.FEnabled, false);
   FXML.SetDeleteValue('Proxy/Server/Value', FProxySettings.FServer, '');
@@ -223,12 +257,18 @@ begin
   FRemoteRepository.Clear;
   FRemoteRepositoryTmp.Clear;
   FRemoteRepository.Add(cRemoteRepository);
+  FHintFormOptionColors.Clear;
+  CheckColors;
   FActiveRepositoryIndex := 0;
   FForceDownloadAndExtract := True;
   FDeleteZipAfterInstall := True;
   FCheckForUpdates := 0;
   FLastUpdate := 0.0;
+  FConTimeOut := 10;
   FDaysToShowNewPackages := 31;
+  FShowRegularIcons := True;
+  FUseDefaultTheme := True;
+  FHintFormOption := 0;
 
   FProxySettings.FEnabled := False;
   FProxySettings.FServer := '';
@@ -249,12 +289,24 @@ end;
 procedure TOptions.CreateMissingPaths;
 begin
   if not DirectoryExists(FLocalRepositoryPackages) then
-    CreateDirUTF8(FLocalRepositoryPackages);
+    CreateDir(FLocalRepositoryPackages);
   if not DirectoryExists(FLocalRepositoryArchive) then
-    CreateDirUTF8(FLocalRepositoryArchive);
+    CreateDir(FLocalRepositoryArchive);
   if not DirectoryExists(FLocalRepositoryUpdate) then
-    CreateDirUTF8(FLocalRepositoryUpdate);
+    CreateDir(FLocalRepositoryUpdate);
 end;
+
+procedure TOptions.CheckColors;
+begin
+  if FHintFormOptionColors.Count <> HintColCnt then
+  begin
+    FHintFormOptionColors.Clear;
+    FHintFormOptionColors.Add(ColorToString($00D9FFFF));
+    FHintFormOptionColors.Add(ColorToString($00E6FFE6));
+    FHintFormOptionColors.Add(ColorToString($00FEEBD3));
+  end
+end;
+
 
 end.
 

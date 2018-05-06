@@ -25,7 +25,9 @@ unit EasyLazFreeType;
 interface
 
 uses
-  Classes, SysUtils, LazFreeType, TTTypes, TTRASTER, AvgLvlTree, fpimage, Types, lazutf8;
+  Classes, SysUtils, fpimage, Laz_AVL_Tree,
+  // LazUtils                     // Note: Types must be after TTTypes for PByte.
+  LazUTF8, LazFreeType, TTRASTER, TTTypes, Types;
 
 type
   TGlyphRenderQuality = (grqMonochrome, grqLowQuality, grqHighQuality);
@@ -229,7 +231,7 @@ type
     FClearType: boolean;
     FNamesArray: array of string;
     FCollection: TCustomFreeTypeFontCollection;
-    function FindGlyphNode(Index: Integer): TAvgLvlTreeNode;
+    function FindGlyphNode(Index: Integer): TAvlTreeNode;
     function GetCharIndex(AUnicodeChar: integer): integer;
     function GetDPI: integer;
     function GetFamily: string;
@@ -265,7 +267,7 @@ type
     FFaceLoaded: boolean;
     FInstance: TT_Instance;
     FInstanceCreated : boolean;
-    FGlyphTable: TAvgLvlTree;
+    FGlyphTable: TAvlTree;
     FCharMap: TT_CharMap;
     FCharmapOk, FCharmapSymbol: boolean;
     FAscentValue, FDescentValue, FLineGapValue, FLargeLineGapValue, FCapHeight: single;
@@ -524,11 +526,9 @@ var
   end;
 
 begin
+  ARemains := '';
   if AText = '' then
-  begin
-    ARemains := '';
     exit;
-  end;
   totalWidth := 0;
   pstr := @AText[1];
   left := length(AText);
@@ -544,8 +544,8 @@ begin
       exit;
     end;
 
-    charlen := UTF8CharacterLength(pstr);
-    glyphCode := UTF8CharacterToUnicode(pstr, charlen);
+    charlen := UTF8CodepointSize(pstr);
+    glyphCode := UTF8CodepointToUnicode(pstr, charlen);
     inc(pstr,charlen);
 
     glyphWidth := CharWidthFromUnicode(glyphCode);
@@ -797,7 +797,7 @@ begin
     glyphBounds.Left := IncludeFullGrainMin( glyphBounds.Left, 3);
     glyphBounds.Right := IncludeFullGrainMax( glyphBounds.Right-1, 3) + 1;
   end;
-  if not IntersectRect(Rect,Rect,glyphBounds) then exit;
+  if not IntersectRect(Rect,Rect,glyphBounds) then exit(False);
 
   case quality of
     grqMonochrome: begin
@@ -837,7 +837,8 @@ end;
 
 destructor TFreeTypeGlyph.Destroy;
 begin
-  TT_Done_Glyph(FGlyphData);
+  if FreeTypeInitialized then
+    TT_Done_Glyph(FGlyphData);
   inherited Destroy;
 end;
 
@@ -920,7 +921,7 @@ begin
     if (a[i] = 'Italic') or (a[i] = 'Oblique') then result += [ftsItalic];
 end;
 
-function TFreeTypeFont.FindGlyphNode(Index: Integer): TAvgLvlTreeNode;
+function TFreeTypeFont.FindGlyphNode(Index: Integer): TAvlTreeNode;
 var DataValue: integer;
 begin
   Result:=FGlyphTable.Root;
@@ -977,8 +978,9 @@ begin
 end;
 
 function TFreeTypeFont.GetGlyph(Index: integer): TFreeTypeGlyph;
-var node: TAvgLvlTreeNode;
-    lGlyph: TFreeTypeGlyph;
+var
+  node: TAvlTreeNode;
+  lGlyph: TFreeTypeGlyph;
 begin
   if not CheckInstance then
   begin
@@ -1433,7 +1435,7 @@ begin
   FCharmapOk := false;
   FPointSize := 10;
   FDPI := 96;
-  FGlyphTable := TAvgLvlTree.Create;
+  FGlyphTable := TAvlTree.Create;
   FHinted := true;
   FWidthFactor := 1;
   FClearType := false;
@@ -1485,7 +1487,7 @@ begin
   left := length(AText);
   while left > 0 do
   begin
-    charcode := UTF8CharacterToUnicode(pstr, charlen);
+    charcode := UTF8CodepointToUnicode(pstr, charlen);
     inc(pstr,charlen);
     dec(left,charlen);
     g := Glyph[CharIndex[charcode]];
@@ -1570,7 +1572,7 @@ begin
   left := length(AText);
   while left > 0 do
   begin
-    charcode := UTF8CharacterToUnicode(pstr, charlen);
+    charcode := UTF8CodepointToUnicode(pstr, charlen);
     inc(pstr,charlen);
     dec(left,charlen);
     g := Glyph[CharIndex[charcode]];
@@ -1634,14 +1636,18 @@ var
   resultIndex,i: integer;
   w: single;
 begin
-  if AText = '' then exit;
+  if AText = '' then
+  begin
+    setlength(result, 0);
+    exit;
+  end;
   pstr := @AText[1];
   left := length(AText);
   setlength(result, UTF8Length(AText));
   resultIndex := 0;
   while left > 0 do
   begin
-    charcode := UTF8CharacterToUnicode(pstr, charlen);
+    charcode := UTF8CodepointToUnicode(pstr, charlen);
     inc(pstr,charlen);
     dec(left,charlen);
 
@@ -1751,7 +1757,7 @@ begin
         if left <= 0 then break;
       end;
     end;
-    charcode := UTF8CharacterToUnicode(pstr, charlen);
+    charcode := UTF8CodepointToUnicode(pstr, charlen);
     inc(pstr,charlen);
     dec(left,charlen);
     g := Glyph[CharIndex[charcode]];

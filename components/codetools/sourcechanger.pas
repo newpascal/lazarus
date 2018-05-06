@@ -42,8 +42,12 @@ interface
 {off $DEFINE VerboseSrcChanger}
 
 uses
-  Classes, SysUtils, FileProcs, CodeToolsStrConsts, CodeCache, BasicCodeTools,
-  typinfo, LinkScanner, AVL_Tree, KeywordFuncLists, LazDbgLog;
+  Classes, SysUtils, typinfo, Laz_AVL_Tree,
+  // LazUtils
+  LazDbgLog,
+  // Codetools
+  FileProcs, CodeToolsStrConsts, CodeCache, BasicCodeTools, LinkScanner,
+  KeywordFuncLists;
   
 type
   // Insert policy types for class parts (properties, variables, method defs)
@@ -93,7 +97,8 @@ type
   TBeautifyCodeFlag = (
     bcfNoIndentOnBreakLine,
     bcfDoNotIndentFirstLine,
-    bcfIndentExistingLineBreaks
+    bcfIndentExistingLineBreaks,
+    bcfChangeSymbolToBracketForGenericTypeBrackets
     );
   TBeautifyCodeFlags = set of TBeautifyCodeFlag;
 
@@ -168,6 +173,7 @@ type
     UpdateMultiProcSignatures: boolean;
     UpdateOtherProcSignaturesCase: boolean; // when updating proc signatures not under cursor, fix case
     GroupLocalVariables: boolean;
+    OverrideStringTypesWithFirstParamType: Boolean;
     // classes, methods, properties
     ClassHeaderComments: boolean;
     ClassImplementationComments: boolean;
@@ -270,7 +276,7 @@ type
     function GetBuffersToModify(Index: integer): TCodeBuffer;
     procedure UpdateBuffersToModify;
   protected
-    procedure RaiseException(const AMessage: string);
+    procedure RaiseException(id: int64; const AMessage: string);
   public
     BeautifyCodeOptions: TBeautifyCodeOptions;
     constructor Create;
@@ -308,7 +314,8 @@ type
   ESourceChangeCacheError = class(Exception)
   public
     Sender: TSourceChangeCache;
-    constructor Create(ASender: TSourceChangeCache; const AMessage: string);
+    Id: int64;
+    constructor Create(ASender: TSourceChangeCache; TheId: int64; const AMessage: string);
   end;
 
 
@@ -499,11 +506,11 @@ begin
 end;
 
 function CompareWordExceptions(p1, p2: Pointer): Integer;
-var w1, w2: string;
+var
+  w1: TWordPolicyException absolute p1;
+  w2: TWordPolicyException absolute p2;
 begin
-  w1 := TWordPolicyException(p1).Word;
-  w2 := TWordPolicyException(p2).Word;
-  Result := CompareIdentifiers(PChar(w1), PChar(w2));
+  Result := CompareIdentifiers(PChar(w1.Word), PChar(w2.Word));
 end;
 
 function CompareKeyWordExceptions(Item1, Item2: Pointer): Integer;
@@ -678,29 +685,29 @@ function TSourceChangeCache.ReplaceEx(FrontGap, AfterGap: TGapTyp;
   procedure RaiseDataInvalid;
   begin
     if (MainScanner=nil) then
-      RaiseException('TSourceChangeCache.ReplaceEx MainScanner=nil');
+      RaiseException(20170422131535,'TSourceChangeCache.ReplaceEx MainScanner=nil');
     if FromPos>ToPos then
-      RaiseException('TSourceChangeCache.ReplaceEx FromPos>ToPos');
+      RaiseException(20170422131537,'TSourceChangeCache.ReplaceEx FromPos>ToPos');
     if FromPos<1 then
-      RaiseException('TSourceChangeCache.ReplaceEx FromPos<1');
+      RaiseException(20170422131540,'TSourceChangeCache.ReplaceEx FromPos<1');
     if (MainScanner<>nil) and (ToPos>MainScanner.CleanedLen+1) then
-      RaiseException('TSourceChangeCache.ReplaceEx ToPos>MainScanner.CleanedLen+1');
+      RaiseException(20170422131542,'TSourceChangeCache.ReplaceEx ToPos>MainScanner.CleanedLen+1');
   end;
   
   procedure RaiseIntersectionFound;
   begin
-    RaiseException('TSourceChangeCache.ReplaceEx '
+    RaiseException(20170422131545,'TSourceChangeCache.ReplaceEx '
       +'IGNORED, because intersection found');
   end;
   
   procedure RaiseCodeReadOnly(Buffer: TCodeBuffer);
   begin
-    RaiseException(ctsfileIsReadOnly+' '+Buffer.Filename);
+    RaiseException(20170422131547,ctsfileIsReadOnly+' '+Buffer.Filename);
   end;
   
   procedure RaiseNotInCleanCode;
   begin
-    RaiseException('TSourceChangeCache.ReplaceEx not in clean code');
+    RaiseException(20170422131550,'TSourceChangeCache.ReplaceEx not in clean code');
   end;
   
 var
@@ -844,8 +851,7 @@ begin
   Result:=true;
 end;
 
-function TSourceChangeCache.IndentLine(LineStartPos, IndentDiff: integer
-  ): boolean;
+function TSourceChangeCache.IndentLine(LineStartPos, IndentDiff: integer): boolean;
 var
   OldIndent: LongInt;
   NewIndent: Integer;
@@ -906,18 +912,8 @@ begin
 end;
 
 procedure TSourceChangeCache.ConsistencyCheck;
-{$IF FPC_FULLVERSION<30101}
-var
-  CurResult: LongInt;
-{$ENDIF}
 begin
-  {$IF FPC_FULLVERSION<30101}
-  CurResult:=FEntries.ConsistencyCheck;
-  if CurResult<>0 then
-    RaiseCatchableException(IntToStr(CurResult));
-  {$ELSE}
   FEntries.ConsistencyCheck;
-  {$ENDIF}
   BeautifyCodeOptions.ConsistencyCheck;
 end;
 
@@ -1259,7 +1255,7 @@ begin
     AnEntry:=TSourceChangeCacheEntry(ANode.Data);
     if AnEntry.IsDirectChange then begin
       if AnEntry.DirectCode=nil then
-        RaiseException('TSourceChangeCache.UpdateBuffersToModify AnEntry.DirectCode=nil');
+        RaiseException(20170422131554,'TSourceChangeCache.UpdateBuffersToModify AnEntry.DirectCode=nil');
       if FBuffersToModify.IndexOf(AnEntry.DirectCode)<0 then
         FBuffersToModify.Add(AnEntry.DirectCode)
     end else
@@ -1270,9 +1266,9 @@ begin
   FBuffersToModifyNeedsUpdate:=false;
 end;
 
-procedure TSourceChangeCache.RaiseException(const AMessage: string);
+procedure TSourceChangeCache.RaiseException(id: int64; const AMessage: string);
 begin
-  raise ESourceChangeCacheError.Create(Self,AMessage);
+  raise ESourceChangeCacheError.Create(Self,id,AMessage);
 end;
 
 { TBeautifyCodeOptions }
@@ -1301,6 +1297,7 @@ begin
   UpdateAllMethodSignatures:=true;
   UpdateMultiProcSignatures:=true;
   UpdateOtherProcSignaturesCase:=true;
+  OverrideStringTypesWithFirstParamType:=true;
   GroupLocalVariables:=true;
   MethodInsertPolicy:=mipClassOrder;
   MethodDefaultSection:=DefaultMethodDefaultSection;
@@ -1742,7 +1739,7 @@ var
   p, CurAtomStart: PChar;
   Start: String;
 begin
-  Result:=BeautifyStatement(AProcCode,IndentSize);
+  Result:=BeautifyStatement(AProcCode,IndentSize,[bcfChangeSymbolToBracketForGenericTypeBrackets]);
   if AddBeginEnd then begin
     Start:='begin';
     p:=PChar(AProcCode);
@@ -1837,15 +1834,18 @@ begin
         else
           break;
       until false;
+      // in implementation of generic methods 
+      // "<" and ">" have a sense of brackets
+      if (
+        AfterProcedure
+        or (bcfChangeSymbolToBracketForGenericTypeBrackets in BeautifyFlags)
+      ) and (CurAtomType = atSymbol)
+      and (CurAtom[1] in ['<', '>']) then
+          CurAtomType := atBracket;
       if AfterProcedure then
       begin
         if CurAtomType = atSemicolon then
-          AfterProcedure := False
-        else
-        // in implementation of generic methods in DELPHI mode
-        // "<" and ">" have a sense of brackets
-        if (CurAtomType = atSymbol) and (CurAtom[1] in ['<', '>']) then
-          CurAtomType := atBracket;
+          AfterProcedure := False;
       end else
       if (CurAtomType = atKeyword)
         and (SameText(CurAtom, 'procedure') or SameText(CurAtom, 'function'))
@@ -1902,6 +1902,9 @@ var
   Level: Integer;
 begin
   Result:='';
+  {$IFDEF VerboseAddClassAndNameToProc}
+  debugln(['TBeautifyCodeOptions.AddClassAndNameToProc AProcCode="',AProcCode,'" AClassName="',AClassName,'" AMethodName="',AMethodName,'"']);
+  {$ENDIF}
   p:=1;
   ProcLen:=length(AProcCode);
   // read proc keyword 'procedure', 'function', ...
@@ -1911,6 +1914,14 @@ begin
   {$ENDIF}
   if KeyWordPos>ProcLen then
     raise Exception.Create('TBeautifyCodeOptions.AddClassAndNameToProc missing keyword');
+  if CompareIdentifiers('GENERIC',@AProcCode[KeyWordPos])=0 then begin
+    ReadRawNextPascalAtom(AProcCode,p,KeyWordPos);
+    {$IFDEF VerboseAddClassAndNameToProc}
+    debugln(['TBeautifyCodeOptions.AddClassAndNameToProc after generic keyword="',copy(AProcCode,KeyWordPos,p-KeyWordPos),'"']);
+    {$ENDIF}
+    if KeyWordPos>ProcLen then
+      raise Exception.Create('TBeautifyCodeOptions.AddClassAndNameToProc missing keyword');
+  end;
   if CompareIdentifiers('CLASS',@AProcCode[KeyWordPos])=0 then begin
     ReadRawNextPascalAtom(AProcCode,p,KeyWordPos);
     {$IFDEF VerboseAddClassAndNameToProc}
@@ -2022,8 +2033,9 @@ end;
 { ESourceChangeCacheError }
 
 constructor ESourceChangeCacheError.Create(ASender: TSourceChangeCache;
-  const AMessage: string);
+  TheId: int64; const AMessage: string);
 begin
+  Id:=TheId;
   inherited Create(AMessage);
   Sender:=ASender;
 end;

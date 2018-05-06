@@ -7,13 +7,13 @@ interface
 uses
   // RTL + FCL + LCL
   Classes, sysutils,
-  Controls, StdCtrls, Dialogs,
+  Controls, StdCtrls, Dialogs, ComboEx,
   // CodeTools
-  FileProcs, DefineTemplates, CodeToolManager,
+  FileProcs, DefineTemplates, CodeToolManager, LinkScanner,
   // LazUtils
   FileUtil, LazFileUtils,
   // IDEIntf
-  IDEOptionsIntf, CompOptsIntf, IDEDialogs, IDEUtils,
+  IDEOptionsIntf, CompOptsIntf, IDEDialogs, IDEUtils, IDEExternToolIntf,
   // IDE
   Project, CompilerOptions, PackageDefs, LazarusIDEStrConsts, EnvironmentOpts,
   LazConf, IDEProcs, DialogProcs, InputHistory, InitialSetupProc;
@@ -24,6 +24,9 @@ type
 
   TCompilerCompilationOptionsFrame = class(TAbstractIDEOptionsEditor)
     BrowseCompilerButton: TButton;
+    ExecAfterParsersCheckComboBox: TCheckComboBox;
+    ExecAfterParsersLabel: TLabel;
+    ExecAfterParsersSumLabel: TLabel;
     ExecBeforeBrowseButton: TButton;
     chkCompilerBuild: TCheckBox;
     chkCompilerCompile: TCheckBox;
@@ -37,27 +40,31 @@ type
     chkExecBeforeRun: TCheckBox;
     cobCompiler: TComboBox;
     ExecAfterBrowseButton: TButton;
+    ExecBeforeParsersSumLabel: TLabel;
     ExecuteAfterCommandComboBox: TComboBox;
     ExecuteAfterCommandLabel: TLabel;
     ExecuteAfterGroupBox: TGroupBox;
-    ExecuteAfterScanFPCCheckBox: TCheckBox;
-    ExecuteAfterScanLabel: TLabel;
-    ExecuteAfterScanMakeCheckBox: TCheckBox;
-    ExecuteAfterShowAllCheckBox: TCheckBox;
     ExecuteBeforeCommandComboBox: TComboBox;
     ExecuteBeforeCommandLabel: TLabel;
     ExecuteBeforeGroupBox: TGroupBox;
-    ExecuteBeforeScanFPCCheckBox: TCheckBox;
-    ExecuteBeforeScanLabel: TLabel;
-    ExecuteBeforeScanMakeCheckBox: TCheckBox;
-    ExecuteBeforeShowAllCheckBox: TCheckBox;
+    ExecBeforeParsersCheckComboBox: TCheckComboBox;
+    ExecBeforeParsersLabel: TLabel;
     grpCompiler: TGroupBox;
     lblCompiler: TLabel;
     lblRunIfCompiler: TLabel;
     lblRunIfExecAfter: TLabel;
     lblRunIfExecBefore: TLabel;
     procedure CompCmdBrowseButtonClick(Sender: TObject);
+    procedure ExecAfterParsersCheckComboBoxItemChange(Sender: TObject;
+      {%H-}AIndex: Integer);
+    procedure ExecBeforeParsersCheckComboBoxItemChange(Sender: TObject;
+      {%H-}AIndex: Integer);
   private
+    procedure ReadSettingsParsers(ToolOpts: TCompilationToolOptions;
+      Cmb: TCheckComboBox; Lbl: TLabel);
+    procedure WriteSettingsParsers(ToolOpts: TCompilationToolOptions;
+      Cmb: TCheckComboBox);
+    procedure UpdateParsersLabel(Lbl: TLabel; Cmb: TCheckComboBox);
   public
     function GetTitle: string; override;
     procedure Setup({%H-}ADialog: TAbstractOptionsEditorDialog); override;
@@ -74,6 +81,20 @@ implementation
 
 procedure TCompilerCompilationOptionsFrame.CompCmdBrowseButtonClick(
   Sender: TObject);
+
+  function ShowQuality(Quality: TSDFilenameQuality;
+    const Filename, Note: string): boolean;
+  begin
+    if Quality<>sddqCompatible then begin
+      if IDEMessageDialog(lisCCOWarningCaption, Format(
+        lisTheCompilerFileDoesNotLookCorrect, [Filename, #13, Note]),
+        mtWarning,[mbIgnore,mbCancel])<>mrIgnore
+      then
+        exit(false);
+    end;
+    Result:=true;
+  end;
+
 var
   OpenDialog: TOpenDialog;
   NewFilename: string;
@@ -83,6 +104,7 @@ var
   OldFilename: string;
   OldParams: string;
   Combo: TComboBox;
+  ok: Boolean;
 begin
   OpenDialog:=TOpenDialog.Create(nil);
   try
@@ -108,37 +130,145 @@ begin
 
     if not OpenDialog.Execute then exit;
     NewFilename:=TrimAndExpandFilename(OpenDialog.Filename);
+    // check, even if new file is old filename, so the user see the warnings again
+    ok:=false;
     if Sender=BrowseCompilerButton then begin
       // check compiler filename
-      if IsFPCExecutable(NewFilename,s) then begin
-        // check compiler
-        Quality:=CheckCompilerQuality(NewFilename,Note,
-                                   CodeToolBoss.FPCDefinesCache.TestFilename);
-        if Quality<>sddqCompatible then begin
-          if IDEMessageDialog(lisCCOWarningCaption, Format(
-            lisTheCompilerFileDoesNotLookCorrect, [NewFilename, #13, Note]),
-            mtWarning,[mbIgnore,mbCancel])<>mrIgnore
-          then
-            exit;
+      case GetPascalCompilerFromExeName(NewFilename) of
+      pcPas2js:
+        if IsPas2JSExecutable(NewFilename,s) then begin
+          // check pas2js
+          Quality:=CheckPas2jsQuality(NewFilename,Note,
+                                     CodeToolBoss.CompilerDefinesCache.TestFilename);
+          if not ShowQuality(Quality,NewFilename,Note) then exit;
+          ok:=true;
         end;
-      end else begin
-        // maybe a script
-        if not CheckExecutable(OldFilename,NewFilename,lisInvalidExecutable,lisInvalidExecutableMessageText)
-        then
-          exit;
+      else
+        if IsFPCExecutable(NewFilename,s) then begin
+          // check fpc
+          Quality:=CheckCompilerQuality(NewFilename,Note,
+                                     CodeToolBoss.CompilerDefinesCache.TestFilename);
+          if not ShowQuality(Quality,NewFilename,Note) then exit;
+          ok:=true;
+        end;
       end;
+      // maybe a script
+      if (not ok)
+      and not CheckExecutable(OldFilename,NewFilename,lisInvalidExecutable,lisInvalidExecutableMessageText)
+      then
+        exit;
+      ok:=true;
     end else if (Sender=ExecBeforeBrowseButton)
     or (Sender=ExecAfterBrowseButton) then begin
       // check executable
       if not CheckExecutable(OldFilename,NewFilename,lisInvalidExecutable,lisInvalidExecutableMessageText)
       then
         exit;
+      ok:=true;
     end;
     SetComboBoxText(Combo,NewFilename,cstFilename);
   finally
     InputHistories.StoreFileDialogSettings(OpenDialog);
     OpenDialog.Free;
   end;
+end;
+
+procedure TCompilerCompilationOptionsFrame.
+  ExecAfterParsersCheckComboBoxItemChange(Sender: TObject; AIndex: Integer);
+begin
+  UpdateParsersLabel(ExecAfterParsersSumLabel,ExecAfterParsersCheckComboBox);
+end;
+
+procedure TCompilerCompilationOptionsFrame.
+  ExecBeforeParsersCheckComboBoxItemChange(Sender: TObject; AIndex: Integer);
+begin
+  UpdateParsersLabel(ExecBeforeParsersSumLabel,ExecBeforeParsersCheckComboBox);
+end;
+
+procedure TCompilerCompilationOptionsFrame.ReadSettingsParsers(
+  ToolOpts: TCompilationToolOptions; Cmb: TCheckComboBox; Lbl: TLabel);
+const
+  BoolToChecked: array[boolean] of TCheckBoxState = (cbUnchecked,cbChecked);
+var
+  l: TFPList;
+  i, j: Integer;
+  ParserClass: TExtToolParserClass;
+  s: String;
+begin
+  l:=TFPList.Create;
+  try
+    // add registered parsers
+    for i:=0 to ExternalToolList.ParserCount-1 do
+    begin
+      ParserClass:=ExternalToolList.Parsers[i];
+      j:=0;
+      while (j<l.Count)
+      and (TExtToolParserClass(l[j]).Priority>=ParserClass.Priority) do
+        inc(j);
+      l.Insert(j,ParserClass);
+    end;
+    Cmb.Clear;
+    for i:=0 to l.Count-1 do
+    begin
+      ParserClass:=TExtToolParserClass(l[i]);
+      s:=ParserClass.GetLocalizedParserName;
+      Cmb.AddItem(s,BoolToChecked[ToolOpts.HasParser[ParserClass.GetParserName]]);
+    end;
+    // add not registered parsers
+    // Note: this happens when opening a project, which needs a designtime-package
+    for i:=0 to ToolOpts.Parsers.Count-1 do
+    begin
+      s:=ToolOpts.Parsers[i];
+      if ExternalToolList.FindParserWithName(s)=nil then
+        Cmb.AddItem(s,cbChecked);
+    end;
+    UpdateParsersLabel(Lbl,Cmb);
+  finally
+    l.Free;
+  end;
+end;
+
+procedure TCompilerCompilationOptionsFrame.WriteSettingsParsers(
+  ToolOpts: TCompilationToolOptions; Cmb: TCheckComboBox);
+var
+  sl: TStringList;
+  i, j: Integer;
+begin
+  sl:=TStringList.Create;
+  try
+    for i:=0 to Cmb.Items.Count-1 do
+      if Cmb.Checked[i] then begin
+        j:=ExternalToolList.ParserCount-1;
+        while (j>=0)
+        and (Cmb.Items[i]<>ExternalToolList.Parsers[i].GetLocalizedParserName) do
+          dec(j);
+        if j>=0 then
+          sl.Add(ExternalToolList.Parsers[i].GetParserName)
+        else
+          sl.Add(Cmb.Items[i]); // not registered parser
+      end;
+    ToolOpts.Parsers:=sl;
+  finally
+    sl.Free;
+  end;
+end;
+
+procedure TCompilerCompilationOptionsFrame.UpdateParsersLabel(Lbl: TLabel;
+  Cmb: TCheckComboBox);
+var
+  s: String;
+  i: Integer;
+begin
+  s:='';
+  for i:=0 to Cmb.Items.Count-1 do
+  begin
+    if Cmb.Checked[i] then
+    begin
+      if s<>'' then s:=s+', ';
+      s:=s+Cmb.Items[i];
+    end;
+  end;
+  Lbl.Caption:=s;
 end;
 
 function TCompilerCompilationOptionsFrame.GetTitle: string;
@@ -152,16 +282,13 @@ begin
   chkCreateMakefile.Hint := lisEnabledOnlyForPackages;
 
   ExecuteBeforeGroupBox.Caption := lisCOExecuteBefore;
+  lblRunIfExecBefore.Caption := lisCOCallOn;
   chkExecBeforeBuild.Caption := lisBuildStage;
   chkExecBeforeCompile.Caption := lisCompileStage;
   chkExecBeforeRun.Caption := lisRunStage;
   ExecuteBeforeCommandComboBox.Text := '';
   ExecuteBeforeCommandLabel.Caption := lisCOCommand;
-  ExecuteBeforeScanLabel.Caption := lisCOScanForMessages;
-  ExecuteBeforeScanFPCCheckBox.Caption := 'FPC'; // do not translate name
-  ExecuteBeforeScanMakeCheckBox.Caption := 'make'; // do not translate name
-  ExecuteBeforeShowAllCheckBox.Caption := lisA2PShowAll;
-  lblRunIfExecBefore.Caption := lisCOCallOn;
+  ExecBeforeParsersLabel.Caption:=lisParsers;
 
   grpCompiler.Caption := lisCompiler;
   lblRunIfCompiler.Caption := lisCOCallOn;
@@ -173,7 +300,7 @@ begin
   chkCompilerRun.Checked := True;
   lblCompiler.Caption := lisCOCommand;
   cobCompiler.Text := '';
-  BrowseCompilerButton.Hint:='Browse and select a compiler (e.g. ppcx64'+ExeExt+')';
+  BrowseCompilerButton.Hint:=lisBrowseAndSelectACompiler+ExeExt+')';
 
   ExecuteAfterGroupBox.Caption := lisCOExecuteAfter;
   chkExecAfterBuild.Caption := lisBuildStage;
@@ -181,10 +308,7 @@ begin
   chkExecAfterRun.Caption := lisRunStage;
   ExecuteAfterCommandComboBox.Text := '';
   ExecuteAfterCommandLabel.Caption := lisCOCommand;
-  ExecuteAfterScanLabel.Caption := lisCOScanForMessages;
-  ExecuteAfterScanFPCCheckBox.Caption := 'FPC'; // do not translate name
-  ExecuteAfterScanMakeCheckBox.Caption := 'make'; // do not translate name
-  ExecuteAfterShowAllCheckBox.Caption := lisA2PShowAll;
+  ExecAfterParsersLabel.Caption:=lisParsers;
   lblRunIfExecAfter.Caption := lisCOCallOn;
 end;
 
@@ -194,11 +318,13 @@ var
 begin
   chkCreateMakefile.Checked := Options.CreateMakefileOnBuild;
 
-  ExecuteBeforeCommandComboBox.Text := Options.ExecuteBefore.Command;
-  ExecuteBeforeScanFPCCheckBox.Checked := Options.ExecuteBefore.ScanForFPCMessages;
-  ExecuteBeforeScanMakeCheckBox.Checked :=
-    Options.ExecuteBefore.ScanForMakeMessages;
-  ExecuteBeforeShowAllCheckBox.Checked := Options.ExecuteBefore.ShowAllMessages;
+  // execute before
+  with ExecuteBeforeCommandComboBox do begin
+    Items.BeginUpdate;
+    Items.Assign(InputHistories.HistoryLists.GetList('BuildExecBefore',true,rltFile));
+    SetComboBoxText(ExecuteBeforeCommandComboBox,Options.ExecuteBefore.Command,cstCaseSensitive);
+    Items.EndUpdate;
+  end;
   if Options.ExecuteBefore is TProjectCompilationToolOptions then
     with TProjectCompilationToolOptions(Options.ExecuteBefore) do
     begin
@@ -217,7 +343,10 @@ begin
     chkExecBeforeBuild.Visible := False;
     chkExecBeforeRun.Visible := False;
   end;
+  ReadSettingsParsers(Options.ExecuteBefore,ExecBeforeParsersCheckComboBox,
+    ExecBeforeParsersSumLabel);
 
+  // compiler path
   with cobCompiler do begin
     Items.BeginUpdate;
     Items.Assign(EnvironmentOptions.CompilerFileHistory);
@@ -225,12 +354,6 @@ begin
     SetComboBoxText(cobCompiler,Options.CompilerPath,cstFilename);
     Items.EndUpdate;
   end;
-
-  ExecuteBeforeCommandComboBox.Items.Assign(
-    InputHistories.HistoryLists.GetList('BuildExecBefore',true,rltFile));
-  ExecuteAfterCommandComboBox.Items.Assign(
-    InputHistories.HistoryLists.GetList('BuildExecAfter',true,rltFile));
-
   if Options is TProjectCompilerOptions then
     with TProjectCompilerOptions(Options) do
     begin
@@ -268,10 +391,13 @@ begin
     cobCompiler.AnchorParallel(akTop, 0, lblCompiler.Parent);
   end;
 
-  ExecuteAfterCommandComboBox.Text := Options.ExecuteAfter.Command;
-  ExecuteAfterScanFPCCheckBox.Checked := Options.ExecuteAfter.ScanForFPCMessages;
-  ExecuteAfterScanMakeCheckBox.Checked := Options.ExecuteAfter.ScanForMakeMessages;
-  ExecuteAfterShowAllCheckBox.Checked := Options.ExecuteAfter.ShowAllMessages;
+  // execute after
+  with ExecuteAfterCommandComboBox do begin
+    Items.BeginUpdate;
+    Items.Assign(InputHistories.HistoryLists.GetList('BuildExecAfter',true,rltFile));
+    SetComboBoxText(ExecuteAfterCommandComboBox,Options.ExecuteAfter.Command,cstCaseSensitive);
+    Items.EndUpdate;
+  end;
   if Options.ExecuteAfter is TProjectCompilationToolOptions then
     with TProjectCompilationToolOptions(Options.ExecuteAfter) do
     begin
@@ -290,6 +416,8 @@ begin
     chkExecAfterBuild.Visible := False;
     chkExecAfterRun.Visible := False;
   end;
+  ReadSettingsParsers(Options.ExecuteAfter,ExecAfterParsersCheckComboBox,
+    ExecAfterParsersSumLabel);
 end;
 
 procedure TCompilerCompilationOptionsFrame.WriteSettings(AOptions: TAbstractIDEOptions);
@@ -307,23 +435,25 @@ var
 begin
   Options.CreateMakefileOnBuild := chkCreateMakefile.Checked;
 
+  // execute before
   Options.ExecuteBefore.Command := ExecuteBeforeCommandComboBox.Text;
-  Options.ExecuteBefore.ScanForFPCMessages := ExecuteBeforeScanFPCCheckBox.Checked;
-  Options.ExecuteBefore.ScanForMakeMessages :=ExecuteBeforeScanMakeCheckBox.Checked;
-  Options.ExecuteBefore.ShowAllMessages := ExecuteBeforeShowAllCheckBox.Checked;
+  with InputHistories.HistoryLists.GetList('BuildExecBefore',true,rltCaseSensitive) do begin
+    Assign(ExecuteBeforeCommandComboBox.Items);
+    Push(Options.ExecuteBefore.Command);
+  end;
+
+  WriteSettingsParsers(Options.ExecuteBefore,ExecBeforeParsersCheckComboBox);
+
   if Options.ExecuteBefore is TProjectCompilationToolOptions then
   begin
     TProjectCompilationToolOptions(Options.ExecuteBefore).CompileReasons :=
       MakeCompileReasons(chkExecBeforeCompile, chkExecBeforeBuild, chkExecBeforeRun);
   end;
 
+  // compiler path
   Options.CompilerPath := cobCompiler.Text;
   EnvironmentOptions.CompilerFileHistory.Assign(cobCompiler.Items);
-
-  InputHistories.HistoryLists.GetList('BuildExecBefore',true,rltFile).Assign(
-    ExecuteBeforeCommandComboBox.Items);
-  InputHistories.HistoryLists.GetList('BuildExecAfter',true,rltFile).Assign(
-    ExecuteAfterCommandComboBox.Items);
+  AddToRecentList(Options.CompilerPath,EnvironmentOptions.CompilerFileHistory,30,rltFile);
 
   if Options is TProjectCompilerOptions then
   begin
@@ -333,10 +463,13 @@ begin
   else if Options is TPkgCompilerOptions then
     TPkgCompilerOptions(Options).SkipCompiler := chkCompilerCompile.Checked;
 
+  // execute after
   Options.ExecuteAfter.Command := ExecuteAfterCommandComboBox.Text;
-  Options.ExecuteAfter.ScanForFPCMessages := ExecuteAfterScanFPCCheckBox.Checked;
-  Options.ExecuteAfter.ScanForMakeMessages :=ExecuteAfterScanMakeCheckBox.Checked;
-  Options.ExecuteAfter.ShowAllMessages := ExecuteAfterShowAllCheckBox.Checked;
+  with InputHistories.HistoryLists.GetList('BuildExecAfter',true,rltCaseSensitive) do begin
+    Assign(ExecuteAfterCommandComboBox.Items);
+    Push(Options.ExecuteAfter.Command);
+  end;
+  WriteSettingsParsers(Options.ExecuteAfter,ExecAfterParsersCheckComboBox);
   if Options.ExecuteAfter is TProjectCompilationToolOptions then
   begin
     TProjectCompilationToolOptions(Options.ExecuteAfter).CompileReasons :=

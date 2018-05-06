@@ -34,7 +34,7 @@ interface
 uses
   Types, Classes, SysUtils, Math, LCLType, LCLProc, LCLIntf, LCLStrConsts,
   GraphType, Graphics, ImgList, ActnList, Controls, StdCtrls, LMessages, Forms,
-  Themes, Menus{for ShortCut procedures}, LResources, ImageListCache;
+  Themes, Menus, LResources, ImageListCache;
 
 type
   TButtonLayout =
@@ -74,17 +74,28 @@ type
     FShowMode: TGlyphShowMode;
     FImageIndexes: array[TButtonState] of Integer;
     FImages: TCustomImageList;
+    FExternalImages: TCustomImageList;
+    FExternalImageIndex: Integer;
+    FExternalImageWidth: Integer;
+    FLCLGlyphResourceName: string;
     FOriginal: TBitmap;
     FNumGlyphs: TNumGlyphs;
     FOnChange: TNotifyEvent;
     FImagesCache: TImageListCache;
     FTransparentMode: TGlyphTransparencyMode;         // set by our owner to indicate that the glyphbitmap should be transparent
+    FLCLGlyphName: string;
     function GetHeight: Integer;
+    function GetNumGlyphs: TNumGlyphs;
     function GetWidth: Integer;
+    procedure SetExternalImageIndex(const AExternalImageIndex: Integer);
+    procedure SetExternalImages(const AExternalImages: TCustomImageList);
+    procedure SetExternalImageWidth(const AExternalImageWidth: Integer);
     procedure SetGlyph(Value: TBitmap);
     procedure SetNumGlyphs(Value: TNumGlyphs);
     procedure SetShowMode(const AValue: TGlyphShowMode);
     procedure ClearImages;
+    procedure ClearLCLGlyph;
+    procedure SetLCLGlyphName(const ALCLGlyphName: string);
   public
     // IUnknown
     function QueryInterface(constref iid: TGuid; out obj): LongInt; {$IFDEF WINDOWS}stdcall{$ELSE}cdecl{$ENDIF};
@@ -94,6 +105,9 @@ type
     procedure CacheSetImageList(AImageList: TCustomImageList);
     procedure CacheSetImageIndex(AIndex, AImageIndex: Integer);
   protected
+    function CanShow: Boolean;
+    function CanShowGlyph: Boolean;
+    procedure DoChange; virtual;
     procedure GlyphChanged(Sender: TObject);
     procedure SetTransparentMode(AValue: TGlyphTransparencyMode);
     
@@ -101,15 +115,25 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    procedure GetImageIndexAndEffect(State: TButtonState; out AIndex: Integer; out AEffect: TGraphicsDrawEffect);
+    procedure GetImageIndexAndEffect(State: TButtonState;
+      APPI: Integer; const ACanvasScaleFactor: Double;
+      out AImageResolution: TScaledImageListResolution;
+      out AIndex: Integer; out AEffect: TGraphicsDrawEffect);
     function Draw(Canvas: TCanvas; const Client: TRect; const Offset: TPoint;
                   State: TButtonState; Transparent: Boolean;
                   BiDiFlags: Longint): TRect;
+    function Draw(Canvas: TCanvas; const Client: TRect; const Offset: TPoint;
+                  State: TButtonState; Transparent: Boolean;
+                  BiDiFlags, PPI: Longint; const ScaleFactor: Double): TRect;
     procedure Refresh;
     property Glyph: TBitmap read FOriginal write SetGlyph;
     property IsDesigning: Boolean read FIsDesigning write FIsDesigning;
-    property NumGlyphs: TNumGlyphs read FNumGlyphs write SetNumGlyphs;
+    property NumGlyphs: TNumGlyphs read GetNumGlyphs write SetNumGlyphs;
     property Images: TCustomImageList read FImages;
+    property LCLGlyphName: string read FLCLGlyphName write SetLCLGlyphName;
+    property ExternalImages: TCustomImageList read FExternalImages write SetExternalImages;
+    property ExternalImageIndex: Integer read FExternalImageIndex write SetExternalImageIndex;
+    property ExternalImageWidth: Integer read FExternalImageWidth write SetExternalImageWidth;
     property Width: Integer read GetWidth;
     property Height: Integer read GetHeight;
     property ShowMode: TGlyphShowMode read FShowMode write SetShowMode;
@@ -133,9 +157,11 @@ type
     FLayout: TButtonLayout;
     FMargin: integer;
     FSpacing: Integer;
+    FImageChangeLink: TChangeLink;
     function GetGlyph: TBitmap;
     function GetGlyphShowMode: TGlyphShowMode;
     function GetNumGlyphs: Integer;
+    procedure ImageListChange(Sender: TObject);
     function IsGlyphStored: Boolean;
     procedure SetGlyph(AValue: TBitmap);
     procedure SetGlyphShowMode(const AValue: TGlyphShowMode);
@@ -144,9 +170,15 @@ type
     procedure SetMargin(const AValue: integer);
     procedure SetNumGlyphs(AValue: Integer);
     procedure SetSpacing(AValue: Integer);
-    procedure RealizeKind;
+    procedure RealizeKind(ForceDefaults: Boolean);
     //Return the caption associated with the aKind value.
     function GetCaptionOfKind(AKind: TBitBtnKind): String;
+    function GetImages: TCustomImageList;
+    procedure SetImages(const aImages: TCustomImageList);
+    function GetImageIndex: TImageIndex;
+    procedure SetImageIndex(const aImageIndex: TImageIndex);
+    function GetImageWidth: Integer;
+    procedure SetImageWidth(const aImageWidth: Integer);
   protected
     FButtonGlyph: TButtonGlyph;
     class procedure WSRegisterClass; override;
@@ -155,6 +187,8 @@ type
     procedure InitializeWnd; override;
     function IsCaptionStored: Boolean;
     procedure Loaded; override;
+    procedure Notification(AComponent: TComponent;
+      Operation: TOperation); override;
     procedure TextChanged; override;
     class function GetControlClassDefaultSize: TSize; override;
     procedure CMAppShowBtnGlyphChanged(var Message: TLMessage); message CM_APPSHOWBTNGLYPHCHANGED;
@@ -171,6 +205,9 @@ type
     property DefaultCaption: Boolean read FDefaultCaption write FDefaultCaption default False;
     property Glyph: TBitmap read GetGlyph write SetGlyph stored IsGlyphStored;
     property NumGlyphs: Integer read GetNumGlyphs write SetNumGlyphs default 1;
+    property Images: TCustomImageList read GetImages write SetImages;
+    property ImageIndex: TImageIndex read GetImageIndex write SetImageIndex default -1;
+    property ImageWidth: Integer read GetImageWidth write SetImageWidth default 0;
     property Kind: TBitBtnKind read FKind write SetKind default bkCustom;
     property Layout: TButtonLayout read FLayout write SetLayout default blGlyphLeft;
     property Margin: integer read FMargin write SetMargin default -1;
@@ -205,6 +242,9 @@ type
     property Margin;
     property ModalResult;
     property NumGlyphs;
+    property Images;
+    property ImageIndex;
+    property ImageWidth;
     property OnChangeBounds;
     property OnClick;
     property OnContextPopup;
@@ -257,6 +297,7 @@ type
   private
     FGlyph: TButtonGlyph;
     FGroupIndex: Integer;
+    FImageChangeLink: TChangeLink;
     FLastDrawDetails: TThemedElementDetails;
     FLayout: TButtonLayout;
     FMargin: integer;
@@ -271,6 +312,7 @@ type
     FFlat: Boolean;
     FMouseInControl: Boolean;
     function GetGlyph: TBitmap;
+    procedure ImageListChange(Sender: TObject);
     function IsGlyphStored: Boolean;
     procedure SetShowCaption(const AValue: boolean);
     procedure UpdateExclusive;
@@ -287,11 +329,18 @@ type
     procedure WMLButtonDown(Var Message: TLMLButtonDown); message LM_LBUTTONDOWN;
     procedure WMLButtonUp(var Message: TLMLButtonUp); message LM_LBUTTONUP;
     procedure WMLButtonDBLCLK(Var Message: TLMLButtonDblClk); message LM_LBUTTONDBLCLK;
+    function GetImages: TCustomImageList;
+    procedure SetImages(const aImages: TCustomImageList);
+    function GetImageIndex: TImageIndex;
+    procedure SetImageIndex(const aImageIndex: TImageIndex);
+    function GetImageWidth: Integer;
+    procedure SetImageWidth(const aImageWidth: Integer);
   protected
     FState: TButtonState;
     class procedure WSRegisterClass; override;
+    function ButtonGlyph: TButtonGlyph;
     function GetNumGlyphs: Integer;
-    procedure GlyphChanged(Sender: TObject);
+    procedure GlyphChanged(Sender: TObject); virtual;
     function  DialogChar(var Message: TLMKey): boolean; override;
     procedure CalculatePreferredSize(var PreferredWidth,
       PreferredHeight: integer; WithThemeSpace: Boolean); override;
@@ -304,6 +353,8 @@ type
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState;
       X, Y: Integer); override;
+    procedure Notification(AComponent: TComponent;
+      Operation: TOperation); override;
     procedure Paint; override;
     procedure PaintBackground(var PaintRect: TRect); virtual;
     procedure SetDown(Value: Boolean);
@@ -339,6 +390,9 @@ type
     property Flat: Boolean read FFlat write SetFlat default false;
     property Glyph: TBitmap read GetGlyph write SetGlyph stored IsGlyphStored;
     property GroupIndex: Integer read FGroupIndex write SetGroupIndex default 0;
+    property Images: TCustomImageList read GetImages write SetImages;
+    property ImageIndex: TImageIndex read GetImageIndex write SetImageIndex default -1;
+    property ImageWidth: Integer read GetImageWidth write SetImageWidth default 0;
     property Layout: TButtonLayout read FLayout write SetLayout default blGlyphLeft;
     property Margin: integer read FMargin write SetMargin default -1;
     property NumGlyphs: Integer read GetNumGlyphs write SetNumGlyphs default 1;
@@ -369,6 +423,9 @@ type
     property Font;
     property Glyph;
     property GroupIndex;
+    property Images;
+    property ImageIndex;
+    property ImageWidth;
     property Layout;
     property Margin;
     property NumGlyphs;
@@ -423,7 +480,7 @@ procedure LoadGlyphFromStock(AGlyph: TButtonGlyph; idButton: Integer);
 
 // helper functions (search LCLType for idButton)
 function GetButtonCaption(idButton: Integer): String;
-function GetDefaultButtonIcon(idButton: Integer): TCustomBitmap;
+function GetDefaultButtonIcon(idButton: Integer; ScalePercent: Integer = 100): TCustomBitmap;
 function GetButtonIcon(idButton: Integer): TCustomBitmap;
 function BidiAdjustButtonLayout(IsRightToLeft: Boolean; Layout: TButtonLayout): TButtonLayout;
 
@@ -470,15 +527,17 @@ begin
   Result := GetDefaultButtonIcon(BitBtnImages[Kind]);
 end;
 
-function GetDefaultButtonIcon(idButton: Integer): TCustomBitmap;
+function GetDefaultButtonIcon(idButton: Integer;
+  ScalePercent: Integer): TCustomBitmap;
+var
+  ResName: string;
 begin
   Result := nil;
   if (idButton < Low(BitBtnResNames)) or (idButton > High(BitBtnResNames)) then
     Exit;
   if BitBtnResNames[idButton] = '' then
     Exit;
-  Result := TPortableNetworkGraphic.Create;
-  Result.LoadFromResourceName(hInstance, BitBtnResNames[idButton]);
+  Result := GetDefaultGlyph(BitBtnResNames[idButton], ScalePercent);
 end;
 
 procedure LoadGlyphFromResourceName(AGlyph: TButtonGlyph; Instance: THandle; const AName: String);

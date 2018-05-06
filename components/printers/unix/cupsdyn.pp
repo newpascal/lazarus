@@ -1,22 +1,10 @@
 {
- ***************************************************************************
- *                                                                         *
- *   This source is free software; you can redistribute it and/or modify   *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- *   This code is distributed in the hope that it will be useful, but      *
- *   WITHOUT ANY WARRANTY; without even the implied warranty of            *
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU     *
- *   General Public License for more details.                              *
- *                                                                         *
- *   A copy of the GNU General Public License is available on the World    *
- *   Wide Web at <http://www.gnu.org/copyleft/gpl.html>. You can also      *
- *   obtain it by writing to the Free Software Foundation,                 *
- *   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.   *
- *                                                                         *
- ***************************************************************************
+ *****************************************************************************
+  This file is part of the Printer4Lazarus package
+
+  See the file COPYING.modifiedLGPL.txt, included in this distribution,
+  for details about the license.
+ *****************************************************************************
 
   Author: Olivier GUILBAUD
 
@@ -40,6 +28,8 @@
    nov  04 2003 - First release
    mars 08 2005 - Dynamique link lib by Jesus Reyes (big thanks)
                 - Some modifications for work with Mdk 10.1
+   nov  26 2017 - Moved to directory packages/libcups/ under FPC 3.1.1 sources.
+     Can be removed from Lazarus sources when FPC 3.2.0 is the minimum requirement.
 ------------------------------------------------------------------------------}
 unit cupsdyn;
 

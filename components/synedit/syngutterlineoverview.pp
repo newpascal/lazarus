@@ -319,6 +319,7 @@ type
     procedure Assign(Source: TPersistent); override;
     procedure Paint(Canvas: TCanvas; AClip: TRect; FirstLine, LastLine: integer); override;
     procedure AddMark(AMark: TSynGutterLOvMark);
+    procedure ScalePPI(const AScaleFactor: Double); override;
 
     function MaybeHandleMouseAction(var AnInfo: TSynEditMouseActionInfo;
       HandleActionProc: TSynEditMouseActionHandler): Boolean; override;
@@ -1041,7 +1042,7 @@ var
 begin
   if FFirstTextLineChanged > 0 then ReScan;
 
-  AClip.Right := AClip.Left + 3;
+  AClip.Right := AClip.Left + Round((AClip.Right - AClip.Left) / 3);
   i := AClip.Top - TopOffset;
   imax := AClip.Bottom - TopOffset;
   if imax > high(FPixLineStates) then imax := high(FPixLineStates);
@@ -1112,7 +1113,7 @@ procedure TSynGutterLOvProviderModifiedLines.BufferChanged(Sender: TObject);
 begin
   TSynEditStringList(Sender).RemoveHanlders(self);
   TSynEditStringList(TextBuffer).AddModifiedHandler(senrLinesModified, @LineModified);
-  TSynEditStringList(TextBuffer).AddGenericHandler(senrTextBufferChanged, TMethod(@BufferChanged));
+  TSynEditStringList(TextBuffer).AddNotifyHandler(senrTextBufferChanged, @BufferChanged);
 end;
 
 procedure TSynGutterLOvProviderModifiedLines.LineModified(Sender: TSynEditStrings; aIndex,
@@ -1145,7 +1146,7 @@ constructor TSynGutterLOvProviderModifiedLines.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   TSynEditStringList(TextBuffer).AddModifiedHandler(senrLinesModified, @LineModified);
-  TSynEditStringList(TextBuffer).AddGenericHandler(senrTextBufferChanged, TMethod(@BufferChanged));
+  TSynEditStringList(TextBuffer).AddNotifyHandler(senrTextBufferChanged, @BufferChanged);
   TCustomSynEdit(SynEdit).RegisterStatusChangedHandler(@SynStatusChanged, [scModified]);
   FFirstTextLineChanged := -1;
   FLastTextLineChanged := -1;
@@ -1257,8 +1258,8 @@ var
   i: Integer;
 begin
   TSynEditStringList(Sender).RemoveHanlders(self);
-  TSynEditStringList(TextBuffer).AddGenericHandler(senrTextBufferChanging, TMethod(@BufferChanging));
-  TSynEditStringList(TextBuffer).AddGenericHandler(senrTextBufferChanged, TMethod(@BufferChanged));
+  TSynEditStringList(TextBuffer).AddNotifyHandler(senrTextBufferChanging, @BufferChanging);
+  TSynEditStringList(TextBuffer).AddNotifyHandler(senrTextBufferChanged, @BufferChanged);
   TCustomSynEdit(SynEdit).Marks.RegisterChangeHandler(@DoMarkChange,
     [smcrAdded, smcrRemoved, smcrLine, smcrVisible, smcrChanged]);
 
@@ -1278,8 +1279,8 @@ var
 begin
   inherited Create(AOwner);
   Color := clBlue;
-  TSynEditStringList(TextBuffer).AddGenericHandler(senrTextBufferChanging, TMethod(@BufferChanging));
-  TSynEditStringList(TextBuffer).AddGenericHandler(senrTextBufferChanged, TMethod(@BufferChanged));
+  TSynEditStringList(TextBuffer).AddNotifyHandler(senrTextBufferChanging, @BufferChanging);
+  TSynEditStringList(TextBuffer).AddNotifyHandler(senrTextBufferChanged, @BufferChanged);
 
   TCustomSynEdit(SynEdit).Marks.RegisterChangeHandler(@DoMarkChange,
     [smcrAdded, smcrRemoved, smcrLine, smcrVisible, smcrChanged]);
@@ -1316,8 +1317,8 @@ end;
 procedure TSynGutterLineOverview.Init;
 begin
   inherited Init;
-  TSynEditStringList(TextBuffer).AddGenericHandler(senrLineCount, TMethod(@LineCountChanged));
-  TSynEditStringList(TextBuffer).AddGenericHandler(senrTextBufferChanged, TMethod(@BufferChanged));
+  TSynEditStringList(TextBuffer).AddChangeHandler(senrLineCount, @LineCountChanged);
+  TSynEditStringList(TextBuffer).AddNotifyHandler(senrTextBufferChanged, @BufferChanged);
   FWinControl := TSynChildWinControl.Create(Self);
   FWinControl.Parent := SynEdit;
   FWinControl.DoubleBuffered := SynEdit.DoubleBuffered;
@@ -1353,8 +1354,8 @@ end;
 procedure TSynGutterLineOverview.BufferChanged(Sender: TObject);
 begin
   TSynEditStringList(Sender).RemoveHanlders(self);
-  TSynEditStringList(TextBuffer).AddGenericHandler(senrLineCount, TMethod(@LineCountChanged));
-  TSynEditStringList(TextBuffer).AddGenericHandler(senrTextBufferChanged, TMethod(@BufferChanged));
+  TSynEditStringList(TextBuffer).AddChangeHandler(senrLineCount, @LineCountChanged);
+  TSynEditStringList(TextBuffer).AddNotifyHandler(senrTextBufferChanged, @BufferChanged);
   LineCountChanged(nil, 0, 0);
 end;
 
@@ -1541,9 +1542,16 @@ begin
   Result := 10;
 end;
 
+procedure TSynGutterLineOverview.ScalePPI(const AScaleFactor: Double);
+begin
+  AutoSize := False;
+  FLineMarks.ItemHeight := Round(FLineMarks.ItemHeight*AScaleFactor);
+  inherited ScalePPI(AScaleFactor);
+end;
+
 procedure TSynGutterLineOverview.Assign(Source : TPersistent);
 begin
-  if Assigned(Source) and (Source is TSynGutterLineOverview) then
+  if Source is TSynGutterLineOverview then
   begin
     inherited;
     // Todo: assign providerlist?

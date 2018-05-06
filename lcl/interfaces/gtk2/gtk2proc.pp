@@ -43,6 +43,7 @@ uses
     {$endif}
   // Other units
   Math, // Math after gtk to get the correct Float type
+  Types,
   // LCL
   LMessages, LCLProc, LCLIntf, LCLType, GraphType, Graphics,
   LResources, Controls, Forms, Buttons, Menus, StdCtrls, ComCtrls, ExtCtrls,
@@ -96,10 +97,11 @@ function gtkshowCB( {%H-}widget: PGtkWidget; data: gPointer): GBoolean; cdecl;
 function gtkHideCB( {%H-}widget: PGtkWidget; data: gPointer): GBoolean; cdecl;
 function gtkactivateCB(widget: PGtkWidget; data: gPointer): GBoolean; cdecl;
 function gtkchangedCB( widget: PGtkWidget; data: gPointer): GBoolean; cdecl;
+procedure gtkchanged_editbox_delete_text(Widget: PGtkWidget;
+  {%H-}AStartPos, {%H-}AEndPos: gint; {%H-}data: gPointer); cdecl;
+procedure gtkchanged_editbox_insert_text(Widget: PGtkWidget; {%H-}ANewText: gChar;
+  {%H-}ANewTextLength: gint; {%H-}APosition: pgint; {%H-}data: gPointer); cdecl;
 function gtkchanged_editbox( widget: PGtkWidget; data: gPointer): GBoolean; cdecl;
-function gtkchanged_spinbox(widget: PGtkWidget; data: gPointer): GBoolean; cdecl;
-function gtkchanged_editbox_backspace( widget: PGtkWidget;
-  {%H-}data: gPointer): GBoolean; cdecl;
 function gtkchanged_editbox_delete(widget: PGtkWidget;
   {%H-}AType: TGtkDeleteType; {%H-}APos: gint; {%H-}data: gPointer): GBoolean; cdecl;
 function gtkdaychanged(Widget: PGtkWidget; data: gPointer): GBoolean; cdecl;
@@ -184,9 +186,9 @@ function gtkMoveToColumn( {%H-}widget: PGtkWidget; data: gPointer): GBoolean; cd
 function gtkKillChar( {%H-}widget: PGtkWidget; data: gPointer): GBoolean; cdecl;
 function gtkKillWord( {%H-}widget: PGtkWidget; data: gPointer): GBoolean; cdecl;
 function gtkKillLine( {%H-}widget: PGtkWidget; data: gPointer): GBoolean; cdecl;
-function gtkCutToClip( widget: PGtkWidget; data: gPointer): GBoolean; cdecl;
+function gtkCutToClip( {%H-}widget: PGtkWidget; data: gPointer): GBoolean; cdecl;
 function gtkCopyToClip( {%H-}widget: PGtkWidget; data: gPointer): GBoolean; cdecl;
-function gtkPasteFromClip( widget: PGtkWidget; data: gPointer): GBoolean; cdecl;
+function gtkPasteFromClip( {%H-}widget: PGtkWidget; data: gPointer): GBoolean; cdecl;
 function gtkValueChanged({%H-}widget: PGtkWidget; data: gPointer): GBoolean; cdecl;
 function gtkTimerCB(Data: gPointer): gBoolean; cdecl;
 function gtkFocusInNotifyCB (widget: PGtkWidget; {%H-}event: PGdkEvent;
@@ -856,7 +858,9 @@ type
     window: PGdkWindow;
     send_event: gint8;
     time: guint32;
+    state : guint;
     keyval: guint;
+    hardware_keycode : guint16;
     constructor Create(Event: PGdkEventKey);
     function IsEqual(Event: PGdkEventKey): boolean;
   end;
@@ -872,7 +876,14 @@ begin
   window:=Event^.window;
   send_event:=Event^.send_event;
   time:=Event^.time;
+  state:=Event^.state;
   keyval:=Event^.keyval;
+  // event^.length ?
+  // event^._string ?
+  hardware_keycode:=event^.hardware_keycode;
+  {$IFDEF LCLGtk2Fix30544}
+  debugln(['TLCLHandledKeyEvent.Create thetype=',thetype,' window=',dbgs(Pointer(window)),' send_event=',send_event,' time=',time,' state=',state,' keyval=',keyval,' hardware_keycode=',hardware_keycode]);
+  {$ENDIF}
 end;
 
 function TLCLHandledKeyEvent.IsEqual(Event: PGdkEventKey): boolean;
@@ -881,7 +892,14 @@ begin
       and (window=Event^.window)
       and (send_event=Event^.send_event)
       and (time=Event^.time)
-      and (keyval=Event^.keyval);
+      {$IFDEF LCLGtk2Fix30544}
+      and (state=Event^.state) // bug 30544
+      {$ENDIF}
+      and (keyval=Event^.keyval)
+      {$IFDEF LCLGtk2Fix30544}
+      and (hardware_keycode=Event^.hardware_keycode) // bug 30544
+      {$ENDIF}
+      ;
 end;
 
 var

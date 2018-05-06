@@ -1656,7 +1656,7 @@ end;
 class function TSynClipboardStream.ClipboardFormatId: TClipboardFormat;
 const
   SYNEDIT_CLIPBOARD_FORMAT_TAGGED = 'Application/X-Laz-SynEdit-Tagged';
-  Format: UINT = 0;
+  Format: TClipboardFormat = 0;
 begin
   if Format = 0 then
     Format := ClipboardRegisterFormat(SYNEDIT_CLIPBOARD_FORMAT_TAGGED);
@@ -1689,7 +1689,7 @@ begin
     end;
   end;
   // Normal text
-  if (FTextP = nil) and AClipboard.HasFormat(CF_TEXT) then begin
+  if (FTextP = nil) then begin
     Result := true;
     FText := AClipboard.AsText;
     if FText <> '' then begin

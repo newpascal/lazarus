@@ -128,7 +128,7 @@ begin
     AutoDisplayFunctionPrototypes := AutoDisplayFuncProtoCheckBox.Checked;
 
     CompletionLongLineHintInMSec := CompletionDropDownHintTrackBar.Position;
-    CompletionLongLineHintType :=  TSynCompletionLongHintType(CompletionDropDownHint.ItemIndex);
+    CompletionLongLineHintType := TSynCompletionLongHintType(CompletionDropDownHint.ItemIndex);
 
   end;
 end;

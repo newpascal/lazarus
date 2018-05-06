@@ -124,16 +124,16 @@ msgid "Cannot write file%s%s%s%sYou can press \"Retry\" to refresh this translat
 msgstr "Невозможно записать файл%s%s%s%sВы можете нажать \"Повтор\", чтобы снова попытаться обновить это семейство переводов и продолжить далее."
 
 #: pocheckerconsts.scheckforduplicateuntranslatedvalues
-msgid "Check for duplicate untranslated values"
-msgstr "Поиск дублирующихся непереведённых строк"
+msgid "Check for duplicate originals"
+msgstr "Поиск дублирующихся исходных строк"
 
 #: pocheckerconsts.scheckforincompatibleformatarguments
 msgid "Check for incompatible format arguments"
 msgstr "Поиск несовместимых аргументов форматирования"
 
 #: pocheckerconsts.scheckformismatchesinuntranslatedstrings
-msgid "Check for mismatches in untranslated strings"
-msgstr "Поиск несоответствий непереведённых строк"
+msgid "Check for mismatches of originals"
+msgstr "Поиск несоответствий исходных строк"
 
 #: pocheckerconsts.scheckmissingidentifiers
 msgid "Check missing identifiers"
@@ -143,17 +143,13 @@ msgstr "Поиск отсутствующих идентификаторов"
 msgid "Check number of items"
 msgstr "Проверка числа строк"
 
-#: pocheckerconsts.scheckstatistics
-msgid "Check percentage of (un)translated and fuzzy strings"
-msgstr "Вывод статистики по (не)переведённым и неточным строкам"
-
 #: pocheckerconsts.sclearlistbox
 msgid "Clear"
 msgstr "Очистить"
 
-#: pocheckerconsts.scopycaption
-msgid "Copy to clipboard"
-msgstr "Копировать в буфер обмена"
+#: pocheckerconsts.scopy
+msgid "&Copy"
+msgstr "&Копировать"
 
 #: pocheckerconsts.screatingiconxofy
 msgid "Creating icon nr. %d of %d"
@@ -168,8 +164,12 @@ msgid "[Line %d] %s"
 msgstr "[Строка %d] %s"
 
 #: pocheckerconsts.sduplicateoriginals
-msgid "The (untranslated) value \"%s\" is used for more than 1 entry:"
+msgid "Original value \"%s\" is used for more than 1 entry:"
 msgstr "Исходное значение \"%s\" имеется в нескольких элементах:"
+
+#: pocheckerconsts.sduplicateoriginalstab
+msgid "Duplicate Originals"
+msgstr "Дублирующиеся исходные строки"
 
 #: pocheckerconsts.serroroncleanup
 msgid ""
@@ -193,6 +193,10 @@ msgstr ""
 msgid "Errors / warnings reported by %s for:"
 msgstr "Ошибки и предупреждения, найденные %s для:"
 
+#: pocheckerconsts.sfile
+msgid "File %s"
+msgstr "Файл %s"
+
 #: pocheckerconsts.sfilesnotfoundandremoved
 msgid ""
 "The following non-existent files were removed from the list:\n"
@@ -201,9 +205,17 @@ msgstr ""
 "Следующие несуществующие файлы были удалены из списка:\n"
 "%s\n"
 
+#: pocheckerconsts.sfuzzystrings
+msgid "Fuzzy strings"
+msgstr "Неточные переводы"
+
 #: pocheckerconsts.sfuzzystringstotal
 msgid "Fuzzy strings (total: %s)"
 msgstr "Неточные переводы (всего: %s)"
+
+#: pocheckerconsts.sgeneralinfo
+msgid "General Info"
+msgstr "Общие сведения"
 
 #: pocheckerconsts.sgrapstatformcaption
 msgid "Graphical summary"
@@ -217,13 +229,17 @@ msgstr "Средство проверки файлов PO"
 msgid "Identifier [%s] not found in %s"
 msgstr "Идентификатор [%s] не найден в %s"
 
-#: pocheckerconsts.signorefuzzytranslations
-msgid "Ignore translated strings marked as \"fuzzy\""
-msgstr "Не учитывать \"неточные\" строки переводов"
-
 #: pocheckerconsts.sincompatibleformatargs
 msgid "[Line: %d] Incompatible and/or invalid format() arguments for:"
 msgstr "[Строка: %d] Несовместимые и/или неверные аргументы для Format() в:"
+
+#: pocheckerconsts.slanguage
+msgid "Language:"
+msgstr "Язык:"
+
+#: pocheckerconsts.slastsearchpath
+msgid "Last search path:"
+msgstr "Последний путь поиска:"
 
 #: pocheckerconsts.slineinfilename
 msgid "[Line %d] in %s:"
@@ -236,10 +252,6 @@ msgstr "[Строка: %d]"
 #: pocheckerconsts.smissingmasteridentifier
 msgid "Identifier [%s] found in %s, but it does not exist in %s"
 msgstr "Идентификатор [%s] найден в %s, но отсутствует в %s"
-
-#: pocheckerconsts.snoerrorsfound
-msgid "No errors found"
-msgstr "Ошибок не найдено"
 
 #: pocheckerconsts.snofileslefttocheck
 msgid "There are no files left to check."
@@ -341,9 +353,9 @@ msgstr "Результаты"
 msgid "&Run Selected Tests"
 msgstr "&Запустить выбранные тесты"
 
-#: pocheckerconsts.ssavecaption
-msgid "Save to file"
-msgstr "Сохранить в файл"
+#: pocheckerconsts.ssaveas
+msgid "Save &As ..."
+msgstr "Сохранить &как ..."
 
 #: pocheckerconsts.ssaveerror
 msgid ""
@@ -402,8 +414,12 @@ msgid "The following %s orphaned .po file(s) found:"
 msgstr "Найдены файлы переводов PO (%s шт.) без соответствующих им главных файлов:"
 
 #: pocheckerconsts.stotalerrors
-msgid "Total errors found: %d"
-msgstr "Всего найдено ошибок: %d"
+msgid "Total errors: %d"
+msgstr "Всего ошибок: %d"
+
+#: pocheckerconsts.stotalerrorsnonfuzzy
+msgid "Total errors: %d (formatting errors in non-fuzzy strings: %d)"
+msgstr "Всего ошибок: %d (ошибок форматирования в точных переводах: %d)"
 
 #: pocheckerconsts.stotalfuzzystrings
 msgid "Total fuzzy strings: %s"
@@ -418,8 +434,12 @@ msgid "Total untranslated strings: %s"
 msgstr "Всего непереведённых строк: %s"
 
 #: pocheckerconsts.stotalwarnings
-msgid "Total warnings found: %d"
-msgstr "Всего найдено предупреждений: %d"
+msgid "Total warnings: %d"
+msgstr "Всего предупреждений: %d"
+
+#: pocheckerconsts.stranslatedstrings
+msgid "Translated strings"
+msgstr "Переведённые строки"
 
 #: pocheckerconsts.stranslatedstringstotal
 msgid "Translated strings (total: %s [%.1f%%])"
@@ -430,8 +450,8 @@ msgid "Translation"
 msgstr "Перевод"
 
 #: pocheckerconsts.stranslationstatistics
-msgid "Translation statistics per language:"
-msgstr "Статистика переводов по языкам:"
+msgid "Translation Statistics"
+msgstr "Статистика переводов"
 
 #: pocheckerconsts.stroublesomefiles
 msgid "Troublesome files"
@@ -444,6 +464,10 @@ msgstr "&Снять выбор"
 #: pocheckerconsts.sunselectlistbox
 msgid "Unselect all files"
 msgstr "Снять выбор файлов"
+
+#: pocheckerconsts.suntranslatedstrings
+msgid "Untranslated strings"
+msgstr "Непереведённые строки"
 
 #: pocheckerconsts.suntranslatedstringstotal
 msgid "Untranslated strings (total: %s)"

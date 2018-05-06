@@ -21,22 +21,24 @@ unit TestCTRangeScan;
 interface
 
 uses
-  Classes, SysUtils, fpcunit, testglobals, FileProcs, CodeToolManager,
-  CodeCache, CustomCodeTool, LinkScanner, CodeTree, EventCodeTool,
-  PascalParserTool;
+  Classes, SysUtils, fpcunit, testregistry, FileProcs,
+  CodeToolManager, CodeCache, CustomCodeTool, LinkScanner, CodeTree,
+  EventCodeTool, PascalParserTool, BasicCodeTools;
 
 const
   ctrsCommentOfProc1 = 'comment of Proc1';
 type
   TCTRgSrcFlag = (
+    crsfProgram,
+    crsfLibrary,
+    crsfNoSrcName,
     crsfWithProc1,
     crsfWithProc1Modified,
     crsfWithCommentAtEnd,
     crsfWithInitialization,
     crsfWithInitializationStatement1,
     crsfWithInitializationStatement2,
-    crsfWithFinalization,
-    crsLibrary
+    crsfWithFinalization
     );
   TCTRgSrcFlags = set of TCTRgSrcFlag;
 
@@ -56,6 +58,8 @@ type
     procedure TestCTScanRangeInitializationModified;
     procedure TestCTScanRangeLibraryInitializationModified;
     procedure TestCTScanRangeScannerAtEnd;
+    procedure TestCTScanRangeProgramNoName;
+    procedure TestCTScanRangeUnitModified;
   end;
 
 implementation
@@ -68,11 +72,19 @@ var
 begin
   IsUnit:=true;
   Result:='unit';
-  if crsLibrary in Flags then begin
+  if crsfLibrary in Flags then begin
     Result:='library';
     IsUnit:=false;
+  end
+  else if crsfProgram in Flags then begin
+    if crsfNoSrcName in Flags then
+      Result:=''
+    else
+      Result:='program';
+    IsUnit:=false;
   end;
-  Result+=' TestRangeScan;'+LineEnding;
+  if not (crsfNoSrcName in Flags) then
+    Result+=' TestRangeScan;'+LineEnding;
   if IsUnit then
     Result+='interface'+LineEnding;
   Result+='uses'+LineEnding
@@ -223,7 +235,11 @@ begin
     lsrInit: ;
     lsrSourceType:
       AssertEquals('source type scanned',true,RootNode<>nil);
-    lsrSourceName: ;
+    lsrSourceName:
+      begin
+        AssertEquals('source name scanned',true,RootNode.FirstChild<>nil);
+        AssertEquals('source name found',true,RootNode.FirstChild.Desc=ctnSrcName);
+      end;
     lsrInterfaceStart:
       AssertEquals('interface start scanned',true,Tool.FindInterfaceNode<>nil);
     lsrMainUsesSectionStart:
@@ -350,12 +366,12 @@ begin
   Tool:=CodeToolBoss.GetCodeToolForSource(Code,false,true) as TCodeTool;
 
   // scan source with initialization
-  Code.Source:=GetSource([crsLibrary,crsfWithInitialization,crsfWithInitializationStatement1]);
+  Code.Source:=GetSource([crsfLibrary,crsfWithInitialization,crsfWithInitializationStatement1]);
   Tool.BuildTree(lsrEnd);
   AssertEquals('step1: end found',true,Tool.Tree.FindRootNode(ctnEndPoint)<>nil);
 
   // scan source with a modified initialization
-  Code.Source:=GetSource([crsLibrary,crsfWithInitialization,crsfWithInitializationStatement2]);
+  Code.Source:=GetSource([crsfLibrary,crsfWithInitialization,crsfWithInitializationStatement2]);
   Tool.BuildTree(lsrEnd);
   AssertEquals('step2: end found',true,Tool.Tree.FindRootNode(ctnEndPoint)<>nil);
 
@@ -391,8 +407,100 @@ begin
   AssertEquals('scanner and tool at end',true,Tool.Scanner.ScannedRange=lsrEnd);
 end;
 
+procedure TTestCodetoolsRangeScan.TestCTScanRangeProgramNoName;
+var
+  Code: TCodeBuffer;
+  Tool: TCodeTool;
+  r: TLinkScannerRange;
+  RootNode: TCodeTreeNode;
+begin
+  Code:=CodeToolBoss.CreateFile('TestRangeScan.pas');
+  Tool:=CodeToolBoss.GetCodeToolForSource(Code,false,true) as TCodeTool;
+  Tool.BuildTree(lsrInit);
+  Code.Source:=GetSource([crsfProgram,crsfNoSrcName]);
+  Tool.BuildTree(lsrImplementationUsesSectionEnd);
+  RootNode:=nil;
+  for r in TLinkScannerRange do begin
+    {$IFDEF VerboseTestCTRangeScan}
+    debugln(['TTestCodetoolsRangeScan.TestCTScanRangeProgramNoName Range=',dbgs(r)]);
+    {$ENDIF}
+    Tool.BuildTree(r);
+    if RootNode<>nil then begin
+      AssertEquals('RootNode must stay for ascending range '+dbgs(r),true,RootNode=Tool.Tree.Root);
+    end;
+    RootNode:=Tool.Tree.Root;
+    //Tool.WriteDebugTreeReport;
+    case r of
+    lsrNone: ;
+    lsrInit: ;
+    lsrSourceType:
+      AssertEquals('source type scanned',true,RootNode<>nil);
+    lsrSourceName:
+      AssertEquals('source name scanned',true,RootNode<>nil);
+    lsrInterfaceStart: ;
+    lsrMainUsesSectionStart:
+      AssertEquals('main uses section start scanned',true,Tool.FindMainUsesNode<>nil);
+    lsrMainUsesSectionEnd:
+      AssertEquals('main uses section end scanned',true,Tool.FindMainUsesNode.FirstChild<>nil);
+    lsrImplementationStart: ;
+    lsrImplementationUsesSectionStart: ;
+    lsrImplementationUsesSectionEnd: ;
+    lsrInitializationStart: ;
+    lsrFinalizationStart: ;
+    lsrEnd:
+      AssertEquals('end. found',true,Tool.Tree.FindRootNode(ctnEndPoint)<>nil);
+    end;
+  end;
+end;
+
+procedure TTestCodetoolsRangeScan.TestCTScanRangeUnitModified;
+// scan a unit
+// change each lowercase word and scan again
+var
+  Code: TCodeBuffer;
+  Tool: TCodeTool;
+  p, AtomStart: integer;
+  Src: String;
+begin
+  Code:=CodeToolBoss.CreateFile('TestRangeScan.pas');
+  Tool:=CodeToolBoss.GetCodeToolForSource(Code,false,true) as TCodeTool;
+
+  Src:=
+     'unit testrangescan;'+LineEnding
+    +'interface'+LineEnding
+    +'uses sysutils;'+LineEnding
+    +'implementation'+LineEnding
+    +'initialization'+LineEnding
+    +'write;'+LineEnding
+    +'finalization'+LineEnding
+    +'writeln;'+LineEnding
+    +'end.'+LineEnding;
+  Code.Source:=Src;
+  Tool.BuildTree(lsrEnd);
+  p:=1;
+  repeat
+    ReadRawNextPascalAtom(Src,p,AtomStart);
+    if p>=length(Src) then break;
+    if Src[AtomStart] in ['a'..'z'] then begin
+      try
+        {$IFDEF VerboseTestCTRangeScan}
+        debugln(['TTestCodetoolsRangeScan.TestCTScanRangeAscending Word="',GetIdentifier(@Src[AtomStart]),'"']);
+        {$ENDIF}
+        Src[AtomStart]:=upcase(Src[AtomStart]);
+        Code.Source:=Src;
+        Tool.BuildTree(lsrEnd);
+      except
+        on E: Exception do begin
+          debugln(['TTestCodetoolsRangeScan.TestCTScanRangeUnitModified word="'+GetIdentifier(@Src[AtomStart])+'" ',E.ClassName,' Msg=',E.Message]);
+          Fail(E.Message);
+        end;
+      end;
+    end;
+  until false;
+end;
+
 initialization
-  AddToPascalTestSuite(TTestCodetoolsRangeScan);
+  RegisterTest(TTestCodetoolsRangeScan);
 
 end.
 

@@ -32,19 +32,21 @@ unit ConvertDelphi;
 interface
 
 uses
-  // RTL + FCL + LCL
-  Classes, SysUtils, contnrs, IniFiles, LCLProc, Forms, Controls, Dialogs,
+  // RTL + FCL
+  Classes, SysUtils, contnrs, IniFiles,
+  // LCL
+  LCLProc, Forms, Controls, Dialogs,
   // CodeTools
-  CodeToolManager, DefineTemplates, CodeCache, LinkScanner, FileProcs, CodeToolsStructs,
+  CodeToolManager, DefineTemplates, CodeCache, LinkScanner, FileProcs,
   // LazUtils
-  LConvEncoding, FileUtil, LazFileUtils, LazUTF8, LazUTF8Classes,
+  LConvEncoding, FileUtil, LazFileUtils, LazUTF8, LazUTF8Classes, AvgLvlTree,
   // IDEIntf
   ComponentReg, IDEDialogs,
   LazIDEIntf, PackageIntf, ProjectIntf, IDEExternToolIntf, IDEOptionsIntf,
   // IDE
   IDEProcs, DialogProcs, CompilerOptions,
-  ProjPackBase, Project, ProjectDefs, PackageDefs, PackageSystem, PackageEditor,
-  BasePkgManager, LazarusIDEStrConsts,
+  ProjPackCommon, Project, ProjectDefs, PackageDefs, PackageSystem, PackageEditor,
+  BasePkgManager, LazarusIDEStrConsts, ProjectDescriptors,
   // Converter
   ConverterTypes, ConvertSettings, ConvCodeTool, MissingUnits, MissingPropertiesDlg,
   UsedUnits;
@@ -722,12 +724,8 @@ begin
         ExtractFileName(fLazUnitFilename), fOwnerConverter.fSettings.SupportDelphi);
     case Result of
       // mrOK means: Comment out.
-      mrOK: begin
-        if fOwnerConverter is TConvertDelphiProjPack then
-          MoveMissingToComment(fOwnerConverter.fAllCommentedUnits)
-        else
-          MoveMissingToComment(Nil);
-      end;
+      mrOK:
+        MoveMissingToComment(fOwnerConverter.fAllCommentedUnits);
       // mrYes means: Search for unit path.
       mrYes: begin
         UnitDirDialog:=TSelectDirectoryDialog.Create(nil);
@@ -1275,7 +1273,7 @@ begin
     end;
   except
     on E: Exception do begin
-      DebugLn('ExtractOptionsFromDOF failed reading "'+CFGFilename+'" '+E.Message);
+      DebugLn('ExtractOptionsFromCFG failed reading "'+CFGFilename+'" '+E.Message);
     end;
   end;
   Result:=mrOK;
@@ -1312,6 +1310,10 @@ begin
   Options.Libraries:=CleanProjectSearchPath(Options.Libraries);
   Options.ObjectPath:=CleanProjectSearchPath(Options.ObjectPath);
   Options.SrcPath:=CleanProjectSearchPath(Options.SrcPath);
+  if Options.UnitOutputDirectory='' then
+    Options.UnitOutputDirectory:='lib'+PathDelim+'$(TargetCPU)-$(TargetOS)';
+  Options.TargetFilename:=''; // This may have a wrong value from default compiler options.
+
   if fSettings.DelphiDefine then begin
     // "Borland" and "Ver150" are defined by Delphi7.
     // "Delphi7" and "Compiler6_Up" are defined by Jedi library based on other settings.
@@ -1616,9 +1618,9 @@ begin
       DebugLn('TConvertDelphiProject.FindAllUnits: '+lisConvDelphiFoundAllUnitFiles);
       for i:=0 to FoundUnits.Count-1 do begin
         CurFilename:=FoundUnits[i];
-        p:=System.Pos(' in ',CurFilename);
+        p:=Pos(' in ',CurFilename);
         if p>0 then
-          CurFilename:=copy(CurFilename,p+4,length(CurFilename));
+          delete(CurFilename,1,p+3);
         if CurFilename='' then continue;
         Result:=AddUnit(SwitchPathDelims(CurFilename, True), ui);
         if Result=mrAbort then
@@ -1789,7 +1791,8 @@ begin
   if AnUnitInfo.OpenEditorInfoCount=0 then exit;
   Result:=LazarusIDE.DoSaveEditorFile(AnUnitInfo.OpenEditorInfo[0].EditorComponent,
                                       [sfCheckAmbiguousFiles,sfQuietUnitCheck]);
-  if not fSettings.KeepFileOpen then
+  // The main form has UnitIndex = 1. Don't close it.
+  if (UnitIndex<>1) and not fSettings.KeepFileOpen then
     Result:=LazarusIDE.DoCloseEditorFile(AnUnitInfo.OpenEditorInfo[0].EditorComponent,
                                          [cfQuiet]);
 end;
@@ -1923,7 +1926,7 @@ begin
         CurFilename:=FoundUnits[i];
         p:=System.Pos(' in ',CurFilename);
         if p>0 then
-          CurFilename:=copy(CurFilename,p+4,length(CurFilename));
+          delete(CurFilename,1,p+3);
         if CurFilename='' then continue;
         Result:=AddUnit(SwitchPathDelims(CurFilename, True));
         if Result=mrAbort then

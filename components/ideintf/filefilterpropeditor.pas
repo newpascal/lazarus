@@ -5,8 +5,11 @@ unit FileFilterPropEditor;
 interface
 
 uses
-  Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, ButtonPanel,
-  Grids, Buttons, ObjInspStrConsts;
+  Classes, SysUtils,
+  // LCL
+  Forms, Controls, ButtonPanel, Grids, Buttons,
+  // IdeIntf
+  ObjInspStrConsts, IDEImagesIntf, IDEWindowIntf;
 
 type
 
@@ -17,6 +20,7 @@ type
     MoveDownBtn: TSpeedButton;
     MoveUpBtn: TSpeedButton;
     StringGrid1: TStringGrid;
+    procedure FormClose(Sender: TObject; var {%H-}CloseAction: TCloseAction);
     procedure FormCreate(Sender: TObject);
     procedure MoveUpBtnClick(Sender: TObject);
     procedure MoveDownBtnClick(Sender: TObject);
@@ -45,10 +49,17 @@ begin
   Caption:=peFilterEditor;
   StringGrid1.Cells[0, 0] := peFilterName;
   StringGrid1.Cells[1, 0] := peFilter;
-  MoveUpBtn.LoadGlyphFromResourceName(HInstance, 'arrow_up');
-  MoveDownBtn.LoadGlyphFromResourceName(HInstance, 'arrow_down');
+  TIDEImages.AssignImage(MoveUpBtn.Glyph, 'arrow_up');
+  TIDEImages.AssignImage(MoveDownBtn.Glyph, 'arrow_down');
   MoveUpBtn.Hint := rscdMoveUp;
   MoveDownBtn.Hint := rscdMoveDown;
+  IDEDialogLayoutList.ApplyLayout(Self);
+end;
+
+procedure TFileFilterPropEditForm.FormClose(Sender: TObject;
+  var CloseAction: TCloseAction);
+begin
+  IDEDialogLayoutList.SaveLayout(Self);
 end;
 
 procedure TFileFilterPropEditForm.MoveUpBtnClick(Sender: TObject);

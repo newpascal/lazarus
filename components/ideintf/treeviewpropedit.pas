@@ -18,8 +18,11 @@ unit TreeViewPropEdit;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, Buttons,
-  PropEdits, Componenteditors, StdCtrls, ComCtrls, ObjInspStrConsts, ExtCtrls;
+  Classes, SysUtils,
+  // LCL
+  Forms, Dialogs, Buttons, Controls, StdCtrls, ComCtrls,
+  // IdeIntf
+  PropEdits, Componenteditors, ObjInspStrConsts, IDEImagesIntf, IDEWindowIntf;
 
 type
 
@@ -52,6 +55,7 @@ type
     TreeView1: TTreeView;
     procedure BtnNewItemClick(Sender: TObject);
     procedure Edit1Change(Sender: TObject);
+    procedure FormClose(Sender: TObject; var {%H-}CloseAction: TCloseAction);
     procedure FormCreate(Sender: TObject);
     procedure MoveUpBtnClick(Sender: TObject);
     procedure MoveDownBtnClick(Sender: TObject);
@@ -108,6 +112,39 @@ end;
 
 { TTreeViewItemsEditorForm }
 
+procedure TTreeViewItemsEditorForm.FormCreate(Sender: TObject);
+begin
+  Caption := sccsTrEdtCaption;
+
+  GroupBox1.Caption := sccsTrEdtGrpLCaption;
+  BtnNewItem.Caption := sccsTrEdtNewItem;
+  BtnNewSubItem.Caption := sccsTrEdtNewSubItem;
+  BtnDelete.Caption := sccsTrEdtDelete;
+  BtnLoad.Caption := sccsTrEdtLoad;
+  BtnSave.Caption := sccsTrEdtSave;
+  BtnApply.Caption := sccsTrEdtApply;
+  TIDEImages.AssignImage(MoveUpBtn.Glyph, 'arrow_up');
+  TIDEImages.AssignImage(MoveDownBtn.Glyph, 'arrow_down');
+  MoveUpBtn.Hint:=rscdMoveUp;
+  MoveDownBtn.Hint:=rscdMoveDown;
+
+  GroupBox2.Caption := sccsTrEdtGrpRCaption;
+  LabelText.Caption := sccsTrEdtLabelText;
+  LabelImageIndex.Caption := sccsTrEdtLabelImageIndex;
+  LabelSelectedIndex.Caption := sccsTrEdtLabelSelIndex;
+  LabelStateIndex.Caption := sccsTrEdtLabelStateIndex;
+
+  OpenDialog1.Title := sccsTrEdtOpenDialog;
+  SaveDialog1.Title := sccsTrEdtSaveDialog;
+  IDEDialogLayoutList.ApplyLayout(Self);
+end;
+
+procedure TTreeViewItemsEditorForm.FormClose(Sender: TObject;
+  var CloseAction: TCloseAction);
+begin
+  IDEDialogLayoutList.SaveLayout(Self);
+end;
+
 procedure TTreeViewItemsEditorForm.BtnNewItemClick(Sender: TObject);
 var
   S: String;
@@ -128,32 +165,6 @@ procedure TTreeViewItemsEditorForm.Edit1Change(Sender: TObject);
 begin
   if Assigned(TreeView1.Selected) then
     TreeView1.Selected.Text := edtText.Text;
-end;
-
-procedure TTreeViewItemsEditorForm.FormCreate(Sender: TObject);
-begin
-  Caption := sccsTrEdtCaption;
-
-  GroupBox1.Caption := sccsTrEdtGrpLCaption;
-  BtnNewItem.Caption := sccsTrEdtNewItem;
-  BtnNewSubItem.Caption := sccsTrEdtNewSubItem;
-  BtnDelete.Caption := sccsTrEdtDelete;
-  BtnLoad.Caption := sccsTrEdtLoad;
-  BtnSave.Caption := sccsTrEdtSave;
-  BtnApply.Caption := sccsTrEdtApply;
-  MoveUpBtn.LoadGlyphFromResourceName(HInstance, 'arrow_up');
-  MoveDownBtn.LoadGlyphFromResourceName(HInstance, 'arrow_down');
-  MoveUpBtn.Hint:=rscdMoveUp;
-  MoveDownBtn.Hint:=rscdMoveDown;
-
-  GroupBox2.Caption := sccsTrEdtGrpRCaption;
-  LabelText.Caption := sccsTrEdtLabelText;
-  LabelImageIndex.Caption := sccsTrEdtLabelImageIndex;
-  LabelSelectedIndex.Caption := sccsTrEdtLabelSelIndex;
-  LabelStateIndex.Caption := sccsTrEdtLabelStateIndex;
-  
-  OpenDialog1.Title := sccsTrEdtOpenDialog;
-  SaveDialog1.Title := sccsTrEdtSaveDialog;
 end;
 
 procedure TTreeViewItemsEditorForm.MoveUpBtnClick(Sender: TObject);

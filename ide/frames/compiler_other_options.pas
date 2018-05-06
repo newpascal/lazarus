@@ -28,7 +28,7 @@ unit Compiler_Other_Options;
 interface
 
 uses
-  Classes, SysUtils, math, AVL_Tree,
+  Classes, SysUtils, math, Laz_AVL_Tree,
   // LCL
   Forms, Controls, Graphics, Dialogs, StdCtrls, ComCtrls, ExtCtrls, Buttons, LCLType,
   // LazUtils
@@ -293,7 +293,7 @@ begin
   CondSynEdit.GetWordBoundsAtRowCol(XY,StartX,EndX);
   if EndX<=XY.X then exit;
   Line := CondSynEdit.Lines[XY.Y - 1];
-  inc(XY.X,UTF8CharacterLength(@Line[XY.X-1]));
+  inc(XY.X,UTF8CodepointSize(@Line[XY.X-1]));
   CondSynEdit.LogicalCaretXY:=XY;
 end;
 

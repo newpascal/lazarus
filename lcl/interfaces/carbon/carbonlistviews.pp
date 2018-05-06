@@ -148,7 +148,7 @@ type
     
     function GetItemChecked(AIndex: Integer): Boolean;
     function GetItemIndex: Integer;
-    function GetItemsRect: TRect;
+    function GetItemsRect: TRect; virtual;
     function GetItemsCount: Integer;
     function GetItemRect(AIndex: Integer): TRect;
     function GetItemRect(AIndex, {%H-}ASubIndex: Integer; {%H-}ACode: TDisplayCode): TRect;
@@ -262,6 +262,8 @@ type
   { TCarbonListBox }
 
   TCarbonListBox = class(TCarbonDataBrowser)
+  private
+    FScrollWidth : Integer;
   protected
     procedure CreateWidget(const AParams: TCreateParams); override;
   protected
@@ -269,11 +271,13 @@ type
     function GetReadOnly: Boolean; override;
     function MultiSelect: Boolean; override;
     function IsOwnerDrawn: Boolean; override;
+    function GetItemsRect: TRect; override;
   public
     procedure DrawItem(AIndex: Integer; AState: DataBrowserItemState); override;
     procedure SelectionChanged(AIndex: Integer; ASelect: Boolean); override;
     procedure FocusedChanged({%H-}AIndex: Integer); override;
     procedure SetFont(const AFont: TFont); override;
+    procedure SetScrollWidth(AScrollWidth: Integer);
   end;
   
   { TCarbonCheckListBox }
@@ -1407,7 +1411,7 @@ end;
 procedure TCarbonDataBrowser.ShowItem(AIndex: Integer; Partial: Boolean);
 begin
   // TODO: partial show
-  OSError(RevealDataBrowserItem(Widget, AIndex, kDataBrowserNoItem,
+  OSError(RevealDataBrowserItem(Widget, AIndex + 1, kDataBrowserNoItem,
     kDataBrowserRevealWithoutSelecting), Self, 'ShowItem', 'RevealDataBrowserItem');
 end;
 
@@ -1948,7 +1952,7 @@ begin
   if (LCLObject as TCustomListBox).Style = lbOwnerDrawFixed then
     SetItemsHeight((LCLObject as TCustomListBox).ItemHeight);
   SetRowSelect(True);
-  SetScrollBars(ssAutoVertical);
+  SetScrollBars(ssAutoBoth);
   SetSelectionMode((LCLObject as TCustomListBox).ExtendedSelect,
     (LCLObject as TCustomListBox).MultiSelect);
   //Set BorderStyle according to the provided Params
@@ -2018,6 +2022,23 @@ begin
   inherited SetFont(AFont);
   if (LCLObject as TCustomListBox).Style = lbOwnerDrawFixed then
     SetItemsHeight((LCLObject as TCustomListBox).ItemHeight);
+end;
+
+function TCarbonListBox.GetItemsRect: TRect;
+begin
+  Result := inherited GetItemsRect;
+  If FScrollWidth > 0 then
+    Result.Right := FScrollWidth;
+end;
+
+procedure TCarbonListBox.SetScrollWidth(AScrollWidth: Integer);
+begin
+  FScrollWidth := AScrollWidth;
+  If AScrollWidth > 0 then
+    FCaptionListColumn.SetWidth(AScrollWidth)
+  Else
+    FCaptionListColumn.SetWidth($FFFF);
+  CheckNeedsScrollBars();
 end;
 
 { TCarbonCheckListBox }

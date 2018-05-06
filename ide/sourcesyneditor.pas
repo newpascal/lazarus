@@ -212,11 +212,31 @@ type
     property IfDefTree;
   end;
 
+  TSynMarkupIdentComplWindow = class // don't inherit from TSynEditMarkup, no regular markup
+  private
+    FBackgroundSelectedColor: TColor;
+    FBorderColor: TColor;
+    FHighlightColor: TColor;
+    FTextColor: TColor;
+    FTextSelectedColor: TColor;
+    FWindowColor: TColor;
+  public
+    constructor Create;
+  public
+    property WindowColor: TColor read FWindowColor write FWindowColor;
+    property TextColor: TColor read FTextColor write FTextColor;
+    property BorderColor: TColor read FBorderColor write FBorderColor;
+    property HighlightColor: TColor read FHighlightColor write FHighlightColor;
+    property TextSelectedColor: TColor read FTextSelectedColor write FTextSelectedColor;
+    property BackgroundSelectedColor: TColor read FBackgroundSelectedColor write FBackgroundSelectedColor;
+  end;
+
   { TIDESynEditor }
 
   TIDESynEditor = class(TSynEdit)
   private
     FCaretStamp: Int64;
+    FMarkupIdentComplWindow: TSynMarkupIdentComplWindow;
     FShowTopInfo: boolean;
     FTopInfoNestList: TLazSynEditNestedFoldsList;
     FSyncroEdit: TSynPluginSyncroEdit;
@@ -281,6 +301,7 @@ type
     procedure SetIfdefNodeState(ALinePos, AstartPos: Integer; AState: TSynMarkupIfdefNodeState);
     property  OnIfdefNodeStateRequest: TSynMarkupIfdefStateRequest read FOnIfdefNodeStateRequest write FOnIfdefNodeStateRequest;
     property  MarkupIfDef: TSourceSynEditMarkupIfDef read FMarkupIfDef;
+    property  MarkupIdentComplWindow: TSynMarkupIdentComplWindow read FMarkupIdentComplWindow;
     property  IsInMultiCaretMainExecution: Boolean read GetIsInMultiCaretMainExecution;
     property  IsInMultiCaretRepeatExecution: Boolean read GetIsInMultiCaretRepeatExecution;
     property  OnMultiCaretBeforeCommand: TSynMultiCaretBeforeCommand read GetOnMultiCaretBeforeCommand write SetOnMultiCaretBeforeCommand;
@@ -414,6 +435,7 @@ type
   protected
     procedure CheckTextBuffer;       // Todo: Add a notification, when TextBuffer Changes
     Procedure PaintLine(aScreenLine: Integer; Canvas : TCanvas; AClip : TRect); override;
+    function PreferedWidth: Integer; override;
   public
     destructor Destroy; override;
     procedure BeginSetDebugMarks;
@@ -471,6 +493,20 @@ type
 implementation
 
 uses SourceMarks;
+
+{ TSynMarkupIdentComplWindow }
+
+constructor TSynMarkupIdentComplWindow.Create;
+begin
+  inherited Create;
+
+  FBackgroundSelectedColor := clNone;
+  FBorderColor := clNone;
+  FHighlightColor := clNone;
+  FTextColor := clNone;
+  FTextSelectedColor := clNone;
+  FWindowColor := clNone;
+end;
 
 { TSourceSynSearchTermDict }
 
@@ -1682,6 +1718,8 @@ begin
   //FMarkupIfDef.OnNodeStateRequest := @DoIfDefNodeStateRequest;
   TSynEditMarkupManager(MarkupMgr).AddMarkUp(FMarkupIfDef);
 
+  FMarkupIdentComplWindow := TSynMarkupIdentComplWindow.Create;
+
   FPaintArea := TSourceLazSynSurfaceManager.Create(Self, FPaintArea);
   GetCaretObj.AddChangeHandler(@SrcSynCaretChanged);
 
@@ -1728,6 +1766,7 @@ begin
   FreeAndNil(FExtraMarkupMgr);
   FreeAndNil(FTopInfoMarkup);
   FreeAndNil(FTopInfoNestList);
+  FreeAndNil(FMarkupIdentComplWindow);
   inherited Destroy;
 end;
 
@@ -1858,10 +1897,10 @@ end;
 procedure TIDESynGutterLOvProviderPascal.BufferChanged(Sender: TObject);
 begin
   TSynEditStringList(Sender).RemoveHanlders(self);
-  TSynEditStringList(TextBuffer).AddGenericHandler(senrHighlightChanged,
-    TMethod(@HighlightChanged));
-  TSynEditStringList(TextBuffer).AddGenericHandler(senrTextBufferChanged,
-    TMethod(@BufferChanged));
+  TSynEditStringList(TextBuffer).AddChangeHandler(senrHighlightChanged,
+    @HighlightChanged);
+  TSynEditStringList(TextBuffer).AddNotifyHandler(senrTextBufferChanged,
+    @BufferChanged);
   //LineCountChanged(nil, 0, 0);
   HighlightChanged(nil,-1,-1);
 end;
@@ -2038,10 +2077,10 @@ begin
   SingleLine := False;
   Color  := $D4D4D4;
   Color2 := $E8E8E8;
-  TSynEditStringList(TextBuffer).AddGenericHandler(senrHighlightChanged,
-    TMethod(@HighlightChanged));
-  TSynEditStringList(TextBuffer).AddGenericHandler(senrTextBufferChanged,
-    TMethod(@BufferChanged));
+  TSynEditStringList(TextBuffer).AddChangeHandler(senrHighlightChanged,
+    @HighlightChanged);
+  TSynEditStringList(TextBuffer).AddNotifyHandler(senrTextBufferChanged,
+    @BufferChanged);
 end;
 
 destructor TIDESynGutterLOvProviderPascal.Destroy;
@@ -2221,6 +2260,14 @@ begin
      (FDebugMarkInfo.SrcLineToMarkLine[TxtIdx] > 0)
   then
     DrawDebugMark(aScreenLine);
+end;
+
+function TIDESynGutterMarks.PreferedWidth: Integer;
+begin
+  if Assigned(SourceEditorMarks) and Assigned(SourceEditorMarks.ImgList) then
+    Result := SourceEditorMarks.ImgList.Width * 2 + FBookMarkOpt.LeftMargin
+  else
+    Result := inherited PreferedWidth;
 end;
 
 destructor TIDESynGutterMarks.Destroy;

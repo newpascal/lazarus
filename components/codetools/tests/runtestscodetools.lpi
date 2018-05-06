@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CONFIG>
   <ProjectOptions>
-    <Version Value="10"/>
+    <Version Value="11"/>
     <General>
       <Flags>
         <MainUnitHasCreateFormStatements Value="False"/>
@@ -25,9 +25,10 @@
       <ExcludeFileFilter Value="*.(bak|ppu|o|so);*~;backup"/>
     </PublishOptions>
     <RunParams>
-      <local>
-        <FormatVersion Value="1"/>
-      </local>
+      <FormatVersion Value="2"/>
+      <Modes Count="1">
+        <Mode0 Name="default"/>
+      </Modes>
     </RunParams>
     <RequiredPackages Count="2">
       <Item1>
@@ -48,55 +49,61 @@
         <UnitName Value="TestFindDeclaration"/>
       </Unit1>
       <Unit2>
-        <Filename Value="fdt_typehelper.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit2>
-      <Unit3>
-        <Filename Value="fdt_nestedclasses.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit3>
-      <Unit4>
-        <Filename Value="fdt_classof.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit4>
-      <Unit5>
-        <Filename Value="fdt_objccategory.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit5>
-      <Unit6>
-        <Filename Value="fdt_classhelper.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit6>
-      <Unit7>
-        <Filename Value="fdt_objcclass.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit7>
-      <Unit8>
-        <Filename Value="fdt_with.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit8>
-      <Unit9>
         <Filename Value="testrefactoring.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="TestRefactoring"/>
-      </Unit9>
-      <Unit10>
-        <Filename Value="rt_explodewith.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit10>
-      <Unit11>
-        <Filename Value="fdt_generics.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit11>
-      <Unit12>
+      </Unit2>
+      <Unit3>
         <Filename Value="testglobals.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="TestGlobals"/>
-      </Unit12>
-      <Unit13>
+      </Unit3>
+      <Unit4>
         <Filename Value="testpascalparser.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="TestPascalParser"/>
+      </Unit4>
+      <Unit5>
+        <Filename Value="moduletests/fdt_proc_basetypes.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit5>
+      <Unit6>
+        <Filename Value="moduletests/fdt_for_in.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit6>
+      <Unit7>
+        <Filename Value="testmethodjumptool.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="TestMethodJumpTool"/>
+      </Unit7>
+      <Unit8>
+        <Filename Value="teststdcodetools.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="TestStdCodetools"/>
+      </Unit8>
+      <Unit9>
+        <Filename Value="testcth2pas.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="TestCTH2Pas"/>
+      </Unit9>
+      <Unit10>
+        <Filename Value="moduletests/fdt_arrays.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit10>
+      <Unit11>
+        <Filename Value="testcodecompletion.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="TestCodeCompletion"/>
+      </Unit11>
+      <Unit12>
+        <Filename Value="testcompreaderwriterpas.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="TestCompReaderWriterPas"/>
+      </Unit12>
+      <Unit13>
+        <Filename Value="testidentcompletion.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="TestIdentCompletion"/>
       </Unit13>
     </Units>
   </ProjectOptions>

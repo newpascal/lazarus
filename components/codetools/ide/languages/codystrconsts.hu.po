@@ -160,6 +160,10 @@ msgstr "?láthatóság?"
 msgid "%s, written by property %s"
 msgstr "%s, a(z) %s tulajdonság által írva"
 
+#: codystrconsts.crscaretoutsideofcode
+msgid "Caret outside of code"
+msgstr "A beszúrási jel a kódon kívül van"
+
 #: codystrconsts.crscheetaheditor
 msgid "Cheetah Editor"
 msgstr "Gepárd szerkesztő"

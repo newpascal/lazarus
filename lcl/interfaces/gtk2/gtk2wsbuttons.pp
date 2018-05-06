@@ -24,7 +24,10 @@ uses
   glib2, gtk2, gdk2, gdk2pixbuf,
   // LCL
 ////////////////////////////////////////////////////
-  LCLType, Controls, Buttons, Graphics, GraphType,
+  LCLType, Controls, Buttons, Graphics, GraphType, ImgList, Classes,
+  {$IFDEF DebugLCLComponents}
+  LazLoggerBase,
+  {$ENDIF}
 ////////////////////////////////////////////////////
   WSButtons, WSLCLClasses, WSProc,
   Gtk2Def;
@@ -191,7 +194,7 @@ begin
   Result := TLCLIntfHandle({%H-}PtrUInt(gtk_button_new));
   if Result = 0 then Exit;
   {$IFDEF DebugLCLComponents}
-  DebugGtkWidgets.MarkCreated(Pointer(Result),dbgsName(AWinControl));
+  DebugGtkWidgets.MarkCreated(Pointer(Result),DbgSName(AWinControl));
   {$ENDIF}
 
   WidgetInfo := CreateWidgetInfo({%H-}Pointer(Result), BitBtn, AParams);
@@ -210,6 +213,8 @@ begin
   gtk_widget_size_allocate({%H-}PGtkWidget(Result), @Allocation);
 
   Set_RC_Name(AWinControl, {%H-}PGtkWidget(Result));
+  if not AWinControl.HandleObjectShouldBeVisible and not (csDesigning in AWinControl.ComponentState) then
+    gtk_widget_hide({%H-}PGtkWidget(Result));
   SetCallbacks({%H-}PGtkWidget(Result), WidgetInfo);
 end;
 
@@ -343,15 +348,17 @@ var
   AGlyph: TBitmap;
   AIndex: Integer;
   AEffect: TGraphicsDrawEffect;
+  AImageRes: TScaledImageListResolution;
 begin
   ShowGlyph := ABitBtn.CanShowGlyph;
   if ShowGlyph then
   begin
     ImageWidget := BitBtnInfo^.ImageWidget;
     AGlyph := TBitmap.Create;
-    AValue.GetImageIndexAndEffect(AButtonState, AIndex, AEffect);
-    if (AIndex <> -1) and (AValue.Images <> nil) then
-      AValue.Images.GetBitmap(AIndex, AGlyph, AEffect);
+    AValue.GetImageIndexAndEffect(AButtonState, ABitBtn.Font.PixelsPerInch,
+      ABitBtn.GetCanvasScaleFactor, AImageRes, AIndex, AEffect);
+    if (AIndex <> -1) and (AImageRes.Resolution <> nil) then
+      AImageRes.GetBitmap(AIndex, AGlyph, AEffect);
     ShowGlyph := not AGlyph.Empty;
     if ShowGlyph then
     begin

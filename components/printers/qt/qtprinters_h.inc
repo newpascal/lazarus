@@ -1,21 +1,39 @@
 {%MainUnit ../osprinters.pas}
 uses
   Classes, SysUtils, Printers, {$IFDEF LCLQt5}qt5{$ELSE}qt4{$ENDIF}, qtobjects,
-  LCLType, LCLProc;
+  LCLType, LCLProc, LazUTF8;
 
 type
+  {$IFDEF LCLQt5}
+  QtLCLPrinterPageSize = QPagedPaintDevicePageSize;
+  {$ELSE}
+  QtLCLPrinterPageSize = QPrinterPageSize;
+  {$ENDIF}
+  TPaperRec = record
+    {$IFDEF LCLQt5}
+    PageSize: QPagedPaintDevicePageSize;
+    {$ELSE}
+    PageSize: QPrinterPageSize;
+    {$ENDIF}
+    PaperName: string;
+    PageRect: TRect;
+    PaperRect: TRect;
+  end;
+
   { TQtPrinters }
   TQtPrinters = class(TPrinter)
   private
-    FPagesEnum: TStrings;
     FPrinterHandle: TQtPrinter;
+    FDefaultPaperIndex: Integer;
+    FPapers: array of TPaperRec;
 
-    procedure CreatePrintSettings;
     procedure BeginPage;
     procedure EndPage;
     
+    procedure CachePapers(OnlySupportedByPrinter:boolean);
     procedure EnumQPrinters(Lst: TStrings);
-    procedure EnumQPapers(Lst: TStrings);
+    function IndexOfPaper(const Paper: string; RetDefault: boolean=true): Integer;
+    function IndexOfPageSize(const PageSize: QtLCLPrinterPageSize): Integer;
     function GetColorMode: QPrinterColorMode;
     function GetFullPage: Boolean;
     function GetPageOrder: QPrinterPageOrder;

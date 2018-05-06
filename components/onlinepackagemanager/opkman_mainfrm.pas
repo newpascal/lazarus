@@ -29,21 +29,39 @@ unit opkman_mainfrm;
 interface
 
 uses
-  Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, contnrs,
-  StdCtrls, ExtCtrls, Buttons, Menus, ComCtrls, IDECommands, LazFileUtils,
-  LCLIntf, fpjson, opkman_VirtualTrees, opkman_downloader, opkman_installer,
-  PackageIntf, Clipbrd, md5;
+  Classes, SysUtils, fpjson, md5, Graphics, VirtualTrees,
+  // LCL
+  Forms, Controls, Dialogs, StdCtrls, ExtCtrls, Buttons, Menus, ComCtrls, Clipbrd,
+  LCLIntf, LCLVersion, LCLProc,
+  // LazUtils
+  LazFileUtils,
+  // IdeIntf
+  IDECommands, PackageIntf,
+  // OpkMan
+  opkman_downloader, opkman_installer,
+  opkman_serializablepackages, opkman_visualtree, opkman_const, opkman_common,
+  opkman_progressfrm, opkman_zipper, opkman_packagelistfrm, opkman_options,
+  opkman_optionsfrm, opkman_createrepositorypackagefrm, opkman_updates,
+  opkman_createjsonforupdatesfrm, opkman_createrepositoryfrm;
 
 type
 
   { TMainFrm }
 
   TMainFrm = class(TForm)
+    cbFilterBy: TComboBox;
     cbPackageCategory: TComboBox;
     cbPackageState: TComboBox;
     cbPackageType: TComboBox;
     imTBDis: TImageList;
-    MenuItem1: TMenuItem;
+    miFromExteranlSource: TMenuItem;
+    miFromRepository: TMenuItem;
+    miSep2: TMenuItem;
+    miSep3: TMenuItem;
+    miSep1: TMenuItem;
+    miCreateRepository: TMenuItem;
+    miLoadChecks: TMenuItem;
+    miSaveChecks: TMenuItem;
     miDateDsc: TMenuItem;
     miDateAsc: TMenuItem;
     miNameDsc: TMenuItem;
@@ -54,13 +72,16 @@ type
     miJSONSort: TMenuItem;
     miResetRating: TMenuItem;
     miCopyToClpBrd: TMenuItem;
-    miCreateRepository: TMenuItem;
+    miCreateJSONForUpdates: TMenuItem;
     miCreateRepositoryPackage: TMenuItem;
+    OD: TOpenDialog;
+    pmInstall: TPopupMenu;
     SD: TSaveDialog;
     tbCleanUp1: TToolButton;
+    tbInstall1: TToolButton;
+    tbUninstall: TToolButton;
     tbOptions: TToolButton;
     cbAll: TCheckBox;
-    cbFilterBy: TComboBox;
     edFilter: TEdit;
     imTree: TImageList;
     lbFilterBy: TLabel;
@@ -88,17 +109,24 @@ type
     tbCleanUp: TToolButton;
     tbCreate: TToolButton;
     tbUpdate: TToolButton;
+    tbOpenRepo: TToolButton;
     procedure miCopyToClpBrdClick(Sender: TObject);
+    procedure miCreateJSONForUpdatesClick(Sender: TObject);
     procedure miCreateRepositoryClick(Sender: TObject);
     procedure miCreateRepositoryPackageClick(Sender: TObject);
+    procedure miFromExteranlSourceClick(Sender: TObject);
+    procedure miFromRepositoryClick(Sender: TObject);
+    procedure miLoadChecksClick(Sender: TObject);
     procedure miNameAscClick(Sender: TObject);
     procedure miResetRatingClick(Sender: TObject);
+    procedure miSaveChecksClick(Sender: TObject);
     procedure miSaveToFileClick(Sender: TObject);
     procedure pnToolBarResize(Sender: TObject);
     procedure tbCleanUpClick(Sender: TObject);
     procedure tbDownloadClick(Sender: TObject);
     procedure tbHelpClick(Sender: TObject);
     procedure tbInstallClick(Sender: TObject);
+    procedure tbOpenRepoClick(Sender: TObject);
     procedure tbOptionsClick(Sender: TObject);
     procedure tbRefreshClick(Sender: TObject);
     procedure cbAllClick(Sender: TObject);
@@ -116,12 +144,15 @@ type
     procedure pnTopResize(Sender: TObject);
     procedure spClearClick(Sender: TObject);
     procedure spExpandClick(Sender: TObject);
+    procedure tbUninstallClick(Sender: TObject);
     procedure tbUpdateClick(Sender: TObject);
   private
     FHintTimeOut: Integer;
+    FFormIsHiden: Boolean;
     procedure EnableDisableControls(const AEnable: Boolean);
     procedure SetupMessage(const AMessage: String = '');
     procedure SetupControls;
+    procedure SetupColors;
     procedure GetPackageList(const ARepositoryHasChanged: Boolean = False);
     procedure DoOnChecking(Sender: TObject; const AIsAllChecked: Boolean);
     procedure DoOnChecked(Sender: TObject);
@@ -129,13 +160,16 @@ type
     procedure DoOnJSONDownloadCompleted(Sender: TObject; AJSON: TJSONStringType; AErrTyp: TErrorType; const AErrMsg: String = '');
     procedure DoOnProcessJSON(Sender: TObject);
     procedure DoOnUpdate(Sender: TObject);
-    function IsSomethingChecked(const AIsUpdate: Boolean = False): Boolean;
+    procedure DoDeactivate(Sender: TObject);
+    function IsSomethingChecked(const AResolveDependencies: Boolean = True): Boolean;
     function Download(const ADstDir: String; var ADoExtract: Boolean): TModalResult;
     function Extract(const ASrcDir, ADstDir: String; var ADoOpen: Boolean; const AIsUpdate: Boolean = False): TModalResult;
     function Install(var AInstallStatus: TInstallStatus; var ANeedToRebuild: Boolean): TModalResult;
     function UpdateP(const ADstDir: String; var ADoExtract: Boolean): TModalResult;
     procedure StartUpdates;
     procedure StopUpdates;
+    procedure Rebuild;
+    function CheckDstDir(const ADstDir: String): Boolean;
   public
     procedure ShowOptions(const AActivePageIndex: Integer = 0);
   end;
@@ -145,32 +179,23 @@ var
 
 implementation
 
-uses LCLVersion,
-     opkman_serializablepackages, opkman_visualtree, opkman_const, opkman_common,
-     opkman_progressfrm, opkman_zipper, opkman_packagelistfrm, opkman_options,
-     opkman_optionsfrm, opkman_createrepositorypackage, opkman_updates,
-     opkman_createjsonforupdates;
 {$R *.lfm}
 
 { TMainFrm }
 
 procedure TMainFrm.FormCreate(Sender: TObject);
 begin
-  InitLocalRepository;
-  Options := TOptions.Create(LocalRepositoryConfigFile);
   VisualTree := TVisualTree.Create(pnMain, imTree, pmTree);
   VisualTree.OnChecking := @DoOnChecking;
   VisualTree.OnChecked := @DoOnChecked;
-  SerializablePackages := TSerializablePackages.Create;
   SerializablePackages.OnProcessJSON := @DoOnProcessJSON;
-  PackageDownloader := TPackageDownloader.Create(Options.RemoteRepository[Options.ActiveRepositoryIndex]);
   PackageDownloader.OnJSONProgress := @DoOnJSONProgress;
   PackageDownloader.OnJSONDownloadCompleted := @DoOnJSONDownloadCompleted;
-  StartUpdates;
-  InstallPackageList := TObjectList.Create(True);
   FHintTimeOut := Application.HintHidePause;
   Application.HintHidePause := 1000000;
+  Application.AddOnDeactivateHandler(@DoDeactivate, False);
  {$IF LCL_FULLVERSION >= 1070000}
+  tbInstall.Style := tbsButtonDrop;
   tbCreate.Style := tbsButtonDrop;
  {$ENDIF}
 end;
@@ -183,7 +208,6 @@ begin
   Updates := TUpdates.Create(FileName);
   Updates.OnUpdate := @DoOnUpdate;
   Updates.StartUpdate;
-  Updates.PauseUpdate;
 end;
 
 procedure TMainFrm.StopUpdates;
@@ -198,12 +222,12 @@ end;
 
 procedure TMainFrm.FormDestroy(Sender: TObject);
 begin
+  SerializablePackages.OnProcessJSON := nil;
+  PackageDownloader.OnJSONProgress := nil;
+  PackageDownloader.OnJSONDownloadCompleted := nil;
   StopUpdates;
-  PackageDownloader.Free;
-  SerializablePackages.Free;
+  Application.RemoveOnDeactivateHandler(@DoDeactivate);
   VisualTree.Free;
-  Options.Free;
-  InstallPackageList.Free;
   Application.HintHidePause := FHintTimeOut;
 end;
 
@@ -215,12 +239,21 @@ end;
 
 procedure TMainFrm.FormShow(Sender: TObject);
 begin
-  SetupControls;
-  GetPackageList;
+  if not FFormIsHiden then
+  begin
+    SetupControls;
+    SetupColors;
+    GetPackageList;
+  end
+  else
+    if not Application.Terminated then
+      StartUpdates;
 end;
 
 procedure TMainFrm.GetPackageList(const ARepositoryHasChanged: Boolean = False);
 begin
+  cbFilterBy.ItemIndex := 0;
+  cbFilterByChange(cbFilterBy);
   Caption := rsLazarusPackageManager;
   EnableDisableControls(False);
   VisualTree.VST.Clear;
@@ -229,24 +262,23 @@ begin
   begin
     SetupMessage(rsMainFrm_rsMessageChangingRepository);
     Sleep(1500);
-    StopUpdates;
-    SerializablePackages.Clear;
-    StartUpdates;
-  end
-  else
-    Updates.PauseUpdate;
+  end;
+  StopUpdates;
   SetupMessage(rsMainFrm_rsMessageDownload);
-  PackageDownloader.DownloadJSON(10000);
+  PackageDownloader.DownloadJSON(Options.ConTimeOut*1000);
 end;
 
-function TMainFrm.IsSomethingChecked(const AIsUpdate: Boolean = False): Boolean;
+function TMainFrm.IsSomethingChecked(const AResolveDependencies: Boolean = True): Boolean;
 begin
   Result := VisualTree.VST.CheckedCount > 0;
   if Result then
   begin
-    if not AIsUpdate then
+    if AResolveDependencies then
       if VisualTree.ResolveDependencies = mrCancel then
+      begin
+        Result := False;
         Exit;
+      end;
     VisualTree.GetPackageList;
     VisualTree.UpdatePackageStates;
   end
@@ -254,8 +286,27 @@ begin
     MessageDlgEx(rsMainFrm_rsNoPackageToDownload, mtInformation, [mbOk], Self)
 end;
 
+function TMainFrm.CheckDstDir(const ADstDir: String): Boolean;
+begin
+  Result := True;
+  if not DirectoryExists(ADstDir) then
+  begin
+    if not ForceDirectories(ADstDir) then
+    begin
+      MessageDlgEx(Format(rsMainFrm_rsDestDirError, [ADstDir]), mtError, [mbOk], Self);
+      Result := False;
+    end;
+  end;
+end;
+
+
 function TMainFrm.Download(const ADstDir: String; var ADoExtract: Boolean): TModalResult;
 begin
+  if not CheckDstDir(ADstDir) then
+  begin
+    Result := mrCancel;
+    Exit;
+  end;
   ADoExtract := False;
   ProgressFrm := TProgressFrm.Create(MainFrm);
   try
@@ -275,6 +326,11 @@ end;
 function TMainFrm.Extract(const ASrcDir, ADstDir: String; var ADoOpen: Boolean;
   const AIsUpdate: Boolean = False): TModalResult;
 begin
+  if not CheckDstDir(ADstDir) then
+  begin
+    Result := mrCancel;
+    Exit;
+  end;
   ProgressFrm := TProgressFrm.Create(MainFrm);
   try
     PackageUnzipper := TPackageUnzipper.Create;
@@ -315,6 +371,11 @@ end;
 
 function TMainFrm.UpdateP(const ADstDir: String; var ADoExtract: Boolean): TModalResult;
 begin
+  if not CheckDstDir(ADstDir) then
+   begin
+     Result := mrCancel;
+     Exit;
+   end;
   ADoExtract := False;
   ProgressFrm := TProgressFrm.Create(MainFrm);
   try
@@ -339,7 +400,7 @@ begin
     etNone:
       begin
         SetupMessage(rsMainFrm_rsMessageParsingJSON);
-        if (not SerializablePackages.JSONToPackages(AJSON)) or (SerializablePackages.Count = 0) then
+        if (SerializablePackages.Count = 0) then
         begin
           EnableDisableControls(True);
           SetupMessage(rsMainFrm_rsMessageNoPackage);
@@ -350,11 +411,9 @@ begin
         EnableDisableControls(True);
         SetupMessage;
         mJSON.Text := AJSON;
+        StartUpdates;
         cbAll.Checked := False;
-        Caption := rsLazarusPackageManager + ' ' + Format(rsPackagesFound, [
-          IntToStr(SerializablePackages.Count)]);
-        if Assigned(Updates) then
-          Updates.StartUpdate;
+        Caption := rsLazarusPackageManager + ' ' + SerializablePackages.QuickStatistics;
       end;
     etConfig:
       begin
@@ -374,6 +433,12 @@ begin
   end;
 end;
 
+procedure TMainFrm.DoOnJSONProgress(Sender: TObject);
+begin
+  Application.ProcessMessages;
+end;
+
+
 procedure TMainFrm.DoOnProcessJSON(Sender: TObject);
 begin
   Application.ProcessMessages;
@@ -384,18 +449,29 @@ begin
   VisualTree.UpdatePackageUStatus;
 end;
 
+procedure TMainFrm.DoDeactivate(Sender: TObject);
+begin
+  if Assigned(VisualTree.ShowHintFrm) then
+    if VisualTree.ShowHintFrm.Visible then
+       VisualTree.ShowHintFrm.Hide;
+end;
+
 procedure TMainFrm.ShowOptions(const AActivePageIndex: Integer = 0);
 var
   OldIndex: Integer;
+  DefaultTheme: Boolean;
 begin
   OptionsFrm := TOptionsFrm.Create(MainFrm);
   try
     OptionsFrm.SetupControls(AActivePageIndex);
     OldIndex := Options.ActiveRepositoryIndex;
+    DefaultTheme := Options.UseDefaultTheme;
     if OptionsFrm.ShowModal = mrOk then
     begin
       tbRefresh.Enabled := Trim(Options.RemoteRepository[Options.ActiveRepositoryIndex]) <> '';
       GetPackageList(OldIndex <> Options.ActiveRepositoryIndex);
+      if DefaultTheme <> Options.UseDefaultTheme then
+        SetupColors;
     end;
   finally
     OptionsFrm.Free;
@@ -418,7 +494,9 @@ begin
   tbRefresh.Enabled := (AEnable) and (Trim(Options.RemoteRepository[Options.ActiveRepositoryIndex]) <> '');
   tbDownload.Enabled := (AEnable) and (SerializablePackages.Count > 0) and (VisualTree.VST.CheckedCount > 0);
   tbInstall.Enabled := (AEnable) and (SerializablePackages.Count > 0) and (VisualTree.VST.CheckedCount > 0);
+  tbUninstall.Enabled := (AEnable) and (SerializablePackages.Count > 0) and (VisualTree.VST.CheckedCount > 0);
   tbUpdate.Enabled :=  (AEnable) and (SerializablePackages.Count > 0) and (VisualTree.VST.CheckedCount > 0);
+  tbOpenRepo.Enabled := (AEnable);
   tbCleanUp.Enabled := (AEnable) and (SerializablePackages.Count > 0);
   tbCreate.Visible := Options.UserProfile = 1;
   if tbCreate.Visible then
@@ -457,11 +535,6 @@ end;
 procedure TMainFrm.DoOnChecked(Sender: TObject);
 begin
   EnableDisableControls(True);
-end;
-
-procedure TMainFrm.DoOnJSONProgress(Sender: TObject);
-begin
-  Application.ProcessMessages;
 end;
 
 procedure TMainFrm.cbAllClick(Sender: TObject);
@@ -581,7 +654,7 @@ end;
 
 procedure TMainFrm.tbHelpClick(Sender: TObject);
 begin
-  OpenDocument('http://wiki.freepascal.org/Online_Package_Manager');
+  OpenURL('http://wiki.freepascal.org/Online_Package_Manager');
 end;
 
 procedure TMainFrm.tbRefreshClick(Sender: TObject);
@@ -596,7 +669,7 @@ var
   DoExtract: Boolean;
   DoOpen: Boolean;
 begin
-  if not IsSomethingChecked then
+  if not IsSomethingChecked(False) then
     Exit;
 
   SDD.InitialDir := Options.LastDownloadDir;
@@ -622,7 +695,7 @@ begin
 
   if CanGo then
   begin
-    Updates.PauseUpdate;
+    StopUpdates;
     Options.LastDownloadDir := DstDir;
     Options.Changed := True;
     PackageAction := paDownloadTo;
@@ -644,7 +717,16 @@ begin
     end;
   end;
   SerializablePackages.RemoveErrorState;
-  Updates.StartUpdate;
+  StartUpdates;
+end;
+
+procedure TMainFrm.Rebuild;
+begin
+  FFormIsHiden := True;
+  Self.Hide;
+  IDECommands.ExecuteIDECommand(Self, ecBuildLazarus);
+  Self.Show;
+  FFormIsHiden := False;
 end;
 
 procedure TMainFrm.tbUpdateClick(Sender: TObject);
@@ -655,7 +737,7 @@ var
   InstallStatus: TInstallStatus;
   NeedToRebuild: Boolean;
 begin
-  if not IsSomethingChecked(True) then
+  if not IsSomethingChecked(False) then
     Exit;
   CanGo := True;
   NeedToRebuild := False;
@@ -674,10 +756,10 @@ begin
 
   if CanGo then
   begin
-    if MessageDlgEx(rsMainFrm_PackageUpdateWarning, mtConfirmation, [mbYes, mbNo], Self) = mrNo then
+    if MessageDlgEx(rsMainFrm_PackageUpdateWarning, mtConfirmation, [mbYes, mbNo], Self) <> mrYes then
       Exit;
 
-    Updates.PauseUpdate;
+    StopUpdates;
     PackageAction := paUpdate;
     VisualTree.UpdatePackageStates;
     if SerializablePackages.DownloadCount > 0 then
@@ -710,11 +792,7 @@ begin
               SerializablePackages.MarkRuntimePackages;
               VisualTree.UpdatePackageStates;
               if NeedToRebuild then
-              begin
-                EnableDisableControls(False);
-                IDECommands.ExecuteIDECommand(Self, ecBuildLazarus);
-                EnableDisableControls(True);
-              end;
+                Rebuild;
             end;
           end;
         end;
@@ -724,8 +802,107 @@ begin
   if not NeedToRebuild then
   begin
     SerializablePackages.RemoveErrorState;
-    Updates.StartUpdate;
+    StartUpdates;
   end;
+end;
+
+procedure TMainFrm.tbUninstallClick(Sender: TObject);
+
+  function IsAtLeastOnePackageInstalled: Boolean;
+  var
+    I, J: Integer;
+    LazarusPackage: TLazarusPackage;
+  begin
+    Result := False;
+    for I := 0 to SerializablePackages.Count - 1 do
+    begin
+      for J := 0 to SerializablePackages.Items[I].LazarusPackages.Count - 1 do
+      begin
+        LazarusPackage := TLazarusPackage(SerializablePackages.Items[I].LazarusPackages.Items[J]);
+        if (LazarusPackage.Checked) and (LazarusPackage.PackageState = psInstalled) then
+        begin
+          Result := True;
+          Exit;
+        end;
+      end;
+    end;
+  end;
+
+  function GetIDEPackage(const AFileName: String): TIDEPackage;
+  var
+    I: Integer;
+  begin
+    Result := nil;
+    for I := 0 to PackageEditingInterface.GetPackageCount - 1 do
+    begin
+      if UpperCase(PackageEditingInterface.GetPackages(I).Filename) = UpperCase(AFileName) then
+      begin
+        Result := PackageEditingInterface.GetPackages(I);
+        Break;
+      end;
+    end;
+  end;
+
+var
+  I, J: Integer;
+  LazarusPackage: TLazarusPackage;
+  IDEPackage: TIDEPackage;
+  FileName: String;
+  NeedToRebuild: Boolean;
+begin
+  if not IsSomethingChecked(False) then
+    Exit;
+
+   if IsAtLeastOnePackageInstalled then
+   begin
+     if MessageDlgEx(Format(rsMainFrm_rsUninstall, ['             ']), mtInformation, [mbYes, mbNo], Self) <> mrYes then
+       Exit;
+   end
+   else
+   begin
+     MessageDlgEx(rsMainFrm_rsUninstall_Nothing, mtInformation, [mbOk], Self);
+     Exit;
+   end;
+
+  NeedToRebuild := False;
+  StopUpdates;
+  for I := 0 to SerializablePackages.Count - 1 do
+  begin
+    for J := 0 to SerializablePackages.Items[I].LazarusPackages.Count - 1 do
+    begin
+      LazarusPackage := TLazarusPackage(SerializablePackages.Items[I].LazarusPackages.Items[J]);
+      if (LazarusPackage.Checked) and (LazarusPackage.PackageState = psInstalled) then
+      begin
+        case LazarusPackage.PackageType of
+          lptRunTime, lptRunTimeOnly:
+          begin
+            FileName := StringReplace(LazarusPackage.Name, '.lpk', '.opkman', [rfIgnoreCase]);
+            if FileExists(Options.LocalRepositoryPackages + SerializablePackages.Items[I].PackageBaseDir + LazarusPackage.PackageRelativePath + FileName) then
+              DeleteFile(Options.LocalRepositoryPackages + SerializablePackages.Items[I].PackageBaseDir + LazarusPackage.PackageRelativePath + FileName);
+            NeedToRebuild := True;
+          end;
+          lptDesignTime, lptRunAndDesignTime:
+          begin
+            IDEPackage := GetIDEPackage(LazarusPackage.PackageAbsolutePath);
+            if IDEPackage <> nil then
+            begin
+              if PackageEditingInterface.UninstallPackage(IDEPackage, False) <> mrOk then
+              begin
+                NeedToRebuild := False;
+                MessageDlgEx(Format(rsMainFrm_rsUninstall_Error, [LazarusPackage.Name]), mtError, [mbOk], Self);
+                StartUpdates;
+                Exit;
+              end
+              else
+                NeedToRebuild := True;
+            end;
+          end;
+        end;
+      end;
+    end;
+  end;
+  if NeedToRebuild then
+    Rebuild;
 end;
 
 procedure TMainFrm.tbInstallClick(Sender: TObject);
@@ -754,7 +931,7 @@ begin
 
   if CanGo then
   begin
-    Updates.PauseUpdate;
+    StopUpdates;
     PackageAction := paInstall;
     VisualTree.UpdatePackageStates;
     if SerializablePackages.DownloadCount > 0 then
@@ -786,14 +963,8 @@ begin
             SerializablePackages.MarkRuntimePackages;
             VisualTree.UpdatePackageStates;
             if (InstallStatus = isSuccess) or (InstallStatus = isPartiallyFailed) then
-            begin
               if NeedToRebuild then
-              begin
-                EnableDisableControls(False);
-                IDECommands.ExecuteIDECommand(Self, ecBuildLazarus);
-                EnableDisableControls(True);
-              end;
-            end;
+                Rebuild;
           end;
         end;
       end;
@@ -802,8 +973,24 @@ begin
   if not NeedToRebuild then
   begin
     SerializablePackages.RemoveErrorState;
-    Updates.StartUpdate;
+    StartUpdates;
   end;
+end;
+
+procedure TMainFrm.miFromRepositoryClick(Sender: TObject);
+begin
+  tbInstallClick(tbInstall);
+end;
+
+procedure TMainFrm.miFromExteranlSourceClick(Sender: TObject);
+begin
+  tbUpdateClick(tbUpdate);
+end;
+
+
+procedure TMainFrm.tbOpenRepoClick(Sender: TObject);
+begin
+  OpenDocument(Options.LocalRepositoryPackages);
 end;
 
 procedure TMainFrm.tbCleanUpClick(Sender: TObject);
@@ -812,7 +999,12 @@ var
 begin
   if MessageDlgEx(rsMainFrm_rsRepositoryCleanup0, mtInformation, [mbYes, mbNo], Self) = mrYes then
   begin
-    Cnt := SerializablePackages.Cleanup;
+    Screen.Cursor := crHourGlass;
+    try
+      Cnt := SerializablePackages.Cleanup;
+    finally
+      Screen.Cursor := crDefault;
+    end;
     MessageDlgEx(Format(rsMainFrm_rsRepositoryCleanup1, [IntToStr(Cnt)]),
       mtInformation, [mbOk], Self);
   end;
@@ -839,13 +1031,14 @@ procedure TMainFrm.miCreateRepositoryPackageClick(Sender: TObject);
 begin
   CreateRepositoryPackagesFrm := TCreateRepositoryPackagesFrm.Create(MainFrm);
   try
+    CreateRepositoryPackagesFrm.SetType(0);
     CreateRepositoryPackagesFrm.ShowModal;
   finally
     CreateRepositoryPackagesFrm.Free;
   end;
 end;
 
-procedure TMainFrm.miCreateRepositoryClick(Sender: TObject);
+procedure TMainFrm.miCreateJSONForUpdatesClick(Sender: TObject);
 var
   Msg: String;
 begin
@@ -869,6 +1062,18 @@ begin
   end;
 end;
 
+procedure TMainFrm.miCreateRepositoryClick(Sender: TObject);
+var
+  CreateRepositoryFrm: TCreateRepositoryFrm;
+begin
+  CreateRepositoryFrm := TCreateRepositoryFrm.Create(MainFrm);
+  try
+    CreateRepositoryFrm.ShowModal;
+  finally
+    CreateRepositoryFrm.Free;
+  end;
+end;
+
 procedure TMainFrm.miCopyToClpBrdClick(Sender: TObject);
 var
   Data: PData;
@@ -889,7 +1094,7 @@ procedure TMainFrm.miResetRatingClick(Sender: TObject);
 var
   Data: PData;
   Node: PVirtualNode;
-  Package: TPackage;
+  MetaPkg: TMetaPackage;
 begin
   if MessageDlgEx(rsMainFrm_miResetRating + '?', mtConfirmation, [mbYes, mbNo], Self) = mrNo then
     Exit;
@@ -900,14 +1105,87 @@ begin
     if Data^.DataType = 1 then
     begin
       Data^.Rating := 0;
-      Package := SerializablePackages.FindPackage(Data^.PackageName, fpbPackageName);
-      if Package <> nil then
-        Package.Rating := 0;
+      MetaPkg := SerializablePackages.FindMetaPackage(Data^.PackageName, fpbPackageName);
+      if MetaPkg <> nil then
+        MetaPkg.Rating := 0;
       VisualTree.VST.ReinitNode(Node, False);
       VisualTree.VST.RepaintNode(Node);
     end;
   end;
 end;
+
+procedure TMainFrm.miSaveChecksClick(Sender: TObject);
+var
+  Node: PVirtualNode;
+  Data: PData;
+  SL: TStringList;
+begin
+  SD.DefaultExt := '.*.opm';
+  SD.Filter := '*.opm|*.opm';
+
+  SL := TStringList.Create;
+  try
+    Node := VisualTree.VST.GetFirst;
+    while Node <> nil do
+    begin
+      if VisualTree.VST.CheckState[Node] = csCheckedNormal then
+      begin
+        Data := VisualTree.VST.GetNodeData(Node);
+        if (Data^.DataType = 2) then
+          SL.Add(Data^.LazarusPackageName);
+      end;
+      Node := VisualTree.VST.GetNext(Node);
+    end;
+    if Trim(SL.Text) = '' then
+      MessageDlgEx(rsMainFrm_rsMessageNothingChacked, mtInformation, [mbOk], Self)
+    else
+      if SD.Execute then
+      begin
+         SL.SaveToFile(SD.FileName);
+         MessageDlgEx(Format(rsMainFrm_resMessageChecksSaved, [IntToStr(SL.Count)]), mtInformation, [mbOk], Self)
+      end;
+  finally
+    SL.Free;
+  end;
+end;
+
+procedure TMainFrm.miLoadChecksClick(Sender: TObject);
+var
+  SL: TStringList;
+  I: Integer;
+  Node: PVirtualNode;
+  Data: PData;
+  CheckCount: Integer;
+begin
+  if OD.Execute then
+  begin
+    CheckCount := 0;
+    SL := TStringList.Create;
+    try
+      SL.LoadFromFile(OD.FileName);
+      for I := 0 to SL.Count - 1 do
+      begin
+        Node := VisualTree.VST.GetFirst;
+        while Node <> nil do
+        begin
+          Data := VisualTree.VST.GetNodeData(Node);
+          if UpperCase(Trim(Data^.LazarusPackageName)) = UpperCase(Trim(SL.Strings[I])) then
+          begin
+            VisualTree.VST.CheckState[Node] := csCheckedNormal;
+            Inc(CheckCount);
+            Break;
+          end;
+          Node := VisualTree.VST.GetNext(Node);
+        end;
+      end;
+    finally
+      SL.Free;
+    end;
+    if CheckCount > 0 then
+       MessageDlgEx(Format(rsMainFrm_resMessageChecksLoaded, [IntToStr(CheckCount)]), mtInformation, [mbOk], Self)
+  end;
+end;
+
 
 procedure TMainFrm.pnMainResize(Sender: TObject);
 begin
@@ -959,6 +1237,8 @@ var
   JSON: TJSONStringType;
   Ms: TMemoryStream;
 begin
+  SD.DefaultExt := '.*.json';
+  SD.Filter := '*.json|*.json';
   if SD.Execute then
   begin
     JSON := '';
@@ -982,7 +1262,7 @@ begin
 
   cbFilterBy.Clear;
   cbFilterBy.Items.Add(rsMainFrm_VSTHeaderColumn_PackageName);
-  cbFilterBy.Items.Add(rsMainFrm_VSTHeaderColumn_PackageFile);
+  cbFilterBy.Items.Add(rsMainFrm_VSTHeaderColumn_LazarusPackage);
   cbFilterBy.Items.Add(rsMainFrm_VSTText_PackageCategory);
   cbFilterBy.Items.Add(rsMainFrm_VSTText_PackageStatus);
   cbFilterBy.Items.Add(rsMainFrm_VSTText_Version);
@@ -998,9 +1278,9 @@ begin
 
   cbPackageType.Clear;
   cbPackageType.Items.Add('');
-  cbPackageType.Items.Add(rsMainFrm_VSTText_PackageType0);
-  cbPackageType.Items.Add(rsMainFrm_VSTText_PackageType1);
   cbPackageType.Items.Add(rsMainFrm_VSTText_PackageType2);
+  cbPackageType.Items.Add(rsMainFrm_VSTText_PackageType1);
+  cbPackageType.Items.Add(rsMainFrm_VSTText_PackageType0);
   cbPackageType.Items.Add(rsMainFrm_VSTText_PackageType3);
 
   cbPackageState.Clear;
@@ -1023,6 +1303,10 @@ begin
   tbInstall.Hint := rsMainFrm_TBInstall_Hint;
   tbUpdate.Caption := rsMainFrm_TBUpdate_Caption;
   tbUpdate.Hint := rsMainFrm_TBUpdate_Hint;
+  tbUninstall.Caption := rsMainFrm_TBUninstall_Caption;
+  tbUninstall.Hint := rsMainFrm_TBUninstall_Hint;
+  tbOpenRepo.Caption := rsMainFrm_TBOpenRepo_Caption;
+  tbOpenRepo.Hint := rsMainFrm_TBOpenRepo_Hint;
   tbCleanUp.Caption := rsMainFrm_TBCleanUp_Caption;
   tbCleanUp.Hint := rsMainFrm_TBCleanUp_Hint;
   tbCreate.Caption := rsMainFrm_TBRepository_Caption;
@@ -1032,8 +1316,11 @@ begin
   tbHelp.Caption := rsMainFrm_TBHelp_Caption;
   tbHelp.Hint := rsMainFrm_TBHelp_Hint;
 
+  miFromRepository.Caption := rsMainFrm_miFromRepository;
+  miFromExteranlSource.Caption := rsMainFrm_miFromExternalSource;
   miCreateRepositoryPackage.Caption := rsMainFrm_miCreateRepositoryPackage;
-  miCreateRepository.Caption := rsMainFrm_miCreateJSONForUpdates;
+  miCreateJSONForUpdates.Caption := rsMainFrm_miCreateJSONForUpdates;
+  miCreateRepository.Caption := rsMainFrm_miCreateRepository;
   miJSONShow.Caption := rsMainFrm_miJSONShow;
   miJSONHide.Caption := rsMainFrm_miJSONHide;
   miJSONSort.Caption := rsMainFrm_miJSONSort;
@@ -1046,6 +1333,8 @@ begin
   miSaveToFile.Caption := rsMainFrm_miSaveToFile;
   miCopyToClpBrd.Caption := rsMainFrm_miCopyToClpBrd;
   miResetRating.Caption := rsMainFrm_miResetRating;
+  miSaveChecks.Caption := rsMainFrm_miSaveChecks;
+  miLoadChecks.Caption := rsMainFrm_miLoadChecks;
 
   edFilter.Hint := rsMainFrm_edFilter_Hint;
   spClear.Hint := rsMainFrm_spClear_Hint;
@@ -1069,6 +1358,24 @@ begin
   cbPackageCategory.Visible := False;
   cbPackageType.Visible := False;
   cbPackageState.Visible := False;
+end;
+
+procedure TMainFrm.SetupColors;
+begin
+  VisualTree.SetupColors;
+  if not Options.UseDefaultTheme then
+  begin
+    Self.Color := clBtnFace;
+    pnMain.Color := clBtnFace;
+    pnMessage.Color := clBtnFace;
+    pnTop.Color := clBtnFace;
+    mJSON.Color := clBtnFace;
+  end
+  else
+  begin
+    pnMain.Color := VisualTree.VST.GetDefaultColor(dctBrush);
+    pnMessage.Color := VisualTree.VST.GetDefaultColor(dctBrush);
+  end;
 end;
 
 end.

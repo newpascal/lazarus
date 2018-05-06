@@ -153,9 +153,10 @@ begin
         then  begin
           BetterName:=GetMacroNamePrefix(cbmpMedium)+S;
           DlgResult:=IDEQuestionDialog(lisCCOWarningCaption,
-            Format(lisTheMacroDoesNotBeginWith, [S, Prefix]),
-            mtWarning, [mrCancel, mrYes, Format(lisRenameTo, [BetterName]),
-              mrIgnore]);
+              Format(lisTheMacroDoesNotBeginWith, [S, Prefix]),
+              mtWarning, [mrCancel,
+                          mrYes, Format(lisRenameTo, [BetterName]),
+                          mrIgnore]);
           if DlgResult=mrIgnore then begin
           end else if DlgResult=mrYes then
             S:=BetterName
@@ -481,17 +482,17 @@ begin
 
   MacrosGroupBox.Caption:=lisIDEMacros;
   BuildMacrosTreeView.Images := IDEImages.Images_24;
-  fVarImgID:=IDEImages.LoadImage(24,'da_define');
-  fValueImgID:=IDEImages.LoadImage(24,'da_define');
-  fDefValueImgID:=IDEImages.LoadImage(24,'da_define');
+  fVarImgID:=IDEImages.LoadImage('da_define', 24);
+  fValueImgID:=IDEImages.LoadImage('da_define', 24);
+  fDefValueImgID:=IDEImages.LoadImage('da_define', 24);
 
   BuildMacroDefaultLabel.Caption:=
     lisHintADefaultValueCanBeDefinedInTheConditionals;
   BuildMacroDescriptionLabel.Caption:=lisCodeToolsDefsDescription;
 
-  BMAddMacroSpeedButton.LoadGlyphFromResourceName(HInstance, 'laz_add');
-  BMAddMacroValueSpeedButton.LoadGlyphFromResourceName(HInstance, 'laz_add');
-  BMDeleteMacroSpeedButton.LoadGlyphFromResourceName(HInstance, 'laz_delete');
+  TIDEImages.AssignImage(BMAddMacroSpeedButton.Glyph, 'laz_add');
+  TIDEImages.AssignImage(BMAddMacroValueSpeedButton.Glyph, 'laz_add');
+  TIDEImages.AssignImage(BMDeleteMacroSpeedButton.Glyph, 'laz_delete');
 end;
 
 destructor TCompOptBuildMacrosFrame.Destroy;

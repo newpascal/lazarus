@@ -147,7 +147,7 @@ type
   end;
 
 implementation
-uses Forms, LR_Utils, LazUTF8, Printers, FPReadBMP, FPReadPNG, FPReadJPEG;
+uses LazFileUtils, Forms, LR_Utils, LazUTF8, Printers, FPReadBMP, FPReadPNG, FPReadJPEG;
 
 const
   cInchToMM = 25.4;
@@ -210,10 +210,28 @@ begin
   FList.Clear;
 end;
 
+function MakePSName(AFontName: string; AFontStyle: TFontStyles):string;
+begin
+  Result:=AFontName;
+
+  if Graphics.fsBold in AFontStyle then
+    Result:=Result + '-Bold';
+
+  if Graphics.fsItalic in AFontStyle then
+    Result:=Result + '-Oblique';
+
+  if Graphics.fsUnderline in AFontStyle then
+    Result:=Result + '-Underline';
+
+  if Graphics.fsStrikeOut in AFontStyle then
+    Result:=Result + '-StrikeOut';
+end;
+
 function TExportFonts.AddItem(AFontName: string; AFontStyle: TFontStyles
   ): TExportFontItem;
 var
-  S1, S2, S3: String;
+  S1, S2, S3, S: String;
+
 begin
   Result:=FindItem(AFontName, AFontStyle);
   if Assigned(Result) then exit;
@@ -225,7 +243,8 @@ begin
     S2:=ExtractFileName(Result.FTTFFontInfo.FileName);
     S3:=AFontName;
     FOwner.FPDFDocument.FontDirectory:=S1;
-    Result.FPdfFont:=FOwner.FPDFDocument.AddFont(S2, S3);
+    S:=MakePSName(AFontName, AFontStyle);
+    Result.FPdfFont:=FOwner.FPDFDocument.AddFont(S2, S);
   end
   else
     Result:=FDefaultFontNormal;
@@ -326,7 +345,12 @@ procedure TlrPdfExportFilter.SetupFonts;
 function DefFontName:string;
 const
   DefFontNames : array [1..3] of string =
+  // TODO: Check if Arial is better default choice in windows/linux/mac
+  {$IFDEF MSWINDOWS}
+     ('Arial', 'Liberation Sans', 'FreeSans');
+  {$ELSE}
      ('Liberation Sans', 'Arial', 'FreeSans');
+  {$ENDIF}
 var
   i: Integer;
 begin
@@ -372,8 +396,14 @@ end;
 begin
   if gTTFontCache.Count = 0 then
   begin
+    {$IF (FPC_FULLVERSION >= 30101)}
     gTTFontCache.BuildFontCacheIgnoresErrors:=true;
+    {$ENDIF}
+    {$IFDEF WINDOWS}
     CreateFontDirList;
+    {$ELSE}
+    gTTFontCache.ReadStandardFonts;
+    {$ENDIF}
     gTTFontCache.BuildFontCache;
   end;
 end;
@@ -749,11 +779,13 @@ end;
 
 procedure TlrPdfExportFilter.WriteURL(X, Y, W, H: TPDFFloat; AUrlText: string);
 begin
+  {$IF (FPC_FULLVERSION >= 30101)}
   X := ConvetUnits(X);
   Y := ConvetUnits(Y);
   W := ConvetUnits(W);
   H := ConvetUnits(H);
   FCurPage.AddExternalLink(X, Y + H, W, H, AUrlText, false);
+  {$ENDIF}
 end;
 
 procedure TlrPdfExportFilter.DrawLine(X1, Y1, X2, Y2: TPDFFloat;
@@ -866,11 +898,11 @@ begin
   FPDFDocument.Infos.ApplicationName := ApplicationName;
   FPDFDocument.Infos.CreationDate := Now;
 
-//  FPDFDocument.Options:=FPdfOptions.FOptions;
-  FPDFDocument.DefaultOrientation := ppoPortrait; // FPdfOptions.PaperOrientation;
+  FPDFDocument.Options:=FPDFDocument.Options + [poPageOriginAtTop, poUseRawJPEG];
+  FPDFDocument.DefaultOrientation := ppoPortrait;
 
   FPDFDocument.StartDocument;
-  FCurSection := FPDFDocument.Sections.AddSection; // we always need at least one section
+  FCurSection := FPDFDocument.Sections.AddSection;
 
   SetupFonts;
 end;

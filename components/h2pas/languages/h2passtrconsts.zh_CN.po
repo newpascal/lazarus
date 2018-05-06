@@ -1,44 +1,44 @@
 msgid ""
 msgstr ""
-"Project-Id-Version: 0.9.27 beta\n"
-"POT-Creation-Date: \n"
-"PO-Revision-Date: 2009-04-24 19:20+0800\n"
-"Last-Translator: XY.Chen <chenxinyv@gmail.com>\n"
-"Language-Team: \n"
 "MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=utf-8\n"
+"Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"X-Poedit-Language: Chinese\n"
-"X-Poedit-Country: CHINA\n"
-"X-Poedit-SourceCharset: utf-8\n"
+"Project-Id-Version: X-1.6\n"
+"POT-Creation-Date: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: 郑建平@夏宗萍 aka  robsean  <robsean@126.com>\n"
+"Language-Team: http://www.microsystem.studio\n"
+"Language: zh_CN\n"
+"X-Generator: Poedit 1.8.7.1\n"
+"X-Poedit-SourceCharset: UTF-8\n"
 
 #: h2passtrconsts.h2padd
 msgid "&Add"
-msgstr ""
+msgstr "添加(&A)"
 
 #: h2passtrconsts.h2paddacopy
 msgid "Add a copy"
-msgstr ""
+msgstr "添加一个副本"
 
 #: h2passtrconsts.h2paddfromclipboard
 msgid "Add from clipboard"
-msgstr ""
+msgstr "从剪贴板添加"
 
 #: h2passtrconsts.h2paddhfiles
 msgid "Add .h files ..."
-msgstr ""
+msgstr "添加.h文件 ..."
 
 #: h2passtrconsts.h2paddhfiles2
 msgid "Add *.h files ..."
-msgstr ""
+msgstr "添加*.h文件 ..."
 
 #: h2passtrconsts.h2paddhfiles3
 msgid "Add .h files?"
-msgstr ""
+msgstr "添加.h文件?"
 
 #: h2passtrconsts.h2paddincludedhfiles
 msgid "Add included .h files"
-msgstr ""
+msgstr "添加included.h文件"
 
 #: h2passtrconsts.h2paddmissingbracketsaroundmacrovalues
 msgid "Add missing brackets around macro values"
@@ -46,47 +46,47 @@ msgstr ""
 
 #: h2passtrconsts.h2paddmissingh2pasifdefsforfunctionbodies
 msgid "Add missing H2Pas IFDEFs for function bodies"
-msgstr ""
+msgstr "添加缺少的H2Pas IFDEFs为function bodies"
 
 #: h2passtrconsts.h2paddmissingpointertypeslikepppchar
 msgid "Add missing pointer types like PPPChar"
-msgstr ""
+msgstr "添加缺少的指针(pointer)类型 如PPPChar"
 
 #: h2passtrconsts.h2paddnewtool
 msgid "Add new tool"
-msgstr ""
+msgstr "添加新的工具"
 
 #: h2passtrconsts.h2paddsearchandreplacetoolbeforeh2pas
 msgid "Add \"search and replace\" tool before H2Pas"
-msgstr ""
+msgstr "在H2Pas前添加\"搜索和替换\"工具 "
 
 #: h2passtrconsts.h2paddthesehfilestoh2pasproject
 msgid "Add these .h files to H2Pas project?%s%s%s"
-msgstr ""
+msgstr "添加这些.h文件到H2Pas工程?%s%s%s"
 
 #: h2passtrconsts.h2paddunitstousessection
 msgid "Add units to uses section"
-msgstr ""
+msgstr "添加单元到使用章节"
 
 #: h2passtrconsts.h2pafterh2pas
 msgid "After H2Pas"
-msgstr ""
+msgstr "在H2Pas后"
 
 #: h2passtrconsts.h2pambiguousmerges
 msgid "Ambiguous merges:%s%s"
-msgstr ""
+msgstr "模糊合并:%s%s"
 
 #: h2passtrconsts.h2pbeforeh2pas
 msgid "Before H2Pas"
-msgstr ""
+msgstr "在H2Pas前"
 
 #: h2passtrconsts.h2pcancel
 msgid "Cancel"
-msgstr ""
+msgstr "取消"
 
 #: h2passtrconsts.h2pcancel2
 msgid "&Cancel"
-msgstr ""
+msgstr "取消(&C)"
 
 #: h2passtrconsts.h2pccompactoutputmodelessspacesandemptylines
 msgid "-c  Compact outputmode, less spaces and empty lines"
@@ -94,23 +94,23 @@ msgstr ""
 
 #: h2passtrconsts.h2pcheaderfileconverter
 msgid "C header file converter"
-msgstr "Cͷ�ļ�ת��"
+msgstr "C头文件转换"
 
 #: h2passtrconsts.h2pcheaderfilehhallfiles
 msgid "C header file (*.h)|*.h|All files (*.*)|%s"
-msgstr ""
+msgstr "C头文件 (*.h)|*.h|所有文件 (*.*)|%s"
 
 #: h2passtrconsts.h2pcheaderfilenotfound
 msgid "C header file \"%s\" not found"
-msgstr ""
+msgstr "C头文件\"%s\"未找到"
 
 #: h2passtrconsts.h2pcheaderfiles
 msgid "C header files"
-msgstr ""
+msgstr "C头文件"
 
 #: h2passtrconsts.h2pclose
 msgid "&Close"
-msgstr ""
+msgstr "关闭(&C)"
 
 #: h2passtrconsts.h2pcommentfunctionsthataretoocomplexforh2pas
 msgid "Comment functions that are too complex for H2Pas"
@@ -122,83 +122,83 @@ msgstr ""
 
 #: h2passtrconsts.h2pconfirmdelete
 msgid "Confirm delete"
-msgstr ""
+msgstr "删除确认"
 
 #: h2passtrconsts.h2pconfirmremoval
 msgid "Confirm removal"
-msgstr ""
+msgstr "确定删除"
 
 #: h2passtrconsts.h2pconversionsafterrunningh2pas
 msgid "Conversions after running H2Pas"
-msgstr ""
+msgstr "在运行H2Pas后转换"
 
 #: h2passtrconsts.h2pconversionsbeforerunningh2pas
 msgid "Conversions before running H2Pas"
-msgstr ""
+msgstr "在运行H2Pas前转换"
 
 #: h2passtrconsts.h2pconvertfunctiontypestopointers
 msgid "Convert function types to pointers"
-msgstr ""
+msgstr "转换函数类型到指针"
 
 #: h2passtrconsts.h2pcopyingfilefailed
 msgid "Copying file failed"
-msgstr ""
+msgstr "复制文件失败"
 
 #: h2passtrconsts.h2pcopytooltoclipboard
 msgid "Copy tool to clipboard"
-msgstr ""
+msgstr "复制工具到剪贴板"
 
 #: h2passtrconsts.h2pcreateunitsfromcheaderfiles
 msgid "Create units from C header files"
-msgstr "ͨ��Cͷ�ļ�������Ԫ�ļ�"
+msgstr "从C header文件创建units"
 
 #: h2passtrconsts.h2pcusetypesinctypesunit
 msgid "-C  Use types in ctypes unit"
-msgstr ""
+msgstr "-C  使用类型在ctypes单元"
 
 #: h2passtrconsts.h2pdelete
 msgid "Delete"
-msgstr ""
+msgstr "删除"
 
 #: h2passtrconsts.h2pdeleteselectedhfiles
 msgid "Delete selected .h files"
-msgstr ""
+msgstr "删除选中的.h文件"
 
 #: h2passtrconsts.h2pdeletethesehfilesfromlist
 msgid "Delete these .h files from list?%s%s%s"
-msgstr ""
+msgstr "删除这些.h文件从列表?%s%s%s"
 
 #: h2passtrconsts.h2pdeletetool
 msgid "Delete tool"
-msgstr ""
+msgstr "删除工具"
 
 #: h2passtrconsts.h2pdeletionoffailed
 msgid "deletion of \"%s\" failed"
-msgstr ""
+msgstr "\"%s\"的删除失败"
 
 #: h2passtrconsts.h2pdisableallhfiles
 msgid "Disable all .h files"
-msgstr ""
+msgstr "禁用所有的.h文件"
 
 #: h2passtrconsts.h2pdiscardchangesandexit
 msgid "Discard changes and exit"
-msgstr ""
+msgstr "丢弃更改并退出"
 
 #: h2passtrconsts.h2pdonotexit
 msgid "Do not exit"
-msgstr ""
+msgstr "不退出"
 
 #: h2passtrconsts.h2pdoyoureallywanttodelete
 msgid "Do you really want to delete \"%s\"?"
-msgstr ""
+msgstr "你真的想删除\"%s\"?"
 
 #: h2passtrconsts.h2pduseexternalforallprocedures
 msgid "-d  Use external; for all procedures"
-msgstr ""
+msgstr "-d  使用外部;对于所有程序"
 
 #: h2passtrconsts.h2pduseexternallibnamenamefunc__nameforfunctions
 msgid "-D  Use external libname name \"func__name\" for functions"
-msgstr ""
+msgstr "-D  U使用外部libname 名称\"func__name\"对于函数"
 
 #: h2passtrconsts.h2peconstantsinsteadofenumerationtypeforcenums
 msgid "-e  constants instead of enumeration type for C enums"
@@ -206,55 +206,55 @@ msgstr ""
 
 #: h2passtrconsts.h2penableallhfiles
 msgid "Enable all .h files"
-msgstr ""
+msgstr "激活所有的.h文件"
 
 #: h2passtrconsts.h2perror
 msgid "Error"
-msgstr ""
+msgstr "错误"
 
 #: h2passtrconsts.h2perrorconvertingclipboardtexttotexttool
 msgid "Error converting clipboard text to text tool:%s%s"
-msgstr ""
+msgstr "错误转换剪贴板文本到文本工具:%s%s"
 
 #: h2passtrconsts.h2perrorconvertingputtingtoolontoclipboard
 msgid "Error converting putting tool onto clipboard:%s%s"
-msgstr ""
+msgstr "错误转换输出工具到剪贴板:%s%s"
 
 #: h2passtrconsts.h2perrorfilenotfound2
 msgid "ERROR: file not found"
-msgstr ""
+msgstr "错误:文件未找到"
 
 #: h2passtrconsts.h2perrorreadingglobalconfig
 msgid "Error reading global config:%s%s"
-msgstr ""
+msgstr "错误读取全局配置:%s%s"
 
 #: h2passtrconsts.h2perrorreadingprojectfromfile
 msgid "Error reading project from file%s%s%s%s%s"
-msgstr ""
+msgstr "错误读取工程从文件%s%s%s%s%s"
 
 #: h2passtrconsts.h2perrorwritingglobalconfig
 msgid "Error writing global config:%s%s"
-msgstr ""
+msgstr "错误写入全局配置:%s%s"
 
 #: h2passtrconsts.h2pfile
 msgid "File: %s"
-msgstr ""
+msgstr "文件: %s"
 
 #: h2passtrconsts.h2pfileinformation
 msgid "File information"
-msgstr ""
+msgstr "文件信息"
 
 #: h2passtrconsts.h2pfilenameofh2pasprogram
 msgid "Filename of H2Pas program"
-msgstr ""
+msgstr "H2Pas程序的文件名"
 
 #: h2passtrconsts.h2pfilenotfound
 msgid "File not found"
-msgstr ""
+msgstr "文件未找到"
 
 #: h2passtrconsts.h2pfilenotfound2
 msgid "File not found: \"%s\""
-msgstr ""
+msgstr "文件未找到: \"%s\""
 
 #: h2passtrconsts.h2pfindexplicittypesfailedreadingconstsection
 msgid "FindExplicitTypes FAILED reading const section"
@@ -286,27 +286,27 @@ msgstr ""
 
 #: h2passtrconsts.h2ph2pas
 msgid "H2Pas ..."
-msgstr ""
+msgstr "H2Pas ..."
 
 #: h2passtrconsts.h2ph2pasoptions
 msgid "H2Pas Options"
-msgstr ""
+msgstr "H2Pas选项"
 
 #: h2passtrconsts.h2ph2pasprogrampath
 msgid "H2Pas program path"
-msgstr ""
+msgstr "H2Pas程序路径"
 
 #: h2passtrconsts.h2ph2pasproject
 msgid "H2Pas project"
-msgstr ""
+msgstr "H2Pas工程"
 
 #: h2passtrconsts.h2ph2pasprojecth2ph2pallfiles
 msgid "H2Pas project (*.h2p)|*.h2p|All files (*.*)|%s"
-msgstr ""
+msgstr "H2Pas工程(*.h2p)|*.h2p|所有文件(*.*)|%s"
 
 #: h2passtrconsts.h2ph2pastool
 msgid "H2PasTool"
-msgstr ""
+msgstr "H2PasTool"
 
 #: h2passtrconsts.h2picreateanincludefileinsteadofaunit
 msgid "-i  Create an include file instead of a unit"
@@ -314,99 +314,99 @@ msgstr ""
 
 #: h2passtrconsts.h2pincludedby
 msgid "Included by:"
-msgstr ""
+msgstr "被包含:"
 
 #: h2passtrconsts.h2pincludedby2
 msgid "%s (included by %s)"
-msgstr ""
+msgstr "%s (被包含%s)"
 
 #: h2passtrconsts.h2pincludes
 msgid "Includes:"
-msgstr ""
+msgstr "包括:"
 
 #: h2passtrconsts.h2pinvalidclass
 msgid "Invalid class"
-msgstr ""
+msgstr "无效的类"
 
 #: h2passtrconsts.h2pllibraryname
 msgid "-l Library name"
-msgstr ""
+msgstr "-l 库名称"
 
 #: h2passtrconsts.h2pmergeallbutthis
 msgid "Merge all but this"
-msgstr ""
+msgstr "合并所有，除了这个之外"
 
 #: h2passtrconsts.h2pmergedinto
 msgid "Merged into: %s"
-msgstr ""
+msgstr "合并到:%s"
 
 #: h2passtrconsts.h2pmergefile
 msgid "Merge file"
-msgstr ""
+msgstr "合并文件"
 
 #: h2passtrconsts.h2pmovedown
 msgid "Move down"
-msgstr ""
+msgstr "向下移动"
 
 #: h2passtrconsts.h2pmovefiledown
 msgid "Move file down"
-msgstr ""
+msgstr "下移文件"
 
 #: h2passtrconsts.h2pmovefileup
 msgid "Move file up"
-msgstr ""
+msgstr "上移文件"
 
 #: h2passtrconsts.h2pmoveup
 msgid "Move up"
-msgstr ""
+msgstr "向上移动"
 
 #: h2passtrconsts.h2pnewclearsettings
 msgid "New/Clear settings"
-msgstr ""
+msgstr "新建/清除设置"
 
 #: h2passtrconsts.h2pnofileselected
 msgid "No file selected."
-msgstr ""
+msgstr "没有文件被选择."
 
 #: h2passtrconsts.h2pnotatcustomtextconvertertool
 msgid "not a TCustomTextConverterTool"
-msgstr ""
+msgstr "不是一个TCustomTextConverterTool"
 
 #: h2passtrconsts.h2pnothingtodo
 msgid "Nothing to do"
-msgstr ""
+msgstr "没做任何事"
 
 #: h2passtrconsts.h2popenlastsettingsonstart
 msgid "Open last settings on start"
-msgstr ""
+msgstr "在启动时打开上次设置"
 
 #: h2passtrconsts.h2popenprojecth2p
 msgid "Open project (*.h2p) ..."
-msgstr ""
+msgstr "打开工程(*.h2p)... "
 
 #: h2passtrconsts.h2popensettings
 msgid "&Open Settings"
-msgstr ""
+msgstr "打开设置(&O)"
 
 #: h2passtrconsts.h2poptions
 msgid "Options"
-msgstr ""
+msgstr "选项"
 
 #: h2passtrconsts.h2poutput
 msgid "Output: %s"
-msgstr ""
+msgstr "输出: %s"
 
 #: h2passtrconsts.h2poutputdirectory
 msgid "Output directory"
-msgstr ""
+msgstr "输出目录"
 
 #: h2passtrconsts.h2poutputextensionofnewfile
 msgid "Output extension of new file"
-msgstr ""
+msgstr "新建文件的输出扩展名"
 
 #: h2passtrconsts.h2poverwrite
 msgid "Overwrite"
-msgstr ""
+msgstr "覆盖"
 
 #: h2passtrconsts.h2ppleaseenableatleastonecheaderfilethatisnotmerged
 msgid "Please enable at least one c header file that is not merged."
@@ -434,7 +434,7 @@ msgstr ""
 
 #: h2passtrconsts.h2preaderror
 msgid "Read error"
-msgstr ""
+msgstr "读取错误"
 
 #: h2passtrconsts.h2preducecompilerdirectivesinpascalfileshortensexpres
 msgid "Reduce compiler directives in pascal file%sShortens expressions in $IF directives%sand removes unneeded $IFDEF and $DEFINE directives."
@@ -442,7 +442,7 @@ msgstr ""
 
 #: h2passtrconsts.h2premoveallfiles
 msgid "Remove all files"
-msgstr ""
+msgstr "移除所有文件"
 
 #: h2passtrconsts.h2premoveallincludedirectives
 msgid "Remove all include directives"
@@ -458,27 +458,27 @@ msgstr ""
 
 #: h2passtrconsts.h2premoveemptycmacros
 msgid "Remove empty C macros"
-msgstr ""
+msgstr "移除空C宏"
 
 #: h2passtrconsts.h2premoveemptytypevarconstsections
 msgid "Remove empty type/var/const sections"
-msgstr ""
+msgstr "移除空的 类型/变量/常量 部分"
 
 #: h2passtrconsts.h2premoveredefinedpointertypes
 msgid "Remove redefined pointer types"
-msgstr ""
+msgstr "移除重新定义的指针类型"
 
 #: h2passtrconsts.h2premoveredefinitionsinpascalunit
 msgid "Remove redefinitions in pascal unit"
-msgstr ""
+msgstr "移除重新定义在pascal单元"
 
 #: h2passtrconsts.h2premovetyperedefinitionslikeplongint
 msgid "Remove type redefinitions like PLongint"
-msgstr ""
+msgstr "移除类型重新定义像PLongint"
 
 #: h2passtrconsts.h2preplacefile
 msgid "Replace file?"
-msgstr ""
+msgstr "替换文件?"
 
 #: h2passtrconsts.h2preplaceimplicittypesforexampleprocedureprocnameaar
 msgid "Replace implicit types%sFor example:%s    procedure ProcName(a: array[0..2] of char)%s  is replaced with%s    procedure ProcName(a: Tarray_0to2_of_char)%s  and a new type is added%s    Tarray_0to2_of_char = array[0..2] of char"
@@ -498,11 +498,11 @@ msgstr ""
 
 #: h2passtrconsts.h2preplaceunitfilenamewithunitname
 msgid "Replace \"unit filename;\" with \"unit name;\""
-msgstr ""
+msgstr "替换\"unit filename;\"用\"unit name;\""
 
 #: h2passtrconsts.h2preplacewith
 msgid "Replace [] with *"
-msgstr ""
+msgstr "替换[]用*"
 
 #: h2passtrconsts.h2preplacingofnullwithnilfailed
 msgid "replacing of NULL with nil failed"
@@ -510,79 +510,80 @@ msgstr ""
 
 #: h2passtrconsts.h2prunh2pas
 msgid "Run H2Pas"
-msgstr ""
+msgstr "运行H2Pas"
 
 #: h2passtrconsts.h2prunh2pasandcompile
 msgid "Run H2Pas and compile"
-msgstr ""
+msgstr "运行和编译H2Pas"
 
 #: h2passtrconsts.h2psaveandexit
 msgid "Save and exit"
-msgstr ""
+msgstr "保存并退出"
 
 #: h2passtrconsts.h2psavechanges
 msgid "Save changes?"
-msgstr ""
+msgstr "保存更改?"
 
 #: h2passtrconsts.h2psaveprojectash2p
 msgid "Save project as ... (*.h2p)"
-msgstr ""
+msgstr "工程另存为... (*.h2p)"
 
 #: h2passtrconsts.h2psavesettings
 msgid "&Save Settings"
-msgstr ""
+msgstr "保存设置(&S)"
 
 #: h2passtrconsts.h2psavesettings2
 msgid "Save settings?"
-msgstr ""
+msgstr "保存设置"
 
 #: h2passtrconsts.h2psavesettingsas
 msgid "Save settings as ..."
-msgstr ""
+msgstr "设置另存为..."
 
 #: h2passtrconsts.h2pselectaclass
 msgid "&Select a class"
-msgstr ""
+msgstr "(&S)选择一个类"
 
 #: h2passtrconsts.h2psettings
 msgid "Settings"
-msgstr ""
+msgstr "设置"
 
 #: h2passtrconsts.h2psstripcomments
 msgid "-s  Strip comments"
-msgstr ""
+msgstr "-s  清除注释"
 
 #: h2passtrconsts.h2psstripcommentsandinfo
 msgid "-S  Strip comments and info"
-msgstr ""
+msgstr "-s  清除注释和信息"
 
 #: h2passtrconsts.h2ptaddtousessectionexecutefileisnotpascal
 msgid "TAddToUsesSection.Execute file is not pascal: "
-msgstr ""
+msgstr "TAddToUsesSection.Execute文件不是pascal:"
 
 #: h2passtrconsts.h2ptaddtousessectionexecuteinvalidunitname
 msgid "TAddToUsesSection.Execute invalid unitname \"%s\""
-msgstr ""
+msgstr "TAddToUsesSection.Execute无效单元名\"%s\""
 
 #: h2passtrconsts.h2ptextconversiontoolseditor
 msgid "Text conversion tools editor"
-msgstr ""
+msgstr "文本转换工具编辑器"
 
 #: h2passtrconsts.h2pth2pasdialogh2pasoptionscheckgroupitemclickunknown
 msgid "TH2PasDialog.h2pasOptionsCheckGroupItemClick: Unknown option %s"
-msgstr ""
+msgstr "TH2PasDialog.h2pasOptionsCheckGroupItemClick:未知选项%s"
 
 #: h2passtrconsts.h2pthefilealreadyexists
+#, fuzzy,badformat
 msgid "The file \"%s\"%salready exists."
-msgstr ""
+msgstr "文件\"%s\"已存在."
 
 #: h2passtrconsts.h2ptools
 msgid "Tools:"
-msgstr ""
+msgstr "工具:"
 
 #: h2passtrconsts.h2ptposth2pastoolsexecuteaddtousessectioninvalidunitn
 msgid "TPostH2PasTools.Execute.AddToUsesSection invalid unitname \"%s\""
-msgstr ""
+msgstr "TPostH2PasTools.Execute.AddToUsesSection无效单元名\"%s\""
 
 #: h2passtrconsts.h2ptprependtypedeftypeswitht
 msgid "-t  Prepend  typedef  types with T"
@@ -594,11 +595,11 @@ msgstr ""
 
 #: h2passtrconsts.h2punabletocopyfileto
 msgid "Unable to copy file \"%s\"%sto \"%s\""
-msgstr ""
+msgstr "不能复制文件\"%s\"%s到\"%s\""
 
 #: h2passtrconsts.h2punabletomergefileinto
 msgid "Unable to merge file \"%s\" into \"%s\""
-msgstr ""
+msgstr "不能合并文件\"%s\"进入\"%s\""
 
 #: h2passtrconsts.h2pvreplacepointerparametersbyvar
 msgid "-v  Replace pointer parameters by  var"
@@ -606,7 +607,7 @@ msgstr ""
 
 #: h2passtrconsts.h2pwarning
 msgid "Warning"
-msgstr ""
+msgstr "警告"
 
 #: h2passtrconsts.h2pwarningthefilewillbemergedintomultiplefiles
 msgid "%sWarning: the file \"%s\"%swill be merged into multiple files:%s"
@@ -614,11 +615,11 @@ msgstr ""
 
 #: h2passtrconsts.h2pwhandlespecialwin32macros
 msgid "-w  Handle special win32 macros"
-msgstr ""
+msgstr "-w  处理特殊的win32宏"
 
 #: h2passtrconsts.h2pwriteerror
 msgid "Write error"
-msgstr ""
+msgstr "写入错误"
 
 #: h2passtrconsts.h2pxhandlesys__trapofthepalmosheaderfiles
 msgid "-x  Handle SYS__TRAP of the PalmOS header files"

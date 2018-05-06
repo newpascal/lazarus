@@ -165,7 +165,7 @@ begin
     Name := 'FPDocPathButton';
     Caption := '...';
     AutoSize := False;
-    Width := 50;
+    Width := Height;
     Anchors := [akRight];
     AnchorParallel(akRight, 6, DocGroupBox);
     AnchorParallel(akTop, 0, FPDocSearchPathsEdit);

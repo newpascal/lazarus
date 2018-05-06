@@ -626,7 +626,7 @@ begin
 
   fTargetFilename:='';
   fUnitOutDir:='';
-  CodeToolBoss.FPCDefinesCache.ConfigCaches.GetDefaultCompilerTarget(
+  CodeToolBoss.CompilerDefinesCache.ConfigCaches.GetDefaultCompilerTarget(
     EnvironmentOptions.GetParsedCompilerFilename,'',fCompilerTargetOS,fCompilerTargetCPU);
   if fCompilerTargetOS='' then
     fCompilerTargetOS:=GetCompiledTargetOS;
@@ -1036,13 +1036,13 @@ begin
   ConfirmBuildCheckBox.Hint := lisLazBuildShowConfirmationDialogWhenBuilding;
 
   CompileButton.Caption := lisBuild;
-  CompileButton.LoadGlyphFromResourceName(HInstance, 'menu_build');
+  TIDEImages.AssignImage(CompileButton.Glyph, 'menu_build');
   CompileAdvancedButton.Caption := lisLazBuildBuildMany;
-  CompileAdvancedButton.LoadGlyphFromResourceName(HInstance, 'menu_build_all');
+  TIDEImages.AssignImage(CompileAdvancedButton.Glyph, 'menu_build_all');
   SaveSettingsButton.Caption := lisSaveSettings;
   SaveSettingsButton.LoadGlyphFromStock(idButtonSave);
   if SaveSettingsButton.Glyph.Empty then
-    SaveSettingsButton.LoadGlyphFromResourceName(HInstance, 'laz_save');
+    TIDEImages.AssignImage(SaveSettingsButton.Glyph, 'laz_save');
   CancelButton.Caption := lisCancel;
   HelpButton.Caption := lisMenuHelp;
 
@@ -1096,6 +1096,7 @@ begin
       Add('i386');
       Add('m68k');
       Add('powerpc');
+      Add('powerpc64');
       Add('sparc');
       Add('x86_64');
     end;
@@ -1229,9 +1230,9 @@ procedure TConfigureBuildLazarusDlg.SetupInfoPage;
 begin
   InfoTabSheet.Caption:=lisInformation;
 
-  fImageIndexPackage := IDEImages.LoadImage(16, 'item_package');
-  fImageIndexRequired := IDEImages.LoadImage(16, 'pkg_required');
-  fImageIndexInherited := IDEImages.LoadImage(16, 'pkg_inherited');
+  fImageIndexPackage := IDEImages.LoadImage('item_package');
+  fImageIndexRequired := IDEImages.LoadImage('pkg_required');
+  fImageIndexInherited := IDEImages.LoadImage('pkg_inherited');
   InhTreeView.Images := IDEImages.Images_16;
 
   UpdateInheritedTree;

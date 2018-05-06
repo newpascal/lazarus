@@ -1,19 +1,19 @@
 object ObjectInspectorDlg: TObjectInspectorDlg
-  Left = 338
-  Height = 669
-  Top = 162
-  Width = 300
+  Left = -3
+  Height = 702
+  Top = 169
+  Width = 273
   BorderStyle = bsSizeToolWin
   Caption = 'ObjectInspectorDlg'
-  ClientHeight = 669
-  ClientWidth = 300
+  ClientHeight = 702
+  ClientWidth = 273
   KeyPreview = True
-  LCLVersion = '1.5'
+  LCLVersion = '1.9.0.0'
   object StatusBar: TStatusBar
     Left = 0
     Height = 23
-    Top = 646
-    Width = 300
+    Top = 679
+    Width = 273
     Panels = <    
       item
         Width = 100
@@ -26,7 +26,7 @@ object ObjectInspectorDlg: TObjectInspectorDlg
     Left = 0
     Height = 23
     Top = 0
-    Width = 300
+    Width = 273
     Align = alTop
     ItemHeight = 15
     OnCloseUp = AvailComboBoxCloseUp
@@ -37,22 +37,21 @@ object ObjectInspectorDlg: TObjectInspectorDlg
     Left = 0
     Height = 184
     Top = 23
-    Width = 406
+    Width = 273
     Align = alTop
     BevelOuter = bvNone
     ClientHeight = 184
-    ClientWidth = 406
+    ClientWidth = 273
     TabOrder = 2
     object CompFilterEdit: TTreeFilterEdit
-      AnchorSideLeft.Control = FilterLabel
+      AnchorSideLeft.Control = CompFilterLabel
       AnchorSideLeft.Side = asrBottom
-      AnchorSideTop.Control = FilterLabel
+      AnchorSideTop.Control = CompFilterLabel
       AnchorSideTop.Side = asrCenter
-      Left = 92
-      Height = 28
+      Left = 77
+      Height = 23
       Top = 3
-      Width = 311
-      UseFormActivate = True
+      Width = 193
       ButtonWidth = 23
       NumGlyphs = 1
       Anchors = [akTop, akLeft, akRight]
@@ -60,7 +59,7 @@ object ObjectInspectorDlg: TObjectInspectorDlg
       MaxLength = 0
       TabOrder = 0
     end
-    object FilterLabel: TLabel
+    object CompFilterLabel: TLabel
       Left = 3
       Height = 15
       Top = 7
@@ -71,9 +70,9 @@ object ObjectInspectorDlg: TObjectInspectorDlg
     end
   end
   object MainPopupMenu: TPopupMenu
-    OnPopup = OnMainPopupMenuPopup
+    OnPopup = MainPopupMenuPopup
     OnClose = MainPopupMenuClose
-    left = 32
-    top = 64
+    Left = 32
+    Top = 64
   end
 end

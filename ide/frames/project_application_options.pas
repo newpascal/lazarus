@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, LCLProc, FileUtil, Forms, Controls, Graphics, Dialogs,
   ExtCtrls, StdCtrls, Buttons, ComCtrls, ExtDlgs, Math, LCLType, IDEOptionsIntf,
-  LazIDEIntf, IDEDialogs, DividerBevel, Project, LazarusIDEStrConsts,
+  LazIDEIntf, IDEImagesIntf, IDEDialogs, DividerBevel, Project, LazarusIDEStrConsts,
   EnvironmentOpts, ApplicationBundle, ProjectIcon, W32Manifest, CompilerOptions;
 
 type
@@ -244,6 +244,7 @@ begin
   DpiLevelNames[xmdaTrue] := dlgPODpiAwarenessOn;
   DpiLevelNames[xmdaPerMonitor] := dlgPODpiAwarenessOldOffNewPerMonitor;
   DpiLevelNames[xmdaTruePM] := dlgPODpiAwarenessOldOnNewPerMonitor;
+  DpiLevelNames[xmdaPerMonitorV2] := dlgPODpiAwarenessOldOnNewPerMonitorV2;
 
   ExecutionLevelLabel.Caption := dlgPOExecutionLevel;
   for ExecutionLevel in TXPManifestExecutionLevel do
@@ -257,7 +258,7 @@ begin
   // Darwin specific, Application Bundle
   DarwinDividerBevel.Caption := lisForMacOSDarwin;
   CreateAppBundleButton.Caption := dlgPOCreateAppBundle;
-  CreateAppBundleButton.LoadGlyphFromResourceName(HInstance, 'pkg_compile');
+  TIDEImages.AssignImage(CreateAppBundleButton.Glyph, 'pkg_compile');
 
   // Icon
   IconLabel.Caption := dlgPOIcon;
@@ -267,11 +268,11 @@ begin
   ClearIconButton.Caption := dlgPOClearIcon;
   LoadIconButton.LoadGlyphFromStock(idButtonOpen);
   if LoadIconButton.Glyph.Empty then
-    LoadIconButton.LoadGlyphFromResourceName(HInstance, 'laz_open');
+    TIDEImages.AssignImage(LoadIconButton.Glyph, 'laz_open');
   SaveIconButton.LoadGlyphFromStock(idButtonSave);
   if SaveIconButton.Glyph.Empty then
-    SaveIconButton.LoadGlyphFromResourceName(HInstance, 'laz_save');
-  ClearIconButton.LoadGlyphFromResourceName(HInstance, 'menu_clean');
+    TIDEImages.AssignImage(SaveIconButton.Glyph, 'laz_save');
+  TIDEImages.AssignImage(ClearIconButton.Glyph, 'menu_clean');
   IconImage.KeepOriginXWhenClipped := True;
   IconImage.KeepOriginYWhenClipped := True;
   IconImagePictureChanged(nil);

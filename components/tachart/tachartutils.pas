@@ -33,6 +33,7 @@ const
   PERCENT = 0.01;
   clTAColor = $20000000; // = clDefault, but avoiding dependency on Graphics
   DEFAULT_FONT_SIZE = 10;
+  DEFAULT_EPSILON = 1e-6;
 
 type
   EChartError = class(Exception);
@@ -42,6 +43,12 @@ type
 
   // Like TColor, but avoiding dependency on Graphics.
   TChartColor = -$7FFFFFFF-1..$7FFFFFFF;
+
+  // dto with TFontStyle
+  TChartFontStyle = (cfsBold, cfsItalic, cfsUnderline, cfsStrikeout);
+  TChartFontStyles = set of TChartFontStyle;
+
+  TChartTextFormat = (tfNormal, tfHTML);
 
   TDoublePoint = record
     X, Y: Double;
@@ -299,7 +306,7 @@ const
     '%2:s %0:.9g', // smsLabelValue
     '%2:s', // smsLegend: not sure what it means, left for Delphi compatibility
     '%1:.2f%% of %3:g', // smsPercentTotal
-    '%1:.2f%% of %3:g', // smsLabelPercentTotal
+    '%2:s %1:.2f%% of %3:g', // smsLabelPercentTotal
     '%4:.9g' // smsXValue
   );
   ZeroDoublePoint: TDoublePoint = (X: 0; Y: 0);
@@ -344,6 +351,8 @@ function Split(
 
 // Accept both locale-specific and default decimal separators.
 function StrToFloatDefSep(const AStr: String): Double;
+// .. or date/time values
+function StrToFloatOrDateTimeDef(const AStr: String): Double;
 
 // Call this to silence 'parameter is unused' hint
 procedure Unused(const A1);
@@ -525,6 +534,16 @@ begin
     Result := 0.0;
 end;
 
+function StrToFloatOrDateTimeDef(const AStr: String): Double;
+begin
+  if
+    not TryStrToFloat(AStr, Result, DefSeparatorSettings) and
+    not TryStrToFloat(AStr, Result) and
+    not TryStrToDateTime(AStr, Result)
+  then
+    Result := 0.0;
+end;
+
 {$PUSH}{$HINTS OFF}
 procedure Unused(const A1);
 begin
@@ -700,8 +719,6 @@ begin
 end;
 
 constructor TIntervalList.Create;
-const
-  DEFAULT_EPSILON = 1e-6;
 begin
   FEpsilon := DEFAULT_EPSILON;
 end;

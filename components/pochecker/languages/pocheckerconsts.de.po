@@ -124,7 +124,9 @@ msgid "Cannot write file%s%s%s%sYou can press \"Retry\" to refresh this translat
 msgstr "Kann Datei%s%s%s%snicht schreiben. Sie können auf \"Wiederholen\" klicken, um diese Übersetzungsfamilie erneut zu aktualisieren und fortzusetzen."
 
 #: pocheckerconsts.scheckforduplicateuntranslatedvalues
-msgid "Check for duplicate untranslated values"
+#, fuzzy
+#| msgid "Check for duplicate untranslated values"
+msgid "Check for duplicate originals"
 msgstr "Prüfung auf mehrfache, nicht übersetzte Werte"
 
 #: pocheckerconsts.scheckforincompatibleformatarguments
@@ -132,7 +134,9 @@ msgid "Check for incompatible format arguments"
 msgstr "Prüfung auf inkompatible Format-Argumente"
 
 #: pocheckerconsts.scheckformismatchesinuntranslatedstrings
-msgid "Check for mismatches in untranslated strings"
+#, fuzzy
+#| msgid "Check for mismatches in untranslated strings"
+msgid "Check for mismatches of originals"
 msgstr "Prüfung auf Diskrepanzen in nicht übersetzten Werten"
 
 #: pocheckerconsts.scheckmissingidentifiers
@@ -143,17 +147,13 @@ msgstr "Prüfung auf fehlende Bezeichner"
 msgid "Check number of items"
 msgstr "Überprüfung der Anzahl der Einträge"
 
-#: pocheckerconsts.scheckstatistics
-msgid "Check percentage of (un)translated and fuzzy strings"
-msgstr "Zeige Prozente (nicht) übersetzter und ungeklärter Zeichenketten"
-
 #: pocheckerconsts.sclearlistbox
 msgid "Clear"
 msgstr "Leeren"
 
-#: pocheckerconsts.scopycaption
-msgid "Copy to clipboard"
-msgstr "In Zwischenablage kopieren"
+#: pocheckerconsts.scopy
+msgid "&Copy"
+msgstr ""
 
 #: pocheckerconsts.screatingiconxofy
 msgid "Creating icon nr. %d of %d"
@@ -168,8 +168,14 @@ msgid "[Line %d] %s"
 msgstr "[Zeile %d] %s"
 
 #: pocheckerconsts.sduplicateoriginals
-msgid "The (untranslated) value \"%s\" is used for more than 1 entry:"
+#, fuzzy
+#| msgid "The (untranslated) value \"%s\" is used for more than 1 entry:"
+msgid "Original value \"%s\" is used for more than 1 entry:"
 msgstr "Der (nicht übersetzte) Wert \"%s\" wird für mehr als 1 Eintrag verwendet:"
+
+#: pocheckerconsts.sduplicateoriginalstab
+msgid "Duplicate Originals"
+msgstr ""
 
 #: pocheckerconsts.serroroncleanup
 msgid ""
@@ -193,6 +199,10 @@ msgstr ""
 msgid "Errors / warnings reported by %s for:"
 msgstr "Fehler / Warnungen gemeldet von %s für:"
 
+#: pocheckerconsts.sfile
+msgid "File %s"
+msgstr ""
+
 #: pocheckerconsts.sfilesnotfoundandremoved
 msgid ""
 "The following non-existent files were removed from the list:\n"
@@ -201,9 +211,17 @@ msgstr ""
 "Die folgenden nicht mehr existierenden Dateien wurden entfernt aus der Liste:\n"
 "%s\n"
 
+#: pocheckerconsts.sfuzzystrings
+msgid "Fuzzy strings"
+msgstr ""
+
 #: pocheckerconsts.sfuzzystringstotal
 msgid "Fuzzy strings (total: %s)"
 msgstr "Ungeklärte Zeichenketten (insgesamt: %s)"
+
+#: pocheckerconsts.sgeneralinfo
+msgid "General Info"
+msgstr ""
 
 #: pocheckerconsts.sgrapstatformcaption
 msgid "Graphical summary"
@@ -217,13 +235,17 @@ msgstr "po-Datei-Überprüfungswerkzeug"
 msgid "Identifier [%s] not found in %s"
 msgstr "Bezeichner [%s] nicht gefunden in %s"
 
-#: pocheckerconsts.signorefuzzytranslations
-msgid "Ignore translated strings marked as \"fuzzy\""
-msgstr "Als \"ungeklärt\" markierte Zeichenketten ignorieren"
-
 #: pocheckerconsts.sincompatibleformatargs
 msgid "[Line: %d] Incompatible and/or invalid format() arguments for:"
 msgstr "[Zeile: %d] Inkompatible und/oder ungültige Format()-Argumente für:"
+
+#: pocheckerconsts.slanguage
+msgid "Language:"
+msgstr ""
+
+#: pocheckerconsts.slastsearchpath
+msgid "Last search path:"
+msgstr ""
 
 #: pocheckerconsts.slineinfilename
 msgid "[Line %d] in %s:"
@@ -236,10 +258,6 @@ msgstr "[Zeile: %d]"
 #: pocheckerconsts.smissingmasteridentifier
 msgid "Identifier [%s] found in %s, but it does not exist in %s"
 msgstr "Bezeichner [%s] gefunden in %s, aber er existiert nicht in %s"
-
-#: pocheckerconsts.snoerrorsfound
-msgid "No errors found"
-msgstr "Keine Fehler gefunden"
 
 #: pocheckerconsts.snofileslefttocheck
 msgid "There are no files left to check."
@@ -341,9 +359,9 @@ msgstr "Ergebnisse"
 msgid "&Run Selected Tests"
 msgstr "Gewählte Tests sta&rten"
 
-#: pocheckerconsts.ssavecaption
-msgid "Save to file"
-msgstr "In Datei speichern"
+#: pocheckerconsts.ssaveas
+msgid "Save &As ..."
+msgstr ""
 
 #: pocheckerconsts.ssaveerror
 msgid ""
@@ -402,8 +420,14 @@ msgid "The following %s orphaned .po file(s) found:"
 msgstr "Folgende %s verwaiste .po-Datei(en) gefunden:"
 
 #: pocheckerconsts.stotalerrors
-msgid "Total errors found: %d"
+#, fuzzy
+#| msgid "Total errors found: %d"
+msgid "Total errors: %d"
 msgstr "Insgesamt %d Fehler gefunden"
+
+#: pocheckerconsts.stotalerrorsnonfuzzy
+msgid "Total errors: %d (formatting errors in non-fuzzy strings: %d)"
+msgstr ""
 
 #: pocheckerconsts.stotalfuzzystrings
 msgid "Total fuzzy strings: %s"
@@ -418,8 +442,14 @@ msgid "Total untranslated strings: %s"
 msgstr "Gesamtanzahl nicht übersetzter Zeichenketten: %s"
 
 #: pocheckerconsts.stotalwarnings
-msgid "Total warnings found: %d"
+#, fuzzy
+#| msgid "Total warnings found: %d"
+msgid "Total warnings: %d"
 msgstr "Insgesamt %d Warnungen gefunden"
+
+#: pocheckerconsts.stranslatedstrings
+msgid "Translated strings"
+msgstr ""
 
 #: pocheckerconsts.stranslatedstringstotal
 msgid "Translated strings (total: %s [%.1f%%])"
@@ -430,8 +460,8 @@ msgid "Translation"
 msgstr "Übersetzung"
 
 #: pocheckerconsts.stranslationstatistics
-msgid "Translation statistics per language:"
-msgstr "Übersetzungsstatistik pro Sprache:"
+msgid "Translation Statistics"
+msgstr ""
 
 #: pocheckerconsts.stroublesomefiles
 msgid "Troublesome files"
@@ -444,6 +474,10 @@ msgstr "Alle abwählen"
 #: pocheckerconsts.sunselectlistbox
 msgid "Unselect all files"
 msgstr "Alle Dateien abwählen"
+
+#: pocheckerconsts.suntranslatedstrings
+msgid "Untranslated strings"
+msgstr ""
 
 #: pocheckerconsts.suntranslatedstringstotal
 msgid "Untranslated strings (total: %s)"

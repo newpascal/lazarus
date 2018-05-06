@@ -14,8 +14,13 @@ unit IDEExternToolIntf;
 interface
 
 uses
-  Classes, SysUtils, Math, TypInfo, UTF8Process, AvgLvlTree,
-  ObjInspStrConsts, LazLogger, LazFileUtils, LazFileCache, Menus, LCLProc;
+  Classes, SysUtils, Math, Laz_AVL_Tree,
+  // LCL
+  LCLProc,
+  // LazUtils
+  UTF8Process, LazFileUtils, LazFileCache,
+  // IdeIntf
+  ObjInspStrConsts, LazLogger, Menus;
 
 const
   SubToolFPC = 'FPC';
@@ -28,7 +33,7 @@ const
   SubToolMake = 'make';
   SubToolMakePriority = 1000; // higher than FPC
 
-  SubToolDefault = 'External Tool'; // this parser simply writes all output to Messages window
+  SubToolDefault = 'Show all'; // this parser simply writes all output to Messages window
   SubToolDefaultPriority = 0;
 
   AbortedExitCode = 12321;
@@ -188,11 +193,11 @@ type
     FMaxLine: integer;
     FMinLine: integer;
   protected
-    FTree: TAvgLvlTree;
-    FCurrent: TAvgLvlTreeNode;
+    FTree: TAvlTree;
+    FCurrent: TAvlTreeNode;
     function GetCurrent: TMessageLine; inline;
   public
-    constructor Create(Tree: TAvgLvlTree; const aFilename: string;
+    constructor Create(Tree: TAvlTree; const aFilename: string;
       aMinLine, aMaxLine: integer);
     function GetEnumerator: TMessageLineEnumerator;
     function MoveNext: boolean;
@@ -215,10 +220,10 @@ type
     FMessageLineClass: TMessageLineClass;
     FOnMarksFixed: TETMarksFixedEvent;
     FOwner: TObject;
-    FSortedForSrcPos: TAvgLvlTree; // tree of TMessageLine sorted for Filename, Line, Column, OutputIndex, Index
+    FSortedForSrcPos: TAvlTree; // tree of TMessageLine sorted for Filename, Line, Column, OutputIndex, Index
     FUpdateSortedSrcPos: boolean;
     fChangedHandler: TMethodList;
-    fMarkedFixed: TAvgLvlTree; // list of TMessageLine
+    fMarkedFixed: TAvlTree; // list of TMessageLine
     function GetItems(Index: integer): TMessageLine;
     procedure SetBaseDirectory(const AValue: string);
     procedure LineChanged(Line: TMessageLine);
@@ -279,7 +284,7 @@ type
   { TExtToolParser
     Read the output of a tool, for example the output of the Free Pascal compiler.
     It does not filter. Some parsers can work together, for example make and fpc.
-    Usage: Tool.AddParsers('ParserName');
+    Usage: Tool.AddParsers('SubTool') or Tool.AddParser(ParseClass);
     }
   TExtToolParser = class(TComponent)
   private
@@ -299,7 +304,10 @@ type
     property NeedAfterSync: boolean read FNeedAfterSync write FNeedAfterSync; // set this in ImproveMessages phase etpspSynchronized
     procedure ImproveMessages({%H-}aPhase: TExtToolParserSyncPhase); virtual; // Tool.WorkerMessages, Tool is in Critical section
     procedure ConsistencyCheck; virtual;
-    class function IsSubTool(const SubTool: string): boolean; virtual;
+    class function GetParserName: string; virtual;
+    class function GetLocalizedParserName: string; virtual;
+    class function IsSubTool(const SubTool: string): boolean; deprecated 'use CanParseSubTool';
+    class function CanParseSubTool(const SubTool: string): boolean; virtual;
     class function GetMsgPattern({%H-}SubTool: string; {%H-}MsgID: integer;
       out Urgency: TMessageLineUrgency): string; virtual;
     class function GetMsgHint({%H-}SubTool: string; {%H-}MsgID: integer): string; virtual;
@@ -353,6 +361,7 @@ type
     procedure ReadLine(Line: string; OutputIndex: integer; var Handled: boolean
       ); override;
     class function DefaultSubTool: string; override;
+    class function GetLocalizedParserName: string; override;
     class function Priority: integer; override;
   end;
 
@@ -557,6 +566,7 @@ type
     property Parsers[Index: integer]: TExtToolParser read GetParsers; // sorted for Priority
     function AddParsers(const SubTool: string): TExtToolParser; // will be freed on Destroy
     function AddParser(ParserClass: TExtToolParserClass): TExtToolParser; // will be freed on Destroy
+    function AddParserByName(const ParserName: string): TExtToolParser; // will be freed on Destroy
     procedure DeleteParser(Parser: TExtToolParser); // disconnect and free
     procedure RemoveParser(Parser: TExtToolParser); // disconnect without free
     function IndexOfParser(Parser: TExtToolParser): integer;
@@ -638,7 +648,8 @@ type
     // parsers
     procedure RegisterParser(Parser: TExtToolParserClass); virtual; abstract; // (main thread)
     procedure UnregisterParser(Parser: TExtToolParserClass); virtual; abstract; // (main thread)
-    function FindParser(const SubTool: string): TExtToolParserClass; virtual; abstract; // (main thread)
+    function FindParserForTool(const SubTool: string): TExtToolParserClass; virtual; abstract; // (main thread)
+    function FindParserWithName(const ParserName: string): TExtToolParserClass; virtual; abstract; // (main thread)
     function ParserCount: integer; virtual; abstract; // (main thread)
     property Parsers[Index: integer]: TExtToolParserClass read GetParsers; // (main thread)
     function GetMsgPattern(SubTool: string; MsgID: integer; out Urgency: TMessageLineUrgency): string; virtual; // (main thread)
@@ -664,12 +675,12 @@ type
     FHint: string;
     FQuiet: boolean;
     FResolveMacros: boolean;
-    FScanners: TStrings;
+    FParsers: TStrings;
     FShowConsole: boolean;
     fTitle: string;
     fWorkingDirectory: string;
     procedure SetEnvironmentOverrides(AValue: TStringList);
-    procedure SetScanners(AValue: TStrings);
+    procedure SetParsers(AValue: TStrings);
   public
     constructor Create;
     destructor Destroy; override;
@@ -680,11 +691,12 @@ type
     property Title: string read fTitle write fTitle;
     property Hint: string read FHint write FHint;
     property Executable: string read FExecutable write FExecutable;
-    property Filename: string read FExecutable write FExecutable; deprecated;
+    property Filename: string read FExecutable write FExecutable; deprecated; // use Executable instead
     property CmdLineParams: string read fCmdLineParams write fCmdLineParams;
     property WorkingDirectory: string read fWorkingDirectory write fWorkingDirectory;
     property EnvironmentOverrides: TStringList read FEnvironmentOverrides write SetEnvironmentOverrides;
-    property Scanners: TStrings read FScanners write SetScanners;
+    property Scanners: TStrings read FParsers; deprecated 'use Parsers';
+    property Parsers: TStrings read FParsers write SetParsers;
     property ShowConsole: boolean read FShowConsole write FShowConsole default false; // sets poNoConsole/poNewConsole, works only on MSWindows
     property HideWindow: boolean read FHideWindow write FHideWindow default true; // sets/unsets swoHide/swoShow, works only on MSWindows
     property ResolveMacros: boolean read FResolveMacros write FResolveMacros default true;
@@ -801,24 +813,24 @@ begin
   FEnvironmentOverrides.Assign(AValue);
 end;
 
-procedure TIDEExternalToolOptions.SetScanners(AValue: TStrings);
+procedure TIDEExternalToolOptions.SetParsers(AValue: TStrings);
 begin
-  if FScanners.Equals(AValue) then Exit;
-  FScanners.Assign(AValue);
+  if FParsers.Equals(AValue) then Exit;
+  FParsers.Assign(AValue);
 end;
 
 constructor TIDEExternalToolOptions.Create;
 begin
   ResolveMacros:=true;
   FEnvironmentOverrides:=TStringList.Create;
-  FScanners:=TStringList.Create;
+  FParsers:=TStringList.Create;
   FHideWindow:=true;
 end;
 
 destructor TIDEExternalToolOptions.Destroy;
 begin
   FreeAndNil(FEnvironmentOverrides);
-  FreeAndNil(FScanners);
+  FreeAndNil(FParsers);
   inherited Destroy;
 end;
 
@@ -829,7 +841,7 @@ begin
   CmdLineParams:=Source.CmdLineParams;
   WorkingDirectory:=Source.WorkingDirectory;
   EnvironmentOverrides:=Source.EnvironmentOverrides;
-  Scanners:=Source.Scanners;
+  Parsers:=Source.Parsers;
   ShowConsole:=Source.ShowConsole;
   HideWindow:=Source.HideWindow;
   ResolveMacros:=Source.ResolveMacros;
@@ -849,7 +861,7 @@ begin
       and (CmdLineParams=Source.CmdLineParams)
       and (WorkingDirectory=Source.WorkingDirectory)
       and EnvironmentOverrides.Equals(Source.EnvironmentOverrides)
-      and Scanners.Equals(Source.Scanners)
+      and Parsers.Equals(Source.Parsers)
       and (ShowConsole=Source.ShowConsole)
       and (HideWindow=Source.HideWindow)
       and (ResolveMacros=Source.ResolveMacros)
@@ -868,7 +880,7 @@ begin
   FShowConsole:=false;
   FHideWindow:=true;
   FResolveMacros:=true;
-  FScanners.Clear;
+  FParsers.Clear;
   fTitle:='';
   fWorkingDirectory:='';
   FQuiet:=false;
@@ -997,6 +1009,11 @@ begin
   Result:=SubToolDefault;
 end;
 
+class function TDefaultParser.GetLocalizedParserName: string;
+begin
+  Result:=oisShowAllOutputLines;
+end;
+
 class function TDefaultParser.Priority: integer;
 begin
   Result:=SubToolDefaultPriority;
@@ -1009,7 +1026,7 @@ begin
   Result:=TMessageLine(FCurrent.Data);
 end;
 
-constructor TMessageLineEnumerator.Create(Tree: TAvgLvlTree;
+constructor TMessageLineEnumerator.Create(Tree: TAvlTree;
   const aFilename: string; aMinLine, aMaxLine: integer);
 begin
   FTree:=Tree;
@@ -1309,10 +1326,10 @@ begin
   Result:=nil;
   for i:=0 to ExternalToolList.ParserCount-1 do begin
     ParserClass:=ExternalToolList.Parsers[i];
-    if not ParserClass.IsSubTool(SubTool) then continue;
+    if not ParserClass.CanParseSubTool(SubTool) then continue;
     Result:=AddParser(ParserClass);
-    exit;
   end;
+  if Result<>nil then exit;
   raise Exception.Create(Format(lisUnableToFindParserForTool, [SubTool]));
 end;
 
@@ -1332,6 +1349,18 @@ begin
     inc(i);
   FParsers.Insert(i,Result);
   Result.FTool:=Self;
+end;
+
+function TAbstractExternalTool.AddParserByName(const ParserName: string
+  ): TExtToolParser;
+var
+  aClass: TExtToolParserClass;
+begin
+  Result:=nil;
+  aClass:=ExternalToolList.FindParserWithName(ParserName);
+  if aClass=nil then
+    raise Exception.Create(Format(lisUnableToFindParserWithName, [ParserName]));
+  Result:=AddParser(aClass);
 end;
 
 procedure TAbstractExternalTool.RemoveParser(Parser: TExtToolParser);
@@ -1380,7 +1409,7 @@ var
 begin
   for i:=0 to ExternalToolList.ParserCount-1 do begin
     ParserClass:=ExternalToolList.Parsers[i];
-    if not ParserClass.IsSubTool(SubTool) then continue;
+    if not ParserClass.CanParseSubTool(SubTool) then continue;
     Result:=FindParser(ParserClass);
     if Result<>nil then exit;
   end;
@@ -1501,7 +1530,22 @@ begin
 
 end;
 
+class function TExtToolParser.GetParserName: string;
+begin
+  Result:=DefaultSubTool;
+end;
+
+class function TExtToolParser.GetLocalizedParserName: string;
+begin
+  Result:=DefaultSubTool;
+end;
+
 class function TExtToolParser.IsSubTool(const SubTool: string): boolean;
+begin
+  Result:=CanParseSubTool(SubTool);
+end;
+
+class function TExtToolParser.CanParseSubTool(const SubTool: string): boolean;
 begin
   Result:=CompareText(DefaultSubTool,SubTool)=0;
 end;
@@ -1637,7 +1681,8 @@ begin
   InitCriticalSection(FCritSec);
   FMessageLineClass:=aMsgLineClass;
   fItems:=TFPList.Create;
-  FSortedForSrcPos:=TAvgLvlTree.Create(@CompareMsgLinesSrcPos);
+  FSortedForSrcPos:=TAvlTree.Create(@CompareMsgLinesSrcPos);
+  FSortedForSrcPos.SetNodeManager(nil);
   FUpdateSortedSrcPos:=true;
   fChangedHandler:=TMethodList.Create;
 end;
@@ -1752,14 +1797,14 @@ procedure TMessageLines.MarkFixed(MsgLine: TMessageLine);
 begin
   //debugln(['TMessageLines.MarkFixed ',MsgLine.Msg,' ',MsgLine.Line,',',MsgLine.Column]);
   if fMarkedFixed=nil then
-    fMarkedFixed:=TAvgLvlTree.Create;
+    fMarkedFixed:=TAvlTree.Create;
   if fMarkedFixed.Find(MsgLine)=nil then
     fMarkedFixed.Add(MsgLine);
 end;
 
 procedure TMessageLines.ApplyFixedMarks;
 var
-  Node: TAvgLvlTreeNode;
+  Node: TAvlTreeNode;
   Msg: TMessageLine;
   List: TFPList;
 begin
@@ -1810,7 +1855,7 @@ procedure TMessageLines.SourceLinesInserted(Filename: string; Line,
 // adjust Line numbers in all messages
 var
   CmpLine: TMessageLine;
-  Node: TAvgLvlTreeNode;
+  Node: TAvlTreeNode;
   MsgLine: TMessageLine;
 begin
   if (Filename='') or (Count<=0) then exit;
@@ -1842,7 +1887,7 @@ procedure TMessageLines.SourceLinesDeleted(Filename: string; FirstLine,
 // adjust Line numbers in all messages and mark lines in range as deleted
 var
   CmpLine: TMessageLine;
-  Node: TAvgLvlTreeNode;
+  Node: TAvlTreeNode;
   MsgLine: TMessageLine;
 begin
   if (Filename='') or (Count<=0) then exit;

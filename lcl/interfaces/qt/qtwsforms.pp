@@ -50,6 +50,7 @@ type
   TQtWSCustomFrame = class(TWSCustomFrame)
   published
     class function CreateHandle(const AWinControl: TWinControl; const AParams: TCreateParams): TLCLIntfHandle; override;
+    class procedure ScrollBy(const AWinControl: TWinControl; DeltaX, DeltaY: integer); override;
   end;
 
   { TQtWSFrame }
@@ -156,6 +157,22 @@ begin
   Result := TLCLIntfHandle(QtFrame);
 end;
 
+class procedure TQtWSCustomFrame.ScrollBy(const AWinControl: TWinControl;
+  DeltaX, DeltaY: integer);
+{$IFDEF QTSCROLLABLEFORMS}
+var
+  Widget: TQtMainWindow;
+{$ENDIF}
+begin
+  {$IFDEF QTSCROLLABLEFORMS}
+  if not WSCheckHandleAllocated(AWinControl, 'ScrollBy') then
+    Exit;
+  Widget := TQtMainWindow(AWinControl.Handle);
+  if Assigned(Widget.ScrollArea) then
+    Widget.ScrollArea.scroll(DeltaX, DeltaY);
+  {$ENDIF}
+end;
+
 {------------------------------------------------------------------------------
   Method: TQtWSCustomForm.CreateHandle
   Params:  None
@@ -191,8 +208,7 @@ begin
   QtMainWindow.QtFormBorderStyle := Ord(AForm.BorderStyle);
   QtMainWindow.QtFormStyle := Ord(AForm.FormStyle);
 
-  Str := GetUtf8String(AWinControl.Caption);
-
+  Str := AWinControl{%H-}.Caption;
   QtMainWindow.SetWindowTitle(@Str);
 
   if not (csDesigning in AForm.ComponentState) then
@@ -589,13 +605,8 @@ begin
   Widget.EndUpdate;
 
   {$IFDEF HASX11}
-
-  // make qt interface snappy.
-  if Assigned(Application) and not Application.Terminated then
-  begin
-    if AWinControl.HandleObjectShouldBeVisible or (fsModal in TCustomForm(AWinControl).FormState) then
-      QCoreApplication_processEvents(QEventLoopAllEvents);
-  end;
+  if AWinControl.HandleObjectShouldBeVisible then
+    QCoreApplication_processEvents(QEventLoopAllEvents);
 
   if (Application.TaskBarBehavior = tbSingleButton) or
     (TForm(AWinControl).ShowInTaskBar <> stDefault) then

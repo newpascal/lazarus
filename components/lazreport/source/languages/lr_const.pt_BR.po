@@ -6,9 +6,10 @@ msgstr ""
 "Project-Id-Version: \n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: \n"
-"Last-Translator: Marcelo B Paula\n"
+"Last-Translator: Marcelo B Paula <marcelo.bp@netsite.com.br>\n"
 "Language-Team: \n"
-"X-Generator: Poedit 1.5.4\n"
+"X-Generator: Poedit 1.8.13\n"
+"Language: pt_BR\n"
 
 #: lr_const.saboutformcapt
 msgid "About FastReport"
@@ -20,23 +21,23 @@ msgstr "Agregado"
 
 #: lr_const.sallfiles
 msgid "All files"
-msgstr "Todos os Arquivos"
+msgstr "Todos os arquivos"
 
 #: lr_const.sargument1
 msgid "Argument 1"
-msgstr ""
+msgstr "Argumento 1"
 
 #: lr_const.sargument2
 msgid "Argument 2"
-msgstr ""
+msgstr "Argumento 2"
 
 #: lr_const.sargument3
 msgid "Argument 3"
-msgstr ""
+msgstr "Argumento 3"
 
 #: lr_const.sarguments
 msgid "Arguments"
-msgstr ""
+msgstr "Argumentos"
 
 #: lr_const.sautosize
 msgid "Auto size"
@@ -103,15 +104,11 @@ msgid "Cross footer"
 msgstr "Rodapé Ref.Cruz."
 
 #: lr_const.sband22
-#, fuzzy
-#| msgid "None"
 msgctxt "lr_const.sband22"
 msgid "Child"
-msgstr "Nenhum"
+msgstr "Filho"
 
 #: lr_const.sband23
-#, fuzzy
-#| msgid "None"
 msgctxt "lr_const.sband23"
 msgid "None"
 msgstr "Nenhum"
@@ -259,6 +256,143 @@ msgstr "Classe Objeto \"%s\" não encontrado"
 msgid "Confirm"
 msgstr "Confirmar"
 
+#: lr_const.scrosseditoraverage
+msgid "Average"
+msgstr "Média"
+
+#: lr_const.scrosseditorblue
+msgid "Blue"
+msgstr "Azul"
+
+#: lr_const.scrosseditorbluewhite
+msgid "Blue and White"
+msgstr "Azul e branco"
+
+#: lr_const.scrosseditorcaption
+msgid "Cross tab editor"
+msgstr "Editor tabela cruzada"
+
+#: lr_const.scrosseditorcount
+msgid "Count"
+msgstr "Contagem"
+
+#: lr_const.scrosseditorcyan
+msgid "Cyan"
+msgstr "Ciano"
+
+#: lr_const.scrosseditorgray
+msgid "Gray"
+msgstr "Cinza"
+
+#: lr_const.scrosseditorgreen
+msgid "Green"
+msgstr "Verde"
+
+#: lr_const.scrosseditorgreenorange
+msgid "Green and Orange"
+msgstr "Verde e laranja"
+
+#: lr_const.scrosseditormax
+msgid "Max"
+msgstr "Máximo"
+
+#: lr_const.scrosseditormin
+msgid "Min"
+msgstr "Mínimo"
+
+#: lr_const.scrosseditornone
+msgctxt "lr_const.scrosseditornone"
+msgid "None"
+msgstr "Nenhum"
+
+#: lr_const.scrosseditororange
+msgid "Orange"
+msgstr "Laranja"
+
+#: lr_const.scrosseditorshowcolheader
+msgid "Show column header"
+msgstr "Exibir cabeçalho coluna"
+
+#: lr_const.scrosseditorshowcoltotal
+msgid "Show column total"
+msgstr "Exibir total coluna"
+
+#: lr_const.scrosseditorshowcorner1
+msgid "Show corner 1"
+msgstr "Exibir canto 1"
+
+#: lr_const.scrosseditorshowcorner2
+msgid "Show corner 2"
+msgstr "Exibir canto 2"
+
+#: lr_const.scrosseditorshowgrantotal
+msgid "Show grand total"
+msgstr "Exibir total geral"
+
+#: lr_const.scrosseditorshowrowheader
+msgid "Show row header"
+msgstr "Exibir cabeçalho linha"
+
+#: lr_const.scrosseditorshowrowtotal
+msgid "Show row total"
+msgstr "Exibir total linha"
+
+#: lr_const.scrosseditorshowtitle
+msgid "Show title"
+msgstr "Exibir título"
+
+#: lr_const.scrosseditorsource
+msgid "Source data"
+msgstr "Fonte de dados"
+
+#: lr_const.scrosseditorstructure
+msgid "Cross-tab structure"
+msgstr "Estrutura tabela cruzada"
+
+#: lr_const.scrosseditorstyle
+msgid "Select style"
+msgstr "Selecionar estilo"
+
+#: lr_const.scrosseditorsum
+msgid "Sum"
+msgstr "Soma"
+
+#: lr_const.scrosseditorwhite
+msgid "White"
+msgstr "Branco"
+
+#: lr_const.scrosstabcoltitle
+msgid "Col title"
+msgstr "Título coluna"
+
+#: lr_const.scrosstabcoltotal
+msgid "Col total"
+msgstr "Total coluna"
+
+#: lr_const.scrosstabdata
+msgid "Data"
+msgstr "Dados"
+
+#: lr_const.scrosstabgrantotal
+msgid "Grand total"
+msgstr "Total geral"
+
+#: lr_const.scrosstabrowtitle
+msgid "Row title"
+msgstr "Título linha"
+
+#: lr_const.scrosstabrowtotal
+msgid "Row total"
+msgstr "Total linha"
+
+#: lr_const.scrosstabtotalchcell
+msgid "Total CH cell"
+msgstr "Célula CH total"
+
+#: lr_const.scrosstabtotalrhcell
+msgid "Total RH cell"
+msgstr "Célula RH total"
+
 #: lr_const.scsvfile
 msgid "CSV File"
 msgstr "Arquivo CSV"
@@ -267,21 +401,30 @@ msgstr "Arquivo CSV"
 msgid "Memo:"
 msgstr "Memo:"
 
+#: lr_const.sdatainspfields
+msgid "Fields"
+msgstr "Campos"
+
+#: lr_const.sdatainspvariables
+msgctxt "lr_const.sdatainspvariables"
+msgid "Variables"
+msgstr "Variáveis"
+
 #: lr_const.sdateformat1
 msgid "mm.dd.yy"
-msgstr ""
+msgstr "mm.dd.aa"
 
 #: lr_const.sdateformat2
 msgid "mm.dd.yyyy"
-msgstr ""
+msgstr "mm.dd.aaaa"
 
 #: lr_const.sdateformat3
 msgid "d mmm yyyy"
-msgstr ""
+msgstr "d mmm aaaa"
 
 #: lr_const.sdateformat4
 msgid "d mmmm yyyy"
-msgstr ""
+msgstr "d mmmm aaaa"
 
 #: lr_const.sdatetimecategory
 msgid "Date and time"
@@ -289,7 +432,7 @@ msgstr "Data e hora"
 
 #: lr_const.sdbfield
 msgid "DB field"
-msgstr ""
+msgstr "Campo DB"
 
 #: lr_const.sdefaultprinter
 msgid "Default printer"
@@ -304,10 +447,8 @@ msgid "COPY(<String>, <Position>, <Length>)/Returns <Length> characters from <St
 msgstr "COPY(<String>, <Posição>, <Tamanho>)/Retorna <Tamanho> caracteres de <String> iniciando na <Posição>."
 
 #: lr_const.sdescriptioncount
-#, fuzzy
-#| msgid "COUNT(<BandName>)/Returns count of data-rows given in the <BandName>. "
 msgid "COUNT(<BandName>)/Returns count of data rows given in the <BandName>. "
-msgstr "COUNT(<NomeBanda>)/Retorna a contagem de linhas de uma <NomeBanda> dada."
+msgstr "COUNT(<NomeBanda>)/Retorna a contagem de linhas de uma dada <NomeBanda>."
 
 #: lr_const.sdescriptiondayof
 msgid "DAYOF(<Date>)/Returns day number (1..31) of given <Date>."
@@ -315,7 +456,7 @@ msgstr "DAYOF(<Data>)/Retorna o numero do dia (1..31) de uma dada <Data>."
 
 #: lr_const.sdescriptiondec
 msgid "DEC(<Value>)/Decrement <Value>."
-msgstr ""
+msgstr "DEC(<Valor>)/Decrementa <Valor>."
 
 #: lr_const.sdescriptionformatdatetime
 msgid "FORMATDATETIME(<Fmt>, <DateTime>)/Converts a <DateTime> value to a string using mask in <Fmt>."
@@ -333,15 +474,17 @@ msgstr "FORMATTEXT(<Máscara>, <String>)/Aplica <Máscara> para uma dada <String
 msgid "FRAC(<Value>)/Returns the fractional part of floating point <Value>."
 msgstr "FRAC(<Valor>)/Retorna a parte fracionária do <Valor> de ponto flutuante."
 
-#: lr_const.sdescriptioninc
-msgid "INC(<Value>)/Increment <Value>."
+#: lr_const.sdescriptionif
+msgid "IF(<expression>, <Value1>, <Value2>)/Returns <Value1>, if <expression> is true; otherwise returns <Value2>."
 msgstr ""
 
+#: lr_const.sdescriptioninc
+msgid "INC(<Value>)/Increment <Value>."
+msgstr "INC(<Valor>)/Incrementa <Valor>."
+
 #: lr_const.sdescriptioninput
-#, fuzzy
-#| msgid "INPUT(<Caption> [,Default])/Shows dialog window with headstring <Caption> and edit box. If [Default] parameter is set, puts this string in edit box. After user clicks OK, returns input string."
 msgid "INPUT(<Caption> [,Default])/Shows dialog window with title <Caption> and edit box. If [Default] parameter is set, puts this string in edit box. After user clicks OK, returns input string."
-msgstr "INPUT(<Título> [,Padrão])/Mostra janela de diálogo com cabeçalho <Título> e caixa texto. Se o parâmetro [Padrão] for informado, coloca-o na caixa de texto. Após o usuário clicar OK, retorna a string digitada."
+msgstr "INPUT(<Título> [,Padrão])/Exibe janela de diálogo com cabeçalho <Título> e caixa texto. Se o parâmetro [Padrão] for informado, coloca-o na caixa de texto. Após o usuário clicar OK, retorna a string digitada."
 
 #: lr_const.sdescriptionint
 msgid "INT(<Value>)/Returns the integer part of floating point <Value>."
@@ -385,11 +528,11 @@ msgstr "NAMECASE(<String>)/Converte os caracteres da <String> para minúsculas, 
 
 #: lr_const.sdescriptionnewcolumn
 msgid "NEWCOLUMN/Create new column on page for current report."
-msgstr ""
+msgstr "NEWCOLUMN/Cria nova coluna na página para o relatório atual."
 
 #: lr_const.sdescriptionnewpage
 msgid "NEWPAGE/Create new page for current report."
-msgstr ""
+msgstr "NEWPAGE/Cria nova página para o relatório atual."
 
 #: lr_const.sdescriptionpos
 msgid "POS(<SubString>, <String>)/Returns position of substring in given string."
@@ -401,11 +544,11 @@ msgstr "ROUND(<Valor>)/Arrendoda o <Valor> de ponto flutuante para o número int
 
 #: lr_const.sdescriptionshowband
 msgid "SHOWBAND(<BandName>)/Show <BandName> in report."
-msgstr ""
+msgstr "SHOWBAND(<NomeBanda>)/Exibe <NomeBanda> no relatório."
 
 #: lr_const.sdescriptionstopreport
 msgid "STOPREPORT/Terminate report creation."
-msgstr ""
+msgstr "STOPREPORT/Encerra a criação do relatório."
 
 #: lr_const.sdescriptionstr
 msgid "STR(<Value>)/Converts the given (numeric) <Value> in string."
@@ -466,7 +609,7 @@ msgstr "&Conteúdo"
 #: lr_const.sdesoptionsformdes
 msgctxt "lr_const.sdesoptionsformdes"
 msgid "Designer"
-msgstr "Editor"
+msgstr "Desenho"
 
 #: lr_const.sdesoptionsformediting
 msgid "&Editing after insert"
@@ -484,6 +627,10 @@ msgstr "Grade"
 #: lr_const.sdesoptionsforminch
 msgid "&Inches"
 msgstr "&Polegadas"
+
+#: lr_const.sdesoptionsforminplace
+msgid "Use inplace editor"
+msgstr "Usar editor no local"
 
 #: lr_const.sdesoptionsformmm
 msgid "&MM"
@@ -509,7 +656,7 @@ msgstr "&Pixels"
 
 #: lr_const.sdesoptionsformshape
 msgid "S&hape"
-msgstr "S&hape"
+msgstr "P&olígono"
 
 #: lr_const.sdesoptionsformshowband
 msgid "Show band &titles"
@@ -528,14 +675,12 @@ msgid "Report:"
 msgstr "Relatório:"
 
 #: lr_const.sdocautor
-#, fuzzy
-#| msgid "Autor"
 msgid "Author"
 msgstr "Autor"
 
 #: lr_const.sdocbuild
 msgid "Build"
-msgstr "Contrução"
+msgstr "Construção"
 
 #: lr_const.sdocmajor
 msgid "Major"
@@ -554,10 +699,8 @@ msgid "Comments"
 msgstr "Comentários"
 
 #: lr_const.sdocoptformkeywords
-#, fuzzy
-#| msgid "Keys words"
 msgid "Keywords"
-msgstr "Palavras Chaves"
+msgstr "Palavras Chave"
 
 #: lr_const.sdocoptformopt
 msgid "Report options"
@@ -599,7 +742,7 @@ msgstr "Um objeto chamado \"%s\" já existe"
 
 #: lr_const.seditor
 msgid "Editor"
-msgstr ""
+msgstr "Editor"
 
 #: lr_const.seditorformbig
 msgid "&Big font"
@@ -646,59 +789,57 @@ msgstr "&Quebra palavra"
 
 #: lr_const.serrexpectedassign
 msgid "Expected \":=\""
-msgstr ""
+msgstr "Esperado \":=\""
 
 #: lr_const.serrexpectedclosingbracket1
 msgid "Expected \")\""
-msgstr ""
+msgstr "Esperado \")\""
 
 #: lr_const.serrexpectedclosingbracket2
 msgid "Expected \"]\""
-msgstr ""
+msgstr "Esperado \"]\""
 
 #: lr_const.serrexpectedcomma
 msgid "Expected \",\" or \")\""
-msgstr ""
+msgstr "Esperado \",\" ou \")\""
 
 #: lr_const.serrexpecteddo
 msgid "Expected \"do\""
-msgstr ""
+msgstr "Esperado \"do\""
 
 #: lr_const.serrexpectedend
 msgid "Expected \";\" or \"end\""
-msgstr ""
+msgstr "Esperado \";\" ou \"end\""
 
 #: lr_const.serrexpectedthen
 msgid "Expected \"then\""
-msgstr ""
+msgstr "Esperado \"then\""
 
 #: lr_const.serrexpecteduntil
 msgid "Expected \";\" or \"until\""
-msgstr ""
+msgstr "Esperado \";\" ou \"until\""
 
 #: lr_const.serrlabelgoto
 msgid "Label in goto must be a number"
-msgstr ""
+msgstr "Rótulo em ir para deve ser um número"
 
 #: lr_const.serrline
 msgid "Line"
-msgstr ""
+msgstr "Linha"
 
 #: lr_const.serrneeddo
 msgid "Need \"do\" here"
-msgstr ""
+msgstr "\"do\" necessário aqui"
 
 #: lr_const.serrneedto
 msgid "Need \"to\" here"
-msgstr ""
+msgstr "\"to\" necessário aqui"
 
 #: lr_const.serror
 msgid "Error"
 msgstr "Erro"
 
 #: lr_const.serroroccured
-#, fuzzy
-#| msgid "An error occured during calculating"
 msgid "An error occurred during calculation"
 msgstr "Ocorreu um erro durante o cálculo"
 
@@ -746,7 +887,7 @@ msgstr "Inserir campo BD"
 
 #: lr_const.sfilenotfound
 msgid "File not found"
-msgstr ""
+msgstr "Arquivo não encontrado"
 
 #: lr_const.sfilter
 msgid "Filter properties"
@@ -919,7 +1060,7 @@ msgstr "Forçar nova página"
 
 #: lr_const.sfrdesignerdatainsp
 msgid "Data inspector"
-msgstr ""
+msgstr "Inspetor de dados"
 
 #: lr_const.sfrdesignerexists
 msgid "You already have one TfrDesigner component"
@@ -1193,7 +1334,7 @@ msgstr "Borda superior"
 
 #: lr_const.sfrdesignerformunabletocreatetemplatedir
 msgid "Unable to create template directory"
-msgstr ""
+msgstr "Incapaz de criar diretório modelo"
 
 #: lr_const.sfrdesignerformunderline
 msgid "Underline"
@@ -1245,7 +1386,7 @@ msgstr "&Recortar"
 
 #: lr_const.sfrdesignerform_datainsp
 msgid "&Data inspector"
-msgstr ""
+msgstr "Inspetor de &Dados"
 
 #: lr_const.sfrdesignerform_delete
 msgid "&Delete"
@@ -1393,11 +1534,11 @@ msgstr "FR variáveis"
 
 #: lr_const.sfunctioneditor
 msgid "Function editor"
-msgstr ""
+msgstr "Editor de funções"
 
 #: lr_const.sfunctions
 msgid "Functions"
-msgstr ""
+msgstr "Funções"
 
 #: lr_const.sgeditorformcapt
 msgid "Picture"
@@ -1504,13 +1645,17 @@ msgstr "Inserir objeto Gráfico"
 msgid "Insert CheckBox object"
 msgstr "Inserir objeto CheckBox"
 
+#: lr_const.sinscrosstab
+msgid "Insert Cross-tab object"
+msgstr "Inserir objeto tabela cruzada"
+
 #: lr_const.sinsert
 msgid "Insert"
-msgstr ""
+msgstr "Inserir"
 
 #: lr_const.sinsertexpression
 msgid "Insert Expression"
-msgstr ""
+msgstr "Inserir Expressão"
 
 #: lr_const.sinsertfields
 msgid "Insert DB fields"
@@ -1545,38 +1690,40 @@ msgid "&Vertical"
 msgstr "&Vertical"
 
 #: lr_const.sinsroundrect
-#, fuzzy
-#| msgid "Insert an RoundRect with shadow area"
 msgid "Insert a RoundRect with shadow area"
 msgstr "Inserir retângulo arredondado com área sombreada"
 
 #: lr_const.sinsshape
 msgid "Insert Shape object"
-msgstr "Inserir objeto Shape"
+msgstr "Inserir objeto polígono"
 
 #: lr_const.sinterpretator
 msgid "Interpretator"
-msgstr ""
+msgstr "Interpretador"
 
 #: lr_const.sinvalidfrfreport
 msgid "Invalid binary report"
-msgstr ""
+msgstr "Relatório binário inválido"
 
 #: lr_const.sinvalidfrfversion
 msgid "Invalid report version"
-msgstr ""
+msgstr "Versão relatório inválida"
 
 #: lr_const.sinvalidlrfreport
 msgid "Invalid report format"
-msgstr ""
+msgstr "Formato relatório inválido"
 
 #: lr_const.sinvalidvariablename
 msgid "\"%s\" is not a valid variable name."
-msgstr ""
+msgstr "\"%s\" não é um nome de variável válido"
 
 #: lr_const.skeepaspectratio
 msgid "Keep aspect ratio"
 msgstr "Manter razão aspecto"
+
+#: lr_const.skeepchild
+msgid "Keep child together with parent"
+msgstr "Manter filhos juntos aos pais"
 
 #: lr_const.slazformfile
 msgid "LazReport form"
@@ -1592,7 +1739,7 @@ msgstr "Aritmética"
 
 #: lr_const.smemoeditor
 msgid "Memo editor"
-msgstr ""
+msgstr "Editor memo"
 
 #: lr_const.smm
 msgid "MM"
@@ -1613,11 +1760,11 @@ msgstr "[Nenhum]"
 
 #: lr_const.snovalidexportfilenamewassupplied
 msgid "No valid export filename was supplied"
-msgstr ""
+msgstr "Nenhum nome de arquivo de exportação válido fornecido"
 
 #: lr_const.snovalidfilterclasswassupplied
 msgid "No valid filterclass was supplied"
-msgstr ""
+msgstr "Nenhuma classe de filtro válida foi fornecida"
 
 #: lr_const.sobjectinspector
 msgid "Object inspector"
@@ -2301,11 +2448,9 @@ msgstr "Página &inteira"
 
 #: lr_const.sprintchildifnotvisible
 msgid "Print child if not visible"
-msgstr ""
+msgstr "Imprimir filho se não for visível"
 
 #: lr_const.sprintererror
-#, fuzzy
-#| msgid "Printer selected is not valid"
 msgid "Selected printer is not valid"
 msgstr "Impressora selecionada não é válida"
 
@@ -2315,7 +2460,7 @@ msgstr "&Tudo"
 
 #: lr_const.sprintformcollate
 msgid "Collate"
-msgstr ""
+msgstr "Collate"
 
 #: lr_const.sprintformcopy
 msgid "&Copies:"
@@ -2369,31 +2514,25 @@ msgstr "Arquivo relatório"
 
 #: lr_const.sreportcorruptoldknowversion
 msgid "This report is corrupt, it probably needs \"LRE_OLDV%d_FRF_READ\"=true"
-msgstr ""
+msgstr "Este relatório está corrompido, provavelmente necessita \"LRE_OLDV%d_FRF_READ\"=true"
 
 #: lr_const.sreportcorruptunknownversion
 msgid "This report is corrupt, frVersion=%d"
-msgstr ""
+msgstr "Este relatório está corrompido, frVersion=%d"
 
 #: lr_const.sreportcreatedate
-#, fuzzy
-#| msgid "Report create date"
 msgid "Report creation date"
 msgstr "Data de criação do relatório"
 
 #: lr_const.sreportlastmodifydate
-#, fuzzy
-#| msgid "Report last modify date"
 msgid "Report last modification date"
 msgstr "Data da última alteração do relatório"
 
 #: lr_const.sreportloadingerror
 msgid "Error while loading report"
-msgstr ""
+msgstr "Erro ao carregar relatório"
 
 #: lr_const.sreportpreparing
-#, fuzzy
-#| msgid "Report preparing"
 msgid "Preparing report"
 msgstr "Preparando relatório"
 
@@ -2427,11 +2566,9 @@ msgstr "Zona emoldurada"
 
 #: lr_const.sroundrectformgradient
 msgid "Gradient"
-msgstr ""
+msgstr "Gradiente"
 
 #: lr_const.sroundrectformhint
-#, fuzzy
-#| msgid "Click here to define the shadow color or gradian colors"
 msgid "Click here to define the shadow color or gradient colors"
 msgstr "Clique aqui para definir a cor do sombreamento ou as cores gradientes"
 
@@ -2469,7 +2606,7 @@ msgstr "Salvar alterações"
 
 #: lr_const.sscripteditor
 msgid "Script editor"
-msgstr ""
+msgstr "Editor Script"
 
 #: lr_const.sshape1
 msgctxt "lr_const.sshape1"
@@ -2498,11 +2635,11 @@ msgstr "Diagonal2"
 
 #: lr_const.sshapeformcaption
 msgid "Shape"
-msgstr "Shape"
+msgstr "Polígono"
 
 #: lr_const.sshapeformkind
 msgid "Shape kind"
-msgstr "Forma Shape"
+msgstr "Tipo do polígono"
 
 #: lr_const.sspecval
 msgctxt "lr_const.sspecval"
@@ -2548,19 +2685,19 @@ msgstr "Arquivo texto ASCII"
 
 #: lr_const.stimeformat1
 msgid "hh:nn:ss"
-msgstr ""
+msgstr "hh:nn:ss"
 
 #: lr_const.stimeformat2
 msgid "h:nn:ss"
-msgstr ""
+msgstr "h:nn:ss"
 
 #: lr_const.stimeformat3
 msgid "hh:nn"
-msgstr ""
+msgstr "hh:nn"
 
 #: lr_const.stimeformat4
 msgid "h:nn"
-msgstr ""
+msgstr "h:nn"
 
 #: lr_const.sto
 msgid "to"
@@ -2572,7 +2709,7 @@ msgstr "Transparente"
 
 #: lr_const.sunabletoreadversion
 msgid "Unable to read report version"
-msgstr ""
+msgstr "Incapaz de ler a versão do relatório"
 
 #: lr_const.suntitled
 msgid "Untitled"
@@ -2580,15 +2717,15 @@ msgstr "Sem título"
 
 #: lr_const.susefixedfontsettings
 msgid "Use fixed font settings"
-msgstr ""
+msgstr "Usar ajustes de fonte fixa"
 
 #: lr_const.susememofontsettings
 msgid "Use Memo font settings"
-msgstr ""
+msgstr "Usar ajustes de fonte Memo"
 
 #: lr_const.susesyntaxhighlight
 msgid "Use syntax highlight"
-msgstr ""
+msgstr "Usar realce de sintaxe"
 
 #: lr_const.svar1
 msgid "Page#"
@@ -2641,6 +2778,7 @@ msgid "Variable format ..."
 msgstr "Formato variável ..."
 
 #: lr_const.svarformcapt
+msgctxt "lr_const.svarformcapt"
 msgid "Variables"
 msgstr "Variáveis"
 
@@ -2650,7 +2788,7 @@ msgstr "&Categoria:"
 
 #: lr_const.svariable
 msgid "Variable"
-msgstr ""
+msgstr "Variável"
 
 #: lr_const.svbandeditorformbnd
 msgid "Bands"

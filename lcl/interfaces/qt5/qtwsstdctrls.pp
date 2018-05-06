@@ -763,7 +763,7 @@ end;
 class function TQtWSCustomMemo.GetStrings(const ACustomMemo: TCustomMemo): TStrings;
 begin
   if not WSCheckHandleAllocated(ACustomMemo, 'GetStrings') then
-    Exit;
+    Exit(Nil);
   if not Assigned(TQtTextEdit(ACustomMemo.Handle).FList) then
     TQtTextEdit(ACustomMemo.Handle).FList := TQtMemoStrings.Create(ACustomMemo);
   
@@ -1419,6 +1419,7 @@ class function TQtWSCustomComboBox.GetMaxLength(
 var
   LineEdit: TQtLineEdit;
 begin
+  Result := 0;
   if not WSCheckHandleAllocated(ACustomComboBox, 'GetMaxLength') then
     Exit;
   LineEdit := TQtComboBox(ACustomComboBox.Handle).LineEdit;
@@ -1427,9 +1428,7 @@ begin
     Result := LineEdit.getMaxLength;
     if Result = QtMaxEditLength then
       Result := 0;
-  end
-  else
-    Result := 0;
+  end;
 end;
 
 {------------------------------------------------------------------------------
@@ -1572,10 +1571,12 @@ end;
 class procedure TQtWSCustomComboBox.SetStyle(
   const ACustomComboBox: TCustomComboBox; NewStyle: TComboBoxStyle);
 begin
-  TQtComboBox(ACustomComboBox.Handle).setEditable(NewStyle in [csDropDown, csSimple]);
+  TQtComboBox(ACustomComboBox.Handle).setEditable(NewStyle in [csDropDown, csSimple, csOwnerDrawEditableFixed, csOwnerDrawEditableVariable]);
   TQtComboBox(ACustomComboBox.Handle).OwnerDrawn := NewStyle in
                                                    [csOwnerDrawFixed,
-                                                    csOwnerDrawVariable];
+                                                    csOwnerDrawVariable,
+                                                    csOwnerDrawEditableFixed,
+                                                    csOwnerDrawEditableVariable];
   // TODO: implement styles: csSimple
   inherited SetStyle(ACustomComboBox, NewStyle);
 end;
@@ -1590,7 +1591,7 @@ var
   ComboBox: TQtComboBox;
 begin
   if not WSCheckHandleAllocated(ACustomComboBox, 'GetItems') then
-    Exit;
+    Exit(Nil);
   ComboBox := TQtComboBox(ACustomComboBox.Handle);
   if not Assigned(ComboBox.FList) then
   begin
@@ -1650,12 +1651,12 @@ var
 begin
   if not WSCheckHandleAllocated(ACustomComboBox, 'SetItemHeight') then
     Exit;
-  {only for csOwnerDrawFixed, csOwnerDrawVariable}
+  {only for csOwnerDrawFixed, csOwnerDrawVariable, csOwnerDrawEditableFixed, csOwnerDrawEditableVariable}
   ComboBox := TQtComboBox(ACustomComboBox.Handle);
   if ComboBox.getDroppedDown then
   begin
     ComboBox.DropList.setUniformItemSizes(False);
-    ComboBox.DropList.setUniformItemSizes(ACustomComboBox.Style = csOwnerDrawFixed);
+    ComboBox.DropList.setUniformItemSizes(ACustomComboBox.Style in [csOwnerDrawFixed, csOwnerDrawEditableFixed]);
   end else
     RecreateWnd(ACustomComboBox);
 end;
@@ -1670,12 +1671,11 @@ end;
  ------------------------------------------------------------------------------}
 class function TQtWSToggleBox.RetrieveState(const ACustomCheckBox: TCustomCheckBox): TCheckBoxState;
 begin
+  Result := cbUnChecked;
   if not WSCheckHandleAllocated(ACustomCheckBox, 'RetrieveState') then
     Exit;
   if TQtToggleBox(ACustomCheckBox.Handle).isChecked then
-    Result := cbChecked
-  else
-    Result := cbUnChecked;
+    Result := cbChecked;
 end;
 
 {------------------------------------------------------------------------------

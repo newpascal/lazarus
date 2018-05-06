@@ -10,7 +10,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Language: de\n"
-"X-Generator: Poedit 1.8.11\n"
+"X-Generator: Poedit 2.0.4\n"
 "X-Poedit-SourceCharset: UTF-8\n"
 
 #: tachartstrconsts.descolor
@@ -35,7 +35,7 @@ msgstr "Text"
 
 #: tachartstrconsts.rsadd
 msgid "Add"
-msgstr "Hinzuf."
+msgstr "Hinzuf"
 
 #: tachartstrconsts.rsareaseries
 msgid "Area series"
@@ -62,8 +62,6 @@ msgid "backward-diagonal hatch"
 msgstr "rückwärts diagonal"
 
 #: tachartstrconsts.rsbsclear
-#, fuzzy
-#| msgid "clear fill"
 msgctxt "tachartstrconsts.rsbsclear"
 msgid "no fill"
 msgstr "ohne Füllung"
@@ -114,7 +112,7 @@ msgstr "Kreis"
 
 #: tachartstrconsts.rscolormapseries
 msgid "Color map series"
-msgstr "Farbkarten-Plot"
+msgstr "Farbkodiertes Diagramm"
 
 #: tachartstrconsts.rsconstantline
 msgid "Constant line"
@@ -150,7 +148,7 @@ msgstr "Datenpunkt-Hinweis"
 
 #: tachartstrconsts.rsdelete
 msgid "Delete"
-msgstr "Entf."
+msgstr "Entf"
 
 #: tachartstrconsts.rsdiagcrosssymbol
 msgid "Cross"
@@ -167,6 +165,18 @@ msgstr "Distanzmessung"
 #: tachartstrconsts.rsdowntrianglesymbol
 msgid "Down triangle"
 msgstr "Dreieck abwärts"
+
+#: tachartstrconsts.rserrinvalidresulttype
+msgid "Expression result type must be integer or float. Got \"%s\"."
+msgstr "Der Typ des Ausdrucksergebnisses muss integer oder float sein, ist aber \"%s\"."
+
+#: tachartstrconsts.rsexpressioncolormapseries
+msgid "Math expression color map series"
+msgstr "Math. Funktion (farb-kodiert)"
+
+#: tachartstrconsts.rsexpressionseries
+msgid "Math expression series"
+msgstr "Math. Funktion"
 
 #: tachartstrconsts.rsfieldseries
 msgid "Vector field series"
@@ -254,7 +264,7 @@ msgstr "(nichts)"
 
 #: tachartstrconsts.rsopenhighlowcloseseries
 msgid "Open-high-low-close series"
-msgstr "Öffnung-Höchst-Tiefst-Geschlossen"
+msgstr "Öffnungs-/Höchst-/Tiefst-/Schluss-Kurs"
 
 #: tachartstrconsts.rspanningbyclick
 msgid "Panning by click"
@@ -285,8 +295,6 @@ msgid "Polar series"
 msgstr "Polar-Diagramm"
 
 #: tachartstrconsts.rspsclear
-#, fuzzy
-#| msgid "clear line"
 msgctxt "tachartstrconsts.rspsclear"
 msgid "no line"
 msgstr "keine Linie"

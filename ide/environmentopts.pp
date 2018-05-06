@@ -38,15 +38,21 @@ uses
   ShlObj,
 {$endif}
   Classes, SysUtils, TypInfo, contnrs, Graphics, Controls, Forms, Dialogs,
-  LCLProc, FileProcs, LazFileUtils, LazFileCache, LazConfigStorage,
-  Laz2_XMLCfg, LazUTF8, SourceChanger, CodeCompletionTool,
+  LCLProc,
+  // LazUtils
+  LazFileUtils, LazFileCache, LazConfigStorage,
+  Laz2_XMLCfg, LazUTF8, Laz2_DOM,
+  // CodeTools
+  FileProcs, SourceChanger, CodeCompletionTool,
   // IDEIntf
   ProjectIntf, ObjectInspector, IDEWindowIntf, IDEOptionsIntf,
-  ComponentReg, IDEExternToolIntf, MacroDefIntf, DbgIntfDebuggerBase,
+  ComponentReg, IDEExternToolIntf, MacroDefIntf, SrcEditorIntf,
+  // DebuggerIntf
+  DbgIntfDebuggerBase,
   // IDE
   IDEProcs, DialogProcs, LazarusIDEStrConsts, IDETranslations, LazConf,
   IDEOptionDefs, TransferMacros, ModeMatrixOpts, Debugger,
-  IdeCoolbarData, EditorToolbarStatic;
+  IdeCoolbarData, EditorToolbarStatic, math, SynCompletion;
 
 const
   EnvOptsVersion: integer = 110;
@@ -281,6 +287,7 @@ type
   TEnvOptParseTypes = set of TEnvOptParseType;
 
 type
+  TEnvironmentOptions = class;
 
   TLastOpenPackagesList = class(TStringList)
   public
@@ -293,17 +300,66 @@ type
     AddToImplementation: Boolean;
   end;
 
-  { TDesktopOpt }
+  { TCustomDesktopOpt }
 
-  TDesktopOpt = class
-  private
-    FName: String;
+  TCustomDesktopOpt = class
+  protected
+    FName:string;
+    FAssociatedDebugDesktopName: String;
+    FConfigStore: TXMLOptionsStorage;
     FIsDocked: Boolean;
     FXMLCfg: TRttiXMLConfig;
-    FConfigStore: TXMLOptionsStorage;
+
+    function GetCompatible: Boolean; virtual;
+
+  public
+    constructor Create(const aName: String); virtual; overload;
+    constructor Create(const aName: String; const aIsDocked: Boolean); virtual; overload;
+    destructor Destroy;  override;
+    procedure SetConfig(aXMLCfg: TRttiXMLConfig; aConfigStore: TXMLOptionsStorage);
+    procedure Load(Path: String); virtual;
+    procedure Save(Path: String); virtual; abstract;
+    property Name: String read FName write FName;
+    property AssociatedDebugDesktopName: String read FAssociatedDebugDesktopName write FAssociatedDebugDesktopName;
+    property IsDocked: Boolean read FIsDocked;
+    property Compatible: Boolean read GetCompatible;
+  end;
+  TDesktopOptClass = class of TCustomDesktopOpt;
+
+  TDesktopOIOptions = class(TPersistent)
+  private
+    FComponentTreeHeight: integer;
+    FInfoBoxHeight: integer;
+    FShowInfoBox: boolean;
+    FSplitterX: array[TObjectInspectorPage] of Integer;
+
+    function GetSplitterX(const APage: TObjectInspectorPage): Integer;
+    procedure SetSplitterX(const APage: TObjectInspectorPage;
+      const ASplitterX: Integer);
+  protected
+    procedure AssignTo(Dest: TPersistent); override;
+  public
+    constructor Create;
+
+    procedure ImportSettingsFromIDE(const AOptions: TEnvironmentOptions);
+    procedure ExportSettingsToIDE(const AOptions: TEnvironmentOptions);
+    procedure Load(XMLConfig: TXMLConfig; Path: String);
+    procedure Save(XMLConfig: TXMLConfig; Path: String);
+
+    property ComponentTreeHeight: integer read FComponentTreeHeight write FComponentTreeHeight;
+    property SplitterX[const APage: TObjectInspectorPage]: Integer read GetSplitterX write SetSplitterX;
+    property ShowInfoBox: boolean read FShowInfoBox write FShowInfoBox;
+    property InfoBoxHeight: integer read FInfoBoxHeight write FInfoBoxHeight;
+  end;
+
+  { TDesktopOpt }
+
+  TDesktopOpt = class(TCustomDesktopOpt)
+  private
     // window layout
     FIDEWindowCreatorsLayoutList: TSimpleWindowLayoutList;
     FIDEDialogLayoutList: TIDEDialogLayoutList;
+    FObjectInspectorOptions: TDesktopOIOptions;
     FSingleTaskBarButton: boolean;
     FHideIDEOnRun: boolean;
     FAutoAdjustIDEHeight: boolean;
@@ -327,22 +383,21 @@ type
     //Docking options
     FDockedOpt: TAbstractDesktopDockingOpt;
 
-    function GetCompatible: Boolean;
     procedure InitLayoutList;
+  protected
+    function GetCompatible: Boolean; override;
   public
-    constructor Create(const aName: String);
-    constructor Create(const aName: String; const aIsDocked: Boolean);
+    constructor Create(const aName: String; const aIsDocked: Boolean); override; overload;
     destructor Destroy; override;
-    procedure Assign(Source: TDesktopOpt; const AssignName: Boolean = False);
+    procedure Assign(Source: TDesktopOpt; const AssignName: Boolean = False;
+      const IsCompatible: Boolean = True);
   public
-    procedure SetConfig(aXMLCfg: TRttiXMLConfig; aConfigStore: TXMLOptionsStorage);
-    procedure Load(Path: String);
-    procedure Save(Path: String);
-    procedure ImportSettingsFromIDE;
-    procedure ExportSettingsToIDE;
+    procedure Load(Path: String); override;
+    procedure Save(Path: String); override;
+    procedure ImportSettingsFromIDE(const AOptions: TEnvironmentOptions);
+    procedure ExportSettingsToIDE(const AOptions: TEnvironmentOptions);
     procedure RestoreDesktop;
 
-    property Name: String read FName write FName;
     property IDEWindowCreatorsLayoutList: TSimpleWindowLayoutList read FIDEWindowCreatorsLayoutList write FIDEWindowCreatorsLayoutList;
     property IDEDialogLayoutList: TIDEDialogLayoutList read FIDEDialogLayoutList;
     property SingleTaskBarButton: boolean read FSingleTaskBarButton write FSingleTaskBarButton;
@@ -363,11 +418,19 @@ type
     property IDECoolBarOptions: TIDECoolBarOptions read FIDECoolBarOptions;
     property EditorToolBarOptions: TEditorToolBarOptions read FEditorToolBarOptions;
     property ComponentPaletteOptions: TCompPaletteOptions read FComponentPaletteOptions;
-    property IsDocked: Boolean read FIsDocked;
-    property Compatible: Boolean read GetCompatible;
+    property ObjectInspectorOptions: TDesktopOIOptions read FObjectInspectorOptions;
   end;
 
-  TEnvironmentOptions = class;
+  { TUnsupportedDesktopOpt }
+
+  TUnsupportedDesktopOpt = Class(TCustomDesktopOpt)
+  private
+    FRetainXMLData:TDOMDocument;
+  public
+    destructor Destroy; override;
+    procedure Load(Path: String); override;
+    procedure Save(Path: String); override;
+  end;
 
   { TDesktopOptList }
 
@@ -376,15 +439,15 @@ type
     FXMLCfg: TRttiXMLConfig;
     FConfigStore: TXMLOptionsStorage;
     FEnvOpts: TEnvironmentOptions;
-    function GetItem(Index: Integer): TDesktopOpt;
+    function GetItem(Index: Integer): TCustomDesktopOpt;
     procedure SetConfig(aXMLCfg: TRttiXMLConfig; aConfigStore: TXMLOptionsStorage);
   public
     constructor Create(aEnvOpts: TEnvironmentOptions);
     destructor Destroy; override;
     procedure AddFromCfg(Path: String);
     function IndexOf(aName: string): integer;
-    function Find(aName: string): TDesktopOpt;
-    property Items[Index: Integer]: TDesktopOpt read GetItem; default;
+    function Find(aName: string): TCustomDesktopOpt;
+    property Items[Index: Integer]: TCustomDesktopOpt read GetItem; default;
   end;
 
   { TEnvironmentOptions - class for storing environment options }
@@ -438,6 +501,7 @@ type
     FRubberbandSelectsGrandChilds: boolean;
     FCheckPackagesOnFormCreate: boolean;
     FFormTitleBarChangesObjectInspector: boolean;
+    FForceDPIScalingInDesignTime: boolean;
 
     // object inspector
     FObjectInspectorOptions: TOIOptions;
@@ -692,6 +756,8 @@ type
                                              write FSwitchToFavoritesOITab;
     property FormTitleBarChangesObjectInspector: boolean read FFormTitleBarChangesObjectInspector
                                                         write FFormTitleBarChangesObjectInspector;
+    property ForceDPIScalingInDesignTime: boolean read FForceDPIScalingInDesignTime
+                                                        write FForceDPIScalingInDesignTime;
 
     // object inspector
     property ObjectInspectorOptions: TOIOptions read FObjectInspectorOptions;
@@ -1010,6 +1076,201 @@ begin
   WriteStr(Result, u);
 end;
 
+{ TDesktopOIOptions }
+
+constructor TDesktopOIOptions.Create;
+var
+  I: TObjectInspectorPage;
+begin
+  FComponentTreeHeight := -1;
+  FInfoBoxHeight := -1;
+  FShowInfoBox := True;
+  for I in TObjectInspectorPage do
+    SplitterX[I] := -1;
+end;
+
+procedure TDesktopOIOptions.AssignTo(Dest: TPersistent);
+var
+  DDest: TDesktopOIOptions;
+  I: TObjectInspectorPage;
+begin
+  if Dest is TDesktopOIOptions then
+  begin
+    DDest := TDesktopOIOptions(Dest);
+
+    for I in TObjectInspectorPage do
+      DDest.SplitterX[I] := SplitterX[I];
+    DDest.ShowInfoBox := ShowInfoBox;
+    DDest.ComponentTreeHeight := ComponentTreeHeight;
+    DDest.InfoBoxHeight := InfoBoxHeight;
+  end else
+    inherited AssignTo(Dest);
+end;
+
+function TDesktopOIOptions.GetSplitterX(const APage: TObjectInspectorPage
+  ): Integer;
+begin
+  Result := FSplitterX[APage];
+end;
+
+procedure TDesktopOIOptions.ImportSettingsFromIDE(
+  const AOptions: TEnvironmentOptions);
+var
+  I: TObjectInspectorPage;
+  o: TOIOptions;
+begin
+  o := AOptions.ObjectInspectorOptions;
+  for I in TObjectInspectorPage do
+    FSplitterX[I] := o.GridSplitterX[I];
+
+  ShowInfoBox := o.ShowInfoBox;
+  ComponentTreeHeight := o.ComponentTreeHeight;
+  InfoBoxHeight := o.InfoBoxHeight;
+end;
+
+procedure TDesktopOIOptions.Load(XMLConfig: TXMLConfig; Path: String);
+var
+  I: TObjectInspectorPage;
+begin
+  Path := Path + 'ObjectInspector';
+  for I in TObjectInspectorPage do
+    FSplitterX[I] := XMLConfig.GetValue(Path+'SplitterX/'+DefaultOIPageNames[I]+'/Value',-1);
+  ShowInfoBox := XMLConfig.GetValue(Path+'ShowInfoBox/Value',True);
+  ComponentTreeHeight := XMLConfig.GetValue(Path+'ComponentTreeHeight/Value',-1);
+  InfoBoxHeight := XMLConfig.GetValue(Path+'InfoBoxHeight/Value',-1);
+end;
+
+procedure TDesktopOIOptions.Save(XMLConfig: TXMLConfig; Path: String);
+var
+  I: TObjectInspectorPage;
+begin
+  Path := Path + 'ObjectInspector';
+  for I in TObjectInspectorPage do
+    XMLConfig.SetDeleteValue(Path+'SplitterX/'+DefaultOIPageNames[I]+'/Value',FSplitterX[I],-1);
+  XMLConfig.SetDeleteValue(Path+'ShowInfoBox/Value',ShowInfoBox,True);
+  XMLConfig.SetDeleteValue(Path+'ComponentTreeHeight/Value',ComponentTreeHeight,-1);
+  XMLConfig.SetDeleteValue(Path+'InfoBoxHeight/Value',InfoBoxHeight,-1);
+end;
+
+procedure TDesktopOIOptions.SetSplitterX(const APage: TObjectInspectorPage;
+  const ASplitterX: Integer);
+begin
+  FSplitterX[APage] := ASplitterX;
+end;
+
+procedure TDesktopOIOptions.ExportSettingsToIDE(
+  const AOptions: TEnvironmentOptions);
+var
+  I: TObjectInspectorPage;
+  o: TOIOptions;
+begin
+  o := AOptions.ObjectInspectorOptions;
+  for I in TObjectInspectorPage do
+    if FSplitterX[I]>=0 then
+      o.GridSplitterX[I] := Max(10, FSplitterX[I]);
+
+  o.ShowInfoBox := ShowInfoBox;
+  if ComponentTreeHeight>=0 then
+    o.ComponentTreeHeight := Max(10, ComponentTreeHeight);
+  if InfoBoxHeight>=0 then
+    o.InfoBoxHeight := Max(10, InfoBoxHeight);
+end;
+
+{ TUnsupportedDesktopOpt }
+
+destructor TUnsupportedDesktopOpt.Destroy;
+begin
+  freeandnil(FRetainXMLData);
+  inherited Destroy;
+end;
+
+procedure TUnsupportedDesktopOpt.Load(Path: string);
+var
+  lPnode, lChldNode: TDOMNode;
+begin
+  inherited;
+
+  FreeAndNil(FRetainXMLData);
+  FRetainXMLData := TDOMDocument.Create;
+  lPnode := FXMLCfg.FindNode(Path, False);
+  lChldNode := lPnode.CloneNode(True, FRetainXMLData);
+  FRetainXMLData.AppendChild(lChldNode);
+end;
+
+procedure TUnsupportedDesktopOpt.Save(Path: string);
+var
+  lChldNode, lChCh: TDOMNode;
+  lsNodeName: DOMString;
+  lParentNode: TDOMNode;
+begin
+  if Assigned(FRetainXMLData)  then
+  begin
+    lParentNode:= FXMLCfg.FindNode(path, False);
+    lChldNode := FRetainXMLData.FirstChild.CloneNode(True, FXMLCfg.Document);
+    lsNodeName := lChldNode.NodeName;
+    if ExtractFileNameOnly(copy(path, 1, length(path) - 1)) = lsNodeName then
+      FXMLCfg.FindNode(ExtractFilePath(copy(path, 1, length(path) - 1)), False)
+        .ReplaceChild(lChldNode, FXMLCfg.FindNode(path, False))
+    else
+    begin
+      try
+        if not assigned(lParentNode) then
+        begin
+          lParentNode:=FXMLCfg.Document.CreateElement(
+            ExtractFileNameOnly(copy(path, 1, length(path) - 1)));
+          FXMLCfg.FindNode(ExtractFilePath(copy(path, 1, length(path) - 1)), False).
+            AppendChild(lParentNode);
+        end;
+        while lChldNode.HasChildNodes do
+        begin
+          lChCh := lChldNode.FirstChild;
+          lChldNode.DetachChild(lChCh);
+          lParentNode.AppendChild(lChCh);
+        end;
+      finally
+        FreeAndNil(lChldNode);
+      end;
+    end;
+  end;
+end; 
+
+{ TCustomDesktopOpt }
+
+function TCustomDesktopOpt.GetCompatible: Boolean;
+begin
+  Result := false;
+end;
+
+procedure TCustomDesktopOpt.Load(Path: String);
+begin
+  FAssociatedDebugDesktopName:=FXMLCfg.GetValue(Path+'AssociatedDebugDesktopName/Value', '');
+end;
+
+constructor TCustomDesktopOpt.Create(const aName: String);
+begin
+  Create(aName, Assigned(IDEDockMaster));
+end;
+
+constructor TCustomDesktopOpt.Create(const aName: String;
+  const aIsDocked: Boolean);
+begin
+  inherited Create;
+  FName:=aName;
+  FIsDocked := aIsDocked;
+end;
+
+destructor TCustomDesktopOpt.Destroy;
+begin
+  inherited Destroy;
+end;
+
+procedure TCustomDesktopOpt.SetConfig(aXMLCfg: TRttiXMLConfig;
+  aConfigStore: TXMLOptionsStorage);
+begin
+  FXMLCfg := aXMLCfg;
+  FConfigStore := aConfigStore;
+end;
+
 { TLastOpenPackagesList }
 
 constructor TLastOpenPackagesList.Create;
@@ -1050,16 +1311,22 @@ end;
 
 procedure TDesktopOptList.AddFromCfg(Path: String);
 var
-  dsk: TDesktopOpt;
+  dsk: TCustomDesktopOpt;
+  dskClass: TDesktopOptClass;
   dskName, dskDockMaster: String;
 begin
   dskName := FXMLCfg.GetValue(Path+'Name', 'default');
   dskDockMaster := FXMLCfg.GetValue(Path+'DockMaster', '');
 
-  if not EnvironmentOptions.DesktopCanBeLoaded(dskDockMaster) or (IndexOf(dskName) >= 0) then
-    Exit;
+  if IndexOf(dskname) >=0 then
+    exit;
 
-  dsk := TDesktopOpt.Create(dskName, dskDockMaster<>'');
+  if TEnvironmentOptions.DesktopCanBeLoaded(dskDockMaster) then
+     dskClass := TDesktopOpt
+   else
+     dskClass := TUnsupportedDesktopOpt;
+
+  dsk := dskClass.Create(dskName, dskDockMaster<>'');
   dsk.SetConfig(FXMLCfg, FConfigStore);
   dsk.Load(Path);
   Add(dsk);
@@ -1073,7 +1340,7 @@ begin
     dec(Result);
 end;
 
-function TDesktopOptList.Find(aName: string): TDesktopOpt;
+function TDesktopOptList.Find(aName: string): TCustomDesktopOpt;
 var
   i: LongInt;
 begin
@@ -1084,29 +1351,23 @@ begin
     Result:=nil;
 end;
 
-function TDesktopOptList.GetItem(Index: Integer): TDesktopOpt;
+function TDesktopOptList.GetItem(Index: Integer): TCustomDesktopOpt;
 begin
-  Result := TDesktopOpt(inherited Items[Index]);
+  Result := TCustomDesktopOpt(inherited Items[Index]);
 end;
 
 { TDesktopOpt }
-
-constructor TDesktopOpt.Create(const aName: String);
-begin
-  Create(aName, Assigned(IDEDockMaster));
-end;
 
 constructor TDesktopOpt.Create(const aName: String; const aIsDocked: Boolean);
 begin
   if aIsDocked and not Assigned(IDEDockMaster) then
     raise Exception.Create('Internal error: TEnvironmentOptions.CreateDesktop cannot create docked desktop in undocked environment.');
 
-  inherited Create;
+  inherited;
 
-  FName:=aName;
-  FIsDocked := aIsDocked;
   if aIsDocked then
     FDockedOpt := IDEDockMaster.DockedDesktopOptClass.Create;
+
   FSingleTaskBarButton:=false;
   FHideIDEOnRun:=false;
   FAutoAdjustIDEHeight:=true;
@@ -1114,7 +1375,7 @@ begin
   // window menu
   FIDENameForDesignedFormList:=false;
   // CompletionWindow
-  FCompletionWindowWidth := 320;
+  FCompletionWindowWidth := 320 * Screen.PixelsPerInch div 96;
   FCompletionWindowHeight := 6;
   // title
   FIDETitleStartsWithProject:=false;
@@ -1126,6 +1387,8 @@ begin
   FEditorToolBarOptions:=TEditorToolBarOptions.Create;
   // component palette
   FComponentPaletteOptions:=TCompPaletteOptions.Create;
+  // object inspector
+  FObjectInspectorOptions:=TDesktopOIOptions.Create;
   // Windows layout
   InitLayoutList;
 
@@ -1141,6 +1404,7 @@ begin
   FreeAndNil(FEditorToolBarOptions);
   FreeAndNil(FIDECoolBarOptions);
   FreeAndNil(FDockedOpt);
+  FreeAndNil(FObjectInspectorOptions);
 
   FreeAndNil(FIDEDialogLayoutList);
   FreeAndNil(FIDEWindowCreatorsLayoutList);
@@ -1153,17 +1417,22 @@ begin
   Result := (IsDocked = Assigned(IDEDockMaster));
 end;
 
-procedure TDesktopOpt.Assign(Source: TDesktopOpt; const AssignName: Boolean);
+procedure TDesktopOpt.Assign(Source: TDesktopOpt; const AssignName: Boolean;
+  const IsCompatible: Boolean);
 begin
   if AssignName then
     FName := Source.FName;
 
-  if Assigned(FDockedOpt) <> Assigned(Source.FDockedOpt) then
+  if IsCompatible and (Assigned(FDockedOpt) <> Assigned(Source.FDockedOpt)) then
     raise Exception.Create('Internal error: TDesktopOpt.Assign mixed docked/undocked desktops.');
 
   // window layout
-  FIDEWindowCreatorsLayoutList.CopyItemsFrom(Source.FIDEWindowCreatorsLayoutList);
-  FIDEDialogLayoutList.Assign(Source.FIDEDialogLayoutList);
+  if IsCompatible then
+  begin
+    FIDEWindowCreatorsLayoutList.CopyItemsFrom(Source.FIDEWindowCreatorsLayoutList);
+    FIDEDialogLayoutList.Assign(Source.FIDEDialogLayoutList);
+    FAssociatedDebugDesktopName := Source.FAssociatedDebugDesktopName;
+  end;
   FSingleTaskBarButton := Source.FSingleTaskBarButton;
   FHideIDEOnRun := Source.FHideIDEOnRun;
   FAutoAdjustIDEHeight := Source.FAutoAdjustIDEHeight;
@@ -1183,13 +1452,17 @@ begin
   FEditorToolBarOptions.Assign(Source.FEditorToolBarOptions);
   // component palette
   FComponentPaletteOptions.Assign(Source.FComponentPaletteOptions);
+  // object inspector
+  FObjectInspectorOptions.Assign(Source.FObjectInspectorOptions);
 
-  if Assigned(FDockedOpt) then
+  if IsCompatible and Assigned(FDockedOpt) then
     FDockedOpt.Assign(Source.FDockedOpt);
 end;
 
 procedure TDesktopOpt.Load(Path: String);
 begin
+  inherited;
+
   // Windows layout
   FIDEWindowCreatorsLayoutList.LoadFromConfig(FConfigStore, Path);
   FIDEDialogLayoutList.LoadFromConfig(FConfigStore, Path+'Dialogs/');
@@ -1205,7 +1478,7 @@ begin
   FIDETitleIncludesBuildMode:=FXMLCfg.GetValue(Path+'IDETitleIncludesBuildMode/Value',false);
   FIDEProjectDirectoryInIdeTitle:=FXMLCfg.GetValue(Path+'IDEProjectDirectoryInIdeTitle/Value',false);
   // CompletionWindow
-  FCompletionWindowWidth:=FXMLCfg.GetValue(Path+'CompletionWindowWidth/Value', 320);
+  FCompletionWindowWidth:=FXMLCfg.GetValue(Path+'CompletionWindowWidth/Value', FCompletionWindowWidth);
   FCompletionWindowHeight:=FXMLCfg.GetValue(Path+'CompletionWindowHeight/Value', 6);
 
   if not FXMLCfg.HasPath(Path+'IDECoolBarOptions/', True) then
@@ -1216,6 +1489,8 @@ begin
   FEditorToolBarOptions.Load(FXMLCfg, Path);
   // component palette
   FComponentPaletteOptions.Load(FXMLCfg, Path);
+  // Object Inspector
+  FObjectInspectorOptions.Load(FXMLCfg, Path);
 
   if Assigned(FDockedOpt) then
     FDockedOpt.Load(Path, FXMLCfg);
@@ -1228,11 +1503,13 @@ begin
     FDockedOpt.RestoreDesktop;
 end;
 
-procedure TDesktopOpt.ImportSettingsFromIDE;
+procedure TDesktopOpt.ImportSettingsFromIDE(const AOptions: TEnvironmentOptions
+  );
 begin
   IDEWindowIntf.IDEWindowCreators.SimpleLayoutStorage.StoreWindowPositions;
   FIDEDialogLayoutList.Assign(IDEWindowIntf.IDEDialogLayoutList);
   FIDEWindowCreatorsLayoutList.CopyItemsFrom(IDEWindowIntf.IDEWindowCreators.SimpleLayoutStorage);
+  FObjectInspectorOptions.ImportSettingsFromIDE(AOptions);
 
   if Assigned(FDockedOpt) then
     FDockedOpt.ImportSettingsFromIDE;
@@ -1250,6 +1527,7 @@ begin
   FIDEWindowCreatorsLayoutList.SaveToConfig(FConfigStore, Path);
   FIDEDialogLayoutList.SaveToConfig(FConfigStore,Path+'Dialogs/');
 
+  FXMLCfg.SetDeleteValue(Path+'AssociatedDebugDesktopName/Value', FAssociatedDebugDesktopName, '');
   FXMLCfg.SetDeleteValue(Path+'SingleTaskBarButton/Value',FSingleTaskBarButton, False);
   FXMLCfg.SetDeleteValue(Path+'HideIDEOnRun/Value',FHideIDEOnRun,false);
   FXMLCfg.SetDeleteValue(Path+'AutoAdjustIDEHeight/Value',FAutoAdjustIDEHeight,true);
@@ -1262,7 +1540,7 @@ begin
   FXMLCfg.SetDeleteValue(Path+'IDETitleIncludesBuildMode/Value',FIDETitleIncludesBuildMode,false);
   FXMLCfg.SetDeleteValue(Path+'IDEProjectDirectoryInIdeTitle/Value',FIDEProjectDirectoryInIdeTitle,false);
   // CompletionWindow
-  FXMLCfg.SetDeleteValue(Path+'CompletionWindowWidth/Value',FCompletionWindowWidth, 320);
+  FXMLCfg.SetValue(Path+'CompletionWindowWidth/Value',FCompletionWindowWidth);
   FXMLCfg.SetDeleteValue(Path+'CompletionWindowHeight/Value',FCompletionWindowHeight, 6);
   // IDE Coolbar
   FIDECoolBarOptions.Save(FXMLCfg, Path);
@@ -1270,18 +1548,32 @@ begin
   FEditorToolBarOptions.Save(FXMLCfg, Path);
   // component palette
   FComponentPaletteOptions.Save(FXMLCfg, Path);
+  // Object Inspector
+  FObjectInspectorOptions.Save(FXMLCfg, Path);
 
   if Assigned(FDockedOpt) then
     FDockedOpt.Save(Path, FXMLCfg);
 end;
 
-procedure TDesktopOpt.ExportSettingsToIDE;
+procedure TDesktopOpt.ExportSettingsToIDE(const AOptions: TEnvironmentOptions);
+var
+  ComplForm: TCustomForm;
 begin
   if Assigned(FDockedOpt) then
     FDockedOpt.ExportSettingsToIDE;
 
   IDEWindowIntf.IDEDialogLayoutList.Assign(FIDEDialogLayoutList);
   IDEWindowIntf.IDEWindowCreators.SimpleLayoutStorage.CopyItemsFrom(FIDEWindowCreatorsLayoutList);
+  FObjectInspectorOptions.ExportSettingsToIDE(AOptions);
+  if Assigned(SourceEditorManagerIntf) then
+  begin
+    ComplForm := SourceEditorManagerIntf.DefaultSynCompletionForm;
+    if Assigned(ComplForm) then
+    begin
+      ComplForm.Width := Max(50, CompletionWindowWidth);
+      (ComplForm as TSynBaseCompletionForm).NbLinesInWindow := Max(3, CompletionWindowHeight);
+    end;
+  end;
 end;
 
 procedure InitLayoutHelper(const FormID: string);
@@ -1289,12 +1581,6 @@ begin
   with IDEWindowCreators.SimpleLayoutStorage do
     if not Assigned(ItemByFormID(FormID)) then
       CreateWindowLayout(FormID);
-end;
-
-procedure TDesktopOpt.SetConfig(aXMLCfg: TRttiXMLConfig; aConfigStore: TXMLOptionsStorage);
-begin
-  FXMLCfg := aXMLCfg;
-  FConfigStore := aConfigStore;
 end;
 
 procedure TDesktopOpt.InitLayoutList;
@@ -1357,6 +1643,7 @@ begin
   FCreateComponentFocusNameProperty:=false;
   FSwitchToFavoritesOITab:=false;
   FFormTitleBarChangesObjectInspector:=false;
+  FForceDPIScalingInDesignTime:=true;
 
   // object inspector
   FObjectInspectorOptions:=TOIOptions.Create;
@@ -1507,7 +1794,7 @@ begin
   try
     if AutoSaveActiveDesktop and Assigned(DebugDesktop) then
     begin
-      Desktop.ImportSettingsFromIDE;
+      Desktop.ImportSettingsFromIDE(Self);
       DebugDesktop.Assign(Desktop);
     end;
 
@@ -1539,10 +1826,10 @@ procedure TEnvironmentOptions.EnableDebugDesktop;
 begin
   if not Assigned(FLastDesktopBeforeDebug) and Assigned(DebugDesktop) and (DebugDesktop <> ActiveDesktop) then
   begin
-    FLastDesktopBeforeDebug := TDesktopOpt.Create('');
+    FLastDesktopBeforeDebug := TDesktopOpt.Create(ActiveDesktopName);
     if AutoSaveActiveDesktop then
-      Desktop.ImportSettingsFromIDE;
-    FLastDesktopBeforeDebug.Assign(Desktop, True);
+      Desktop.ImportSettingsFromIDE(Self);
+    FLastDesktopBeforeDebug.Assign(Desktop, False);
     EnvironmentOptions.UseDesktop(DebugDesktop);
   end;
 end;
@@ -1799,6 +2086,7 @@ begin
        Path+'FormEditor/CreateComponentFocusNameProperty/Value',false);
     FSwitchToFavoritesOITab:=FXMLCfg.GetValue(Path+'FormEditor/SwitchToFavoritesOITab/Value',false);
     FFormTitleBarChangesObjectInspector:=FXMLCfg.GetValue(Path+'FormEditor/FormTitleBarChangesObjectInspector/Value',false);
+    FForceDPIScalingInDesignTime:=FXMLCfg.GetValue(Path+'FormEditor/ForceDPIScalingInDesignTime/Value',true);
 
     if not OnlyDesktop then
       LoadNonDesktop(Path);
@@ -1963,7 +2251,7 @@ begin
     end;
 
     Desktop.Assign(ActiveDesktop, False);
-    Desktop.ExportSettingsToIDE;
+    Desktop.ExportSettingsToIDE(Self);
 
     FileUpdated;
   except
@@ -1991,7 +2279,7 @@ var
 begin
   // files
   CurLazDir:=ChompPathDelim(LazarusDirectory);
-  if not GlobalMacroList.StrHasMacros(CurLazDir) then begin
+  if not TTransferMacroList.StrHasMacros(CurLazDir) then begin
     BaseDir:=ExtractFilePath(ChompPathDelim(GetPrimaryConfigPath));
     if (CompareFilenames(BaseDir,CurLazDir)=0)
     or FileIsInPath(CurLazDir,BaseDir) then begin
@@ -2087,7 +2375,7 @@ var
   Rec: PIDEOptionsGroupRec;
   mwc: TMsgWndColor;
   u: TMessageLineUrgency;
-  xSaveDesktop: TDesktopOpt;
+  xSaveDesktop: TCustomDesktopOpt;
   xActiveDesktopName: string;
 begin
   try
@@ -2146,6 +2434,7 @@ begin
        FCreateComponentFocusNameProperty,false);
     FXMLCfg.SetDeleteValue(Path+'FormEditor/SwitchToFavoritesOITab/Value',FSwitchToFavoritesOITab,false);
     FXMLCfg.SetDeleteValue(Path+'FormEditor/FormTitleBarChangesObjectInspector/Value',FFormTitleBarChangesObjectInspector,false);
+    FXMLCfg.SetDeleteValue(Path+'FormEditor/ForceDPIScalingInDesignTime/Value',FForceDPIScalingInDesignTime,true);
 
     FXMLCfg.SetDeleteValue(Path+'ShowCompileDialog/Value',FShowCompileDialog,False);
     FXMLCfg.SetDeleteValue(Path+'AutoCloseCompileDialog/Value',FAutoCloseCompileDialog,False);
@@ -2266,15 +2555,15 @@ begin
     and (Application.MainForm<>nil) and Application.MainForm.Visible then
     begin
       //save active desktop
-      Desktop.ImportSettingsFromIDE;
+      Desktop.ImportSettingsFromIDE(Self);
       ActiveDesktop.Assign(Desktop);
 
       if Assigned(FLastDesktopBeforeDebug) then//are we in debug session?
       begin
         //save last desktop before the debug desktop
         xSaveDesktop := FDesktops.Find(FLastDesktopBeforeDebug.Name);
-        if Assigned(xSaveDesktop) then
-          xSaveDesktop.Assign(FLastDesktopBeforeDebug, False);
+        if Assigned(xSaveDesktop) and xSaveDesktop.InheritsFrom(TDesktopOpt) then
+          TDesktopOpt(xSaveDesktop).Assign(FLastDesktopBeforeDebug, False);
       end;
     end;
     if Assigned(FLastDesktopBeforeDebug) then
@@ -2333,8 +2622,7 @@ begin
   RemoveFromRecentList(AFilename,FRecentOpenFiles,rltFile);
 end;
 
-procedure TEnvironmentOptions.RemoveFromRecentPackageFiles(
-  const AFilename: string);
+procedure TEnvironmentOptions.RemoveFromRecentPackageFiles(const AFilename: string);
 begin
   RemoveFromRecentList(AFilename,FRecentPackageFiles,rltFile);
 end;
@@ -2677,20 +2965,30 @@ function TEnvironmentOptions.GetActiveDesktop: TDesktopOpt;
       FActiveDesktopName := 'default';
   end;
 
+var
+  OldActiveDesktop: TDesktopOpt;
+  OldActiveDesktopName: string;
+  lDskTpOpt: TCustomDesktopOpt;
+
 begin
+  Result := nil;
   if FActiveDesktopName <> '' then
   begin
-    Result := FDesktops.Find(FActiveDesktopName);
-    if Assigned(Result) and Result.Compatible then
-      Exit;
+    lDskTpOpt := FDesktops.Find(FActiveDesktopName);
+    if Assigned(lDskTpOpt) and lDskTpOpt.InheritsFrom(TDesktopOpt) and lDskTpOpt.Compatible then
+      Exit(TDesktopOpt(lDskTpOpt));
   end;
 
   //the selected desktop is unsupported (docked/undocked)
   // -> use default
+  OldActiveDesktopName := FActiveDesktopName;
   ChooseDefault;
-  Result := FDesktops.Find(FActiveDesktopName);
-  if Assigned(Result) and Result.Compatible then
-    Exit;
+  lDskTpOpt := FDesktops.Find(FActiveDesktopName);
+  if Assigned(lDskTpOpt) and lDskTpOpt.InheritsFrom(TDesktopOpt) then
+    if lDskTpOpt.Compatible then
+      Exit(TDesktopOpt(lDskTpOpt))
+    else
+      Result := TDesktopOpt(lDskTpOpt);
 
   //recreate desktop with ActiveDesktopName
   if Assigned(Result) then
@@ -2701,6 +2999,17 @@ begin
   Result.Assign(Desktop);
   if Assigned(IDEDockMaster) then
     Result.FDockedOpt.LoadDefaults;
+  OldActiveDesktop := TDesktopOpt(FDesktops.Find(OldActiveDesktopName));
+  if not Assigned(OldActiveDesktop) then
+  begin
+    lDskTpOpt := FDesktops.Find('default');
+    if Assigned(lDskTpOpt) and lDskTpOpt.InheritsFrom(TDesktopOpt) and lDskTpOpt.Compatible then
+      OldActiveDesktop := TDesktopOpt(lDskTpOpt)
+    else
+      OldActiveDesktop := nil;
+  end;
+  if Assigned(OldActiveDesktop) then
+    Result.Assign(OldActiveDesktop, False, False);
 end;
 
 procedure TEnvironmentOptions.SetTestBuildDirectory(const AValue: string);
@@ -2735,8 +3044,10 @@ begin
   DoBeforeWrite(False);  //this is needed to get the EditorToolBar refreshed!!! - needed only here in UseDesktop()
   Desktop.Assign(ADesktop);
   ActiveDesktopName := ADesktop.Name;
+  if ADesktop.AssociatedDebugDesktopName<>'' then
+    DebugDesktopName := ADesktop.AssociatedDebugDesktopName;
+  Desktop.ExportSettingsToIDE(Self);
   DoAfterWrite(False);  //this is needed to get the EditorToolBar refreshed!!! - needed only here in UseDesktop()
-  Desktop.ExportSettingsToIDE;
   Desktop.RestoreDesktop;
 
   //set focus back to the previously focused control
@@ -2820,14 +3131,17 @@ begin
 end;
 
 function TEnvironmentOptions.GetDebugDesktop: TDesktopOpt;
+var
+  lDskTpOpt: TCustomDesktopOpt;
 begin
+  Result := nil;
   if FDebugDesktopName <> '' then
   begin
-    Result := FDesktops.Find(FDebugDesktopName);
-    if not(Assigned(Result) and Result.Compatible) then//do not mix docked/undocked desktops
-      Result := nil;
-  end else
-    Result := nil;
+    lDskTpOpt := FDesktops.Find(FDebugDesktopName);
+    if Assigned(lDskTpOpt) and lDskTpOpt.InheritsFrom(TDesktopOpt) and lDskTpOpt.Compatible then //do not mix docked/undocked desktops
+      Result := TDesktopOpt(lDskTpOpt);
+  end;
+
 end;
 
 function TEnvironmentOptions.GetFPCSourceDirectory: string;

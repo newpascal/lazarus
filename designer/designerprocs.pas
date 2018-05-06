@@ -82,9 +82,7 @@ type
   end;
 
 const
-  NonVisualCompIconWidth = ComponentPaletteImageWidth;
   NonVisualCompBorder = 2;
-  NonVisualCompWidth = NonVisualCompIconWidth + 2 * NonVisualCompBorder;
 
 
 type
@@ -93,6 +91,7 @@ type
 var
   OnComponentIsInvisible: TOnComponentIsInvisible;
 
+function NonVisualCompWidth: integer;
 function GetParentLevel(AControl: TControl): integer;
 function ControlIsInDesignerVisible(AControl: TControl): boolean;
 function ComponentIsInvisible(AComponent: TComponent): boolean;
@@ -117,6 +116,9 @@ procedure InvalidateDesignerRect(aHandle: HWND; ARect: pRect);
 
 procedure WriteComponentStates(aComponent: TComponent; Recursive: boolean;
   const Prefix: string = '');
+
+procedure ScaleNonVisual(const aParent: TComponent;
+  const AFromPPI, AToPPI: Integer);
 
 implementation
 
@@ -325,6 +327,31 @@ begin
     for i:=0 to aComponent.ComponentCount-1 do
       WriteComponentStates(aComponent.Components[i],true,Prefix+'  ');
   end;
+end;
+
+procedure ScaleNonVisual(const aParent: TComponent; const AFromPPI,
+  AToPPI: Integer);
+var
+  I: Integer;
+  Comp: TComponent;
+  DsgnInfo: LongInt;
+begin
+  for I := 0 to aParent.ComponentCount-1 do
+  begin
+    Comp := aParent.Components[I];
+    DsgnInfo := Comp.DesignInfo;
+    LongRec(DsgnInfo).Lo:=MulDiv(LongRec(DsgnInfo).Lo, AToPPI, AFromPPI);
+    LongRec(DsgnInfo).Hi:=MulDiv(LongRec(DsgnInfo).Hi, AToPPI, AFromPPI);
+    Comp.DesignInfo := DsgnInfo;
+  end;
+end;
+
+function NonVisualCompWidth: integer;
+begin
+  if Application.Scaled then
+    Result := MulDiv(ComponentPaletteImageWidth, Screen.PixelsPerInch, 96) + 2 * NonVisualCompBorder
+  else
+    Result := ComponentPaletteImageWidth + 2 * NonVisualCompBorder
 end;
 
 function GetParentLevel(AControl: TControl): integer;

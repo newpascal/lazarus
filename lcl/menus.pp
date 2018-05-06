@@ -38,7 +38,7 @@ interface
 {$endif}
 
 uses
-  Classes, SysUtils, LCLStrConsts, LCLType, LCLProc, LCLIntf, InterfaceBase,
+  Types, Classes, SysUtils, LCLStrConsts, LCLType, LCLProc, LCLIntf, InterfaceBase,
   LResources, LMessages, ActnList, Graphics, ImgList, LCLClasses, Themes;
 
 type
@@ -133,6 +133,7 @@ type
     FParent: TMenuItem;
     FMenuItemHandlers: array[TMenuItemHandlerType] of TMethodList;
     FSubMenuImages: TCustomImageList;
+    FSubMenuImagesWidth: Integer;
     FShortCut: TShortCut;
     FShortCutKey2: TShortCut;
     FGroupIndex: Byte;
@@ -173,6 +174,7 @@ type
     procedure SetRightJustify(const AValue: boolean);
     procedure SetShowAlwaysCheckable(const AValue: boolean);
     procedure SetSubMenuImages(const AValue: TCustomImageList);
+    procedure SetSubMenuImagesWidth(const aSubMenuImagesWidth: Integer);
     procedure ShortcutChanged;
     procedure SubItemChanged(Sender: TObject; Source: TMenuItem; Rebuild: Boolean);
     procedure TurnSiblingsOff;
@@ -183,6 +185,8 @@ type
     procedure ActionChange(Sender: TObject; CheckDefaults: Boolean); virtual;
     procedure AssignTo(Dest: TPersistent); override;
     procedure BitmapChange(Sender: TObject);
+    function DoDrawItem(ACanvas: TCanvas; ARect: TRect; AState: TOwnerDrawState): Boolean; virtual;
+    function DoMeasureItem(ACanvas: TCanvas; var AWidth, AHeight: Integer): Boolean; virtual;
     function GetAction: TBasicAction;
     function GetActionLinkClass: TMenuActionLinkClass; virtual;
     function GetHandle: HMenu;
@@ -215,7 +219,8 @@ type
     destructor Destroy; override;
     function Find(const ACaption: string): TMenuItem;
     function GetEnumerator: TMenuItemEnumerator;
-    function GetImageList: TCustomImageList; virtual;
+    procedure GetImageList(out aImages: TCustomImageList; out aImagesWidth: Integer); virtual;
+    function GetImageList: TCustomImageList;
     function GetParentComponent: TComponent; override;
     function GetParentMenu: TMenu; virtual;
     function GetIsRightToLeft:Boolean; virtual;
@@ -241,7 +246,7 @@ type
     function IsInMenuBar: boolean; virtual;
     procedure Clear;
     function HasBitmap: boolean;
-    function GetIconSize: TPoint; virtual;
+    function GetIconSize(ADC: HDC): TPoint; virtual;
     // Event lists
     procedure RemoveAllHandlersOfObject(AnObject: TObject); override;
     procedure AddHandlerOnDestroy(const OnDestroyEvent: TNotifyEvent;
@@ -287,6 +292,7 @@ type
     property ShowAlwaysCheckable: boolean read FShowAlwaysCheckable
                                  write SetShowAlwaysCheckable default False;
     property SubMenuImages: TCustomImageList read FSubMenuImages write SetSubMenuImages;
+    property SubMenuImagesWidth: Integer read FSubMenuImagesWidth write SetSubMenuImagesWidth default 0;
     property Visible: Boolean read FVisible write SetVisible
                               stored IsVisibleStored default True;
     property OnClick: TNotifyEvent read FOnClick write FOnClick;
@@ -305,6 +311,7 @@ type
     FBiDiMode: TBiDiMode;
     FImageChangeLink: TChangeLink;
     FImages: TCustomImageList;
+    FImagesWidth: Integer;
     FItems: TMenuItem;
     FOnDrawItem: TMenuDrawItemEvent;
     FOnChange: TMenuChangeEvent;
@@ -320,6 +327,7 @@ type
     procedure ImageListChange(Sender: TObject);
     procedure SetBiDiMode(const AValue: TBiDiMode);
     procedure SetImages(const AValue: TCustomImageList);
+    procedure SetImagesWidth(const aImagesWidth: Integer);
     procedure SetParent(const AValue: TComponent);
     procedure SetParentBiDiMode(const AValue: Boolean);
   protected
@@ -331,6 +339,7 @@ type
     procedure GetChildren(Proc: TGetChildProc; Root: TComponent); override;
     procedure MenuChanged(Sender: TObject; Source: TMenuItem;
                           Rebuild: Boolean); virtual;
+    procedure AssignTo(Dest: TPersistent); override;
     procedure Notification(AComponent: TComponent;
       Operation: TOperation); override;
     procedure ParentBidiModeChanged;
@@ -362,6 +371,7 @@ type
     property ParentBidiMode:Boolean read FParentBidiMode write SetParentBidiMode default True;
     property Items: TMenuItem read FItems;
     property Images: TCustomImageList read FImages write SetImages;
+    property ImagesWidth: Integer read FImagesWidth write SetImagesWidth default 0;
     property OwnerDraw: Boolean read FOwnerDraw write FOwnerDraw default False;
     property OnDrawItem: TMenuDrawItemEvent read FOnDrawItem write FOnDrawItem;
     property OnMeasureItem: TMenuMeasureItemEvent read FOnMeasureItem write FOnMeasureItem;
@@ -466,6 +476,60 @@ implementation
 uses
   WSMenus,
   Forms {KeyDataToShiftState};
+
+{ Helpers for Assign() }
+
+procedure MenuItem_Copy(ASrc, ADest: TMenuItem);
+var
+  mi: TMenuItem;
+  i: integer;
+begin
+  ADest.Clear;
+  ADest.Action:= ASrc.Action;
+  ADest.AutoCheck:= ASrc.AutoCheck;
+  ADest.Caption:= ASrc.Caption;
+  ADest.Checked:= ASrc.Checked;
+  ADest.Default:= ASrc.Default;
+  ADest.Enabled:= ASrc.Enabled;
+  ADest.Bitmap:= ASrc.Bitmap;
+  ADest.GroupIndex:= ASrc.GroupIndex;
+  ADest.GlyphShowMode:= ASrc.GlyphShowMode;
+  ADest.HelpContext:= ASrc.HelpContext;
+  ADest.Hint:= ASrc.Hint;
+  ADest.ImageIndex:= ASrc.ImageIndex;
+  ADest.RadioItem:= ASrc.RadioItem;
+  ADest.RightJustify:= ASrc.RightJustify;
+  ADest.ShortCut:= ASrc.ShortCut;
+  ADest.ShortCutKey2:= ASrc.ShortCutKey2;
+  ADest.ShowAlwaysCheckable:= ASrc.ShowAlwaysCheckable;
+  ADest.SubMenuImages:= ASrc.SubMenuImages;
+  ADest.SubMenuImagesWidth:= ASrc.SubMenuImagesWidth;
+  ADest.Visible:= ASrc.Visible;
+  ADest.OnClick:= ASrc.OnClick;
+  ADest.OnDrawItem:= ASrc.OnDrawItem;
+  ADest.OnMeasureItem:= ASrc.OnMeasureItem;
+  ADest.Tag:= ASrc.Tag;
+
+  for i:= 0 to ASrc.Count-1 do
+  begin
+    mi:= TMenuItem.Create(ASrc.Owner);
+    MenuItem_Copy(ASrc.Items[i], mi);
+    ADest.Add(mi);
+  end;
+end;
+
+procedure Menu_Copy(ASrc, ADest: TMenu);
+begin
+  ADest.BidiMode:= ASrc.BidiMode;
+  ADest.ParentBidiMode:= ASrc.ParentBidiMode;
+  ADest.Images:= ASrc.Images;
+  ADest.ImagesWidth:= ASrc.ImagesWidth;
+  ADest.OwnerDraw:= ASrc.OwnerDraw;
+  ADest.OnDrawItem:= ASrc.OnDrawItem;
+  ADest.OnMeasureItem:= ASrc.OnMeasureItem;
+
+  MenuItem_Copy(ASrc.Items, ADest.Items);
+end;
 
 { Easy Menu building }
 

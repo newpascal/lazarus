@@ -47,7 +47,7 @@ type
 
   TGtk3WidgetType = (wtWidget, wtStaticText, wtProgressBar, wtLayout,
     wtContainer, wtMenuBar, wtMenu, wtMenuItem, wtEntry, wtSpinEdit,
-    wtNotebook, wtComboBox,
+    wtNotebook, wtTabControl, wtComboBox,
     wtGroupBox, wtCalendar, wtTrackBar, wtScrollBar,
     wtScrollingWin, wtListBox, wtListView, wtCheckListBox, wtMemo, wtTreeModel,
     wtCustomControl, wtScrollingWinControl,
@@ -364,6 +364,7 @@ type
     function CreateWidget(const Params: TCreateParams):PGtkWidget; override;
   public
     function getClientRect: TRect; override;
+    function getPagesCount: integer;
     procedure InsertPage(ACustomPage: TCustomPage; AIndex: Integer);
     procedure MovePage(ACustomPage: TCustomPage; ANewIndex: Integer);
     procedure RemovePage(AIndex: Integer);
@@ -997,9 +998,6 @@ begin
 end;
 
 function Gtk3WidgetEvent(widget: PGtkWidget; event: PGdkEvent; data: GPointer): gboolean; cdecl;
-var
-  APrivate: PGtkComboBoxPrivate;
-  AComboWidget: PGtkComboBox;
 begin
   {$IFDEF GTK3DEBUGCOMBOBOX}
   if (Data <> nil) and (wtComboBox in TGtk3Widget(Data).WidgetType) and
@@ -1241,6 +1239,11 @@ begin
       end;
       // Result := TGtk3Widget(Data).GtkEventShowHide(Widget, Event);
       // DebugLn('****** GDK_VISIBILITY_NOTIFY FOR ' + dbgsName(TGtk3Widget(Data).LCLObject));
+    end;
+    31: // GDK_SCROLL
+    begin
+      // DebugLn('****** GDK_SCROLL ' + dbgsName(TGtk3Widget(Data).LCLObject));
+      Result := TGtk3Widget(Data).GtkEventMouseWheel(Widget, Event);
     end;
     32: // GDK_WINDOW_STATE
     begin
@@ -1618,9 +1621,6 @@ function TGtk3Widget.GtkEventMouseMove(Sender: PGtkWidget; Event: PGdkEvent
 var
   Msg: TLMMouseMove;
   MousePos: TPoint;
-  GlobPos: TPoint;
-  R: TRect;
-  P: TPoint;
 begin
   Result := False;
 
@@ -1664,15 +1664,10 @@ end;
 function TGtk3Widget.GtkEventPaint(Sender: PGtkWidget; AContext: Pcairo_t
   ): Boolean; cdecl;
 var
-  PS: TPaintStruct;
   Msg: TLMPaint;
   AStruct: PPaintStruct;
   P: TPoint;
-  B: Boolean;
   AClipRect: TGdkRectangle;
-  dx: Double;
-  dy: Double;
-  AMatrix: Pcairo_matrix_t;
 begin
   Result := False;
 
@@ -1800,10 +1795,37 @@ end;
 
 function TGtk3Widget.GtkEventMouseWheel(Sender: PGtkWidget; Event: PGdkEvent
   ): Boolean; cdecl;
+var
+  Msg: TLMMouseEvent;
+  EventXY: TPoint;
 begin
   // gtk3 have ugly bug with scroll-event
   // https://bugzilla.gnome.org/show_bug.cgi?id=675959
   Result := False;
+  EventXY := Point(TruncToInt(Event^.scroll.x), TruncToInt(Event^.scroll.y));
+  FillChar(Msg{%H-},SizeOf(Msg),0);
+  Msg.Msg := LM_MOUSEWHEEL;
+  //DebugLn('Scroll ',Format('deltaX %2.2n deltaY %2.2n x %2.2n y %2.2n rootx %2.2n rooty %2.2n',
+  //  [Event^.scroll.delta_x, Event^.scroll.delta_y, Event^.scroll.x, Event^.scroll.y,
+  //  Event^.scroll.x_root, Event^.scroll.y_root]));
+  if Event^.scroll.direction = GDK_SCROLL_UP then
+    Msg.WheelDelta := 120
+  else
+  if Event^.scroll.direction = GDK_SCROLL_DOWN then
+    Msg.WheelDelta := -120
+  else
+    exit;
+  Msg.X := EventXY.X;
+  Msg.Y := EventXY.Y;
+  Msg.State := GdkModifierStateToShiftState(Event^.scroll.state);
+  Msg.UserData := LCLObject;
+  Msg.Button := 0;
+
+  NotifyApplicationUserInput(LCLObject, Msg.Msg);
+  if Widget^.get_parent <> nil then
+    Event^.motion.send_event := NO_PROPAGATION_TO_PARENT;
+  if DeliverMessage(Msg, True) <> 0 then
+    Result := True;
 end;
 
 function TGtk3Widget.IsValidHandle: Boolean;
@@ -2130,6 +2152,7 @@ begin
         Msg.Msg := LM_MBUTTONUP;
     end;
   end;
+
   {$IF DEFINED(GTK3DEBUGEVENTS) OR DEFINED(GTK3DEBUGMOUSE)}
   DebugLn('TGtk3Widget.GtkEventMouse ',dbgsName(LCLObject),
     ' msg=',dbgs(msg.Msg), ' point=',dbgs(Msg.XPos),',',dbgs(Msg.YPos));
@@ -2584,7 +2607,6 @@ function TGtk3Widget.getClientOffset: TPoint;
 var
   Allocation: TGtkAllocation;
   R: TRect;
-  B: Boolean;
 begin
   {offset between inner and outer rect of widget.
    It tricky since some widgets have regular offset eg
@@ -2627,13 +2649,10 @@ end;
 
 function TGtk3Widget.DeliverMessage(var Msg; const AIsInputEvent: Boolean
   ): LRESULT;
-var
-  AEvent: Cardinal;
 begin
   Result := LRESULT(AIsInputEvent);
   if LCLObject = nil then
     Exit;
-  AEvent := TLMessage(Msg).Msg;
   try
     if LCLObject.HandleAllocated then
     begin
@@ -2745,7 +2764,6 @@ end;
 procedure TGtk3Widget.Move(ALeft, ATop: Integer);
 var
   AParent: TGtk3Widget;
-  Allocation: TGtkAllocation;
 begin
   AParent := getParent;
   if (AParent <> nil) then
@@ -2778,7 +2796,6 @@ end;
 procedure TGtk3Widget.preferredSize(var PreferredWidth,
   PreferredHeight: integer; WithThemeSpace: Boolean);
 var
-  ABorder: TGtkBorder;
   AMinH: gint;
   AMinW: gint;
 begin
@@ -2828,11 +2845,6 @@ end;
 
 procedure TGtk3Widget.SetParent(AParent: TGtk3Widget; const ALeft, ATop: Integer
   );
-var
-  Allocation: TGtkAllocation;
-  R: TRect;
-  W,H: Integer;
-  AParentParent: PGtkWidget;
 begin
   if wtLayout in AParent.WidgetType then
     PGtkLayout(AParent.GetContainerWidget)^.put(FWidget, ALeft, ATop)
@@ -2881,10 +2893,7 @@ end;
 { TGtk3StatusBar }
 
 function TGtk3StatusBar.CreateWidget(const Params: TCreateParams): PGtkWidget;
-var
-  AStatusBar: TStatusBar;
 begin
-  AStatusBar := TStatusBar(LCLObject);
   Result := TGtkEventBox.new;
   FCentralWidget := TGtkHBox.new(GTK_ORIENTATION_HORIZONTAL, 1);
   PGtkBox(FCentralWidget)^.set_homogeneous(True);
@@ -2932,7 +2941,6 @@ end;
 function TGtk3Panel.CreateWidget(const Params: TCreateParams): PGtkWidget;
 var
   AGdkRGBA: TGdkRGBA;
-  AColor: TGdkColor;
 begin
   FHasPaint := True;
   FBorderStyle := bsNone;
@@ -3106,9 +3114,6 @@ begin
 end;
 
 procedure TGtk3Editable.setSelStart(AValue: Integer);
-var
-  AStart: gint;
-  AStop: gint;
 begin
   if not IsWidgetOk then
     exit;
@@ -3362,8 +3367,6 @@ end;
 function TGtk3SpinEdit.CreateWidget(const Params: TCreateParams): PGtkWidget;
 var
   ASpin: TCustomSpinEdit;
-  ARect: TGdkRectangle;
-  // Adjustment: PGtkAdjustment;
 begin
   PrivateCursorPos := -1;
   PrivateSelection := -1;
@@ -3709,8 +3712,6 @@ begin
 end;
 
 function TGtk3ProgressBar.GetStyle: TProgressBarStyle;
-var
-  ABar: TCustomProgressBar;
 begin
   Result := pbstNormal;
   if Assigned(LCLObject) and IsWidgetOk then
@@ -3955,16 +3956,17 @@ procedure GtkNotebookAfterSwitchPage(widget: PGtkWidget; {%H-}page: PGtkWidget; 
 var
   Mess: TLMNotify;
   NMHdr: tagNMHDR;
-  ACtl: TWinControl;
-  AParentForm: TCustomForm;
-  i: Integer;
   LCLPageIndex: Integer;
-  Pg: TCustomPage;
-  ChildWidget: PGtkWidget;
 begin
   if TGtk3Widget(Data).InUpdate then
     exit;
+  {page is deleted}
   DebugLn('GtkNotebookAfterSwitchPage ');
+  if TGtk3NoteBook(Data).getPagesCount < TCustomTabControl(TGtk3NoteBook(Data).LCLObject).PageCount then
+  begin
+    DebugLn('GtkNotebookAfterSwitchPage PageIsDeleted');
+    exit;
+  end;
   FillChar(Mess{%H-}, SizeOf(Mess), 0);
   Mess.Msg := LM_NOTIFY;
   FillChar(NMHdr{%H-}, SizeOf(NMHdr), 0);
@@ -4012,7 +4014,16 @@ var
 begin
   if TGtk3Widget(Data).InUpdate then
     exit;
+
   DebugLn('GtkNotebookSwitchPage Data ',dbgHex(PtrUInt(Data)),' Realized ',dbgs(Widget^.get_realized),' pageNum=',dbgs(pageNum));
+
+  {page is deleted}
+  if TGtk3NoteBook(Data).getPagesCount < TCustomTabControl(TGtk3NoteBook(Data).LCLObject).PageCount then
+  begin
+    DebugLn('GtkNotebookSwitchPage PageIsDeleted ');
+    exit;
+  end;
+
   FillChar(Mess{%H-}, SizeOf(Mess), 0);
   Mess.Msg := LM_NOTIFY;
   FillChar(NMHdr{%H-}, SizeOf(NMHdr), 0);
@@ -4090,14 +4101,48 @@ begin
   // DebugLn('TGtk3NoteBook.getClientRect Result ',dbgs(Result));
 end;
 
+function TGtk3NoteBook.getPagesCount: integer;
+begin
+  Result := 0;
+  if IsWidgetOk then
+    Result := PGtkNoteBook(GetContainerWidget)^.get_n_pages;
+end;
+
+procedure EnumerateChildren(ANotebook: PGtkNoteBook);
+var
+  AList: PGList;
+  i: Integer;
+  AWidget: PGtkWidget;
+  AMinimumH, ANaturalH, ANaturalW, AMinimumW: gint;
+  AChild: PGtkWidget;
+begin
+  AList := ANoteBook^.get_children;
+  for i := 0 to g_list_length(AList) - 1 do
+  begin
+    AWidget := PGtkWidget(g_list_nth_data(AList, I));
+    AWidget^.get_preferred_height(@AMinimumH, @ANaturalH);
+    AWidget^.get_preferred_width(@AMinimumW, @ANaturalW);
+    AChild := nil;
+    DebugLn(Format('Child[%d] MinH %d NatH %d MinW %d NatW %d ALLOCW %d ALLOCH %d child_type %s',
+      [I, AMinimumH, ANaturalH, AMinimumW, ANaturalW,
+      AWidget^.get_allocated_width, AWidget^.get_allocated_height, g_type_name(ANotebook^.child_type)]));
+  end;
+  g_list_free(AList);
+end;
+
 procedure TGtk3NoteBook.InsertPage(ACustomPage: TCustomPage; AIndex: Integer);
 var
   Gtk3Page: TGtk3Page;
+  AMinSize, ANaturalSize: gint;
 begin
   if IsWidgetOK then
   begin
     Gtk3Page := TGtk3Page(ACustomPage.Handle);
     PGtkNoteBook(GetContainerWidget)^.insert_page(Gtk3Page.Widget, Gtk3Page.FPageLabel, AIndex);
+    PGtkNoteBook(GetContainerWidget)^.get_preferred_width(@AMinSize, @ANaturalSize);
+    PGtkNoteBook(GetContainerWidget)^.get_preferred_height(@AMinSize, @ANaturalSize);
+    if gtk_notebook_get_n_pages(PGtkNoteBook(GetContainerWidget)) > 1 then
+      PGtkNoteBook(GetContainerWidget)^.resize_children;
   end;
 end;
 
@@ -4108,10 +4153,15 @@ begin
 end;
 
 procedure TGtk3NoteBook.RemovePage(AIndex: Integer);
+var
+  AMinSizeW, AMinSizeH, ANaturalSizeW, ANaturalSizeH: gint;
 begin
   if IsWidgetOK then
   begin
     PGtkNotebook(GetContainerWidget)^.remove_page(AIndex);
+    PGtkNoteBook(GetContainerWidget)^.get_preferred_width(@AMinSizeW, @ANaturalSizeW);
+    PGtkNoteBook(GetContainerWidget)^.get_preferred_height(@AMinSizeH, @ANaturalSizeH);
+    PGtkNoteBook(GetContainerWidget)^.resize_children;
   end;
 end;
 
@@ -4191,8 +4241,6 @@ begin
 end;
 
 procedure TGtk3MenuShell.InitializeWidget;
-var
-  ARect: TGdkRectangle;
 begin
   FCentralWidget := nil;
   FCairoContext := nil;
@@ -4672,7 +4720,6 @@ var
   ItemList: TGtkListStoreStringList;
   AColumn: PGtkTreeViewColumn;
   Renderer : PGtkCellRenderer;
-  VAdjust, HAdjust: PGtkAdjustment;
 begin
   FScrollX := 0;
   FScrollY := 0;
@@ -4734,8 +4781,6 @@ begin
 end;
 
 procedure TGtk3ListBox.InitializeWidget;
-var
-  ASelection: PGtkTreeSelection;
 begin
   inherited InitializeWidget;
   g_signal_connect_data(GetSelection, 'changed', TGCallback(@Gtk3ListBoxSelectionChanged), Self, nil, 0);
@@ -4977,7 +5022,7 @@ procedure Gtk3WS_CheckListBoxToggle({%H-}cellrenderertoggle : PGtkCellRendererTo
 var
   Mess: TLMessage;
   Param: PtrInt;
-  Iter, IterParent : TGtkTreeIter;
+  Iter : TGtkTreeIter;
   TreeView: PGtkTreeView;
   ListStore: PGtkTreeModel;
   Path: PGtkTreePath;
@@ -5021,9 +5066,6 @@ var
   AColumn: PGtkTreeViewColumn;
   Toggle: PGtkCellRendererToggle;
   Renderer : PGtkCellRenderer;
-  VAdjust, HAdjust: PGtkAdjustment;
-  AScrollStyle: TPoint;
-  TreeModel: PGtkTreeModel;
 begin
   FScrollX := 0;
   FScrollY := 0;
@@ -5548,8 +5590,6 @@ var
   AModel: PGtkTreeModel;
   Iter: TGtkTreeIter;
   NewIndex: Integer;
-  AGValue: TGValue;
-  AColumns: gint;
 begin
   if not IsWidgetOK then
     exit;
@@ -5662,10 +5702,11 @@ function TGtk3ListView.ItemGetState(const AIndex: Integer;
   const AItem: TListItem; const AState: TListItemState; out AIsSet: Boolean
   ): Boolean;
 var
-  Path: PPGtkTreePath;
+  Path: PGtkTreePath;
   Column: PPGtkTreeViewColumn;
   Cell: PPGtkCellRenderer;
   APath: PGtkTreePath;
+  AStr: PChar;
 begin
   Result := False;
   AIsSet := False;
@@ -5682,14 +5723,18 @@ begin
       Path := nil;
       Column := nil;
       if IsTreeView then
-        PGtkTreeView(GetContainerWidget)^.get_cursor(Path, Column)
+        PGtkTreeView(GetContainerWidget)^.get_cursor(@Path, Column)
       else
-        PGtkIconView(GetContainerWidget)^.get_cursor(Path, Cell);
-
-      AIsSet := (Path <> nil) and (StrToInt(gtk_tree_path_to_string(path^)) = AIndex);
-      if Path <> nil then
-        gtk_tree_path_free(Path^);
-      Result := True;
+        PGtkIconView(GetContainerWidget)^.get_cursor(@Path, Cell);
+      if Assigned(Path) then
+      begin
+        AStr := gtk_tree_path_to_string(Path);
+        AIsSet := (StrToIntDef(AStr,-1) = AIndex);
+        if AStr <> nil then
+          g_free(AStr); 
+        gtk_tree_path_free(Path);
+        Result := True;
+      end;
     end;
 
     lisSelected:
@@ -5796,7 +5841,6 @@ var
   ListStore: PGtkListStore;
   ItemList: TGtkListStoreStringList;
   Renderer : PGtkCellRenderer;
-  AList: PGList;
 begin
   FWidgetType := FWidgetType + [wtTreeModel, wtComboBox];
   ACombo := TCustomComboBox(LCLObject);
@@ -5836,7 +5880,7 @@ begin
 
     gtk_cell_layout_clear(PGtkCellLayout(FCentralWidget));
     gtk_cell_layout_pack_start(PGtkCellLayout(FCentralWidget), renderer, True);
-    if not (ACombo.Style in [csOwnerDrawFixed, csOwnerDrawVariable]) then
+    if not (ACombo.Style in [csOwnerDrawFixed, csOwnerDrawVariable, csOwnerDrawEditableFixed, csOwnerDrawEditableVariable]) then
       gtk_cell_layout_set_attributes(PGtkCellLayout(FCentralWidget), renderer, ['text', 0, nil]);
     gtk_cell_layout_set_cell_data_func(PGtkCellLayout(FCentralWidget), renderer,
       @LCLIntfCellRenderer_CellDataFunc, Self, nil);
@@ -5963,7 +6007,6 @@ end;
 procedure GtkNotifyCombo(AObject: PGObject; pspec: PGParamSpec; AData: GPointer); cdecl;
 var
   AValue: TGValue;
-  AMenu: PGtkWidget;
   ComboBox: TCustomComboBox;
 begin
   if pspec^.name = 'popup-shown' then
@@ -6215,7 +6258,7 @@ begin
   if FUseLayout then
     FWidgetType := [wtWidget, wtLayout, wtScrollingWin, wtCustomControl]
   else
-    FWidgetType := [wtWidget, wtContainer, wtScrollingWin, wtCustomControl];
+    FWidgetType := [wtWidget, wtContainer, wtTabControl, wtScrollingWin, wtCustomControl];
   Result := PGtkScrolledWindow(TGtkScrolledWindow.new(nil, nil));
 
   if FUseLayout then
@@ -6257,8 +6300,8 @@ end;
 
 function TGtk3CustomControl.getClientRect: TRect;
 var
-  Allocation, VAllocation: TGtkAllocation;
-  R,RV: TRect;
+  Allocation: TGtkAllocation;
+  R: TRect;
   w: gint;
   h: gint;
   x: gint;
@@ -6317,8 +6360,6 @@ end;
 
 function TGtk3ScrollingWinControl.CreateWidget(const Params: TCreateParams
   ): PGtkWidget;
-var
-  ABox: PGtkBox;
 begin
   FHasPaint := True;
   FScrollX := 0;
@@ -6452,9 +6493,6 @@ end;
 
 function TGtk3Window.CreateWidget(const Params: TCreateParams): PGtkWidget;
 var
-  Geometry: TGdkGeometry;
-  WinMask: TGdkWindowHints;
-  AResize: TGtkResizeMode;
   AForm: TCustomForm;
 begin
   FIcon := nil;
@@ -6528,8 +6566,8 @@ end;
 
 function TGtk3Window.getClientRect: TRect;
 var
-  Allocation, VAllocation: TGtkAllocation;
-  R,RV: TRect;
+  Allocation: TGtkAllocation;
+  R: TRect;
   w: gint;
   h: gint;
   x: gint;
@@ -6769,9 +6807,7 @@ var
   FileDialog: TFileDialog absolute ACommonDialog;
   Action: TGtkFileChooserAction;
   Button1: String;
-  ADialog: TGtk3FileDialog;
   AFileDialog: PGtkFileChooserDialog;
-  AParams: TCreateParams;
 begin
   inherited Create;
   FContext := 0;

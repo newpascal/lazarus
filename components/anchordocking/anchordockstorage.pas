@@ -60,6 +60,11 @@ type
     adlhpRight,
     adlhpBottom
     );
+
+  TADLControlLocation = (
+    adlclWrongly,
+    adlclCorrect
+    );
   TADLHeaderPositions = set of TADLHeaderPosition;
 
   EAnchorDockLayoutError = class(Exception);
@@ -81,6 +86,7 @@ type
     FWorkAreaRect: TRect;
     FTabPosition: TTabPosition;
     FWindowState: TWindowState;
+    FControlLocation: TADLControlLocation;
     function GetAnchors(Site: TAnchorKind): string;
     function GetBottom: integer;
     function GetHeight: integer;
@@ -113,7 +119,7 @@ type
     procedure Clear;
     function IsEqual(Node: TAnchorDockLayoutTreeNode): boolean;
     procedure Assign(Node: TAnchorDockLayoutTreeNode); overload;
-    procedure Assign(AControl: TControl); overload;
+    procedure Assign(AControl: TControl; OverrideBoundsRect: Boolean=false); overload;
     procedure LoadFromConfig(Config: TConfigStorage); overload;
     procedure LoadFromConfig(Path: string; Config: TRttiXMLConfig); overload;
     procedure SaveToConfig(Config: TConfigStorage); overload;
@@ -156,6 +162,7 @@ type
     function IsSplitter: boolean;
     function IsRootWindow: boolean;
     property Nodes[Index: integer]: TAnchorDockLayoutTreeNode read GetNodes; default;
+    property ControlLocation: TADLControlLocation read FControlLocation write FControlLocation;
   end;
 
   TAnchorDockLayoutTree = class;
@@ -1028,6 +1035,7 @@ end;
 constructor TAnchorDockLayoutTreeNode.Create;
 begin
   FNodes:=TFPList.Create;
+  FControlLocation:=adlclwrongly;//control located wrongly by default
 end;
 
 destructor TAnchorDockLayoutTreeNode.Destroy;
@@ -1113,20 +1121,23 @@ begin
   end;
 end;
 
-procedure TAnchorDockLayoutTreeNode.Assign(AControl: TControl);
+procedure TAnchorDockLayoutTreeNode.Assign(AControl: TControl; OverrideBoundsRect: Boolean=false);
 var
   AnchorControl: TControl;
   a: TAnchorKind;
 begin
   Name:=AControl.Name;
-  BoundsRect:=AControl.BoundsRect;
+  if OverrideBoundsRect then
+    BoundsRect:=GetParentForm(AControl).BoundsRect
+  else
+    BoundsRect:=AControl.BoundsRect;
   Align:=AControl.Align;
   if (AControl.Parent=nil) and (AControl is TCustomForm) then begin
     WindowState:=TCustomForm(AControl).WindowState;
     Monitor:=TCustomForm(AControl).Monitor.MonitorNum;
     WorkAreaRect:=TCustomForm(AControl).Monitor.WorkareaRect;
   end else
-    WindowState:=wsNormal;
+    WindowState:=GetParentForm(AControl).WindowState;
   if AControl is TCustomTabControl then
     TabPosition:=TCustomTabControl(AControl).TabPosition
   else

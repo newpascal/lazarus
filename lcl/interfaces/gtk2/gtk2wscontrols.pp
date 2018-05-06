@@ -43,16 +43,16 @@ uses
 
 type
 
-  { TGtk2WSDragImageList }
+  { TGtk2WSDragImageListResolution }
 
-  TGtk2WSDragImageList = class(TWSDragImageList)
+  TGtk2WSDragImageListResolution = class(TWSDragImageListResolution)
   published
-    class function BeginDrag(const ADragImageList: TDragImageList; {%H-}Window: HWND; AIndex, X, Y: Integer): Boolean; override;
-    class function DragMove(const {%H-}ADragImageList: TDragImageList; X, Y: Integer): Boolean; override;
-    class procedure EndDrag(const {%H-}ADragImageList: TDragImageList); override;
-    class function HideDragImage(const {%H-}ADragImageList: TDragImageList;
+    class function BeginDrag(const ADragImageList: TDragImageListResolution; {%H-}Window: HWND; AIndex, X, Y: Integer): Boolean; override;
+    class function DragMove(const {%H-}ADragImageList: TDragImageListResolution; X, Y: Integer): Boolean; override;
+    class procedure EndDrag(const {%H-}ADragImageList: TDragImageListResolution); override;
+    class function HideDragImage(const {%H-}ADragImageList: TDragImageListResolution;
       {%H-}ALockedWindow: HWND; {%H-}DoUnLock: Boolean): Boolean; override;
-    class function ShowDragImage(const {%H-}ADragImageList: TDragImageList;
+    class function ShowDragImage(const {%H-}ADragImageList: TDragImageListResolution;
       {%H-}ALockedWindow: HWND; X, Y: Integer; {%H-}DoLock: Boolean): Boolean; override;
   end;
 
@@ -375,10 +375,10 @@ begin
     Result:=nil;
 end;
 
-{ TGtk2WSDragImageList }
+{ TGtk2WSDragImageListResolution }
 
-class function TGtk2WSDragImageList.BeginDrag(
-  const ADragImageList: TDragImageList; Window: HWND; AIndex, X, Y: Integer
+class function TGtk2WSDragImageListResolution.BeginDrag(
+  const ADragImageList: TDragImageListResolution; Window: HWND; AIndex, X, Y: Integer
   ): Boolean;
 var
   ABitmap: TBitmap;
@@ -431,27 +431,27 @@ begin
   ABitmap.Free;
 end;
 
-class function TGtk2WSDragImageList.DragMove(
-  const ADragImageList: TDragImageList; X, Y: Integer): Boolean;
+class function TGtk2WSDragImageListResolution.DragMove(
+  const ADragImageList: TDragImageListResolution; X, Y: Integer): Boolean;
 begin
   Result := Gtk2Widgetset.DragImageList_DragMove(X, Y);
 end;
 
-class procedure TGtk2WSDragImageList.EndDrag(
-  const ADragImageList: TDragImageList);
+class procedure TGtk2WSDragImageListResolution.EndDrag(
+  const ADragImageList: TDragImageListResolution);
 begin
   Gtk2Widgetset.DragImageList_EndDrag;
 end;
 
-class function TGtk2WSDragImageList.HideDragImage(
-  const ADragImageList: TDragImageList; ALockedWindow: HWND; DoUnLock: Boolean
+class function TGtk2WSDragImageListResolution.HideDragImage(
+  const ADragImageList: TDragImageListResolution; ALockedWindow: HWND; DoUnLock: Boolean
   ): Boolean;
 begin
   Result := Gtk2Widgetset.DragImageList_SetVisible(False);
 end;
 
-class function TGtk2WSDragImageList.ShowDragImage(
-  const ADragImageList: TDragImageList; ALockedWindow: HWND; X, Y: Integer;
+class function TGtk2WSDragImageListResolution.ShowDragImage(
+  const ADragImageList: TDragImageListResolution; ALockedWindow: HWND; X, Y: Integer;
   DoLock: Boolean): Boolean;
 begin
   Result := Gtk2Widgetset.DragImageList_DragMove(X, Y) and Gtk2Widgetset.DragImageList_SetVisible(True);
@@ -670,7 +670,6 @@ var
 begin
   if not WSCheckHandleAllocated(AWinControl, 'SetBounds')
   then Exit;
-
   ResizeHandle(AWinControl);
   InvalidateLastWFPResult(AWinControl, Rect(ALeft, ATop, AWidth, AHeight));
   if not AWinControl.Visible then // Gtk2WSForms.ShowHide will correct visibility
@@ -686,24 +685,34 @@ begin
     // as expected for some reason.issue #20741.
     // Constraints fix issue #29563
     AFixedWidthHeight := AForm.BorderStyle in [bsDialog, bsSingle, bsToolWindow];
+    FillChar(Geometry{%H-}, SizeOf(TGdkGeometry), 0);
     with Geometry do
     begin
       if not AFixedWidthHeight and (AForm.Constraints.MinWidth > 0) then
         min_width := AForm.Constraints.MinWidth
       else
+      if AFixedWidthHeight then
         min_width := AForm.Width;
       if not AFixedWidthHeight and (AForm.Constraints.MaxWidth > 0) then
         max_width := AForm.Constraints.MaxWidth
       else
-      max_width := AForm.Width;
+      if AFixedWidthHeight then
+        max_width := AForm.Width;
       if not AFixedWidthHeight and (AForm.Constraints.MinHeight > 0) then
         min_height := AForm.Constraints.MinHeight
       else
-        min_height := AForm.Height;
+        if AFixedWidthHeight then
+          min_height := AForm.Height;
       if not AFixedWidthHeight and (AForm.Constraints.MaxHeight > 0) then
         max_height := AForm.Constraints.MaxHeight
       else
-        max_height := AForm.Height;
+        if AFixedWidthHeight then
+          max_height := AForm.Height;
+
+      if AForm.Constraints.MaxHeight = 0 then
+        max_height := 32767;
+      if AForm.Constraints.MaxWidth = 0 then
+        max_width := 32767;
 
       base_width := AForm.Width;
       base_height := AForm.Height;
@@ -713,7 +722,8 @@ begin
       max_aspect := 1;
       win_gravity := gtk_window_get_gravity({%H-}PGtkWindow(AForm.Handle));
     end;
-    //debugln('TGtk2WSWinControl.ConstraintsChange A ',GetWidgetDebugReport(Widget),' max=',dbgs(Geometry.max_width),'x',dbgs(Geometry.max_height));
+    //debugln('TGtk2WSWinControl.SetBounds A maxw=',dbgs(Geometry.max_width),' maxh=',dbgs(Geometry.max_height),
+    //' base w=',dbgs(Geometry.base_width),' h=',dbgs(Geometry.base_height));
     if AFixedWidthHeight then
       gtk_window_set_geometry_hints({%H-}PGtkWindow(AForm.Handle), nil, @Geometry,
         GDK_HINT_POS or GDK_HINT_MIN_SIZE or GDK_HINT_MAX_SIZE)

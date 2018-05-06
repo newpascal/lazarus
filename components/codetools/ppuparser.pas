@@ -279,7 +279,9 @@ type
     pocall_softfloat,
     { Metrowerks Pascal. Special case on Mac OS (X): passes all }
     { constant records by reference.                            }
-    pocall_mwpascal
+    pocall_mwpascal,
+    { for x86-64: Microsoft's "vectorcall" ABI }
+    pocall_vectorcall
   );
   tproccalloptions = set of tproccalloption;
 
@@ -414,7 +416,8 @@ const
      'SafeCall',
      'StdCall',
      'SoftFloat',
-     'MWPascal'
+     'MWPascal',
+     'VectorCall'
    );
   proctypeoptionNames : array[tproctypeoption] of string[20]=(
      'none',
@@ -1260,6 +1263,7 @@ begin
   end;
 end;
 
+{$R-}
 procedure TPPU.ReadHeader;
 var
   cpu: tsystemcpu;
@@ -1292,11 +1296,9 @@ begin
   FEntryPos:=0;
   FillByte(FEntry,SizeOf(FEntry),0);
 
-  {$R-}
   cpu:=tsystemcpu(FHeader.cpu);
   if (cpu<low(tsystemcpu)) or (cpu>high(tsystemcpu)) then
     cpu:=tsystemcpu(FHeader.cpu);
-  {$R+}
   FSizeOfAInt:=CpuAluBitSize[cpu] div 8;
   FSizeOfASizeInt:=CpuAddrBitSize[cpu] div 8;
 
@@ -1304,6 +1306,7 @@ begin
   DumpHeader('');
   {$ENDIF}
 end;
+{$R+}
 
 procedure TPPU.ReadInterfaceHeader;
 var
@@ -1478,7 +1481,8 @@ type
     cpu_iA64,                     { 7 }
     cpu_x86_64,                   { 8 }
     cpu_mips,                     { 9 }
-    cpu_arm                       { 10 }
+    cpu_arm,                      { 10 }
+    cpu_powerpc64                 { 11 }
   );
 var
   EntryNr: Byte;

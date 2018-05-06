@@ -5,7 +5,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Project-Id-Version: \n"
 "POT-Creation-Date: \n"
-"PO-Revision-Date: 2016-04-07 01:24+0300\n"
+"PO-Revision-Date: 2018-04-04 01:22+0300\n"
 "Last-Translator: Maxim Ganetsky <maxkill@mail.ru>\n"
 "Language-Team: \n"
 "Language: ru\n"
@@ -215,7 +215,7 @@ msgstr "Файл изображения"
 
 #: lr_const.sbreaked
 msgid "Breaked"
-msgstr "Разорванный"
+msgstr "Разрывать"
 
 #: lr_const.scancel
 msgid "Cancel"
@@ -256,6 +256,143 @@ msgstr "Объект \"%s\" класса не найден"
 msgid "Confirm"
 msgstr "Подтвердить"
 
+#: lr_const.scrosseditoraverage
+msgid "Average"
+msgstr "Среднее"
+
+#: lr_const.scrosseditorblue
+msgid "Blue"
+msgstr "Синий"
+
+#: lr_const.scrosseditorbluewhite
+msgid "Blue and White"
+msgstr "Синий и белый"
+
+#: lr_const.scrosseditorcaption
+msgid "Cross tab editor"
+msgstr "Редактор сводной таблицы"
+
+#: lr_const.scrosseditorcount
+msgid "Count"
+msgstr "Количество"
+
+#: lr_const.scrosseditorcyan
+msgid "Cyan"
+msgstr "Цвет морской волны"
+
+#: lr_const.scrosseditorgray
+msgid "Gray"
+msgstr "Серый"
+
+#: lr_const.scrosseditorgreen
+msgid "Green"
+msgstr "Зелёный"
+
+#: lr_const.scrosseditorgreenorange
+msgid "Green and Orange"
+msgstr "Зелёный и оранжевый"
+
+#: lr_const.scrosseditormax
+msgid "Max"
+msgstr "Максимум"
+
+#: lr_const.scrosseditormin
+msgid "Min"
+msgstr "Минимум"
+
+#: lr_const.scrosseditornone
+msgctxt "lr_const.scrosseditornone"
+msgid "None"
+msgstr "Нет"
+
+#: lr_const.scrosseditororange
+msgid "Orange"
+msgstr "Оранжевый"
+
+#: lr_const.scrosseditorshowcolheader
+msgid "Show column header"
+msgstr "Показывать заголовок столбца"
+
+#: lr_const.scrosseditorshowcoltotal
+msgid "Show column total"
+msgstr "Показывать итог столбца"
+
+#: lr_const.scrosseditorshowcorner1
+msgid "Show corner 1"
+msgstr "Показывать угловую ячейку 1"
+
+#: lr_const.scrosseditorshowcorner2
+msgid "Show corner 2"
+msgstr "Показывать угловую ячейку 2"
+
+#: lr_const.scrosseditorshowgrantotal
+msgid "Show grand total"
+msgstr "Показывать общий итог"
+
+#: lr_const.scrosseditorshowrowheader
+msgid "Show row header"
+msgstr "Показывать заголовок строки"
+
+#: lr_const.scrosseditorshowrowtotal
+msgid "Show row total"
+msgstr "Показывать итог строки"
+
+#: lr_const.scrosseditorshowtitle
+msgid "Show title"
+msgstr "Показывать заголовок"
+
+#: lr_const.scrosseditorsource
+msgid "Source data"
+msgstr "Источник данных"
+
+#: lr_const.scrosseditorstructure
+msgid "Cross-tab structure"
+msgstr "Структура сводной таблицы"
+
+#: lr_const.scrosseditorstyle
+msgid "Select style"
+msgstr "Выберите стиль"
+
+#: lr_const.scrosseditorsum
+msgid "Sum"
+msgstr "Сумма"
+
+#: lr_const.scrosseditorwhite
+msgid "White"
+msgstr "Белый"
+
+#: lr_const.scrosstabcoltitle
+msgid "Col title"
+msgstr "Заголовок столбца"
+
+#: lr_const.scrosstabcoltotal
+msgid "Col total"
+msgstr "Итог столбца"
+
+#: lr_const.scrosstabdata
+msgid "Data"
+msgstr "Данные"
+
+#: lr_const.scrosstabgrantotal
+msgid "Grand total"
+msgstr "Общий итог"
+
+#: lr_const.scrosstabrowtitle
+msgid "Row title"
+msgstr "Заголовок строки"
+
+#: lr_const.scrosstabrowtotal
+msgid "Row total"
+msgstr "Итог строки"
+
+#: lr_const.scrosstabtotalchcell
+msgid "Total CH cell"
+msgstr "Заголовок итога столбца"
+
+#: lr_const.scrosstabtotalrhcell
+msgid "Total RH cell"
+msgstr "Заголовок итога строки"
+
 #: lr_const.scsvfile
 msgid "CSV File"
 msgstr "Файл CSV"
@@ -263,6 +400,15 @@ msgstr "Файл CSV"
 #: lr_const.scurmemo
 msgid "Memo:"
 msgstr "Блок текста:"
+
+#: lr_const.sdatainspfields
+msgid "Fields"
+msgstr "Поля"
+
+#: lr_const.sdatainspvariables
+msgctxt "lr_const.sdatainspvariables"
+msgid "Variables"
+msgstr "Переменные"
 
 #: lr_const.sdateformat1
 msgid "mm.dd.yy"
@@ -327,6 +473,10 @@ msgstr "FORMATTEXT(<Mask>, <String>)/Применяет маску <Mask> к з�
 #: lr_const.sdescriptionfrac
 msgid "FRAC(<Value>)/Returns the fractional part of floating point <Value>."
 msgstr "FRAC(<Value>)/Возвращает дробную часть вещественного значения <Value>."
+
+#: lr_const.sdescriptionif
+msgid "IF(<expression>, <Value1>, <Value2>)/Returns <Value1>, if <expression> is true; otherwise returns <Value2>."
+msgstr "IF(<expression>, <Value1>, <Value2>)/Возвращает <Value1>, если <expression> истинно; в противном случае возвращает <Value2>."
 
 #: lr_const.sdescriptioninc
 msgid "INC(<Value>)/Increment <Value>."
@@ -477,6 +627,10 @@ msgstr "Сетка"
 #: lr_const.sdesoptionsforminch
 msgid "&Inches"
 msgstr "&Дюймы"
+
+#: lr_const.sdesoptionsforminplace
+msgid "Use inplace editor"
+msgstr "Использовать внедрённый редактор"
 
 #: lr_const.sdesoptionsformmm
 msgid "&MM"
@@ -1491,6 +1645,10 @@ msgstr "Вставить объект Chart"
 msgid "Insert CheckBox object"
 msgstr "Вставить объект CheckBox"
 
+#: lr_const.sinscrosstab
+msgid "Insert Cross-tab object"
+msgstr "Вставить объект сводной таблицы"
+
 #: lr_const.sinsert
 msgid "Insert"
 msgstr "Вставить"
@@ -1562,6 +1720,10 @@ msgstr "\"%s\" не является корректным именем пере�
 #: lr_const.skeepaspectratio
 msgid "Keep aspect ratio"
 msgstr "Сохранять соотношение сторон"
+
+#: lr_const.skeepchild
+msgid "Keep child together with parent"
+msgstr "Помещать дочернее поле рядом с родительским"
 
 #: lr_const.slazformfile
 msgid "LazReport form"
@@ -2286,7 +2448,7 @@ msgstr "&Вся страница"
 
 #: lr_const.sprintchildifnotvisible
 msgid "Print child if not visible"
-msgstr "Выводить дочерний в случае невидимости"
+msgstr "Выводить дочернее поле в случае невидимости"
 
 #: lr_const.sprintererror
 msgid "Selected printer is not valid"
@@ -2486,7 +2648,7 @@ msgstr "Прочие"
 
 #: lr_const.sstretched
 msgid "Stretched"
-msgstr "Растянутое"
+msgstr "Растягивать"
 
 #: lr_const.sstringcategory
 msgid "String"
@@ -2616,6 +2778,7 @@ msgid "Variable format ..."
 msgstr "Формат переменной ..."
 
 #: lr_const.svarformcapt
+msgctxt "lr_const.svarformcapt"
 msgid "Variables"
 msgstr "Переменные"
 

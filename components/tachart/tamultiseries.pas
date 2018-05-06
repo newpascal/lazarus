@@ -193,7 +193,7 @@ type
       read FCandlestickUpBrush write SetCandlestickUpBrush;
     property DownLinePen: TOHLCDownPen read FDownLinePen write SetDownLinePen;
     property LinePen: TPen read FLinePen write SetLinePen;
-    property Mode: TOHLCMode read FMode write SetOHLCMode;
+    property Mode: TOHLCMode read FMode write SetOHLCMode default mOHLC;
     property TickWidth: integer
       read FTickWidth write SetTickWidth default DEF_OHLC_TICK_WIDTH;
     property ToolTargets default [nptPoint, nptYList, nptCustom];
@@ -611,7 +611,7 @@ var
   d, dist: Integer;
   phi: Double;
   rx, ry: Integer;
-  cosphi, sinphi: Double;
+  cosphi, sinphi: Math.float;
 begin
   Result := inherited;
 
@@ -768,7 +768,7 @@ var
   rx, ry: Integer;
   d, dPerim: Integer;
   p: TPoint;
-  phi, sinPhi, cosPhi: Double;
+  phi, sinPhi, cosPhi: Math.float;
 begin
   if AYIdx = 0 then begin
     Result := inherited;
@@ -1136,9 +1136,23 @@ end;
 function TOpenHighLowCloseSeries.AddXOHLC(
   AX, AOpen, AHigh, ALow, AClose: Double;
   ALabel: String; AColor: TColor): Integer;
+var
+  y: Double;
 begin
   if ListSource.YCount < 4 then ListSource.YCount := 4;
-  Result := ListSource.Add(AX, NaN, ALabel, AColor);
+
+  if YIndexOpen = 0 then
+    y := AOpen
+  else if YIndexHigh = 0 then
+    y := AHigh
+  else if YIndexLow = 0 then
+    y := ALow
+  else if YIndexClose = 0 then
+    y := AClose
+  else
+    raise Exception.Create('TOpenHighLowCloseSeries: Ordinary y value missing');
+
+  Result := ListSource.Add(AX, y, ALabel, AColor);
   with ListSource.Item[Result]^ do begin
     SetY(YIndexOpen, AOpen);
     SetY(YIndexHigh, AHigh);

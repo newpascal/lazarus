@@ -30,9 +30,14 @@ unit opkman_visualtree;
 interface
 
 uses
-  Classes, SysUtils, Controls, Graphics, Menus, Dialogs, Forms, LCLIntf, contnrs,
-  PackageIntf, Buttons, Math, dateutils, opkman_VirtualTrees, opkman_common,
-  opkman_serializablepackages;
+  Classes, SysUtils, contnrs, Math, dateutils, VirtualTrees,
+  // LCL
+  Controls, Graphics, Menus, Dialogs, Forms, LCLType, Buttons,
+  // IDEIntf
+  LCLIntf, PackageIntf,
+  // OpkMan
+  opkman_common, opkman_serializablepackages, opkman_const,
+  opkman_options, opkman_packagedetailsfrm, opkman_showhint;
 
 
 type
@@ -46,7 +51,7 @@ type
     PackageName: String;
     PackageDisplayName: String;
     Category: String;
-    PackageFileName: String;
+    LazarusPackageName: String;
     Version: String;
     InstalledVersion: String;
     UpdateVersion: String;
@@ -55,13 +60,13 @@ type
     LazCompatibility: String;
     FPCCompatibility: String;
     SupportedWidgetSet: String;
-    PackageType: TPackageType;
+    PackageType: TLazPackageType;
     Dependencies: String;
     License: String;
     RepositoryFileName: String;
     RepositoryFileSize: Int64;
     RepositoryFileHash: String;
-    RepositoryDate: TDate;
+    RepositoryDate: TDateTime;
     HomePageURL: String;
     DownloadURL: String;
     DownloadZipURL: String;
@@ -73,9 +78,10 @@ type
     ButtonID: Integer;
     Button: TSpeedButton;
     Rating: Integer;
+    IsDependencyNode: Boolean;
   end;
 
-  TFilterBy = (fbPackageName, fbPackageFileName, fbPackageCategory, fbPackageState,
+  TFilterBy = (fbPackageName, fbLazarusPackageName, fbPackageCategory, fbPackageState,
                fbVersion, fbDescription, fbAuthor, fbLazCompatibility, fbFPCCompatibility,
                fbSupportedWidgetsets, fbPackageType, fbDependecies, fbLicense);
 
@@ -85,16 +91,19 @@ type
   private
     FVST: TVirtualStringTree;
     FHoverNode: PVirtualNode;
+    FHoverNodeOld: PVirtualNode;
     FHoverP: TPoint;
     FHoverColumn: Integer;
     FLink: String;
     FLinkClicked: Boolean;
     FSortCol: Integer;
-    FSortDir: opkman_VirtualTrees.TSortDirection;
+    FSortDir: VirtualTrees.TSortDirection;
     FCheckingNodes: Boolean;
     FLeaving: Boolean;
     FOnChecking: TOnChecking;
     FOnChecked: TNotifyEvent;
+    FMouseEnter: Boolean;
+    FShowHintFrm: TShowHintFrm;
     procedure VSTBeforeCellPaint(Sender: TBaseVirtualTree;
       TargetCanvas: TCanvas; Node: PVirtualNode; {%H-}Column: TColumnIndex;
       {%H-}CellPaintMode: TVTCellPaintMode; CellRect: TRect; var {%H-}ContentRect: TRect);
@@ -108,8 +117,7 @@ type
       var ImageIndex: Integer);
     procedure VSTGetText(Sender: TBaseVirtualTree; Node: PVirtualNode;
       Column: TColumnIndex; {%H-}TextType: TVSTTextType; var CellText: String);
-    procedure VSTHeaderClick(Sender: TVTHeader; Column: TColumnIndex;
-      Button: TMouseButton; {%H-}Shift: TShiftState; {%H-}X, {%H-}Y: Integer);
+    procedure VSTHeaderClick(Sender: TVTHeader; HitInfo: TVTHeaderHitInfo);
     procedure VSTPaintText(Sender: TBaseVirtualTree;
       const TargetCanvas: TCanvas; Node: PVirtualNode; {%H-}Column: TColumnIndex;
       {%H-}TextType: TVSTTextType);
@@ -118,23 +126,26 @@ type
     procedure VSTMouseEnter(Sender: TObject);
     procedure VSTMouseLeave(Sender: TObject);
     procedure VSTMouseDown(Sender: TObject; Button: TMouseButton; {%H-}Shift: TShiftState; X, Y: Integer);
+    procedure VSTKeyDown(Sender: TObject; var {%H-}Key: Word; {%H-}Shift: TShiftState);
+    procedure VSTKeyUp(Sender: TObject; var Key: Word; {%H-}Shift: TShiftState);
     procedure VSTGetHint(Sender: TBaseVirtualTree; Node: PVirtualNode; Column: TColumnIndex;
       var LineBreakStyle: TVTTooltipLineBreakStyle; var HintText: String);
     procedure VSTAfterCellPaint(Sender: TBaseVirtualTree;  {%H-}TargetCanvas: TCanvas;
       Node: PVirtualNode; Column: TColumnIndex; const {%H-}CellRect: TRect);
-    procedure VSTCollapsed(Sender: TBaseVirtualTree; {%H-}Node: PVirtualNode);
-    procedure VSTExpanding(Sender: TBaseVirtualTree; {%H-}Node: PVirtualNode; var {%H-}Allowed: Boolean);
-    procedure VSTCollapsing(Sender: TBaseVirtualTree; {%H-}Node: PVirtualNode; var {%H-}Allowed: Boolean);
     procedure VSTDblClick(Sender: TObject);
     procedure VSTScroll(Sender: TBaseVirtualTree; {%H-}DeltaX, {%H-}DeltaY: Integer);
-    function GetDisplayString(const AStr: String): String;
+    procedure VSTClick(Sender: TObject);
+    procedure VSTAfterPaint(Sender: TBaseVirtualTree; {%H-}TargetCanvas: TCanvas);
+    procedure VSTEnter(Sender: TObject);
     function IsAllChecked(const AChecking: PVirtualNode): Boolean;
     procedure ButtonClick(Sender: TObject);
-    procedure ShowButtons;
-    procedure HideButtons;
     procedure DrawStars(ACanvas: TCanvas; AStartIndex: Integer; P: TPoint; AAvarage: Double);
     function GetColumn(const AX: Integer): Integer;
     function TranslateCategories(const AStr: String): String;
+    procedure SetButtonVisibility(Node: PVirtualNode; Column: TColumnIndex);
+    procedure CallBack(Sender: TBaseVirtualTree; Node: PVirtualNode; {%H-}Data: Pointer; var {%H-}Abort: Boolean);
+    procedure ShowDetails(const AButtonID: Integer);
+    procedure ResetDependencyNodes;
   public
     constructor Create(const AParent: TWinControl; const AImgList: TImageList;
       APopupMenu: TPopupMenu);
@@ -151,17 +162,18 @@ type
     procedure UpdatePackageUStatus;
     function ResolveDependencies: TModalResult;
     function GetCheckedRepositoryPackages: Integer;
+    procedure SetupColors;
   published
     property OnChecking: TOnChecking read FOnChecking write FOnChecking;
     property OnChecked: TNotifyEvent read FOnChecked write FOnChecked;
     property VST: TVirtualStringTree read FVST;
+    property ShowHintFrm: TShowHintFrm read FShowHintFrm;
   end;
 
 var
   VisualTree: TVisualTree = nil;
 
 implementation
-uses opkman_const, opkman_options, opkman_packagedetailsfrm;
 
 { TVisualTree }
 
@@ -176,49 +188,56 @@ begin
      Anchors := [akLeft, akTop, akRight];
      Images := AImgList;
      PopupMenu := APopupMenu;
-     Color := clBtnFace;
-     DefaultNodeHeight := 25;
+     DefaultNodeHeight := MulDiv(25, Screen.PixelsPerInch, 96);
      Indent := 22;
      TabOrder := 1;
      DefaultText := '';
      Header.AutoSizeIndex := 4;
-     Header.Height := 25;
-
+     Header.Height := MulDiv(25, Screen.PixelsPerInch, 96);
+     Colors.DisabledColor := clBlack;
      with Header.Columns.Add do
      begin
        Position := 0;
-       Width := 270;
+       Width := MulDiv(270, Screen.PixelsPerInch, 96);
        Text := rsMainFrm_VSTHeaderColumn_PackageName;
      end;
      with Header.Columns.Add do
      begin
        Position := 1;
        Alignment := taCenter;
-       Width := 90;
+       Width := MulDiv(90, Screen.PixelsPerInch, 96);
+       {$IFDEF LCLCarbon}
        Options := Options - [coResizable];
+       {$ENDIF}
        Text := rsMainFrm_VSTHeaderColumn_Installed;
      end;
      with Header.Columns.Add do
      begin
        Position := 2;
        Alignment := taCenter;
-       Width := 90;
+       Width := MulDiv(90, Screen.PixelsPerInch, 96);
+       {$IFDEF LCLCarbon}
        Options := Options - [coResizable];
+       {$ENDIF}
        Text := rsMainFrm_VSTHeaderColumn_Repository;
      end;
      with Header.Columns.Add do
      begin
        Position := 3;
        Alignment := taCenter;
-       Width := 90;
+       Width := MulDiv(90, Screen.PixelsPerInch, 96);
+       {$IFDEF LCLCarbon}
        Options := Options - [coResizable];
+       {$ENDIF}
        Text := rsMainFrm_VSTHeaderColumn_Update;
      end;
      with Header.Columns.Add do
      begin
         Position := 4;
-        Width := 280;
+        Width := MulDiv(280, Screen.PixelsPerInch, 96);
+        {$IFDEF LCLCarbon}
         Options := Options - [coResizable];
+        {$ENDIF}
         Text := rsMainFrm_VSTHeaderColumn_Data;
       end;
      with Header.Columns.Add do
@@ -233,10 +252,10 @@ begin
      begin
         Position := 6;
         Alignment := taCenter;
-        Width := 20;
+        Width := MulDiv(20, Screen.PixelsPerInch, 96);
         Options := Options - [coResizable];
      end;
-     Header.Options := [hoAutoResize, hoColumnResize, hoRestrictDrag, hoShowSortGlyphs, hoVisible, hoAutoSpring];
+     Header.Options := [hoAutoResize, hoColumnResize, hoRestrictDrag, hoShowSortGlyphs, hoVisible];
      {$IFDEF LCLCarbon}
      Header.Options := Header.Options - [hoShowSortGlyphs];
      {$ENDIF}
@@ -261,20 +280,24 @@ begin
      OnMouseLeave := @VSTMouseLeave;
      OnMouseEnter := @VSTMouseEnter;
      OnMouseDown := @VSTMouseDown;
+     OnKeyDown := @VSTKeyDown;
+     OnKeyUp := @VSTKeyUp;
      OnDblClick := @VSTDblClick;
+     OnClick := @VSTClick;
      OnGetHint := @VSTGetHint;
      OnAfterCellPaint := @VSTAfterCellPaint;
-     OnCollapsed := @VSTCollapsed;
-     OnExpanding := @VSTExpanding;
-     OnCollapsing := @VSTCollapsing;
-     OnScroll := @VSTScroll;
+     OnAfterPaint := @VSTAfterPaint;
+     OnEnter := @VSTEnter;
      OnFreeNode := @VSTFreeNode;
+     OnScroll := @VSTScroll;
    end;
+  FShowHintFrm := TShowHintFrm.Create(nil);
 end;
 
 destructor TVisualTree.Destroy;
 begin
   FVST.Free;
+  FShowHintFrm.Free;
   inherited Destroy;
 end;
 
@@ -289,185 +312,182 @@ procedure TVisualTree.PopulateTree;
     AData^.Button.Tag := AUniqueID;
     AData^.Button.OnClick := @ButtonClick;
     AData^.ButtonID := AUniqueID;
+    AData^.Button.Width := 25;
   end;
 var
   I, J: Integer;
   RootNode, Node, ChildNode, GrandChildNode: PVirtualNode;
   RootData, Data, ChildData, GrandChildData: PData;
-  PackageFile: TPackageFile;
+  LazarusPkg: TLazarusPackage;
   UniqueID: Integer;
 begin
-  FVST.OnExpanding := nil;
-  FVST.OnCollapsed := nil;
-  FVST.OnCollapsing := nil;
-  try
-    FVST.Clear;
-    FVST.NodeDataSize := SizeOf(TData);
-    UniqueID := 0;
-    //add repository(DataType = 0)
-    RootNode := FVST.AddChild(nil);
-    RootData := FVST.GetNodeData(RootNode);
-    RootData^.Repository := Options.RemoteRepository[Options.ActiveRepositoryIndex];
-    RootData^.DataType := 0;
-    for I := 0 to SerializablePackages.Count - 1 do
-    begin
-       //add package(DataType = 1)
-       Node := FVST.AddChild(RootNode);
-       Node^.CheckType := ctTriStateCheckBox;
-       Data := FVST.GetNodeData(Node);
-       Data^.PID := I;
-       Data^.PackageName := SerializablePackages.Items[I].Name;
-       Data^.PackageDisplayName := SerializablePackages.Items[I].DisplayName;
-       Data^.PackageState := SerializablePackages.Items[I].PackageState;
-       Data^.InstallState := SerializablePackages.GetPackageInstallState(SerializablePackages.Items[I]);
-       Data^.HasUpdate := SerializablePackages.Items[I].HasUpdate;
-       Data^.DisableInOPM := SerializablePackages.Items[I].DisableInOPM;
-       Data^.Rating := SerializablePackages.Items[I].Rating;
-       Data^.RepositoryDate := SerializablePackages.Items[I].RepositoryDate;
-       FVST.IsDisabled[Node] := Data^.DisableInOPM;
-       Data^.DataType := 1;
-       for J := 0 to SerializablePackages.Items[I].PackageFiles.Count - 1 do
-       begin
-         //add packagefiles(DataType = 2)
-         PackageFile := TPackageFile(SerializablePackages.Items[I].PackageFiles.Items[J]);
-         ChildNode := FVST.AddChild(Node);
-         ChildNode^.CheckType := ctTriStateCheckBox;
-         FVST.IsDisabled[ChildNode] := FVST.IsDisabled[ChildNode^.Parent];
-         ChildData := FVST.GetNodeData(ChildNode);
-         ChildData^.PID := I;
-         ChildData^.PFID := J;
-         ChildData^.PackageFileName := PackageFile.Name;
-         ChildData^.InstalledVersion := PackageFile.InstalledFileVersion;
-         ChildData^.UpdateVersion := PackageFile.UpdateVersion;
-         ChildData^.Version := PackageFile.VersionAsString;
-         ChildData^.PackageState := PackageFile.PackageState;
-         ChildData^.HasUpdate := PackageFile.HasUpdate;
-         ChildData^.DataType := 2;
-         //add description(DataType = 3)
-         GrandChildNode := FVST.AddChild(ChildNode);
-         FVST.IsDisabled[GrandChildNode] := FVST.IsDisabled[GrandChildNode^.Parent];
-         GrandChildData := FVST.GetNodeData(GrandChildNode);
-         if ChildData^.InstalledVersion <> '' then
-           GrandChildData^.Description := PackageFile.InstalledFileDescription
-         else
-           GrandChildData^.Description := PackageFile.Description;
-         GrandChildData^.DataType := 3;
-         Inc(UniqueID);
-         CreateButton(UniqueID, GrandChildData);
-         GrandChildData^.Button.Enabled := not FVST.IsDisabled[GrandChildNode];
-         //add author(DataType = 4)
-         GrandChildNode := FVST.AddChild(ChildNode);
-         FVST.IsDisabled[GrandChildNode] := FVST.IsDisabled[GrandChildNode^.Parent];
-         GrandChildData := FVST.GetNodeData(GrandChildNode);
-         GrandChildData^.Author := PackageFile.Author;
-         GrandChildData^.DataType := 4;
-         //add lazcompatibility(DataType = 5)
-         GrandChildNode := FVST.AddChild(ChildNode);
-         FVST.IsDisabled[GrandChildNode] := FVST.IsDisabled[GrandChildNode^.Parent];
-         GrandChildData := FVST.GetNodeData(GrandChildNode);
-         GrandChildData^.LazCompatibility := PackageFile.LazCompatibility;
-         GrandChildData^.DataType := 5;
-         //add fpccompatibility(DataType = 6)
-         GrandChildNode := FVST.AddChild(ChildNode);
-         FVST.IsDisabled[GrandChildNode] := FVST.IsDisabled[GrandChildNode^.Parent];
-         GrandChildData := FVST.GetNodeData(GrandChildNode);
-         GrandChildData^.FPCCompatibility := PackageFile.FPCCompatibility;
-         GrandChildData^.DataType := 6;
-         //add widgetset(DataType = 7)
-         GrandChildNode := FVST.AddChild(ChildNode);
-         FVST.IsDisabled[GrandChildNode] := FVST.IsDisabled[GrandChildNode^.Parent];
-         GrandChildData := FVST.GetNodeData(GrandChildNode);
-         GrandChildData^.SupportedWidgetSet := PackageFile.SupportedWidgetSet;
-         GrandChildData^.DataType := 7;
-         //add packagetype(DataType = 8)
-         GrandChildNode := FVST.AddChild(ChildNode);
-         FVST.IsDisabled[GrandChildNode] := FVST.IsDisabled[GrandChildNode^.Parent];
-         GrandChildData := FVST.GetNodeData(GrandChildNode);
-         GrandChildData^.PackageType := PackageFile.PackageType;
-         GrandChildData^.DataType := 8;
-         //add license(DataType = 9)
-         GrandChildNode := FVST.AddChild(ChildNode);
-         FVST.IsDisabled[GrandChildNode] := FVST.IsDisabled[GrandChildNode^.Parent];
-         GrandChildData := FVST.GetNodeData(GrandChildNode);
-         if ChildData^.InstalledVersion <> '' then
-           GrandChildData^.License := PackageFile.InstalledFileLincese
-         else
-           GrandChildData^.License := PackageFile.License;
-         GrandChildData^.DataType := 9;
-         Inc(UniqueID);
-         CreateButton(UniqueID, GrandChildData);
-         GrandChildData^.Button.Enabled := not FVST.IsDisabled[GrandChildNode];
-         //add dependencies(DataType = 10)
-         GrandChildNode := FVST.AddChild(ChildNode);
-         FVST.IsDisabled[GrandChildNode] := FVST.IsDisabled[GrandChildNode^.Parent];
-         GrandChildData := FVST.GetNodeData(GrandChildNode);
-         GrandChildData^.Dependencies := PackageFile.DependenciesAsString;
-         GrandChildData^.DataType := 10;
-       end;
-       //add miscellaneous(DataType = 11)
+  FVST.Clear;
+  FVST.NodeDataSize := SizeOf(TData);
+  UniqueID := 0;
+  //add repository(DataType = 0)
+  RootNode := FVST.AddChild(nil);
+  RootData := FVST.GetNodeData(RootNode);
+  RootData^.Repository := Options.RemoteRepository[Options.ActiveRepositoryIndex];
+  RootData^.DataType := 0;
+  for I := 0 to SerializablePackages.Count - 1 do
+  begin
+     //add package(DataType = 1)
+     Node := FVST.AddChild(RootNode);
+     Node^.CheckType := ctTriStateCheckBox;
+     Data := FVST.GetNodeData(Node);
+     Data^.PID := I;
+     Data^.PackageName := SerializablePackages.Items[I].Name;
+     Data^.PackageDisplayName := SerializablePackages.Items[I].DisplayName;
+     Data^.PackageState := SerializablePackages.Items[I].PackageState;
+     Data^.InstallState := SerializablePackages.GetPackageInstallState(SerializablePackages.Items[I]);
+     Data^.HasUpdate := SerializablePackages.Items[I].HasUpdate;
+     Data^.DisableInOPM := SerializablePackages.Items[I].DisableInOPM;
+     Data^.Rating := SerializablePackages.Items[I].Rating;
+     Data^.RepositoryDate := SerializablePackages.Items[I].RepositoryDate;
+     FVST.IsDisabled[Node] := Data^.DisableInOPM;
+     Data^.DataType := 1;
+     for J := 0 to SerializablePackages.Items[I].LazarusPackages.Count - 1 do
+     begin
+       //add LazarusPackages(DataType = 2)
+       LazarusPkg := TLazarusPackage(SerializablePackages.Items[I].LazarusPackages.Items[J]);
        ChildNode := FVST.AddChild(Node);
+       ChildNode^.CheckType := ctTriStateCheckBox;
        FVST.IsDisabled[ChildNode] := FVST.IsDisabled[ChildNode^.Parent];
        ChildData := FVST.GetNodeData(ChildNode);
-       ChildData^.DataType := 11;
-       //add category(DataType = 12)
+       ChildData^.PID := I;
+       ChildData^.PFID := J;
+       ChildData^.LazarusPackageName := LazarusPkg.Name;
+       ChildData^.InstalledVersion := LazarusPkg.InstalledFileVersion;
+       ChildData^.UpdateVersion := LazarusPkg.UpdateVersion;
+       ChildData^.Version := LazarusPkg.VersionAsString;
+       ChildData^.PackageState := LazarusPkg.PackageState;
+       ChildData^.HasUpdate := LazarusPkg.HasUpdate;
+       ChildData^.DataType := 2;
+       //add description(DataType = 3)
        GrandChildNode := FVST.AddChild(ChildNode);
        FVST.IsDisabled[GrandChildNode] := FVST.IsDisabled[GrandChildNode^.Parent];
        GrandChildData := FVST.GetNodeData(GrandChildNode);
-       GrandChildData^.Category := SerializablePackages.Items[I].Category;
-       GrandChildData^.DataType := 12;
-       //add Repository Filename(DataType = 13)
+       if ChildData^.InstalledVersion <> '' then
+         GrandChildData^.Description := LazarusPkg.InstalledFileDescription
+       else
+         GrandChildData^.Description := LazarusPkg.Description;
+       GrandChildData^.DataType := 3;
+       Inc(UniqueID);
+       CreateButton(UniqueID, GrandChildData);
+       GrandChildData^.Button.Enabled := not FVST.IsDisabled[GrandChildNode];
+       //add author(DataType = 4)
        GrandChildNode := FVST.AddChild(ChildNode);
        FVST.IsDisabled[GrandChildNode] := FVST.IsDisabled[GrandChildNode^.Parent];
        GrandChildData := FVST.GetNodeData(GrandChildNode);
-       GrandChildData^.RepositoryFileName := SerializablePackages.Items[I].RepositoryFileName;
-       GrandChildData^.DataType := 13;
-       //add Repository Filesize(DataType = 14)
+       GrandChildData^.Author := LazarusPkg.Author;
+       GrandChildData^.DataType := 4;
+       //add lazcompatibility(DataType = 5)
        GrandChildNode := FVST.AddChild(ChildNode);
        FVST.IsDisabled[GrandChildNode] := FVST.IsDisabled[GrandChildNode^.Parent];
        GrandChildData := FVST.GetNodeData(GrandChildNode);
-       GrandChildData^.RepositoryFileSize := SerializablePackages.Items[I].RepositoryFileSize;
-       GrandChildData^.DataType := 14;
-       //add Repository Hash(DataType = 15)
+       GrandChildData^.LazCompatibility := LazarusPkg.LazCompatibility;
+       GrandChildData^.DataType := 5;
+       //add fpccompatibility(DataType = 6)
        GrandChildNode := FVST.AddChild(ChildNode);
        FVST.IsDisabled[GrandChildNode] := FVST.IsDisabled[GrandChildNode^.Parent];
        GrandChildData := FVST.GetNodeData(GrandChildNode);
-       GrandChildData^.RepositoryFileHash := SerializablePackages.Items[I].RepositoryFileHash;
-       GrandChildData^.DataType := 15;
-       //add Repository Date(DataType = 16)
+       GrandChildData^.FPCCompatibility := LazarusPkg.FPCCompatibility;
+       GrandChildData^.DataType := 6;
+       //add widgetset(DataType = 7)
        GrandChildNode := FVST.AddChild(ChildNode);
        FVST.IsDisabled[GrandChildNode] := FVST.IsDisabled[GrandChildNode^.Parent];
        GrandChildData := FVST.GetNodeData(GrandChildNode);
-       GrandChildData^.RepositoryDate := SerializablePackages.Items[I].RepositoryDate;
-       GrandChildData^.DataType := 16;
-       FVST.Expanded[ChildNode] := True;
-       //add HomePageURL(DataType = 17)
+       GrandChildData^.SupportedWidgetSet := LazarusPkg.SupportedWidgetSet;
+       GrandChildData^.DataType := 7;
+       //add packagetype(DataType = 8)
        GrandChildNode := FVST.AddChild(ChildNode);
        FVST.IsDisabled[GrandChildNode] := FVST.IsDisabled[GrandChildNode^.Parent];
        GrandChildData := FVST.GetNodeData(GrandChildNode);
-       GrandChildData^.HomePageURL := SerializablePackages.Items[I].HomePageURL;
-       GrandChildData^.DataType := 17;
-       //add DownloadURL(DataType = 18)
+       GrandChildData^.PackageType := LazarusPkg.PackageType;
+       GrandChildData^.DataType := 8;
+       //add license(DataType = 9)
        GrandChildNode := FVST.AddChild(ChildNode);
        FVST.IsDisabled[GrandChildNode] := FVST.IsDisabled[GrandChildNode^.Parent];
        GrandChildData := FVST.GetNodeData(GrandChildNode);
-       GrandChildData^.DownloadURL := SerializablePackages.Items[I].DownloadURL;
-       GrandChildData^.DataType := 18;
-       //add SVNURL(DataType = 19)
-       {GrandChildNode := FVST.AddChild(ChildNode);
+       if ChildData^.InstalledVersion <> '' then
+         GrandChildData^.License := LazarusPkg.InstalledFileLincese
+       else
+         GrandChildData^.License := LazarusPkg.License;
+       GrandChildData^.DataType := 9;
+       Inc(UniqueID);
+       CreateButton(UniqueID, GrandChildData);
+       GrandChildData^.Button.Enabled := not FVST.IsDisabled[GrandChildNode];
+       //add dependencies(DataType = 10)
+       GrandChildNode := FVST.AddChild(ChildNode);
        FVST.IsDisabled[GrandChildNode] := FVST.IsDisabled[GrandChildNode^.Parent];
        GrandChildData := FVST.GetNodeData(GrandChildNode);
-       GrandChildData^.SVNURL := SerializablePackages.Items[I].SVNURL;
-       GrandChildData^.DataType := 19;}
-    end;
-    FVST.SortTree(0, opkman_VirtualTrees.sdAscending);
-    ExpandEx;
-    CollapseEx;
-  finally
-    FVST.OnCollapsing := @VSTCollapsing;
-    FVST.OnCollapsed := @VSTCollapsed;
-    FVST.OnExpanding := @VSTExpanding;
+       GrandChildData^.Dependencies := LazarusPkg.DependenciesAsString;
+       GrandChildData^.DataType := 10;
+     end;
+     //add miscellaneous(DataType = 11)
+     ChildNode := FVST.AddChild(Node);
+     FVST.IsDisabled[ChildNode] := FVST.IsDisabled[ChildNode^.Parent];
+     ChildData := FVST.GetNodeData(ChildNode);
+     ChildData^.DataType := 11;
+     //add category(DataType = 12)
+     GrandChildNode := FVST.AddChild(ChildNode);
+     FVST.IsDisabled[GrandChildNode] := FVST.IsDisabled[GrandChildNode^.Parent];
+     GrandChildData := FVST.GetNodeData(GrandChildNode);
+     GrandChildData^.Category := SerializablePackages.Items[I].Category;
+     GrandChildData^.DataType := 12;
+     //add Repository Filename(DataType = 13)
+     GrandChildNode := FVST.AddChild(ChildNode);
+     FVST.IsDisabled[GrandChildNode] := FVST.IsDisabled[GrandChildNode^.Parent];
+     GrandChildData := FVST.GetNodeData(GrandChildNode);
+     GrandChildData^.RepositoryFileName := SerializablePackages.Items[I].RepositoryFileName;
+     GrandChildData^.DataType := 13;
+     //add Repository Filesize(DataType = 14)
+     GrandChildNode := FVST.AddChild(ChildNode);
+     FVST.IsDisabled[GrandChildNode] := FVST.IsDisabled[GrandChildNode^.Parent];
+     GrandChildData := FVST.GetNodeData(GrandChildNode);
+     GrandChildData^.RepositoryFileSize := SerializablePackages.Items[I].RepositoryFileSize;
+     GrandChildData^.DataType := 14;
+     //add Repository Hash(DataType = 15)
+     GrandChildNode := FVST.AddChild(ChildNode);
+     FVST.IsDisabled[GrandChildNode] := FVST.IsDisabled[GrandChildNode^.Parent];
+     GrandChildData := FVST.GetNodeData(GrandChildNode);
+     GrandChildData^.RepositoryFileHash := SerializablePackages.Items[I].RepositoryFileHash;
+     GrandChildData^.DataType := 15;
+     //add Repository Date(DataType = 16)
+     GrandChildNode := FVST.AddChild(ChildNode);
+     FVST.IsDisabled[GrandChildNode] := FVST.IsDisabled[GrandChildNode^.Parent];
+     GrandChildData := FVST.GetNodeData(GrandChildNode);
+     GrandChildData^.RepositoryDate := SerializablePackages.Items[I].RepositoryDate;
+     GrandChildData^.DataType := 16;
+     FVST.Expanded[ChildNode] := True;
+     //add HomePageURL(DataType = 17)
+     GrandChildNode := FVST.AddChild(ChildNode);
+     FVST.IsDisabled[GrandChildNode] := FVST.IsDisabled[GrandChildNode^.Parent];
+     GrandChildData := FVST.GetNodeData(GrandChildNode);
+     GrandChildData^.HomePageURL := SerializablePackages.Items[I].HomePageURL;
+     GrandChildData^.DataType := 17;
+     //add DownloadURL(DataType = 18)
+     GrandChildNode := FVST.AddChild(ChildNode);
+     FVST.IsDisabled[GrandChildNode] := FVST.IsDisabled[GrandChildNode^.Parent];
+     GrandChildData := FVST.GetNodeData(GrandChildNode);
+     GrandChildData^.DownloadURL := SerializablePackages.Items[I].DownloadURL;
+     GrandChildData^.DataType := 18;
+     //add SVNURL(DataType = 19)
+     {GrandChildNode := FVST.AddChild(ChildNode);
+     FVST.IsDisabled[GrandChildNode] := FVST.IsDisabled[GrandChildNode^.Parent];
+     GrandChildData := FVST.GetNodeData(GrandChildNode);
+     GrandChildData^.SVNURL := SerializablePackages.Items[I].SVNURL;
+     GrandChildData^.DataType := 19;}
   end;
-  HideButtons;
+  FVST.SortTree(0, VirtualTrees.sdAscending);
+  ExpandEx;
+  CollapseEx;
+  RootNode := VST.GetFirst;
+  if RootNode <> nil then
+  begin
+    FVST.Selected[RootNode] := True;
+    FVST.FocusedNode := RootNode;
+  end;
 end;
 
 function TVisualTree.IsAllChecked(const AChecking: PVirtualNode): Boolean;
@@ -487,31 +507,31 @@ begin
   end;
 end;
 
-procedure TVisualTree.ButtonClick(Sender: TObject);
+procedure TVisualTree.ShowDetails(const AButtonID: Integer);
 var
   Node, ParentNode: PVirtualNode;
   Data, ParentData: PData;
-  ButtonID: Integer;
   Text: String;
   FrmCaption: String;
 begin
-  ButtonID := (Sender as TSpeedButton).Tag;
+  if Assigned(PackageDetailsFrm) then
+    Exit;
   Node := VST.GetFirst;
   while Assigned(Node) do
   begin
     Data := VST.GetNodeData(Node);
-    if Data^.ButtonID = ButtonID then
+    if Data^.ButtonID = AButtonID then
     begin
       ParentNode := Node^.Parent;
       ParentData := VST.GetNodeData(ParentNode);
       case Data^.DataType of
         3: begin
              Text := Data^.Description;
-             FrmCaption := rsMainFrm_VSTText_Desc + ' "' + ParentData^.PackageFileName  + '"';
+             FrmCaption := rsMainFrm_VSTText_Desc + ' "' + ParentData^.LazarusPackageName  + '"';
            end;
         9: begin
              Text := Data^.License;
-             FrmCaption := rsMainFrm_VSTText_Lic  + ' "' + ParentData^.PackageFileName  + '"';
+             FrmCaption := rsMainFrm_VSTText_Lic  + ' "' + ParentData^.LazarusPackageName  + '"';
            end;
       end;
       Break;
@@ -525,50 +545,13 @@ begin
     PackageDetailsFrm.mDetails.Text := Text;
     PackageDetailsFrm.ShowModal;
   finally
-    PackageDetailsFrm.Free;
+    FreeAndNil(PackageDetailsFrm);
   end;
 end;
 
-procedure TVisualTree.ShowButtons;
-var
-  Node: PVirtualNode;
-  Data: PData;
-  R: TRect;
-  Text: String;
+procedure TVisualTree.ButtonClick(Sender: TObject);
 begin
-  Node := VST.GetFirst;
-  while Assigned(Node) do
-  begin
-    Data := VST.GetNodeData(Node);
-    if Assigned(Data^.Button) then
-    begin
-      case Data^.DataType of
-        3: Text := Data^.Description;
-        9: Text := Data^.License;
-      end;
-      R := FVST.GetDisplayRect(Node, 5, false);
-      Data^.Button.Visible := ((R.Bottom > FVST.Top) and (R.Bottom < FVST.Top + FVST.Height)) and
-                              (vsVisible in Node^.States) and
-                              (Trim(Text) <> '');
-      FVST.InvalidateNode(Node);
-    end;
-    Node := VST.GetNext(Node);
-  end;
-end;
-
-procedure TVisualTree.HideButtons;
-var
-  Node: PVirtualNode;
-  Data: PData;
-begin
-  Node := VST.GetFirst;
-  while Assigned(Node) do
-  begin
-    Data := VST.GetNodeData(Node);
-    if Assigned(Data^.Button) then
-      Data^.Button.Visible := False;
-    Node := VST.GetNext(Node);
-  end;
+  ShowDetails((Sender as TSpeedButton).Tag);
 end;
 
 function TVisualTree.TranslateCategories(const AStr: String): String;
@@ -610,27 +593,54 @@ begin
     Result := AStr;
 end;
 
-procedure TVisualTree.VSTScroll(Sender: TBaseVirtualTree; DeltaX,
-  DeltaY: Integer);
+procedure TVisualTree.SetButtonVisibility(Node: PVirtualNode;
+  Column: TColumnIndex);
+var
+  Data: PData;
+  R: TRect;
 begin
-  ShowButtons;
+  Data := FVST.GetNodeData(Node);
+  if Assigned(Data^.Button) then
+  begin
+    R := FVST.GetDisplayRect(Node, Column, False);
+    Data^.Button.Left   := R.Right - Data^.Button.Width - 1;
+    Data^.Button.Top    := R.Top + 1;
+    Data^.Button.Height := R.Bottom - R.Top - 1;
+    Data^.Button.Visible := FVST.IsVisible[Node] and IntersectRect(R, FVST.GetDisplayRect(Node, Column, False), FVST.ClientRect);
+    Data^.Button.Enabled := not FVST.IsDisabled[Node];
+  end;
 end;
 
-procedure TVisualTree.VSTCollapsed(Sender: TBaseVirtualTree; Node: PVirtualNode);
+procedure TVisualTree.CallBack(Sender: TBaseVirtualTree; Node: PVirtualNode;
+  Data: Pointer; var Abort: Boolean);
 begin
-  ShowButtons;
+  SetButtonVisibility(Node, 4);
 end;
 
-procedure TVisualTree.VSTExpanding(Sender: TBaseVirtualTree;
-  Node: PVirtualNode; var Allowed: Boolean);
+procedure TVisualTree.VSTAfterPaint(Sender: TBaseVirtualTree;
+  TargetCanvas: TCanvas);
 begin
-  HideButtons;
+  Sender.IterateSubtree(nil, @CallBack, nil);
 end;
 
-procedure TVisualTree.VSTCollapsing(Sender: TBaseVirtualTree;
-  Node: PVirtualNode; var Allowed: Boolean);
+procedure TVisualTree.VSTEnter(Sender: TObject);
+var
+  Node: PVirtualNode;
 begin
-  HideButtons;
+  if FMouseEnter then
+  begin
+    FMouseEnter := False;
+    Exit;
+  end;
+  if FVST.SelectedCount = 0 then
+  begin
+    Node := FVST.GetFirst;
+    if Node <> nil then
+    begin
+      FVST.Selected[Node] := True;
+      FVST.FocusedNode := Node;
+    end;
+  end;
 end;
 
 procedure TVisualTree.DrawStars(ACanvas: TCanvas; AStartIndex: Integer;
@@ -703,29 +713,10 @@ procedure TVisualTree.VSTAfterCellPaint(Sender: TBaseVirtualTree;
 var
   Data: PData;
   R: TRect;
-  Text: String;
   P: TPoint;
   Stars: Integer;
 begin
-  if Column = 4 then
-  begin
-    Data := FVST.GetNodeData(Node);
-    if Assigned(Data^.Button)  then
-    begin
-      R := FVST.GetDisplayRect(Node, Column, False);
-      Data^.Button.Width := 25;
-      Data^.Button.Left   := R.Right - Data^.Button.Width - 1;
-      Data^.Button.Top    := R.Top + 1;
-      Data^.Button.Height := R.Bottom - R.Top - 1;
-      case Data^.DataType of
-        3: Text := Data^.Description;
-        9: Text := Data^.License;
-      end;
-      Data^.Button.Visible := ((R.Bottom > FVST.Top) and (R.Bottom < FVST.Top + FVST.Height)) and (Trim(Text) <> '');
-      Data^.Button.Enabled := not FVST.IsDisabled[Node];
-    end;
-  end
-  else if Column = 5 then
+  if Column = 5 then
   begin
     Data := FVST.GetNodeData(Node);
     if Data^.DataType = 1 then
@@ -800,11 +791,11 @@ procedure TVisualTree.FilterTree(const AFilterBy: TFilterBy; const AText:
   procedure HideShowParentNodes(const ANode: PVirtualNode; AShow: Boolean);
   var
     Level: Integer;
-    RepositoryNode, PackageNode, PackageFileNode: PVirtualNode;
+    RepositoryNode, PackageNode, LazarusPkgNode: PVirtualNode;
   begin
     RepositoryNode := nil;
     PackageNode := nil;
-    PackageFileNode := nil;
+    LazarusPkgNode := nil;
     Level := FVST.GetNodeLevel(ANode);
     case Level of
       1: begin
@@ -814,12 +805,12 @@ procedure TVisualTree.FilterTree(const AFilterBy: TFilterBy; const AText:
       2: begin
            RepositoryNode := ANode^.Parent^.Parent;
            PackageNode := ANode^.Parent;
-           PackageFileNode := ANode;
+           LazarusPkgNode := ANode;
          end;
       3: begin
            RepositoryNode := ANode^.Parent^.Parent^.Parent;
            PackageNode := ANode^.Parent^.Parent;
-           PackageFileNode := ANode^.Parent;
+           LazarusPkgNode := ANode^.Parent;
          end;
     end;
     if Level = 1 then
@@ -850,14 +841,14 @@ procedure TVisualTree.FilterTree(const AFilterBy: TFilterBy; const AText:
     begin
       if AShow then
       begin
-        FVST.IsVisible[PackageFileNode] := True;
+        FVST.IsVisible[LazarusPkgNode] := True;
         FVST.IsVisible[PackageNode] := True;
         FVST.IsVisible[RepositoryNode] := True;
       end
       else
       begin
-        FVST.IsVisible[PackageFileNode] := False;
-        HideShowParentNodes(PackageFileNode, AShow);
+        FVST.IsVisible[LazarusPkgNode] := False;
+        HideShowParentNodes(LazarusPkgNode, AShow);
       end;
     end;
   end;
@@ -901,12 +892,12 @@ begin
       fbPackageName:
         begin
           if (Data^.DataType = 1) then
-            FilterNode(Node, Data^.PackageName);
+            FilterNode(Node, Data^.PackageDisplayName);
         end;
-      fbPackageFileName:
+      fbLazarusPackageName:
         begin
           if (Data^.DataType = 2) then
-            FilterNode(Node, Data^.PackageFileName);
+            FilterNode(Node, Data^.LazarusPackageName);
         end;
       fbPackageCategory:
         begin
@@ -962,7 +953,7 @@ begin
        begin
          if Data^.DataType = 8 then
          begin
-           if Data^.PackageType = TPackageType(AExtraParam) then
+           if Data^.PackageType = TLazPackageType(AExtraParam) then
              FilterNode(Node, 'PackageType')
            else
              FilterNode(Node, '');
@@ -981,7 +972,6 @@ begin
    end;
    Node := FVST.GetNext(Node);
   end;
-  HideButtons;
   Node := FVST.GetFirst;
   if Node <> nil then
     FVST.TopNode := Node;
@@ -998,7 +988,6 @@ begin
     Node := FVST.GetNext(Node);
   end;
   Node := FVST.GetFirst;
-  HideButtons;
   CollapseEx;
   if Node <> nil then
     FVST.TopNode := Node;
@@ -1042,8 +1031,8 @@ procedure TVisualTree.GetPackageList;
 var
   Node: PVirtualNode;
   Data: PData;
-  Package: TPackage;
-  PackageFile: TPackageFile;
+  MetaPkg: TMetaPackage;
+  LazarusPkg: TLazarusPackage;
 begin
   Node := FVST.GetFirst;
   while Assigned(Node) do
@@ -1051,24 +1040,34 @@ begin
     Data := FVST.GetNodeData(Node);
     if Data^.DataType = 1 then
     begin
-      Package := SerializablePackages.Items[Data^.PID];
-      if Package <> nil then
+      MetaPkg := SerializablePackages.Items[Data^.PID];
+      if MetaPkg <> nil then
       begin
         if (FVST.CheckState[Node] = csCheckedNormal) or (FVST.CheckState[Node] = csMixedNormal) then
-          Package.Checked := True
+        begin
+          if (FVST.IsVisible[Node]) or (Data^.IsDependencyNode) then
+            MetaPkg.Checked := True
+          else
+            MetaPkg.Checked := False;
+        end
         else if FVST.CheckState[Node] = csUncheckedNormal then
-          Package.Checked := False
+          MetaPkg.Checked := False
       end;
     end;
     if Data^.DataType = 2 then
     begin
-      PackageFile := TPackageFile(SerializablePackages.Items[Data^.PID].PackageFiles.Items[Data^.PFID]);
-      if PackageFile <> nil then
+      LazarusPkg := TLazarusPackage(SerializablePackages.Items[Data^.PID].LazarusPackages.Items[Data^.PFID]);
+      if LazarusPkg <> nil then
       begin
         if FVST.CheckState[Node] = csCheckedNormal then
-          PackageFile.Checked := True
+        begin
+          if (FVST.IsVisible[Node]) or (Data^.IsDependencyNode) then
+            LazarusPkg.Checked := True
+          else
+            LazarusPkg.Checked := False;
+        end
         else if FVST.CheckState[Node] = csUncheckedNormal then
-          PackageFile.Checked := False
+          LazarusPkg.Checked := False
       end;
     end;
     Node := FVST.GetNext(Node);
@@ -1079,8 +1078,8 @@ procedure TVisualTree.UpdatePackageStates;
 var
   Node: PVirtualNode;
   Data: PData;
-  Package: TPackage;
-  PackageFile: TPackageFile;
+  MetaPkg: TMetaPackage;
+  LazarusPkg: TLazarusPackage;
 begin
   SerializablePackages.GetPackageStates;
   Node := FVST.GetFirst;
@@ -1089,22 +1088,22 @@ begin
     Data := FVST.GetNodeData(Node);
     if (Data^.DataType = 1) then
     begin
-      Package := SerializablePackages.Items[Data^.PID];
-      if Package <> nil then
+      MetaPkg := SerializablePackages.Items[Data^.PID];
+      if MetaPkg <> nil then
       begin
-        Data^.PackageState := Package.PackageState;
-        Data^.InstallState := SerializablePackages.GetPackageInstallState(Package);
+        Data^.PackageState := MetaPkg.PackageState;
+        Data^.InstallState := SerializablePackages.GetPackageInstallState(MetaPkg);
         FVST.ReinitNode(Node, False);
         FVST.RepaintNode(Node);
       end;
     end;
     if Data^.DataType = 2 then
     begin
-      PackageFile := TPackageFile(SerializablePackages.Items[Data^.PID].PackageFiles.Items[Data^.PFID]);
-      if PackageFile <> nil then
+      LazarusPkg := TLazarusPackage(SerializablePackages.Items[Data^.PID].LazarusPackages.Items[Data^.PFID]);
+      if LazarusPkg <> nil then
       begin
-        Data^.InstalledVersion := PackageFile.InstalledFileVersion;
-        Data^.PackageState := PackageFile.PackageState;
+        Data^.InstalledVersion := LazarusPkg.InstalledFileVersion;
+        Data^.PackageState := LazarusPkg.PackageState;
         FVST.ReinitNode(Node, False);
         FVST.RepaintNode(Node);
       end;
@@ -1117,8 +1116,8 @@ procedure TVisualTree.UpdatePackageUStatus;
 var
   Node: PVirtualNode;
   Data, ParentData: PData;
-  Package: TPackage;
-  PackageFile: TPackageFile;
+  MetaPkg: TMetaPackage;
+  LazarusPkg: TLazarusPackage;
 begin
   Node := FVST.GetFirst;
   while Assigned(Node) do
@@ -1126,13 +1125,13 @@ begin
     Data := FVST.GetNodeData(Node);
     if (Data^.DataType = 1) then
     begin
-      Package := SerializablePackages.Items[Data^.PID];
-      if Package <> nil then
+      MetaPkg := SerializablePackages.Items[Data^.PID];
+      if MetaPkg <> nil then
       begin
-        Data^.DownloadZipURL := Package.DownloadZipURL;
-        Data^.HasUpdate := Package.HasUpdate;
-        Data^.DisableInOPM := Package.DisableInOPM;
-        Data^.Rating := Package.Rating;
+        Data^.DownloadZipURL := MetaPkg.DownloadZipURL;
+        Data^.HasUpdate := MetaPkg.HasUpdate;
+        Data^.DisableInOPM := MetaPkg.DisableInOPM;
+        Data^.Rating := MetaPkg.Rating;
         FVST.IsDisabled[Node] := Data^.DisableInOPM;
         FVST.ReinitNode(Node, False);
         FVST.RepaintNode(Node);
@@ -1140,11 +1139,11 @@ begin
     end;
     if Data^.DataType = 2 then
     begin
-      PackageFile := TPackageFile(SerializablePackages.Items[Data^.PID].PackageFiles.Items[Data^.PFID]);
-      if PackageFile <> nil then
+      LazarusPkg := TLazarusPackage(SerializablePackages.Items[Data^.PID].LazarusPackages.Items[Data^.PFID]);
+      if LazarusPkg <> nil then
       begin
-        Data^.UpdateVersion := PackageFile.UpdateVersion;
-        Data^.HasUpdate := PackageFile.HasUpdate;
+        Data^.UpdateVersion := LazarusPkg.UpdateVersion;
+        Data^.HasUpdate := LazarusPkg.HasUpdate;
         FVST.IsDisabled[Node] := FVST.IsDisabled[Node^.Parent];
         FVST.ReinitNode(Node, False);
         FVST.RepaintNode(Node);
@@ -1158,13 +1157,13 @@ begin
       begin
         case Data^.DataType of
           3: if ParentData^.InstalledVersion <> '' then
-               Data^.Description := PackageFile.InstalledFileDescription
+               Data^.Description := LazarusPkg.InstalledFileDescription
              else
-               Data^.Description := PackageFile.Description;
+               Data^.Description := LazarusPkg.Description;
           9: if ParentData^.InstalledVersion <> '' then
-               Data^.License := PackageFile.InstalledFileLincese
+               Data^.License := LazarusPkg.InstalledFileLincese
              else
-               Data^.License := PackageFile.License;
+               Data^.License := LazarusPkg.License;
         end;
         if Assigned(Data^.Button) then
           Data^.Button.Enabled := not FVST.IsDisabled[Node];
@@ -1182,6 +1181,8 @@ procedure TVisualTree.VSTBeforeCellPaint(Sender: TBaseVirtualTree;
 var
   Data: PData;
 begin
+  if Options.UseDefaultTheme then
+    Exit;
   if CellPaintMode = cpmPaint then
   begin
     Data := Sender.GetNodeData(Node);
@@ -1227,17 +1228,32 @@ begin
     FOnChecked(Self);
 end;
 
+procedure TVisualTree.ResetDependencyNodes;
+var
+  Node: PVirtualNode;
+  Data: PData;
+begin
+  Node := FVST.GetFirst;
+  while Assigned(Node) do
+  begin
+    Data := FVST.GetNodeData(Node);
+    Data^.IsDependencyNode := False;
+    Node := FVST.GetNext(Node);
+  end;
+end;
+
 function TVisualTree.ResolveDependencies: TModalResult;
 var
-  Node, NodeSearch: PVirtualNode;
-  Data, DataSearch: PData;
+  Parent, Node, NodeSearch: PVirtualNode;
+  ParentData, Data, DataSearch: PData;
   Msg: String;
   PackageList: TObjectList;
-  PackageFileName: String;
-  DependencyPackage: TPackageFile;
+  PkgFileName: String;
+  DependencyPkg: TLazarusPackage;
   I: Integer;
 begin
   Result := mrNone;
+  ResetDependencyNodes;
   Node := FVST.GetFirst;
   while Assigned(Node) do
   begin
@@ -1248,10 +1264,10 @@ begin
       begin
         PackageList := TObjectList.Create(True);
         try
-          SerializablePackages.GetPackageDependencies(Data^.PackageFileName, PackageList, True, True);
+          SerializablePackages.GetPackageDependencies(Data^.LazarusPackageName, PackageList, True, True);
           for I := 0 to PackageList.Count - 1 do
           begin
-            PackageFileName := TPackageDependency(PackageList.Items[I]).PackageFileName + '.lpk';
+            PkgFileName := TPackageDependency(PackageList.Items[I]).PkgFileName + '.lpk';
             NodeSearch := VST.GetFirst;
             while Assigned(NodeSearch) do
             begin
@@ -1260,26 +1276,34 @@ begin
                 DataSearch := FVST.GetNodeData(NodeSearch);
                 if DataSearch^.DataType = 2 then
                 begin
-                  DependencyPackage := TPackageFile(SerializablePackages.Items[DataSearch^.PID].PackageFiles.Items[DataSearch^.PFID]);
+                  DependencyPkg := TLazarusPackage(SerializablePackages.Items[DataSearch^.PID].LazarusPackages.Items[DataSearch^.PFID]);
                   if (FVST.CheckState[NodeSearch] <> csCheckedNormal) and
-                       (UpperCase(DataSearch^.PackageFileName) = UpperCase(PackageFileName)) and
-                         ((SerializablePackages.IsDependencyOk(TPackageDependency(PackageList.Items[I]), DependencyPackage)) and
-                           ((not (DependencyPackage.PackageState = psInstalled)) or ((DependencyPackage.PackageState = psInstalled) and (not (SerializablePackages.IsInstalledVersionOk(TPackageDependency(PackageList.Items[I]), DataSearch^.InstalledVersion)))))) then
+                       (UpperCase(DataSearch^.LazarusPackageName) = UpperCase(PkgFileName)) and
+                         ((SerializablePackages.IsDependencyOk(TPackageDependency(PackageList.Items[I]), DependencyPkg)) and
+                           ((not (DependencyPkg.PackageState = psInstalled)) or ((DependencyPkg.PackageState = psInstalled) and (not (SerializablePackages.IsInstalledVersionOk(TPackageDependency(PackageList.Items[I]), DataSearch^.InstalledVersion)))))) then
                   begin
                     if (Result = mrNone) or (Result = mrYes) then
                     begin
-                      Msg := Format(rsMainFrm_rsPackageDependency0, [Data^.PackageFileName, DataSearch^.PackageFileName]);
+                      Msg := Format(rsMainFrm_rsPackageDependency0, [Data^.LazarusPackageName, DataSearch^.LazarusPackageName]);
                       Result := MessageDlgEx(Msg, mtConfirmation, [mbYes, mbYesToAll, mbNo, mbNoToAll, mbCancel], TForm(FVST.Parent.Parent));
                       if Result in [mrNo, mrNoToAll] then
-                        MessageDlgEx(rsMainFrm_rsPackageDependency1, mtInformation, [mbOk], TForm(FVST.Parent.Parent));
+                        if MessageDlgEx(rsMainFrm_rsPackageDependency1, mtInformation, [mbYes, mbNo], TForm(FVST.Parent.Parent)) <> mrYes then
+                          Exit(mrCancel);
                       if (Result = mrNoToAll) or (Result = mrCancel) then
-                        Exit;
+                        Exit(mrCancel);
                     end;
                     if Result in [mrYes, mrYesToAll] then
                     begin
                       FVST.CheckState[NodeSearch] := csCheckedNormal;
                       FVST.ReinitNode(NodeSearch, False);
                       FVST.RepaintNode(NodeSearch);
+                      DataSearch^.IsDependencyNode := True;
+                      Parent := NodeSearch^.Parent;
+                      if Parent <> nil then
+                      begin
+                        ParentData := FVST.GetNodeData(Parent);
+                        ParentData^.IsDependencyNode := True;
+                      end;
                     end;
                   end;
                 end;
@@ -1314,6 +1338,19 @@ begin
   end;
 end;
 
+procedure TVisualTree.SetupColors;
+begin
+  if not Options.UseDefaultTheme then
+  begin
+    FVST.Color := clBtnFace;
+    FVST.TreeOptions.PaintOptions := FVST.TreeOptions.PaintOptions + [toAlwaysHideSelection];
+  end else
+  begin
+    FVST.Color := clDefault;
+    FVST.TreeOptions.PaintOptions := FVST.TreeOptions.PaintOptions - [toAlwaysHideSelection];
+  end;
+end;
+
 procedure TVisualTree.VSTCompareNodes(Sender: TBaseVirtualTree; Node1,
   Node2: PVirtualNode; Column: TColumnIndex; var Result: Integer);
 var
@@ -1325,13 +1362,18 @@ begin
   case Column of
     0: begin
          if (Data1^.DataType = 1) and (Data1^.DataType = 1) then
-           Result := CompareText(Data1^.PackageName, Data2^.PackageName);
+         begin
+           if (Trim(Data1^.PackageDisplayName) <> '') and (Trim(Data2^.PackageDisplayName) <> '') then
+             Result := CompareText(Data1^.PackageDisplayName, Data2^.PackageDisplayName)
+           else
+             Result := CompareText(Data1^.PackageName, Data2^.PackageName);
+         end;
          if (Data1^.DataType < Data2^.DataType) then
            Result := 0
          else if (Data1^.DataType > Data2^.DataType) then
            Result := 1
          else if (Data1^.DataType = 2) and (Data1^.DataType = 2) then
-           Result := CompareText(Data1^.PackageFileName, Data2^.PackageFileName);
+           Result := CompareText(Data1^.LazarusPackageName, Data2^.LazarusPackageName);
        end;
     1: if (Data1^.DataType = 1) and (Data1^.DataType = 1) then
          Result := Data2^.InstallState - Data1^.InstallState;
@@ -1350,7 +1392,8 @@ begin
   if Column = 0 then
   begin
     case Data^.DataType of
-      1: if (Options.DaysToShowNewPackages > 0) and (DaysBetween(Now, Data^.RepositoryDate) <= Options.DaysToShowNewPackages) then
+      1: if ((Options.DaysToShowNewPackages > 0) and (DaysBetween(Now, Data^.RepositoryDate) <= Options.DaysToShowNewPackages)) and
+            ((not Options.ShowRegularIcons) or ((Options.ShowRegularIcons) and (Data^.InstallState = 0))) then
            ImageIndex := 25
          else
            ImageIndex := 1;
@@ -1360,7 +1403,7 @@ begin
   end;
 end;
 
-function TVisualTree.GetDisplayString(const AStr: String): String;
+function GetDisplayString(const AStr: String): String;
 var
   SL: TStringList;
   I: Integer;
@@ -1389,7 +1432,8 @@ begin
   begin
     if Column = 0 then
     begin
-      if (Options.DaysToShowNewPackages > 0) and (DaysBetween(Now, Data^.RepositoryDate) <= Options.DaysToShowNewPackages) then
+      if ((Options.DaysToShowNewPackages > 0) and (DaysBetween(Now, Data^.RepositoryDate) <= Options.DaysToShowNewPackages)) and
+         ((not Options.ShowRegularIcons) or ((Options.ShowRegularIcons) and (Data^.InstallState = 0))) and (Data^.DataType = 1) then
         CellText := '- ' + FormatDateTime('YYYY.MM.DD', Data^.RepositoryDate)
       else
         CellText := '';
@@ -1407,7 +1451,7 @@ begin
              CellText := Data^.PackageName
            else
              CellText := Data^.PackageDisplayName;
-        2: CellText := Data^.PackageFileName;
+        2: CellText := Data^.LazarusPackageName;
         3: CellText := rsMainFrm_VSTText_Description;
         4: CellText := rsMainFrm_VSTText_Author;
         5: CellText := rsMainFrm_VSTText_LazCompatibility;
@@ -1481,21 +1525,32 @@ begin
                   begin
                     if (Data^.UpdateVersion = '') then
                     begin
-                      if Data^.InstalledVersion >= Data^.Version then
+                      if Data^.InstalledVersion < Data^.Version then
+                        CellText := rsMainFrm_VSTText_PackageState6
+                      else if Data^.InstalledVersion = Data^.Version then
                         CellText := rsMainFrm_VSTText_PackageState4
-                      else
-                        CellText := rsMainFrm_VSTText_PackageState5
+                      else if Data^.InstalledVersion > Data^.Version then
+                        CellText := rsMainFrm_VSTText_PackageState7
                     end
                     else
                     begin
-                      if (Data^.InstalledVersion >= Data^.UpdateVersion) then
-                        CellText := rsMainFrm_VSTText_PackageState4
-                      else
+                      if Data^.InstalledVersion < Data^.UpdateVersion then
                         CellText := rsMainFrm_VSTText_PackageState6
+                      else if (Data^.InstalledVersion = Data^.UpdateVersion) then
+                        CellText := rsMainFrm_VSTText_PackageState4
+                      else if (Data^.InstalledVersion > Data^.UpdateVersion) then
+                        CellText := rsMainFrm_VSTText_PackageState7
                     end;
                   end
                   else
-                    CellText := rsMainFrm_VSTText_PackageState6;
+                  begin
+                    if Data^.InstalledVersion < Data^.UpdateVersion then
+                      CellText := rsMainFrm_VSTText_PackageState6
+                    else if Data^.InstalledVersion = Data^.UpdateVersion then
+                      CellText := rsMainFrm_VSTText_PackageState4
+                    else if Data^.InstalledVersion > Data^.UpdateVersion then
+                      CellText := rsMainFrm_VSTText_PackageState7
+                  end;
                   Data^.IsUpdated := CellText = rsMainFrm_VSTText_PackageState4;
                 end;
            end;
@@ -1504,12 +1559,7 @@ begin
         5: CellText := Data^.LazCompatibility;
         6: CellText := Data^.FPCCompatibility;
         7: CellText := Data^.SupportedWidgetSet;
-        8: case Data^.PackageType of
-             ptRunAndDesignTime: CellText := rsMainFrm_VSTText_PackageType0;
-             ptDesignTime:       CellText := rsMainFrm_VSTText_PackageType1;
-             ptRunTime:          CellText := rsMainFrm_VSTText_PackageType2;
-             ptRunTimeOnly:      CellText := rsMainFrm_VSTText_PackageType3;
-           end;
+        8: CellText := GetPackageTypeString(Data^.PackageType);
         9: CellText := GetDisplayString(Data^.License);
        10: CellText := Data^.Dependencies;
        11: CellText := '';
@@ -1530,26 +1580,25 @@ begin
   end;
 end;
 
-procedure TVisualTree.VSTHeaderClick(Sender: TVTHeader; Column: TColumnIndex;
-  Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+procedure TVisualTree.VSTHeaderClick(Sender: TVTHeader; HitInfo: TVTHeaderHitInfo);
 begin
-  if (Column <> 0) and (Column <> 1) and (Column <> 3) then
+  if (HitInfo.Column <> 0) and (HitInfo.Column <> 1) and (HitInfo.Column <> 3) then
     Exit;
-  if Button = mbLeft then
+  if HitInfo.Button = mbLeft then
   begin
     with Sender, Treeview do
     begin
-      if (SortColumn = NoColumn) or (SortColumn <> Column) then
+      if (SortColumn = NoColumn) or (SortColumn <> HitInfo.Column) then
       begin
-        SortColumn    := Column;
-        SortDirection := opkman_VirtualTrees.sdAscending;
+        SortColumn    := HitInfo.Column;
+        SortDirection := VirtualTrees.sdAscending;
       end
       else
       begin
-        if SortDirection = opkman_VirtualTrees.sdAscending then
-          SortDirection := opkman_VirtualTrees.sdDescending
+        if SortDirection = VirtualTrees.sdAscending then
+          SortDirection := VirtualTrees.sdDescending
         else
-          SortDirection := opkman_VirtualTrees.sdAscending;
+          SortDirection := VirtualTrees.sdAscending;
         FSortDir := SortDirection;
       end;
       SortTree(SortColumn, SortDirection, False);
@@ -1561,6 +1610,16 @@ end;
 procedure TVisualTree.VSTPaintText(Sender: TBaseVirtualTree;
   const TargetCanvas: TCanvas; Node: PVirtualNode; Column: TColumnIndex;
   TextType: TVSTTextType);
+
+ function GetTextColor(const ADefColor: TColor; AIsFocusedNode: Boolean): TColor;
+ begin
+   Result := ADefColor;
+   if AIsFocusedNode then
+   {$IFDEF WINDOWS}
+     Result := clWhite;
+   {$ENDIF}
+ end;
+
 var
   Data: PData;
 begin
@@ -1569,12 +1628,10 @@ begin
   begin
     if Column = 0 then
     begin
-      if (Options.DaysToShowNewPackages > 0) and (DaysBetween(Now, Data^.RepositoryDate) <= Options.DaysToShowNewPackages) then
+      if ((Options.DaysToShowNewPackages > 0) and (DaysBetween(Now, Data^.RepositoryDate) <= Options.DaysToShowNewPackages)) and
+          ((not Options.ShowRegularIcons) or ((Options.ShowRegularIcons) and (Data^.InstallState = 0))) then
         TargetCanvas.Font.Style := TargetCanvas.Font.Style - [fsBold];
-      if Node <> Sender.FocusedNode then
-        TargetCanvas.Font.Color := clBlack
-      else
-        TargetCanvas.Font.Color := clWhite;
+      TargetCanvas.Font.Color := GetTextColor(FVST.Font.Color, Node = Sender.FocusedNode);
     end
   end
   else if TextType = ttNormal then
@@ -1588,56 +1645,34 @@ begin
              else
                TargetCanvas.Font.Style := TargetCanvas.Font.Style - [fsBold];
            end;
-           if Node <> Sender.FocusedNode then
-             TargetCanvas.Font.Color := clBlack
-           else
-             TargetCanvas.Font.Color := clWhite;
+           TargetCanvas.Font.Color := GetTextColor(FVST.Font.Color, Node = Sender.FocusedNode);
          end;
       3: begin
            case Data^.DataType of
              1: TargetCanvas.Font.Style := TargetCanvas.Font.Style + [fsBold];
-             2: if Data^.HasUpdate then
+             2: if (Data^.HasUpdate) and (Data^.UpdateVersion > Data^.InstalledVersion) then
                   TargetCanvas.Font.Style := TargetCanvas.Font.Style + [fsBold]
                 else
                   TargetCanvas.Font.Style := TargetCanvas.Font.Style - [fsBold];
            end;
-           if Node <> Sender.FocusedNode then
-             TargetCanvas.Font.Color := clBlack
-           else
-             TargetCanvas.Font.Color := clWhite;
+           TargetCanvas.Font.Color := GetTextColor(FVST.Font.Color, Node = Sender.FocusedNode);
          end;
       4: begin
            if (FHoverNode = Node) and (FHoverColumn = Column) and ((Data^.DataType = 17) or (Data^.DataType = 18)) then
            begin
              TargetCanvas.Font.Style := TargetCanvas.Font.Style + [fsUnderline];
-             if  Node <> Sender.FocusedNode then
-               TargetCanvas.Font.Color := clBlue
-             else
-               TargetCanvas.Font.Color := clWhite;
+             TargetCanvas.Font.Color := GetTextColor(clBlue, Node = Sender.FocusedNode);
            end
            else if (Data^.DataType = 2) and (Data^.IsUpdated) then
            begin
              TargetCanvas.Font.Style := TargetCanvas.Font.Style + [fsBold];
-             if  Node <> Sender.FocusedNode then
-               TargetCanvas.Font.Color := clGreen
-             else
-               TargetCanvas.Font.Color := clWhite;
+             TargetCanvas.Font.Color := GetTextColor(clGreen, Node = Sender.FocusedNode);
            end
            else
-           begin
-             if  Node <> Sender.FocusedNode then
-               TargetCanvas.Font.Color := clBlack
-             else
-               TargetCanvas.Font.Color := clWhite;
-           end;
+             TargetCanvas.Font.Color := GetTextColor(FVST.Font.Color, Node = Sender.FocusedNode);
          end
       else
-        begin
-          if  Node <> Sender.FocusedNode then
-            TargetCanvas.Font.Color := FVST.Font.Color
-          else
-            TargetCanvas.Font.Color := clWhite;
-        end;
+        TargetCanvas.Font.Color := GetTextColor(FVST.Font.Color, Node = Sender.FocusedNode);
     end;
   end
 end;
@@ -1669,18 +1704,63 @@ begin
   end;
 end;
 
-
 procedure TVisualTree.VSTMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
+var
+  Data: PData;
+  ContRect: TRect;
+  P: TPoint;
+  Level: Integer;
 begin
   FHoverColumn := -1;
   FHoverP.X := X;
   FHoverP.Y := Y;
   FHoverNode:= VST.GetNodeAt(X, Y);
   FHoverColumn := GetColumn(X);
+  if ((FHoverColumn = 0) or (FShowHintFrm.Visible)) and (FHoverNode <> nil) then
+  begin
+    case Options.HintFormOption of
+      0: begin
+           if FShowHintFrm.Visible then
+             FShowHintFrm.SetupTimer(300);
+           Exit;
+         end;
+      1: begin
+            P.X := X;
+            P.Y := Y;
+            ContRect := FVST.GetDisplayRect(FHoverNode, FHoverColumn, False);
+            Level := FVST.GetNodeLevel(FHoverNode);
+            if (ssShift in Shift) and PtInRect(ContRect, P) and (Level > 0) then
+            begin
+              P := FVST.ClientToScreen(P);
+              if FShowHintFrm.Visible then
+                FShowHintFrm.MoveFormTo(P.X, P.Y)
+              else
+                FShowHintFrm.ShowFormAt(P.X, P.Y);
+              case Level of
+                 2: FHoverNode := FHoverNode^.Parent;
+                 3: FHoverNode := FHoverNode^.Parent^.Parent;
+              end;
+              if FHoverNode <> FHoverNodeOld then
+              begin
+                FShowHintFrm.UpdateInfo(FHoverNode);
+                FHoverNodeOld := FHoverNode;
+              end;
+            end
+        end;
+      2: Exit;
+    end;
+  end;
   if (FHoverColumn = 5) and (FHoverNode <> nil) then
   begin
     FVST.ReinitNode(FHoverNode, False);
     FVST.RepaintNode(FHoverNode);
+  end
+  else if (FHoverColumn = 4) and (FHoverNode <> nil) then
+  begin
+    Data := VST.GetNodeData(FHoverNode);
+    if ((Data^.DataType = 17) and (Trim(Data^.HomePageURL) <> '')) or
+       ((Data^.DataType = 18) and (Trim(Data^.DownloadURL) <> '')) then
+      FVST.Cursor := crHandPoint;
   end;
 end;
 
@@ -1708,8 +1788,9 @@ var
  DownColumn: Integer;
  R: TRect;
  PackageName: String;
- Package: TPackage;
+ MetaPkg: TMetaPackage;
 begin
+  FMouseEnter := True;
   Node := FVST.GetNodeAt(X, Y);
   if Node <> nil then
   begin
@@ -1718,7 +1799,16 @@ begin
     if Button = mbLeft then
     begin
       case DownColumn of
-        4: if (Data^.DataType = 17) or (Data^.DataType = 18) and (DownColumn = 4) then
+        4: if (Data^.DataType = 3) or (Data^.DataType = 9) and (DownColumn = 4) then
+           begin
+             R := FVST.GetDisplayRect(Node, DownColumn, False);
+             if X > R.Right - Data^.Button.Width - 1 then
+             begin
+               if Assigned(Data^.Button) then
+                 ShowDetails(Data^.ButtonID);
+             end;
+           end
+           else if (Data^.DataType = 17) or (Data^.DataType = 18) and (DownColumn = 4) then
            begin
              FLinkClicked := True;
              if (Data^.DataType = 17) and (Trim(Data^.HomePageURL) <> '') then
@@ -1727,18 +1817,21 @@ begin
                FLink := Data^.DownloadURL;
            end;
         5: begin
-             R := FVST.GetDisplayRect(Node, DownColumn, False);
-             Data^.Rating := Trunc((FHoverP.X - R.Left - 1)/16) + 1;
-             if Data^.Rating > 5 then
-               Data^.Rating := 5;
-             Package := SerializablePackages.Items[Data^.PID];
-             if Package <> nil then
-               Package.Rating := Data^.Rating;
-             if Data^.PackageDisplayName <> '' then
-               PackageName := Data^.PackageDisplayName
-             else
-               PackageName := Data^.PackageName;
-             MessageDlgEx(Format(rsMainFrm_rsPackageRating, [PackageName, InttoStr(Data^.Rating)]), mtInformation, [mbOk],  TForm(FVST.Parent.Parent));
+             if Data^.DataType = 1 then
+             begin
+               R := FVST.GetDisplayRect(Node, DownColumn, False);
+               Data^.Rating := Trunc((FHoverP.X - R.Left - 1)/16) + 1;
+               if Data^.Rating > 5 then
+                 Data^.Rating := 5;
+               MetaPkg := SerializablePackages.Items[Data^.PID];
+               if MetaPkg <> nil then
+                 MetaPkg.Rating := Data^.Rating;
+               if Data^.PackageDisplayName <> '' then
+                 PackageName := Data^.PackageDisplayName
+               else
+                 PackageName := Data^.PackageName;
+               MessageDlgEx(Format(rsMainFrm_rsPackageRating, [PackageName, InttoStr(Data^.Rating)]), mtInformation, [mbOk],  TForm(FVST.Parent.Parent));
+             end;
            end;
       end;
     end
@@ -1755,28 +1848,62 @@ begin
   end
 end;
 
+procedure TVisualTree.VSTKeyDown(Sender: TObject; var Key: Word;
+  Shift: TShiftState);
+begin
+ //
+end;
+
+procedure TVisualTree.VSTKeyUp(Sender: TObject; var Key: Word;
+  Shift: TShiftState);
+begin
+  if Key = VK_SHIFT then
+    if Assigned(FShowHintFrm) and FShowHintFrm.Visible and (Options.HintFormOption = 1) then
+      FShowHintFrm.SetupTimer(300);
+end;
+
 procedure TVisualTree.VSTGetHint(Sender: TBaseVirtualTree; Node: PVirtualNode;
   Column: TColumnIndex; var LineBreakStyle: TVTTooltipLineBreakStyle;
   var HintText: String);
 var
   Data: PData;
+  P1, P2: TPoint;
+  Level: Integer;
 begin
   Data := FVST.GetNodeData(Node);
-  if (Column <> 4) then
+  if (Column <> 4) and (Column <> 0) then
     Exit;
   LineBreakStyle := hlbForceSingleLine;
   case Data^.DataType of
+    1: if Options.HintFormOption = 0 then
+       begin
+         HintText := '';
+         P1.X := 0;
+         P1.Y := 0;
+         GetCursorPos(P1);
+         P2 := FVST.ScreenToClient(P1);
+         Level := FVST.GetNodeLevel(FHoverNode);
+         if PtInRect(FVST.GetDisplayRect(Node, Column, True), P2) and (Level > 0) then
+         begin
+           FShowHintFrm.ShowFormAt(P1.X, P1.Y);
+           FShowHintFrm.SetupTimer(Application.HintHidePause);
+           case Level of
+              2: FHoverNode := FHoverNode^.Parent;
+              3: FHoverNode := FHoverNode^.Parent^.Parent;
+           end;
+           if FHoverNode <> FHoverNodeOld then
+           begin
+             FShowHintFrm.UpdateInfo(FHoverNode);
+             FHoverNodeOld := FHoverNode;
+           end;
+         end;
+       end;
     3: HintText := Data^.Description;
     4: HintText := Data^.Author;
     5: HintText := Data^.LazCompatibility;
     6: HintText := Data^.FPCCompatibility;
     7: HintText := Data^.SupportedWidgetSet;
-    8: case Data^.PackageType of
-         ptRunAndDesignTime: HintText := rsMainFrm_VSTText_PackageType0;
-         ptDesignTime:       HintText := rsMainFrm_VSTText_PackageType1;
-         ptRunTime:          HintText := rsMainFrm_VSTText_PackageType2;
-         ptRunTimeOnly:      HintText := rsMainFrm_VSTText_PackageType3;
-       end;
+    8: HintText := GetPackageTypeString(Data^.PackageType);
     9: HintText := GetDisplayString(Data^.License);
     10: HintText := Data^.Dependencies;
     11: HintText := '';
@@ -1794,6 +1921,23 @@ begin
 end;
 
 procedure TVisualTree.VSTDblClick(Sender: TObject);
+begin
+{  if FLinkClicked then
+  begin
+    FLinkClicked := False;
+    FHoverColumn := -1;
+    FHoverNode := nil;
+    OpenURL(FLink);
+  end;}
+end;
+
+procedure TVisualTree.VSTScroll(Sender: TBaseVirtualTree; DeltaX, DeltaY: Integer);
+begin
+  if FShowHintFrm.Visible then
+    FShowHintFrm.Hide;
+end;
+
+procedure TVisualTree.VSTClick(Sender: TObject);
 begin
   if FLinkClicked then
   begin

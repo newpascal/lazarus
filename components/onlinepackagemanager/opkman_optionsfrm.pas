@@ -30,30 +30,40 @@ unit opkman_optionsfrm;
 interface
 
 uses
-  Classes, SysUtils, FileUtil, opkman_VirtualTrees, Forms, Controls, Graphics, Dialogs,
-  StdCtrls, ExtCtrls, Spin, ComCtrls, Buttons, EditBtn, LazFileUtils, Math;
+  SysUtils, Math, Graphics, Classes,
+  // LCL
+  Forms, Controls, Dialogs, StdCtrls, ExtCtrls, Spin, ComCtrls, EditBtn, Menus,
+  ButtonPanel, Buttons,
+  // LazUtils
+  LazFileUtils,
+  // OpkMan
+  opkman_options, opkman_common, opkman_const, opkman_repositories, opkman_colorsfrm;
 
 type
 
   { TOptionsFrm }
 
   TOptionsFrm = class(TForm)
-    bCancel: TButton;
-    bFoldersAdd: TButton;
-    bFilesEdit: TButton;
+    Bevel1: TBevel;
+    Bevel2: TBevel;
+    Bevel3: TBevel;
+    bFilesAdd: TButton;
     bFilesDelete: TButton;
+    bFilesEdit: TButton;
+    bFoldersAdd: TButton;
     bFoldersDelete: TButton;
     bFoldersEdit: TButton;
-    bOk: TButton;
     bOpen: TButton;
-    bRestore: TButton;
-    bFilesAdd: TButton;
+    bpOptions: TButtonPanel;
+    bColors: TButton;
     cbProxy: TCheckBox;
     cbForceDownloadExtract: TCheckBox;
     cbDeleteZipAfterInstall: TCheckBox;
     cbCheckForUpdates: TComboBox;
+    cbUseDefaultTheme: TCheckBox;
     cbRemoteRepository: TComboBox;
     cbSelectProfile: TComboBox;
+    cbRegularIcons: TCheckBox;
     edLocalRepositoryUpdate: TDirectoryEdit;
     edLocalRepositoryPackages: TDirectoryEdit;
     edLocalRepositoryArchive: TDirectoryEdit;
@@ -61,8 +71,9 @@ type
     edProxyServer: TEdit;
     edProxyUser: TEdit;
     gbProxySettings: TGroupBox;
-    lbFilterFiles: TLabel;
+    lbConTimeOut: TLabel;
     lbFilterDirs: TLabel;
+    lbFilterFiles: TLabel;
     lbLastUpdate: TLabel;
     lbSelectProfile: TLabel;
     lbUpdates: TLabel;
@@ -78,10 +89,6 @@ type
     lbExcludeFiles: TListBox;
     lbExcludeFolders: TListBox;
     pnRepositories: TPanel;
-    pnProfilesCaptionLeft: TPanel;
-    pnProfilesCaptionLeft1: TPanel;
-    pnProfilesLeftButtons: TPanel;
-    pnProfilesRightButtons: TPanel;
     pnProfilesRight: TPanel;
     pnProfilesTop: TPanel;
     pnProfiles: TPanel;
@@ -92,27 +99,34 @@ type
     pnBottom: TPanel;
     pnProfilesMain: TPanel;
     pnProfilesLeft: TPanel;
+    rbHintFormOptions: TRadioGroup;
     SDD: TSelectDirectoryDialog;
     seProxyPort: TSpinEdit;
     spDaysToShowNewPackages: TSpinEdit;
+    spConTimeOut: TSpinEdit;
     tsFolders: TTabSheet;
     tsProfiles: TTabSheet;
     tsGeneral: TTabSheet;
     tsProxy: TTabSheet;
+    procedure bColorsClick(Sender: TObject);
     procedure bFilesAddClick(Sender: TObject);
     procedure bFilesDeleteClick(Sender: TObject);
     procedure bFilesEditClick(Sender: TObject);
-    procedure bOkClick(Sender: TObject);
     procedure bOpenClick(Sender: TObject);
-    procedure bRestoreClick(Sender: TObject);
     procedure cbProxyChange(Sender: TObject);
     procedure cbSelectProfileChange(Sender: TObject);
     procedure edRemoteRepositoryKeyPress(Sender: TObject; var Key: char);
+    procedure FormCreate(Sender: TObject);
+    procedure FormDestroy(Sender: TObject);
     procedure FormKeyPress(Sender: TObject; var Key: char);
+    procedure HelpButtonClick(Sender: TObject);
+    procedure OKButtonClick(Sender: TObject);
     procedure pnProfilesMainResize(Sender: TObject);
     procedure pnProfilesTopResize(Sender: TObject);
   private
+    FHintFormOptionColors: TStringList;
     function GetSelectedText(AListBox: TListBox; var AIndex: Integer): String;
+    procedure SetupColors;
   public
     procedure SetupControls(const AActivePageIndex: Integer = 0);
   end;
@@ -121,93 +135,10 @@ var
   OptionsFrm: TOptionsFrm;
 
 implementation
-uses opkman_options, opkman_common, opkman_const, opkman_repositories;
+
 {$R *.lfm}
 
 { TOptionsFrm }
-
-procedure TOptionsFrm.bOkClick(Sender: TObject);
-var
-  I: Integer;
-begin
-  if Trim(cbRemoteRepository.Text)  = '' then
-  begin
-    MessageDlgEx(rsOptions_RemoteRepository_Information, mtInformation, [mbOk], Self);
-    cbRemoteRepository.SetFocus;
-    Exit;
-  end;
-
-  if cbProxy.Checked then
-  begin
-    if Trim(edProxyServer.Text)  = '' then
-    begin
-      MessageDlgEx(rsOptions_ProxyServer_Info, mtInformation, [mbOk], Self);
-      edProxyServer.SetFocus;
-      Exit;
-    end;
-    if seProxyPort.Value = 0 then
-    begin
-      MessageDlgEx(rsOptions_ProxyPort_Info, mtInformation, [mbOk], Self);
-      seProxyPort.SetFocus;
-      Exit;
-    end;
-  end;
-
-  if Trim(edLocalRepositoryPackages.Text)  = '' then
-  begin
-    MessageDlgEx(rsOptions_InvalidDirectory_Info, mtInformation, [mbOk], Self);
-    edLocalRepositoryPackages.SetFocus;
-    Exit;
-  end;
-  if Trim(edLocalRepositoryArchive.Text)  = '' then
-  begin
-    MessageDlgEx(rsOptions_InvalidDirectory_Info, mtInformation, [mbOk], Self);
-    edLocalRepositoryArchive.SetFocus;
-    Exit;
-  end;
-  if Trim(edLocalRepositoryUpdate.Text)  = '' then
-  begin
-    MessageDlgEx(rsOptions_InvalidDirectory_Info, mtInformation, [mbOk], Self);
-    edLocalRepositoryUpdate.SetFocus;
-    Exit;
-  end;
-  if Options.RemoteRepositoryTmp.Count > 0 then
-    Options.RemoteRepository.Text := Options.RemoteRepositoryTmp.Text;
-  Options.ActiveRepositoryIndex := cbRemoteRepository.ItemIndex;
-  Options.ForceDownloadAndExtract := cbForceDownloadExtract.Checked;
-  Options.DeleteZipAfterInstall := cbDeleteZipAfterInstall.Checked;
-  Options.CheckForUpdates := cbCheckForUpdates.ItemIndex;
-  Options.DaysToShowNewPackages := spDaysToShowNewPackages.Value;
-
-  Options.ProxyEnabled := cbProxy.Checked;
-  Options.ProxyServer := edProxyServer.Text;
-  Options.ProxyPort := seProxyPort.Value;
-  Options.ProxyUser := edProxyUser.Text;
-  Options.ProxyPassword := edProxyPassword.Text;
-
-  Options.LocalRepositoryPackages := AppendPathDelim(edLocalRepositoryPackages.Text);
-  Options.LocalRepositoryArchive := AppendPathDelim(edLocalRepositoryArchive.Text);
-  Options.LocalRepositoryUpdate := AppendPathDelim(edLocalRepositoryUpdate.Text);
-
-  Options.UserProfile := cbSelectProfile.ItemIndex;
-  for I := 0 to lbExcludeFiles.Items.Count - 1 do
-  begin
-    if I = 0 then
-      Options.ExcludedFiles := lbExcludeFiles.Items[I]
-    else
-      Options.ExcludedFiles := Options.ExcludedFiles + ',' + lbExcludeFiles.Items[I];
-  end;
-  for I := 0 to lbExcludeFolders.Items.Count - 1 do
-  begin
-    if I = 0 then
-      Options.ExcludedFolders := lbExcludeFolders.Items[I]
-    else
-      Options.ExcludedFolders := Options.ExcludedFolders + ',' + lbExcludeFolders.Items[I];
-  end;
-
-  Options.Save;
-  ModalResult := mrOk;
-end;
 
 procedure TOptionsFrm.bOpenClick(Sender: TObject);
 var
@@ -249,6 +180,24 @@ begin
   end;
 end;
 
+procedure TOptionsFrm.SetupColors;
+begin
+  if not Options.UseDefaultTheme then
+  begin
+    Self.Color := clBtnFace;
+    tsGeneral.Color := clBtnFace;
+    tsProxy.Color := clBtnFace;
+    tsFolders.Color := clBtnFace;
+    tsProfiles.Color := clBtnFace;
+    pnGeneral.Color := clBtnFace;
+    pnProxy.Color := clBtnFace;
+    pnFolders.Color := clBtnFace;
+    pnProfiles.Color := clBtnFace;
+    lbExcludeFiles.Color := clBtnFace;
+    lbExcludeFolders.Color := clBtnFace;
+  end;
+end;
+
 procedure TOptionsFrm.bFilesAddClick(Sender: TObject);
 var
   Value: String;
@@ -269,6 +218,26 @@ begin
   begin
     Index := ListBox.Items.Add(Value);
     ListBox.Selected[Index] := True;
+  end;
+end;
+
+procedure TOptionsFrm.bColorsClick(Sender: TObject);
+begin
+  ColorsFrm := TColorsFrm.Create(Self);
+  try
+    if FHintFormOptionColors.Count > 0 then
+      ColorsFrm.LoadColors(FHintFormOptionColors)
+    else
+      ColorsFrm.LoadColors(Options.HintFormOptionColors);
+    if ColorsFrm.ShowModal = mrOK then
+    begin
+      FHintFormOptionColors.Clear;
+      FHintFormOptionColors.Add(ColorToString(ColorsFrm.shName.Brush.Color));
+      FHintFormOptionColors.Add(ColorToString(ColorsFrm.shDescription.Brush.Color));
+      FHintFormOptionColors.Add(ColorToString(ColorsFrm.shLicense.Brush.Color));
+    end;
+  finally
+    ColorsFrm.Free;
   end;
 end;
 
@@ -343,16 +312,6 @@ begin
       ListBox.Items.Delete(Index);
 end;
 
-procedure TOptionsFrm.bRestoreClick(Sender: TObject);
-begin
-  if MessageDlgEx(rsOptions_RestoreDefaults_Conf, mtInformation, [mbYes, mbNo], Self) = mrYes then
-  begin
-    Options.LoadDefault;
-    Options.CreateMissingPaths;
-    SetupControls;
-  end;
-end;
-
 procedure TOptionsFrm.cbProxyChange(Sender: TObject);
 begin
   gbProxySettings.Enabled:= cbProxy.Checked;
@@ -366,13 +325,132 @@ end;
 procedure TOptionsFrm.edRemoteRepositoryKeyPress(Sender: TObject; var Key: char);
 begin
   if Key = #13 then
-    bOkClick(bOk);
+    OKButtonClick(bpOptions.OKButton);
+end;
+
+procedure TOptionsFrm.FormCreate(Sender: TObject);
+begin
+  FHintFormOptionColors := TStringList.Create;
+end;
+
+procedure TOptionsFrm.FormDestroy(Sender: TObject);
+begin
+  FHintFormOptionColors.Free;
 end;
 
 procedure TOptionsFrm.FormKeyPress(Sender: TObject; var Key: char);
 begin
   if Key = #27 then
     Close;
+end;
+
+procedure TOptionsFrm.HelpButtonClick(Sender: TObject);
+begin
+  if MessageDlgEx(rsOptions_RestoreDefaults_Conf, mtInformation, [mbYes, mbNo], Self) = mrYes then
+  begin
+    Options.LoadDefault;
+    Options.CreateMissingPaths;
+    SetupControls;
+  end;
+end;
+
+procedure TOptionsFrm.OKButtonClick(Sender: TObject);
+var
+  I: Integer;
+begin
+  ModalResult := mrNone;
+  if Trim(cbRemoteRepository.Text)  = '' then
+  begin
+    MessageDlgEx(rsOptions_RemoteRepository_Information, mtInformation, [mbOk], Self);
+    cbRemoteRepository.SetFocus;
+    Exit;
+  end;
+
+  if cbProxy.Checked then
+  begin
+    if Trim(edProxyServer.Text)  = '' then
+    begin
+      MessageDlgEx(rsOptions_ProxyServer_Info, mtInformation, [mbOk], Self);
+      edProxyServer.SetFocus;
+      Exit;
+    end;
+    if seProxyPort.Value = 0 then
+    begin
+      MessageDlgEx(rsOptions_ProxyPort_Info, mtInformation, [mbOk], Self);
+      seProxyPort.SetFocus;
+      Exit;
+    end;
+  end;
+
+  if Trim(edLocalRepositoryPackages.Text)  = '' then
+  begin
+    MessageDlgEx(rsOptions_InvalidDirectory_Info, mtInformation, [mbOk], Self);
+    edLocalRepositoryPackages.SetFocus;
+    Exit;
+  end;
+  if Trim(edLocalRepositoryArchive.Text)  = '' then
+  begin
+    MessageDlgEx(rsOptions_InvalidDirectory_Info, mtInformation, [mbOk], Self);
+    edLocalRepositoryArchive.SetFocus;
+    Exit;
+  end;
+  if Trim(edLocalRepositoryUpdate.Text)  = '' then
+  begin
+    MessageDlgEx(rsOptions_InvalidDirectory_Info, mtInformation, [mbOk], Self);
+    edLocalRepositoryUpdate.SetFocus;
+    Exit;
+  end;
+  if Options.RemoteRepositoryTmp.Count > 0 then
+    Options.RemoteRepository.Text := Options.RemoteRepositoryTmp.Text;
+  Options.ActiveRepositoryIndex := cbRemoteRepository.ItemIndex;
+  Options.ForceDownloadAndExtract := cbForceDownloadExtract.Checked;
+  Options.ConTimeOut := spConTimeOut.Value;
+  Options.DeleteZipAfterInstall := cbDeleteZipAfterInstall.Checked;
+  Options.CheckForUpdates := cbCheckForUpdates.ItemIndex;
+  Options.DaysToShowNewPackages := spDaysToShowNewPackages.Value;
+  Options.ShowRegularIcons := cbRegularIcons.Checked;
+  Options.HintFormOption := rbHintFormOptions.ItemIndex;
+  Options.UseDefaultTheme := cbUseDefaultTheme.Checked;
+
+  Options.ProxyEnabled := cbProxy.Checked;
+  Options.ProxyServer := edProxyServer.Text;
+  Options.ProxyPort := seProxyPort.Value;
+  Options.ProxyUser := edProxyUser.Text;
+  Options.ProxyPassword := edProxyPassword.Text;
+
+  Options.LocalRepositoryPackages := AppendPathDelim(edLocalRepositoryPackages.Text);
+  Options.LocalRepositoryArchive := AppendPathDelim(edLocalRepositoryArchive.Text);
+  Options.LocalRepositoryUpdate := AppendPathDelim(edLocalRepositoryUpdate.Text);
+  if not DirectoryExists(Options.LocalRepositoryPackages) then
+    ForceDirectories(Options.LocalRepositoryPackages);
+  if not DirectoryExists(Options.LocalRepositoryArchive) then
+    ForceDirectories(Options.LocalRepositoryArchive);
+  if not DirectoryExists(Options.LocalRepositoryUpdate) then
+    ForceDirectories(Options.LocalRepositoryUpdate);
+
+  Options.UserProfile := cbSelectProfile.ItemIndex;
+  for I := 0 to lbExcludeFiles.Items.Count - 1 do
+  begin
+    if I = 0 then
+      Options.ExcludedFiles := lbExcludeFiles.Items[I]
+    else
+      Options.ExcludedFiles := Options.ExcludedFiles + ',' + lbExcludeFiles.Items[I];
+  end;
+  for I := 0 to lbExcludeFolders.Items.Count - 1 do
+  begin
+    if I = 0 then
+      Options.ExcludedFolders := lbExcludeFolders.Items[I]
+    else
+      Options.ExcludedFolders := Options.ExcludedFolders + ',' + lbExcludeFolders.Items[I];
+  end;
+  if FHintFormOptionColors.Count > 0 then
+  begin
+    Options.HintFormOptionColors.Clear;
+    Options.HintFormOptionColors.Text := FHintFormOptionColors.Text;
+  end;
+
+  Options.Save;
+  ModalResult := mrOk;
 end;
 
 procedure TOptionsFrm.SetupControls(const AActivePageIndex: Integer = 0);
@@ -393,6 +471,9 @@ begin
   cbDeleteZipAfterInstall.Checked := Options.DeleteZipAfterInstall;
   cbForceDownloadExtract.Caption := rsOptions_cbForceDownloadExtract_Caption;
   cbForceDownloadExtract.Hint := rsOptions_cbForceDownloadExtract_Hint;
+  lbConTimeOut.Caption := rsOptions_lbConTimeOut_Caption;
+  lbConTimeOut.Hint := rsOptions_lbConTimeOut_Hint;
+  spConTimeOut.Value := Options.ConTimeOut;
   cbDeleteZipAfterInstall.Caption := rsOptions_cbDelete_Caption;
   cbDeleteZipAfterInstall.Hint := rsOptions_cbDelete_Hint;
   lbUpdates.Caption := rsOptions_lbCheckForUpdates_Caption;
@@ -410,9 +491,16 @@ begin
     lbLastUpdate.Caption := rsOptions_lbLastUpdate_Caption + FormatDateTime('YYYY.MM.DD  hh:mm:ss', Options.LastUpdate);
   lbDaysToShowNewPackages.Caption := rsOptions_lbDaysToShowNewPackages_Caption;
   spDaysToShowNewPackages.Value := Options.DaysToShowNewPackages;
-  spDaysToShowNewPackages.Top := lbDaysToShowNewPackages.Top + 1 + (lbDaysToShowNewPackages.Height - spDaysToShowNewPackages.Height) div 2;
-  spDaysToShowNewPackages.Left := lbDaysToShowNewPackages.Left + lbDaysToShowNewPackages.Canvas.GetTextWidth(lbDaysToShowNewPackages.Caption) + 10;
-
+  cbRegularIcons.Checked := Options.ShowRegularIcons;
+  cbRegularIcons.Caption := rsOptions_cbRegular_Caption;
+  rbHintFormOptions.Caption := rsOptions_rbHintFormOptions_Caption;
+  rbHintFormOptions.Items.Clear;
+  rbHintFormOptions.Items.Add(rsOptions_rbHintFormOptions_Item0);
+  rbHintFormOptions.Items.Add(rsOptions_rbHintFormOptions_Item1);
+  rbHintFormOptions.Items.Add(rsOptions_rbHintFormOptions_Item2);
+  rbHintFormOptions.ItemIndex := Options.HintFormOption;
+  cbUseDefaultTheme.Checked := Options.UseDefaultTheme;
+  cbUseDefaultTheme.Caption := rsOptions_cbUseDefaultTheme_Caption;
   tsProxy.Caption := rsOptions_tsProxy_Caption;
   cbProxy.Caption := rsOptions_cbProxy_Caption;
   gbProxySettings.Caption := rsOptions_gbProxySettings_Caption;
@@ -424,7 +512,7 @@ begin
   gbProxySettings.Enabled := Options.ProxyEnabled;
   edProxyServer.Text := Options.ProxyServer;
   seProxyPort.Value := Options.ProxyPort;
-  seProxyPort.Top := edProxyServer.Top + (edProxyServer.Height - seProxyPort.Height) div 2;
+  //seProxyPort.Top := edProxyServer.Top + (edProxyServer.Height - seProxyPort.Height) div 2;
   edProxyUser.Text := Options.ProxyUser;
   edProxyPassword.Text := Options.ProxyPassword;
 
@@ -466,6 +554,11 @@ begin
   lbExcludeFolders.Items.StrictDelimiter := True;
   lbExcludeFolders.Items.DelimitedText := Options.ExcludedFolders;
   pnProfilesMain.Visible := Options.UserProfile = 1;
+  bColors.Caption := rsOptions_bColors_Caption;
+  bpOptions.HelpButton.Caption := rsOptions_bpOptions_bHelp;
+  bpOptions.HelpButton.Kind := bkCustom;
+  bpOptions.HelpButton.Glyph.Clear;
+  SetupColors;
 end;
 
 procedure TOptionsFrm.pnProfilesMainResize(Sender: TObject);
@@ -475,7 +568,7 @@ end;
 
 procedure TOptionsFrm.pnProfilesTopResize(Sender: TObject);
 begin
-  cbSelectProfile.Left := lbSelectProfile.Left + lbSelectProfile.Width + 10;
+  //cbSelectProfile.Left := lbSelectProfile.Left + lbSelectProfile.Width + 10;
 end;
 
 end.

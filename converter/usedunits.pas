@@ -31,13 +31,16 @@ unit UsedUnits;
 interface
 
 uses
-  Classes, SysUtils, AVL_Tree, Forms, Controls, Dialogs,
-  // IDE
-  LazarusIDEStrConsts, IDEExternToolIntf,
+  Classes, SysUtils, Laz_AVL_Tree,
+  // LCL
+  Forms, Controls,
+  // LazUtils
+  AvgLvlTree,
   // codetools
-  CodeToolManager, StdCodeTools, CustomCodeTool, CodeTree, CodeAtom, CodeCache,
-  LinkScanner, KeywordFuncLists, SourceChanger, CodeToolsStrConsts, CodeToolsStructs,
-  FileProcs,
+  StdCodeTools, CodeTree, CodeAtom, CodeCache,
+  LinkScanner, KeywordFuncLists, SourceChanger, CodeToolsStrConsts,
+  // IDE + IdeIntf
+  LazarusIDEStrConsts, IDEExternToolIntf,
   // Converter
   ConverterTypes, ConvCodeTool, ConvertSettings, ReplaceNamesUnit;
 
@@ -460,8 +463,10 @@ procedure TUsedUnits.CommentAutomatic(ACommentedUnits: TStringList);
 var
   i, x: Integer;
 begin
+  if ACommentedUnits = Nil then Exit;
   for i:=fMissingUnits.Count-1 downto 0 do begin
-    if ACommentedUnits.Find(fMissingUnits[i], x) then begin
+    if ACommentedUnits.Find(fMissingUnits[i], x) then
+    begin
       fUnitsToComment.Add(fMissingUnits[i]);
       fMissingUnits.Delete(i);
     end;
@@ -586,7 +591,7 @@ var
   UnitUpdater: TStringMapUpdater;
   MapToEdit: TStringToStringTree;
   Node: TAVLTreeNode;
-  Item: PStringToStringTreeItem;
+  Item: PStringToStringItem;
   UnitN, s: string;
   i: Integer;
 begin
@@ -620,7 +625,7 @@ begin
       // Iterate the map and rename / remove.
       Node:=MapToEdit.Tree.FindLowest;
       while Node<>nil do begin
-        Item:=PStringToStringTreeItem(Node.Data);
+        Item:=PStringToStringItem(Node.Data);
         UnitN:=Item^.Name;
         s:=Item^.Value;
         if fMainUsedUnits.fExistingUnits.IndexOf(UnitN)<>-1 then

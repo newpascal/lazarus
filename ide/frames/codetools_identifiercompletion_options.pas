@@ -33,6 +33,7 @@ type
   { TCodetoolsIndentifierCompletionOptionsFrame }
 
   TCodetoolsIndentifierCompletionOptionsFrame = class(TAbstractIDEOptionsEditor)
+    ICContainsFilterCheckBox: TCheckBox;
     ICAddDoCheckBox: TCheckBox;
     ICAutoAddParameterBracketsCheckBox: TCheckBox;
     ICMiscDividerBevel: TDividerBevel;
@@ -46,8 +47,10 @@ type
     ICShowHelpCheckBox: TCheckBox;
     ICAutoUseSingleIdent: TCheckBox;
     ICSortDividerBevel: TDividerBevel;
+    ICAppearanceDividerBevel: TDividerBevel;
     ICSortForHistoryCheckBox: TCheckBox;
     ICSortForScopeCheckBox: TCheckBox;
+    ICUseIconsInCompletionBoxCheckBox: TCheckBox;
   private
   public
     function GetTitle: String; override;
@@ -89,6 +92,10 @@ begin
   ICSortForHistoryCheckBox.Caption:=lisShowRecentlyUsedIdentifiersAtTop;
   ICSortForScopeCheckBox.Caption:=lisSortForScope;
   ICSortForScopeCheckBox.Hint:=lisForExampleShowAtTopTheLocalVariablesThenTheMembers;
+  ICContainsFilterCheckBox.Caption := dlgIncludeIdentifiersContainingPrefix;
+
+  ICAppearanceDividerBevel.Caption:=lisAppearance;
+  ICUseIconsInCompletionBoxCheckBox.Caption := dlgUseIconsInCompletionBox;
 
   ICMiscDividerBevel.Caption:=dlgEnvMisc;
   ICReplaceCheckBox.Caption:=lisReplaceWholeIdentifier;
@@ -113,6 +120,8 @@ begin
     ICShowHelpCheckBox.Checked:=IdentComplShowHelp;
     ICSortForHistoryCheckBox.Checked:=IdentComplSortForHistory;
     ICSortForScopeCheckBox.Checked:=IdentComplSortForScope;
+    ICContainsFilterCheckBox.Checked:=IdentComplUseContainsFilter;
+    ICUseIconsInCompletionBoxCheckBox.Checked:=IdentComplShowIcons;
   end;
 end;
 
@@ -132,6 +141,8 @@ begin
     IdentComplShowHelp:=ICShowHelpCheckBox.Checked;
     IdentComplSortForHistory:=ICSortForHistoryCheckBox.Checked;
     IdentComplSortForScope:=ICSortForScopeCheckBox.Checked;
+    IdentComplUseContainsFilter:=ICContainsFilterCheckBox.Checked;
+    IdentComplShowIcons:=ICUseIconsInCompletionBoxCheckBox.Checked;
   end;
 end;
 

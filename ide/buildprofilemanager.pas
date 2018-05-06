@@ -174,6 +174,7 @@ const
 
 function IdeBuildModeToStr(BuildMode: TIdeBuildMode): string;
 begin
+  Result:='';
   case BuildMode of
     bmBuild:         Result:='Build';
     bmCleanBuild:    Result:='Clean + Build';
@@ -519,11 +520,11 @@ begin
   Caption := lisLazBuildManageProfiles;
 
   ProfilesToolBar.Images := IDEImages.Images_16;
-  AddButton.ImageIndex     :=IDEImages.LoadImage(16, 'laz_add');
-  RemoveButton.ImageIndex  :=IDEImages.LoadImage(16, 'laz_delete');
-  EditButton.ImageIndex    :=IDEImages.LoadImage(16, 'laz_edit');
-  MoveUpButton.ImageIndex  :=IDEImages.LoadImage(16, 'arrow_up');
-  MoveDownButton.ImageIndex:=IDEImages.LoadImage(16, 'arrow_down');
+  AddButton.ImageIndex     :=IDEImages.LoadImage('laz_add');
+  RemoveButton.ImageIndex  :=IDEImages.LoadImage('laz_delete');
+  EditButton.ImageIndex    :=IDEImages.LoadImage('laz_edit');
+  MoveUpButton.ImageIndex  :=IDEImages.LoadImage('arrow_up');
+  MoveDownButton.ImageIndex:=IDEImages.LoadImage('arrow_down');
 
   AddButton.Caption:=lisAdd;
   RemoveButton.Caption:=lisRemove;

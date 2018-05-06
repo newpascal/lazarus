@@ -119,7 +119,10 @@ type
     procedure SumTable;
     procedure ResizeTable(ChildSizing: TControlChildSizing;
                           TargetWidth, TargetHeight: integer);
-    procedure AlignToRight(TargetWidth: integer);
+//    Michl: Commented procedure AlignToRight because of issue #28483, afaics
+//           it isn't needed, I'll remove code, if there are no regressions.
+//           Commented in revision 55209
+//    procedure AlignToRight(TargetWidth: integer);
     procedure ComputeTableControlBounds(ChildSizing: TControlChildSizing;
                                         BiDiMode: TBiDiMode);
     function SetTableControlBounds(ChildSizing: TControlChildSizing
@@ -171,7 +174,7 @@ type
     
   TAutoSizeCtrlData = class
   private
-    FChilds: TAvgLvlTree;// tree of TAutoSizeCtrlData
+    FChilds: TAvlTree;// tree of TAutoSizeCtrlData
     function GetChildren(AControl: TControl): TAutoSizeCtrlData;
     procedure DoMoveNonAlignedChildren(Side: TAnchorKind;
                                    var MoveDiff: integer; FindMinimum: boolean);
@@ -257,12 +260,12 @@ end;
 
 function TAutoSizeCtrlData.GetChildren(AControl: TControl): TAutoSizeCtrlData;
 var
-  AVLNode: TAvgLvlTreeNode;
+  AVLNode: TAvlTreeNode;
 begin
   if AControl=nil then exit(nil);
   if AControl=Control then RaiseGDBException('TAutoSizeCtrlData.GetChilds');
   if FChilds=nil then
-    FChilds:=TAvgLvlTree.Create(@CompareAutoSizeCtrlDatas);
+    FChilds:=TAvlTree.Create(@CompareAutoSizeCtrlDatas);
   AVLNode:=FChilds.FindKey(AControl,@CompareControlWithAutoSizeCtrlData);
   if AVLNode<>nil then
     Result:=TAutoSizeCtrlData(AVLNode.Data)
@@ -1560,7 +1563,7 @@ begin
         Col:=i div LineMax;
         Row:=i mod LineMax;
         if (BiDiMode=bdRightToLeft) then
-          Col:=LineMax-Col-1;
+          Col:=ChildCount[asboHorizontal]-Col-1;
         ChildBox:=Children[asboVertical][Row].Children[asboHorizontal][Col];
         ChildBox.SetControl(ChildControl);
         ChildBox.ApplyChildsizingBorders(ChildSizing);
@@ -2137,7 +2140,7 @@ begin
   ComputeLeftTops(asboVertical);
 end;
 
-procedure TAutoSizeBox.AlignToRight(TargetWidth: integer);
+{procedure TAutoSizeBox.AlignToRight(TargetWidth: integer);
 
   function GetChildTotalSize(Orientation: TAutoSizeBoxOrientation): integer;
   // computes the total preferred size of all children of this Orientation
@@ -2171,7 +2174,7 @@ begin
     inc(Child.LeftTop[Orientation],dx);
   end;
 end;
-
+}
 procedure TAutoSizeBox.ComputeTableControlBounds(
   ChildSizing: TControlChildSizing; BiDiMode: TBiDiMode);
 var
@@ -2297,8 +2300,13 @@ begin
   //WriteDebugReport('after SumTable');
   ResizeTable(ChildSizing,TargetWidth,TargetHeight);
   //WriteDebugReport('after ResizeTable');
-  if BiDiMode=bdRightToLeft then
-    AlignToRight(TargetWidth);
+
+//  Michl: Commented procedure AlignToRight because of issue #28483, afaics
+//         it isn't needed, I'll remove code, if there are no regressions.
+//         Commented in revision 55209
+//  if BiDiMode=bdRightToLeft then
+//    AlignToRight(TargetWidth);
+
   //WriteDebugReport('after AlignToRight');
   ComputeTableControlBounds(ChildSizing,BiDiMode);
   //WriteDebugReport('after ComputeTableControlBounds');
@@ -2553,6 +2561,7 @@ var
       or (CurControl.Anchors <> [akLeft, akTop])
       or (CurControl.AnchorSide[akLeft].Control<>nil)
       or (CurControl.AnchorSide[akTop].Control<>nil)
+      or (cfAutoSizeNeeded in CurControl.FControlFlags)
       or (ChildSizing.Layout<>cclNone)
       then Exit;
     end;
@@ -3844,10 +3853,15 @@ procedure TWinControl.AutoAdjustLayout(AMode: TLayoutAdjustmentPolicy;
 var
   i: Integer;
 begin
-  for i:=0 to ControlCount-1 do
-    Controls[i].AutoAdjustLayout(AMode, AFromPPI, AToPPI, AOldFormWidth, ANewFormWidth);
+  DisableAutoSizing{$IFDEF DebugDisableAutoSizing}('TWinControl.AutoAdjustLayout'){$ENDIF};
+  try
+    for i:=0 to ControlCount-1 do
+      Controls[i].AutoAdjustLayout(AMode, AFromPPI, AToPPI, AOldFormWidth, ANewFormWidth);
 
-  inherited;
+    inherited;
+  finally
+    EnableAutoSizing{$IFDEF DebugDisableAutoSizing}('TWinControl.AutoAdjustLayout'){$ENDIF};
+  end;
 end;
 
 {------------------------------------------------------------------------------
@@ -4121,6 +4135,7 @@ end;
 ------------------------------------------------------------------------------}
 procedure TWinControl.SetBorderStyle(NewStyle: TBorderStyle);
 begin
+  if FBorderStyle = NewStyle then Exit;
   FBorderStyle := NewStyle;
   if HandleAllocated then
     TWSWinControlClass(WidgetSetClass).SetBorderStyle(Self, NewStyle);
@@ -4296,6 +4311,10 @@ begin
     begin
       Msg := LM_SIZE;
       SizeType := 6; // force realign
+      if (FWidth  < Low(Word)) or (FWidth  > High(Word))
+      or (FHeight < Low(Word)) or (FHeight > High(Word)) then
+        raise Exception.CreateFmt('Size range overflow in %s.SendMoveSizeMessages:'
+                                 +' Width=%d, Height=%d.', [Name, FWidth, FHeight]);
       Width := FWidth;
       Height := FHeight;
       {$IFDEF CHECK_POSITION}
@@ -4312,8 +4331,12 @@ begin
     begin
       Msg:= LM_MOVE;
       MoveType:= 1;
-      XPos:= FLeft;
-      YPos:= FTop;
+      if (FLeft < Low(Smallint)) or (FLeft > High(Smallint))
+      or (FTop  < Low(Smallint)) or (FTop  > High(Smallint)) then
+        raise Exception.CreateFmt('Position range overflow in %s.SendMoveSizeMessages:'
+                                 +' Left=%d, Top=%d.', [Name, FLeft, FTop]);
+      XPos := FLeft;
+      YPos := FTop;
       {$IFDEF CHECK_POSITION}
       if CheckPosition(Self) then
       DebugLn(' [TControl.SendMoveSizeMessages] ',Name,':',ClassName,' MoveMsg XPos=',Dbgs(XPos),' YPos=',Dbgs(YPos));
@@ -4491,7 +4514,7 @@ begin
     FlipControls.Free;
     EnableAlign;
   end;
-  
+  FFlipped := not FFlipped; // toggle FFlipped status
   // flip recursively
   if AllLevels then begin
     for i := 0 to ControlCount - 1 do begin
@@ -4703,7 +4726,8 @@ begin
       );
       {$ENDIF}
     end;
-    if MouseMessage.Msg = LM_MOUSEWHEEL then
+    if (MouseMessage.Msg = LM_MOUSEWHEEL) or
+      (MouseMessage.Msg = LM_MOUSEHWHEEL) then
     begin
       MouseEventMessage := TLMMouseEvent(TheMessage);
       {$PUSH}
@@ -5494,6 +5518,9 @@ begin
   InfluenceRect.Top := InfluenceRect.Top-ADockMargin;
   InfluenceRect.Right := InfluenceRect.Right+ADockMargin;
   InfluenceRect.Bottom := InfluenceRect.Bottom+ADockMargin;
+
+  if UseDockManager then
+    CanDock:=DockManager.IsEnabledControl(Client);
 
   if Assigned(FOnGetSiteInfo) then
     FOnGetSiteInfo(Self, Client, InfluenceRect, MousePos, CanDock);
@@ -6488,6 +6515,18 @@ begin
   InvalidatePreferredSize;
 end;
 
+procedure TWinControl.SetParentBackground(const AParentBackground: Boolean);
+begin
+  if ParentBackground = AParentBackground then
+    Exit;
+
+  if AParentBackground then
+    ControlStyle := ControlStyle + [csParentBackground]
+  else
+    ControlStyle := ControlStyle - [csParentBackground];
+  Invalidate;
+end;
+
 {------------------------------------------------------------------------------
   Method: TWinControl.Create
   Params:  None
@@ -6622,11 +6661,17 @@ var
   i: Integer;
   CurControl: TControl;
   AWidth: Integer;
+  SaveLeft: Integer;
 begin
   AWidth:=GetLogicalClientRect.Right;
   DisableAlign;
   for i:=0 to ControlCount-1 do begin
     CurControl:=Controls[i];
+    // flip BorderSpacing
+    SaveLeft := CurControl.BorderSpacing.Left;
+    CurControl.BorderSpacing.Left := CurControl.BorderSpacing.Right;
+    CurControl.BorderSpacing.Right := SaveLeft;
+    // flip control and anchors
     CurControl.Left:=AWidth-CurControl.Left-CurControl.Width;
     CurControl.Anchors := BidiFlipAnchors(CurControl, True);
   end;
@@ -6954,10 +6999,6 @@ begin
       ' wcfClientRectNeedsUpdate=',wcfClientRectNeedsUpdate in FWinControlFlags]);
     {$ENDIF}
 
-    NewLeft := FBoundsRealized.Left;
-    NewTop := FBoundsRealized.Top;
-    if HandleAllocated then
-      GetWindowRelativePosition(Handle, NewLeft, NewTop);
     //if CheckPosition(Self) then
       //DebugLn(['TWinControl.WMSize GetWindowRelativePosition: ',DbgSName(Self),' ',NewLeft,',',NewTop,' ClientRectNeedsInterfaceUpdate=',ClientRectNeedsInterfaceUpdate]);
     NewBoundsRealized := Bounds(NewLeft, NewTop, Message.Width, Message.Height);
@@ -7010,7 +7051,7 @@ begin
       InvalidatePreferredSize;
   end;
 
-  if Assigned(Parent) then
+  if Assigned(Parent) and not (Self is TCustomForm) then
     SetBoundsKeepBase(NewLeft, NewTop, Message.Width, Message.Height)
   else
     SetBounds(NewLeft, NewTop, Message.Width, Message.Height);
@@ -7489,7 +7530,7 @@ begin
       TWSWinControlClass(WidgetSetClass).ConstraintsChange(Self);
 
       //WriteClientRect('A');
-      if Assigned(Parent) then
+      if Assigned(Parent) and (Params.Style and WS_POPUP = 0) then
         AddControl
       else
       if ParentWindow <> 0 then
@@ -7660,6 +7701,11 @@ end;
 function TWinControl.GetMouseCapture: Boolean;
 begin
   Result:=HandleAllocated and (GetCaptureControl=Self);
+end;
+
+function TWinControl.GetParentBackground: Boolean;
+begin
+  Result := csParentBackground in ControlStyle;
 end;
 
 {------------------------------------------------------------------------------

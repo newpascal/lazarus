@@ -6,7 +6,8 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, fpcunit, testutils, testregistry, LCLProc, LazLogger,
-  LazFileUtils, DbgIntfDebuggerBase, CompileHelpers, Dialogs, TestGDBMIControl, GDBMIDebugger; // , FpGdbmiDebugger;
+  LazFileUtils, DbgIntfDebuggerBase, CompileHelpers, Dialogs, TestGDBMIControl,
+  RegExpr, GDBMIDebugger; // , FpGdbmiDebugger;
   // EnvironmentOpts, ExtToolDialog, TransferMacros,
 
 (*
@@ -42,7 +43,7 @@ const
      'wdfChar', 'wdfString',
      'wdfDecimal', 'wdfUnsigned', 'wdfFloat', 'wdfHex',
      'wdfPointer',
-     'wdfMemDump'
+     'wdfMemDump', 'wdfBinary'
     );
 
 type
@@ -345,13 +346,14 @@ type
     FTestErrors, FIgnoredErrors, FUnexpectedSuccess: String;
     FTestCnt, FTestErrorCnt, FIgnoredErrorCnt, FUnexpectedSuccessCnt, FSucessCnt: Integer;
     FTotalErrorCnt, FTotalIgnoredErrorCnt, FTotalUnexpectedSuccessCnt: Integer;
+    FTotalGDBInternalErrorCnt: Integer;
+    FTotalClassVsRecord: Integer;
     FCurrentPrgName, FCurrentExename: String;
     FLogFile: TextFile;
     FLogFileCreated: Boolean;
     FLogFileName, FFinalLogFileName, FLogBufferText: String;
     FLogDebuglnCount: Integer;
     function GetCompilerInfo: TCompilerInfo;
-    function GetDebuggerInfo: TDebuggerInfo;
     function GetSymbolType: TSymbolType;
     procedure DoDbgOut(Sender: TObject; S: string; var Handled: Boolean);
     procedure DoDebugln(Sender: TObject; S: string; var Handled: Boolean);
@@ -365,15 +367,24 @@ type
     procedure InternalDbgOutPut(Sender: TObject; const AText: String);
     function InternalFeedBack(Sender: TObject; const AText, AInfo: String;
       AType: TDBGFeedbackType; AButtons: TDBGFeedbackResults): TDBGFeedbackResult;
+    procedure InternalDbgEvent(Sender: TObject;
+      const ACategory: TDBGEventCategory; const AEventType: TDBGEventType;
+      const AText: String);
     function GdbClass: TGDBMIDebuggerClass; virtual;
     function StartGDB(AppDir, TestExeName: String): TGDBMIDebugger;
     procedure CleanGdb;
     procedure ClearTestErrors;
 
+    function GetDebuggerInfo: TDebuggerInfo;
+
     procedure AddTestError(s: string; MinGdbVers: Integer = 0; AIgnoreReason: String = '');
     procedure AddTestError(s: string; MinGdbVers: Integer; MinFpcVers: Integer;AIgnoreReason: String = '');
     procedure AddTestSuccess(s: string; MinGdbVers: Integer = 0; AIgnoreReason: String = '');
     procedure AddTestSuccess(s: string; MinGdbVers: Integer; MinFpcVers: Integer;AIgnoreReason: String = '');
+
+    function TestMatches(Expected, Got: string): Boolean;
+    function TestMatches(Name: string; Expected, Got: string; MinGdbVers: Integer = 0; AIgnoreReason: String = ''): Boolean;
+    function TestMatches(Name: string; Expected, Got: string; MinGdbVers: Integer; MinFpcVers: Integer; AIgnoreReason: String = ''): Boolean;
 
     function TestEquals(Expected, Got: string): Boolean;
     function TestEquals(Name: string; Expected, Got: string; MinGdbVers: Integer = 0; AIgnoreReason: String = ''): Boolean;
@@ -390,6 +401,7 @@ type
 
     procedure AssertTestErrors;
     property TestErrors: string read FTestErrors;
+    property TotalClassVsRecord: Integer read FTotalClassVsRecord write FTotalClassVsRecord;
   public
     Procedure TestCompile(const PrgName: string; out ExeName: string; NamePostFix: String=''; ExtraArgs: String=''); overload;
     Procedure TestCompile(const PrgName: string; out ExeName: string; UsesDirs: array of TUsesDir;
@@ -814,6 +826,31 @@ function TGDBTestCase.InternalFeedBack(Sender: TObject; const AText, AInfo: Stri
   AType: TDBGFeedbackType; AButtons: TDBGFeedbackResults): TDBGFeedbackResult;
 begin
   Result := frOk;
+  DebugLn(['**** Feedback requested ****: ', AText]);
+  DebugLn(['**** ', AInfo]);
+end;
+
+procedure TGDBTestCase.InternalDbgEvent(Sender: TObject;
+  const ACategory: TDBGEventCategory; const AEventType: TDBGEventType;
+  const AText: String);
+begin
+  case ACategory of
+  	ecBreakpoint: ;
+    ecProcess: ;
+    ecThread: ;
+    ecModule: ;
+    ecOutput: ;
+    ecWindows: ;
+    ecDebugger: begin
+      case AEventType of
+      	etDefault: begin
+          // maybe crash / internal error? Text from IDE not GDB (po file)
+          if (Pos('internal error:', LowerCase(AText)) > 0) then
+            inc(FTotalGDBInternalErrorCnt);
+        end;
+      end;
+    end;
+  end;
 end;
 
 function TGDBTestCase.GetCompilerInfo: TCompilerInfo;
@@ -885,6 +922,8 @@ begin
   FTotalErrorCnt := 0;
   FTotalIgnoredErrorCnt := 0;
   FTotalUnexpectedSuccessCnt := 0;
+  FTotalGDBInternalErrorCnt := 0;
+  FTotalClassVsRecord := 0;
   DebugLogger.OnDbgOut  := @DoDbgOut;
   DebugLogger.OnDebugLn  := @DoDebugln;
   inherited SetUp;
@@ -907,6 +946,10 @@ begin
     then FFinalLogFileName := FFinalLogFileName + '.unexpected_'+IntToStr(FTotalUnexpectedSuccessCnt);
     if (FTotalErrorCnt > 0)
     then FFinalLogFileName := FFinalLogFileName + '.failed_'+IntToStr(FTotalErrorCnt);
+    if FTotalGDBInternalErrorCnt > 0
+    then FFinalLogFileName := FFinalLogFileName + '.gdb_intern_'+IntToStr(FTotalGDBInternalErrorCnt);
+    if FTotalClassVsRecord > 0
+    then FFinalLogFileName := FFinalLogFileName + '.class_record_'+IntToStr(FTotalClassVsRecord);
 
     FFinalLogFileName := FFinalLogFileName + '.log';
     RenameFileUTF8(FLogFileName, FFinalLogFileName);
@@ -933,6 +976,7 @@ begin
   Result := GdbClass.Create(DebuggerInfo.ExeName);
   Result.OnDbgOutput  := @InternalDbgOutPut;
   Result.OnFeedback := @InternalFeedBack;
+  Result.OnDbgEvent:=@InternalDbgEvent;
 
   //TManagedBreakpoints(FBreakpoints).Master := FDebugger.BreakPoints;
   FWatches.Supplier := Result.Watches;
@@ -1064,6 +1108,32 @@ begin
   end
   else
     inc(FSucessCnt);
+end;
+
+function TGDBTestCase.TestMatches(Expected, Got: string): Boolean;
+begin
+  Result := TestMatches('', Expected, Got);
+end;
+
+function TGDBTestCase.TestMatches(Name: string; Expected, Got: string;
+  MinGdbVers: Integer; AIgnoreReason: String): Boolean;
+begin
+  Result := TestMatches(Name, Expected, Got, MinGdbVers, 0, AIgnoreReason);
+end;
+
+function TGDBTestCase.TestMatches(Name: string; Expected, Got: string;
+  MinGdbVers: Integer; MinFpcVers: Integer; AIgnoreReason: String): Boolean;
+var
+  rx: TRegExpr;
+begin
+  rx := TRegExpr.Create;
+  rx.ModifierI := true;
+  rx.Expression := Expected;
+  Result :=  rx.Exec(Got);
+  FreeAndNil(rx);
+  if Result
+  then AddTestSuccess(Name + ': Expected to fail with, but succeded, Got "'+Got+'"', MinGdbVers, MinFpcVers, AIgnoreReason)
+  else AddTestError(Name + ': Expected "'+Expected+'", Got "'+Got+'"', MinGdbVers, MinFpcVers, AIgnoreReason);
 end;
 
 function TGDBTestCase.TestEquals(Expected, Got: string): Boolean;

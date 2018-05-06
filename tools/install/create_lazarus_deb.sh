@@ -142,6 +142,7 @@ if [ "$UseCHMHelp" = "1" ]; then
   cp -v *.kwd *.chm $LazDestDir/docs/chm/
   cd -
 fi
+chmod a-x $LazDestDir/debian/rules
 
 # compile
 echo
@@ -160,6 +161,7 @@ mkdir -p units/${targetos}-linux/qt
 
 export LCL_PLATFORM=
 
+find . -name '*.or' -delete
 strip lazarus
 strip startlazarus
 strip lazbuild
@@ -186,13 +188,19 @@ cat $DebianSrcDir/control$LCLWidgetset | \
       -e "s/LAZSIZE/$LazSize/g" \
       -e "s/PKGNAME/$PkgName/g" \
   > $LazBuildDir/DEBIAN/control
+cp $DebianSrcDir/conffiles $LazBuildDir/DEBIAN/
 
 # copyright and changelog files
 echo "copying copyright and changelog files"
-mkdir -p $LazBuildDir/usr/share/doc/lazarus
-cp $DebianSrcDir/{copyright,changelog,changelog.Debian} $LazBuildDir/usr/share/doc/lazarus/
-gzip --best $LazBuildDir/usr/share/doc/lazarus/changelog
-gzip --best $LazBuildDir/usr/share/doc/lazarus/changelog.Debian
+LazBuildDocDir=$LazBuildDir/usr/share/doc/$PkgName
+mkdir -p $LazBuildDocDir
+cp $DebianSrcDir/copyright $LazBuildDocDir/
+cat $LazSrcDir/debian/changelog | sed -e "s/^lazarus (/$PkgName (/" > $LazBuildDocDir/changelog
+cp $LazBuildDocDir/changelog $LazBuildDocDir/changelog.Debian
+gzip -n --best $LazBuildDocDir/changelog
+gzip -n --best $LazBuildDocDir/changelog.Debian
+mkdir -p $LazBuildDir/usr/share/lintian/overrides
+cat $DebianSrcDir/lintian.overrides | sed -e "s/^lazarus:/$PkgName:/" > $LazBuildDir/usr/share/lintian/overrides/$PkgName
 
 # icons, links
 mkdir -p $LazBuildDir/usr/share/pixmaps
@@ -209,12 +217,11 @@ ln -s $LazDestDirInstalled/lazbuild $LazBuildDir/usr/bin/lazbuild
 # docs
 mkdir -p $LazBuildDir/usr/share/man/man1
 for exe in lazbuild lazarus-ide startlazarus lazres svn2revisioninc updatepofiles; do
-cat $LazDestDir/install/man/man1/$exe.1 | gzip > $LazBuildDir/usr/share/man/man1/$exe.1.gz
+  cat $LazDestDir/install/man/man1/$exe.1 | gzip -n --best > $LazBuildDir/usr/share/man/man1/$exe.1.gz
 done
 
 # default configs
 mkdir -p $LazBuildDir/etc/lazarus
-cp $EtcSrcDir/editoroptions.xml $LazBuildDir/etc/lazarus/
 cat $EtcSrcDir/environmentoptions.xml | \
   sed -e "s#__LAZARUSDIR__#$LazDestDirInstalled/#" \
       -e "s#__FPCSRCDIR__#/usr/share/fpcsrc/\$(FPCVER)/#" \
@@ -223,7 +230,9 @@ chmod 644 $LazBuildDir/etc/lazarus/*.xml
 
 # fixing permissions
 echo "fixing permissions ..."
-find $LazBuildDir -type d | xargs -d '\n' chmod 755  # this is needed, don't ask me why
+find $LazBuildDir -type d -exec chmod 755 {} \;
+find $LazBuildDir -perm 775 -exec chmod 755 {} \;
+find $LazBuildDir -perm 664 -exec chmod 644 {} \;
 
 # postinst + postrm:
 #  don't know
@@ -233,7 +242,7 @@ echo "creating deb ..."
 cd $TmpDir
 fakeroot dpkg-deb --build $LazBuildDir
 mv $LazBuildDir.deb $LazDeb
-echo "the new deb can be found at $LazDeb"
+echo "you can now test it with lintian $LazDeb"
 cd -
 
 # removing temporary files

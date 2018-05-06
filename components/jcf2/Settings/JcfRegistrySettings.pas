@@ -60,10 +60,10 @@ type
     fShowParseTreeOption: TShowParseTreeOption;
 
     { ui settings }
-    fsFormatConfigFileName:      string;
+    fsFormatConfigFileName: string;
     fbFormatConfigNameSpecified: boolean;
 
-    fsLastSettingsPage:      string;
+    fsLastSettingsPage: string;
     feFormatFileWriteOption: TFormatFileWriteOption;
 
     {notepad settings }

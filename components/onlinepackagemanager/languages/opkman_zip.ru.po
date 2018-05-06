@@ -19,6 +19,10 @@ msgstr "Изменение размера буфера не разрешаетс
 msgid "Corrupt ZIP file %s."
 msgstr "Файл ZIP %s повреждён."
 
+#: opkman_zip.serrencryptionnotsupported
+msgid "Cannot unzip item \"%s\": encryption is not supported."
+msgstr "Невозможно разархивировать \"%s\": шифрование не поддерживается."
+
 #: opkman_zip.serrfilechange
 msgid "Changing output file name is not allowed while (un)zipping."
 msgstr "Изменение имени файла вывода не разрешается во время упаковки/распаковки."
@@ -50,6 +54,10 @@ msgstr "Имя архивного файла для проведения опе�
 #: opkman_zip.serrnostream
 msgid "No stream is opened."
 msgstr "Ни одного потока не открыто."
+
+#: opkman_zip.serrpatchsetnotsupported
+msgid "Cannot unzip item \"%s\": patch sets are not supported."
+msgstr "Невозможно разархивировать \"%s\": наборы заменяемых данных не поддерживаются."
 
 #: opkman_zip.serrpostoolarge
 msgid "Position/offset %d is larger than maximum supported %d."

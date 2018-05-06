@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, Controls, ComCtrls, StdCtrls, Spin, PairSplitter,
-  Dialogs, ExtCtrls, Buttons, CheckLst, Forms, Menus,
+  Dialogs, ExtCtrls, Buttons, CheckLst, Forms, Menus, Calendar,
   WSLCLClasses,
   CocoaWSCommon,
   CocoaWSButtons,
@@ -17,12 +17,13 @@ uses
   CocoaWSComCtrls,
   CocoaWSDialogs,
   CocoaWSSpin,
-  CocoaWSCheckLst;
+  CocoaWSCheckLst,
+  CocoaWSDatePicker;
 
 // imglist
-function RegisterCustomImageList: Boolean;
+function RegisterCustomImageListResolution: Boolean;
 // controls
-function RegisterDragImageList: Boolean;
+function RegisterDragImageListResolution: Boolean;
 function RegisterLazAccessibleObject: Boolean;
 function RegisterControl: Boolean;
 function RegisterWinControl: Boolean;
@@ -113,13 +114,13 @@ implementation
 
 
 // imglist
-function RegisterCustomImageList: Boolean; alias : 'WSRegisterCustomImageList';
+function RegisterCustomImageListResolution: Boolean; alias : 'WSRegisterCustomImageListResolution';
 begin
   Result := False;
 end;
 
 // controls
-function RegisterDragImageList: Boolean; alias : 'WSRegisterDragImageList';
+function RegisterDragImageListResolution: Boolean; alias : 'WSRegisterDragImageListResolution';
 begin
   Result := False;
 end;
@@ -133,7 +134,8 @@ end;
 
 function RegisterControl: Boolean; alias : 'WSRegisterControl';
 begin
-  Result := False;
+  RegisterWSComponent(TControl, TCocoaWSControl);
+  Result := True;
 end;
 
 function RegisterWinControl: Boolean; alias : 'WSRegisterWinControl';
@@ -211,7 +213,8 @@ end;
 // calendar
 function RegisterCustomCalendar: Boolean; alias : 'WSRegisterCustomCalendar';
 begin
-  Result := False;
+  RegisterWSComponent(TCustomCalendar, TCocoaWSCustomCalendar);
+  Result := True;
 end;
 
 // dialogs
@@ -254,6 +257,7 @@ end;
 
 function RegisterFontDialog: Boolean; alias : 'WSRegisterFontDialog';
 begin
+  RegisterWSComponent(TFontDialog, TCocoaWSFontDialog);
   Result := False;
 end;
 
@@ -462,7 +466,8 @@ end;
 // Forms
 function RegisterScrollingWinControl: Boolean; alias : 'WSRegisterScrollingWinControl';
 begin
-  Result := False;
+  RegisterWSComponent(TScrollingWinControl, TCocoaWSScrollingWinControl);
+  Result := True;
 end;
 
 function RegisterScrollBox: Boolean; alias : 'WSRegisterScrollBox';
@@ -508,7 +513,8 @@ end;
 
 function RegisterMainMenu: Boolean; alias : 'WSRegisterMainMenu';
 begin
-  Result := False;
+  RegisterWSComponent(TMainMenu, TCocoaWSMainMenu);
+  Result := True;
 end;
 
 function RegisterPopupMenu: Boolean; alias : 'WSRegisterPopupMenu';

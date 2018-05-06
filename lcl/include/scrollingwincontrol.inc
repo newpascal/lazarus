@@ -316,4 +316,30 @@ begin
   inherited Destroy;
 end;
 
+function TScrollingWinControl.ControlAtPos(const Pos: TPoint;
+  Flags: TControlAtPosFlags): TControl;
+begin
+  Result := inherited ControlAtPos(Pos, Flags - [capfHasScrollOffset]);
+end;
+
+function TScrollingWinControl.ScreenToClient(const APoint: TPoint): TPoint;
+var
+  P: TPoint;
+begin
+  P := GetClientScrollOffset;
+  Result := inherited;
+  Result.x := Result.x - P.x;
+  Result.y := Result.y - P.y;
+end;
+
+function TScrollingWinControl.ClientToScreen(const APoint: TPoint): TPoint;
+var
+  P: TPoint;
+begin
+  P := GetClientScrollOffset;
+  Result := inherited;
+  Result.x := Result.x + P.x;
+  Result.y := Result.y + P.y;
+end;
+
 // included by forms.pp

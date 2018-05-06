@@ -295,6 +295,10 @@ msgstr "Establecer valor"
 msgid "Unable to find parser for tool \"%s\""
 msgstr "No se encontró analizador para la herramienta \"%s\""
 
+#: objinspstrconsts.lisunabletofindparserwithname
+msgid "Unable to find parser with name \"%s\""
+msgstr ""
+
 #: objinspstrconsts.nbcesaddpage
 msgctxt "objinspstrconsts.nbcesaddpage"
 msgid "Add Page"
@@ -411,10 +415,6 @@ msgstr "Co&mponentes"
 #: objinspstrconsts.oisbtnproperties
 msgid "&Properties"
 msgstr "&Propiedades"
-
-#: objinspstrconsts.oiscadd
-msgid "&Add"
-msgstr "&Añadir"
 
 #: objinspstrconsts.oiscancel
 msgctxt "objinspstrconsts.oiscancel"
@@ -600,6 +600,10 @@ msgstr "Entero"
 #: objinspstrconsts.oisinterface
 msgid "Interface"
 msgstr "Interfaz"
+
+#: objinspstrconsts.oisinvalid
+msgid "(Invalid)"
+msgstr ""
 
 #: objinspstrconsts.oisinvalidpropertyvalue
 msgid "Invalid property value"
@@ -838,6 +842,10 @@ msgstr "Establecer por defecto: %s"
 #: objinspstrconsts.oissettodefaulthint
 msgid "Set property value to Default"
 msgstr "Establecer valor de la propiedad como predeterminado"
+
+#: objinspstrconsts.oisshowalloutputlines
+msgid "Show all output lines"
+msgstr ""
 
 #: objinspstrconsts.oisshowclasses
 msgid "Show classes"
@@ -1303,6 +1311,14 @@ msgstr "Editor de secciones ..."
 msgid "&Add ..."
 msgstr "Añadir ..."
 
+#: objinspstrconsts.sccsiledtaddmoreresolutions
+msgid "Add more resolutions ..."
+msgstr ""
+
+#: objinspstrconsts.sccsiledtaddnewresolution
+msgid "New resolution ..."
+msgstr ""
+
 #: objinspstrconsts.sccsiledtadjustment
 msgid "Adjustment"
 msgstr "Ajuste"
@@ -1311,6 +1327,10 @@ msgstr "Ajuste"
 msgctxt "objinspstrconsts.sccsiledtapply"
 msgid "&Apply"
 msgstr "Aplicar"
+
+#: objinspstrconsts.sccsiledtcannotdeleteresolution
+msgid "Cannot delete default resolution."
+msgstr ""
 
 #: objinspstrconsts.sccsiledtcaption
 msgid "ImageList Editor"
@@ -1334,6 +1354,14 @@ msgctxt "objinspstrconsts.sccsiledtdelete"
 msgid "&Delete"
 msgstr "Suprimir"
 
+#: objinspstrconsts.sccsiledtdeleteresolution
+msgid "Delete resolution ..."
+msgstr ""
+
+#: objinspstrconsts.sccsiledtdeleteresolutionconfirmation
+msgid "Select the resolution to delete."
+msgstr ""
+
 #: objinspstrconsts.sccsiledtgrplcaption
 msgid "Images"
 msgstr "Imágenes"
@@ -1341,6 +1369,10 @@ msgstr "Imágenes"
 #: objinspstrconsts.sccsiledtgrprcaption
 msgid "Selected Image"
 msgstr "Imagen seleccionada"
+
+#: objinspstrconsts.sccsiledtimagewidthofnewresolution
+msgid "Image width of the new resolution:"
+msgstr ""
 
 #: objinspstrconsts.sccsiledtmovedown
 msgctxt "objinspstrconsts.sccsiledtmovedown"
@@ -1370,6 +1402,10 @@ msgstr "Color transparente:"
 
 #: objinspstrconsts.sccsiledtreplace
 msgid "&Replace ..."
+msgstr ""
+
+#: objinspstrconsts.sccsiledtreplaceallresolutions
+msgid "Replace all resolutions ..."
 msgstr ""
 
 #: objinspstrconsts.sccsiledtsave

@@ -1,3 +1,11 @@
+{
+ *****************************************************************************
+  This file is part of the Printer4Lazarus package
+
+  See the file COPYING.modifiedLGPL.txt, included in this distribution,
+  for details about the license.
+ *****************************************************************************
+}
 unit cupslcl;
 
 {$mode objfpc}{$H+}
@@ -6,10 +14,11 @@ interface
 
 uses
   Classes, SysUtils,
-  {$ifdef DebugCUPS}
-  LCLProc,
-  {$endif}
-  StdCtrls, OsPrinters, Printers, CupsDyn;
+  // LCL
+  {$ifdef DebugCUPS}LCLProc,{$endif}
+  StdCtrls, Printers,
+  // Printers
+  OsPrinters, CupsDyn;
 
 const
   C_SPACE       = 6;

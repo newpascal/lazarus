@@ -243,7 +243,7 @@ type
 
   TLabelDirection = (ldLeft, ldTop, ldRight, ldBottom);
 
-  TLinearMarkPositions = (lmpOutside, lmpPositive, lmpNegative, lmpInside);
+  TLinearMarkPositions = (lmpOutside, lmpPositive, lmpNegative, lmpInside, lmpInsideCenter);
 
   TSeriesPointerCustomDrawEvent = procedure (
     ASender: TChartSeries; ADrawer: IChartDrawer; AIndex: Integer;
@@ -277,7 +277,8 @@ type
     procedure AfterDrawPointer(
       ADrawer: IChartDrawer; AIndex: Integer; const APos: TPoint); virtual;
     procedure DrawLabels(ADrawer: IChartDrawer);
-    procedure DrawPointers(ADrawer: IChartDrawer);
+    procedure DrawPointers(ADrawer: IChartDrawer; AStyleIndex: Integer = 0;
+      UseDataColors: Boolean = false);
     procedure FindExtentInterval(
       const AExtent: TDoubleRect; AFilterByExtent: Boolean);
     function GetLabelDataPoint(AIndex: Integer): TDoublePoint; virtual;
@@ -1136,7 +1137,8 @@ var
   end;
 
 var
-  g: TDoublePoint;
+  y: Double;
+  g, gl: TDoublePoint;
   i, si: Integer;
   ld: TLabelDirection;
   style: TChartStyle;
@@ -1161,17 +1163,28 @@ begin
           else
             Marks.LabelFont.Assign(lfont);
         end;
-        if si > 0 then
+        if si = 0 then
+          y := Source[i]^.y - GetZeroLevel
+        else begin
+          y := Source[i]^.YList[si-1];
           if IsRotated then
-            g.X += AxisToGraphY(Source[i]^.YList[si - 1])
+            g.X += AxisToGraphY(y)
           else
-            g.Y += AxisToGraphY(Source[i]^.YList[si - 1]);
+            g.Y += AxisToGraphY(y);
+        end;
+        gl := g;
+        if FMarkPositions = lmpInsideCenter then begin
+          if IsRotated then
+            gl.X -= AxisToGraphX(y)/2
+          else
+            gl.Y -= AxisToGraphY(y)/2;
+        end;
         with ParentChart do
           if
             (Marks.YIndex = MARKS_YINDEX_ALL) or (Marks.YIndex = si) and
-            IsPointInViewPort(g)
+            IsPointInViewPort(gl)
           then
-            DrawLabel(FormattedMark(i, '', si), GraphToImage(g), ld);
+            DrawLabel(FormattedMark(i, '', si), GraphToImage(gl), ld);
       end;
     end;
 
@@ -1182,15 +1195,21 @@ begin
   end;
 end;
 
-procedure TBasicPointSeries.DrawPointers(ADrawer: IChartDrawer);
+{ Draws the pointers of the series.
+  If ChartStyles are attached to the series then the pointer brush is determined
+  by the style with the specified index. }
+procedure TBasicPointSeries.DrawPointers(ADrawer: IChartDrawer;
+  AStyleIndex: Integer = 0; UseDataColors: Boolean = false);
 var
   i: Integer;
   p: TDoublePoint;
   ai: TPoint;
   ps, saved_ps: TSeriesPointerStyle;
+  brushAlreadySet: boolean;
+  c: TColor;
 begin
   Assert(Pointer <> nil, 'Series pointer');
-  if not Pointer.Visible then exit;
+  if (not Pointer.Visible) or (Length(FGraphPoints) = 0) then exit;
   for i := FLoBound to FUpBound do begin
     p := FGraphPoints[i - FLoBound];
     if not ParentChart.IsPointInViewPort(p) then continue;
@@ -1205,7 +1224,13 @@ begin
         Pointer.SetOwner(nil);   // avoid recursion
         Pointer.Style := ps;
       end;
-      Pointer.Draw(ADrawer, ai, Source[i]^.Color);
+      brushAlreadySet := (Styles <> nil) and
+        (AStyleIndex < Styles.Styles.Count) and
+        Styles.Styles[AStyleIndex].UseBrush;
+      if brushAlreadySet then
+        Styles.Apply(ADrawer, AStyleIndex);
+      if UseDataColors then c := Source[i]^.Color else c := clTAColor;
+      Pointer.Draw(ADrawer, ai, c, brushAlreadySet);
       AfterDrawPointer(ADrawer, i, ai);
       if Assigned(FOnGetPointerStyle) then begin
         Pointer.Style := saved_ps;
@@ -1261,6 +1286,7 @@ begin
     lmpPositive: isNeg := false;
     lmpNegative: isNeg := true;
     lmpInside: isNeg := Source[AIndex]^.Y >= GetZeroLevel;
+    lmpInsideCenter: isNeg := Source[AIndex]^.Y < GetZeroLevel;
   end;
   Result := DIR[IsRotated, isNeg];
 end;
@@ -1274,11 +1300,16 @@ var
 begin
   case Legend.Multiplicity of
     lmSingle:
-      AItems.Add(TLegendItemBrushRect.Create(ABrush, LegendTextSingle));
+      begin
+        li := TLegendItemBrushRect.Create(ABrush, LegendTextSingle);
+        li.TextFormat := Legend.TextFormat;
+        AItems.Add(li);
+      end;
     lmPoint:
       for i := 0 to Count - 1 do begin
         li := TLegendItemBrushRect.Create(ABrush, LegendTextPoint(i));
         li.Color := GetColor(i);
+        li.TextFormat := Legend.TextFormat;
         AItems.Add(li);
       end;
     lmStyle:
@@ -1565,20 +1596,45 @@ var
   labelText: String;
   dir: TLabelDirection;
   m: array [TLabelDirection] of Integer absolute AMargins;
+  zero: Double;
+  gp: TDoublePoint;
+  valueIsPositive: Boolean;
 begin
   if not Marks.IsMarkLabelsVisible or not Marks.AutoMargins then exit;
+  if MarkPositions = lmpInsideCenter then exit;
 
+  zero := GetZeroLevel;
   for i := 0 to Count - 1 do begin
-    if not ParentChart.IsPointInViewPort(GetGraphPoint(i)) then continue;
+    gp := GetGraphPoint(i);
+    if not ParentChart.IsPointInViewPort(gp) then continue;
     labelText := FormattedMark(i);
     if labelText = '' then continue;
 
+    valueIsPositive := TDoublePointBoolArr(gp)[not IsRotated] > zero;
     dir := GetLabelDirection(i);
+
     with Marks.MeasureLabel(ADrawer, labelText) do
       dist := IfThen(dir in [ldLeft, ldRight], cx, cy);
     if Marks.DistanceToCenter then
       dist := dist div 2;
-    m[dir] := Max(m[dir], dist + Marks.Distance);
+
+    if valueIsPositive then begin
+      if Marks.DistanceToCenter then
+        case dir of
+          ldBottom: dir := ldTop;
+          ldLeft: dir := ldRight;
+        end;
+      if dir in [ldTop, ldRight] then
+        m[dir] := Max(m[dir], dist + Marks.Distance);
+    end else begin
+      if Marks.DistanceToCenter then
+        case dir of
+          ldTop: dir := ldBottom;
+          ldRight: dir := ldLeft;
+        end;
+      if dir in [ldBottom, ldLeft] then
+        m[dir] := Max(m[dir], dist + Marks.Distance);
+    end;
   end;
 end;
 

@@ -31,15 +31,15 @@ interface
 
 uses
   // RTL + FCL
-  Classes, SysUtils, AVL_Tree, RegExpr,
+  Classes, SysUtils, RegExpr, Laz_AVL_Tree,
   // LCL
   LCLProc, Forms, Controls, ExtCtrls, StdCtrls, ComCtrls, Buttons,
   // CodeTools
-  CodeCache, CodeToolsStructs, CodeToolManager, FileProcs,
+  CodeCache, CodeToolManager, FileProcs,
   // LazUtils
-  LConvEncoding, LazFileUtils, LazFileCache,
+  LConvEncoding, LazFileUtils, LazFileCache, AvgLvlTree,
   // IDEIntf
-  IDEWindowIntf, SrcEditorIntf, IDEHelpIntf,
+  IDEWindowIntf, SrcEditorIntf, IDEHelpIntf, IDEImagesIntf,
   // IDE
   IDEProcs, PackageDefs, PackageSystem, Project, LazarusIDEStrConsts;
 
@@ -116,9 +116,9 @@ begin
   CloseButton.Caption:=lisClose;
   ApplyButton.Caption:=lisConvert;
   HelpButton.Caption:=lisHelp;
-  CloseButton.LoadGlyphFromResourceName(hInstance, 'btn_close');
-  ApplyButton.LoadGlyphFromResourceName(hInstance, 'btn_ok');
-  HelpButton.LoadGlyphFromResourceName(hInstance, 'btn_help');
+  TIDEImages.AssignImage(CloseButton.Glyph, 'btn_close');
+  TIDEImages.AssignImage(ApplyButton.Glyph, 'btn_ok');
+  TIDEImages.AssignImage(HelpButton.Glyph, 'btn_help');
 
   PreviewGroupBox.Caption:=dlgWRDPreview;
   PreviewListView.Column[0].Caption:=dlgEnvFiles;
@@ -179,7 +179,7 @@ var
   SrcEdit: TSourceEditorInterface;
   Encoding, OldEncoding, NewEncoding: String;
   Node: TAVLTreeNode;
-  Item: PStringToStringTreeItem;
+  Item: PStringToStringItem;
   Filename: String;
   HasChanged: boolean;
   li, Cur: TListItem;
@@ -191,7 +191,7 @@ begin
   OldCount := PreviewListView.Items.Count;
   Node:=FFiles.Tree.FindLowest;
   while Node<>nil do begin
-    Item:=PStringToStringTreeItem(Node.Data);
+    Item:=PStringToStringItem(Node.Data);
     Filename:=Item^.Name;
     Encoding:=Item^.Value;
 
@@ -356,7 +356,7 @@ end;
 procedure TChgEncodingDialog.UpdatePreview;
 var
   Node: TAVLTreeNode;
-  Item: PStringToStringTreeItem;
+  Item: PStringToStringItem;
   Filename: String;
   Encoding: String;
   li: TListItem;
@@ -378,7 +378,7 @@ begin
     PreviewListView.BeginUpdate;
     Node:=FFiles.Tree.FindLowest;
     while Node<>nil do begin
-      Item:=PStringToStringTreeItem(Node.Data);
+      Item:=PStringToStringItem(Node.Data);
       Filename:=Item^.Name;
       Encoding:=Item^.Value;
       DebugLn(['TChgEncodingDialog.UpdatePreview Filename=',Filename,' Encoding=',Encoding]);

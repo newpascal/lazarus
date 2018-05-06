@@ -37,10 +37,17 @@ unit SearchResultView;
 interface
 
 uses
-  Classes, SysUtils, LCLProc, Forms, Controls, Graphics, ComCtrls, LCLType,
-  LCLIntf, LazUTF8, AvgLvlTree, LazFileUtils, Menus, strutils, IDEOptionDefs,
-  LazarusIDEStrConsts, EnvironmentOpts, InputHistory, IDEProcs, Project,
-  MainIntf, Clipbrd, ActnList, IDECommands, TreeFilterEdit;
+  Classes, SysUtils, strutils, Laz_AVL_Tree,
+  // LCL
+  LCLProc, LCLType, LCLIntf, Forms, Controls, Graphics, ComCtrls, Menus, Clipbrd,
+  ActnList,
+  // LazControls
+  TreeFilterEdit,
+  // LazUtils
+  LazUTF8, LazFileUtils,
+  // IDE
+  IDEOptionDefs, LazarusIDEStrConsts, EnvironmentOpts, InputHistory, IDEProcs,
+  Project, MainIntf, IDECommands, IDEImagesIntf;
 
 
 type
@@ -100,7 +107,7 @@ type
     fUpdateCount: integer;
     FSearchInListPhrases: string;
     fFiltered: Boolean;
-    fFilenameToNode: TAvgLvlTree; // TTreeNode sorted for Text
+    fFilenameToNode: TAvlTree; // TTreeNode sorted for Text
     procedure SetSkipped(const AValue: integer);
     procedure AddNode(Line: string; MatchPos: TLazSearchMatchPos);
   public
@@ -138,7 +145,6 @@ type
     mniCopyAll: TMenuItem;
     mniCopyItem: TMenuItem;
     popList: TPopupMenu;
-    ImageList: TImageList;
     ResultsNoteBook: TPageControl;
     ToolBar: TToolBar;
     SearchAgainButton: TToolButton;
@@ -306,6 +312,13 @@ begin
   mniCopyAll.Caption := lisCopyAllItemsToClipboard;
   mniExpandAll.Caption := lisExpandAll;
   mniCollapseAll.Caption := lisCollapseAll;
+
+  ToolBar.Images := IDEImages.Images_16;
+  SearchAgainButton.ImageIndex := IDEImages.LoadImage('menu_new_search');
+  ClosePageButton.ImageIndex := IDEImages.LoadImage('menu_close');
+  ActionList.Images := IDEImages.Images_16;
+  actClosePage.ImageIndex := IDEImages.LoadImage('menu_close');
+  TIDEImages.AssignImage(SearchInListEdit.Glyph, 'btnfiltercancel');
 end;
 
 procedure TSearchResultsView.FormClose(Sender: TObject; var CloseAction: TCloseAction);
@@ -848,7 +861,7 @@ begin
   TV.Canvas.FillRect(ARect);
 
   MatchObj := TLazSearchMatchPos(Node.Data);
-  if assigned(MatchObj) and (MatchObj is TLazSearchMatchPos) then
+  if MatchObj is TLazSearchMatchPos then
     MatchPos:= TLazSearchMatchPos(Node.Data)
   else
     MatchPos:= nil;
@@ -1051,7 +1064,7 @@ procedure TLazSearchResultTV.AddNode(Line: string; MatchPos: TLazSearchMatchPos)
 var
   Node: TTreeNode;
   ChildNode: TTreeNode;
-  AVLNode: TAvgLvlTreeNode;
+  AVLNode: TAvlTreeNode;
 begin
   if MatchPos=nil then exit;
   AVLNode:=fFilenameToNode.FindKey(PChar(MatchPos.FileName),@CompareFilenameWithTVNode);
@@ -1085,7 +1098,7 @@ begin
   fUpdateStrings:= TStringList.Create;
   FSearchInListPhrases := '';
   fFiltered := False;
-  fFilenameToNode:=TAvgLvlTree.Create(@CompareTVNodeTextAsFilename);
+  fFilenameToNode:=TAvlTree.Create(@CompareTVNodeTextAsFilename);
 end;//Create
 
 Destructor TLazSearchResultTV.Destroy;

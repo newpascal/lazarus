@@ -38,11 +38,15 @@ unit ComponentPalette;
 interface
 
 uses
-  Classes, SysUtils, AVL_Tree, fgl, LCLType,
-  Controls, Forms, Graphics, ComCtrls, Buttons, Menus, ExtCtrls,
-  LazFileUtils, LazFileCache, PropEdits, LCLProc, MainBase, LazarusIDEStrConsts,
-  FormEditingIntf, LazIDEIntf, IDEImagesIntf,
-  ComponentReg, DesignerProcs, PackageDefs, EnvironmentOpts;
+  Classes, SysUtils, fgl, Laz_AVL_Tree,
+  // LCL
+  LCLProc, Controls, Forms, Graphics, ComCtrls, Buttons, Menus, ExtCtrls,
+  // LazUtils
+  LazFileUtils, LazFileCache,
+  // IdeIntf
+  FormEditingIntf, LazIDEIntf, IDEImagesIntf, PropEdits, ComponentReg,
+  // IDE
+  MainBase, LazarusIDEStrConsts, DesignerProcs, PackageDefs, EnvironmentOpts;
 
 const
   CompPalSelectionToolBtnPrefix = 'PaletteSelectBtn';
@@ -216,8 +220,8 @@ begin
   Pal := TComponentPalette(Palette);
   if Pal.PageControl<>nil then
     Pal.PageControl.DisableAutoSizing{$IFDEF DebugDisableAutoSizing}('TComponentPage.ReAlignButtons'){$ENDIF};
-  ComponentPaletteBtnWidthScaled := Pal.PageControl.ScaleCoord(ComponentPaletteBtnWidth);
-  ComponentPaletteBtnHeightScaled := Pal.PageControl.ScaleCoord(ComponentPaletteBtnHeight);
+  ComponentPaletteBtnWidthScaled := Pal.PageControl.Scale96ToForm(ComponentPaletteBtnWidth);
+  ComponentPaletteBtnHeightScaled := Pal.PageControl.Scale96ToForm(ComponentPaletteBtnHeight);
   ButtonTree:=nil;
   try
     ScrollBox:=TScrollBox(PageComponent.Components[0]);
@@ -333,7 +337,7 @@ begin
       VertScrollBar.Visible := false;
       AutoScroll:=false;
       {$ENDIF}
-      VertScrollBar.Increment := PageComponent.ScaleCoord(ComponentPaletteBtnHeight);
+      VertScrollBar.Increment := PageComponent.Scale96ToForm(ComponentPaletteBtnHeight);
       VertScrollBar.Tracking := True;
       Parent := PageComponent;
     end;
@@ -343,23 +347,23 @@ begin
       Align := alRight;
       Caption := '';
       BevelOuter := bvNone;
-      Width := OVERVIEW_PANEL_WIDTH;
       Visible := True; // EnvironmentOptions.IDESpeedButtonsVisible;
       Parent := PageComponent;
+      Width := Scale96ToForm(OVERVIEW_PANEL_WIDTH);
       OnMouseWheel := @Pal.OnPageMouseWheel;
     end;
     BtnRight:=TSpeedButton.Create(PageComponent);
     with BtnRight do
     begin
-      LoadGlyphFromResourceName(HInstance, 'SelCompPage');
+      TIDEImages.AssignImage(Glyph, 'SelCompPage');
       Flat := True;
-      SetBounds(2,1,16,16);
       Hint := lisClickToSelectPalettePage;
       ShowHint := True;
       OnMouseDown := @MainIDE.SelComponentPageButtonMouseDown;
       OnClick := @MainIDE.SelComponentPageButtonClick;
       OnMouseWheel := @Pal.OnPageMouseWheel;
       Parent := PanelRight;
+      SetBounds(Scale96ToForm(2), Scale96ToForm(1), Scale96ToForm(16), Scale96ToForm(16));
     end;
   end
   else begin
@@ -404,13 +408,13 @@ begin
     Name := CompPalSelectionToolBtnPrefix + aButtonUniqueName;
     OnClick := @Pal.SelectionToolClick;
     OnMouseWheel := @Pal.OnPageMouseWheel;
-    LoadGlyphFromResourceName(hInstance, 'tmouse');
+    TIDEImages.AssignImage(Glyph, 'tmouse');
     Flat := True;
     GroupIndex:= 1;
     Down := True;
     Hint := lisSelectionTool;
     ShowHint := EnvironmentOptions.ShowHintsForComponentPalette;
-    SetBounds(0,0,aScrollBox.ScaleCoord(ComponentPaletteBtnWidth),aScrollBox.ScaleCoord(ComponentPaletteBtnHeight));
+    SetBounds(0,0,aScrollBox.Scale96ToForm(ComponentPaletteBtnWidth),aScrollBox.Scale96ToForm(ComponentPaletteBtnHeight));
     Parent := aScrollBox;
   end;
 end;
@@ -422,8 +426,6 @@ var
   Btn: TSpeedButton;
   CompCN: String;      // Component ClassName
   i: Integer;
-  ScaledIcon: TGraphic;
-  NewScaledIcon: Boolean;
 begin
   Pal := TComponentPalette(Palette);
   CompCN := aComp.ComponentClass.ClassName;
@@ -440,16 +442,8 @@ begin
       Pal.fComponentButtons[CompCN] := Btn;
       Btn.Name := CompPaletteCompBtnPrefix + aButtonUniqueName + CompCN;
       // Left and Top will be set in ReAlignButtons.
-      Btn.SetBounds(Btn.Left,Btn.Top,aScrollBox.ScaleCoord(ComponentPaletteBtnWidth),aScrollBox.ScaleCoord(ComponentPaletteBtnHeight));
-      ScaledIcon := TIDEImages.ScaleImage(aComp.Icon, NewScaledIcon,
-        MulDiv(ComponentPaletteImageWidth, TIDEImages.GetScalePercent, 100),
-        MulDiv(ComponentPaletteImageWidth, TIDEImages.GetScalePercent, 100));
-      try
-        Btn.Glyph.Assign(ScaledIcon);
-      finally
-        if NewScaledIcon then
-          ScaledIcon.Free;
-      end;
+      Btn.SetBounds(Btn.Left,Btn.Top,aScrollBox.Scale96ToForm(ComponentPaletteBtnWidth),aScrollBox.Scale96ToForm(ComponentPaletteBtnHeight));
+      Btn.Glyph.Assign(aComp.Icon);
       Btn.GroupIndex := 1;
       Btn.Flat := true;
       Btn.OnMouseDown := @Pal.ComponentBtnMouseDown;
@@ -640,7 +634,7 @@ begin
         Name:='OptionsMenuItem';
         Caption:=lisOptions;
         OnClick:=@OptionsClicked;
-        ImageIndex := IDEImages.LoadImage(16, 'menu_environment_options');
+        ImageIndex := IDEImages.LoadImage('menu_environment_options');
       end;
       PalettePopupMenu.Items.Add(miOptions);
     end;
@@ -797,7 +791,7 @@ begin
     Name:='OptionsMenuItem';
     Caption:=lisOptions;
     OnClick:=@OptionsClicked;
-    ImageIndex := IDEImages.LoadImage(16, 'menu_environment_options');
+    ImageIndex := IDEImages.LoadImage('menu_environment_options');
   end;
   PopupMenu.Items.Add(MenuItem);
 end;

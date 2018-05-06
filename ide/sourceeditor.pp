@@ -44,15 +44,15 @@ uses
   {$ENDIF}
   SynEditMouseCmds,
   // RTL + FCL
-  Classes, SysUtils, StrUtils, types, Math, RegExpr,
+  Classes, SysUtils, StrUtils, types, Math, RegExpr, Laz_AVL_Tree,
   // LCL
   Controls, Forms, ComCtrls, StdCtrls, Graphics, Dialogs, Extctrls, Menus,
-  LCLProc, LCLType, LResources, LCLIntf, FileUtil, LazFileUtils,
-  ClipBrd, HelpIntfs, Messages,
+  LCLProc, LCLType, LCLIntf, FileUtil, LazFileUtils,
+  ClipBrd, HelpIntfs, Messages, LMessages,
   // LazControls
   ExtendedNotebook,
   // LazUtils
-  LConvEncoding, LazUTF8Classes, LazFileCache, LazUTF8, AvgLvlTree,
+  LConvEncoding, LazUTF8Classes, LazFileCache, LazUTF8,
   LazLoggerBase, LazLogger, Translations,
   // codetools
   BasicCodeTools, CodeBeautifier, CodeToolManager, CodeCache, SourceLog,
@@ -69,16 +69,17 @@ uses
   IDEWindowIntf, ProjectIntf, MacroDefIntf, ToolBarIntf, IDEDialogs,
   EditorSyntaxHighlighterDef,
   // DebuggerIntf
-  DbgIntfBaseTypes, DbgIntfDebuggerBase,
+  DbgIntfDebuggerBase,
   // IDE units
-  IDECmdLine, LazarusIDEStrConsts, IDECommands, EditorOptions, EnvironmentOpts,
-  WordCompletion, FindReplaceDialog, IDEProcs, IDEOptionDefs, IDEHelpManager,
-  MacroPromptDlg, TransferMacros, CodeContextForm, SrcEditHintFrm, etMessagesWnd,
-  etSrcEditMarks, CodeMacroPrompt, CodeTemplatesDlg, CodeToolsOptions,
-  editor_general_options, SortSelectionDlg, EncloseSelectionDlg, EncloseIfDef,
-  InvertAssignTool, SourceEditProcs, SourceMarks, CharacterMapDlg, SearchFrm,
-  MultiPasteDlg, EditorMacroListViewer, EditorToolbarStatic, editortoolbar_options,
-  InputhistoryWithSearchOpt, FPDocHints, MainIntf, GotoFrm, BaseDebugManager, Debugger;
+  IDECmdLine, LazarusIDEStrConsts, IDECommands, MacroIntf, EditorOptions,
+  EnvironmentOpts, WordCompletion, FindReplaceDialog, IDEProcs, IDEOptionDefs,
+  IDEHelpManager, MacroPromptDlg, TransferMacros, CodeContextForm,
+  SrcEditHintFrm, etMessagesWnd, etSrcEditMarks, CodeMacroPrompt,
+  CodeTemplatesDlg, CodeToolsOptions, editor_general_options, SortSelectionDlg,
+  EncloseSelectionDlg, EncloseIfDef, InvertAssignTool, SourceEditProcs,
+  SourceMarks, CharacterMapDlg, SearchFrm, MultiPasteDlg, EditorMacroListViewer,
+  EditorToolbarStatic, editortoolbar_options, InputhistoryWithSearchOpt,
+  FPDocHints, MainIntf, GotoFrm, BaseDebugManager, Debugger;
 
 type
   TSourceNotebook = class;
@@ -109,6 +110,13 @@ type
     hcmSoftKeepEOL      // Soft Center (distance to screen edge) Caret, but keep EOL at right border
   );
 
+  TSourceEditCompletionForm = class(TSynCompletionForm)
+  private
+    FTextHighLightColor: TColor;
+  public
+    property TextHighLightColor: TColor read FTextHighLightColor write FTextHighLightColor;
+  end;
+
   { TSourceEditCompletion }
 
   TSourceEditCompletion=class(TSynCompletion)
@@ -116,10 +124,13 @@ type
     FIdentCompletionJumpToError: boolean;
     ccSelection: String;
     // colors for the completion form (popup form, e.g. word completion)
-    FActiveEditDefaultFGColor: TColor;
-    FActiveEditDefaultBGColor: TColor;
-    FActiveEditSelectedFGColor: TColor;
-    FActiveEditSelectedBGColor: TColor;
+
+    FActiveEditBackgroundColor: TColor;
+    FActiveEditBackgroundSelectedColor: TColor;
+    FActiveEditBorderColor: TColor;
+    FActiveEditTextColor: TColor;
+    FActiveEditTextSelectedColor: TColor;
+    FActiveEditTextHighLightColor: TColor;
 
     procedure ccExecute(Sender: TObject);
     procedure ccCancel(Sender: TObject);
@@ -144,6 +155,7 @@ type
   protected
     CurrentCompletionType: TCompletionType;
     function Manager: TSourceEditorManager;
+    function GetCompletionFormClass: TSynBaseCompletionFormClass; override;
   public
     constructor Create(AOwner: TComponent); override;
     property IdentCompletionJumpToError: Boolean
@@ -332,7 +344,7 @@ type
                                  ASyntaxHighlighterType: TLazSyntaxHighlighter);
     procedure SetErrorLine(NewLine: integer);
     procedure SetExecutionLine(NewLine: integer);
-    procedure StartIdentCompletionBox(JumpToError: boolean);
+    procedure StartIdentCompletionBox(JumpToError, CanAutoComplete: boolean);
     procedure StartWordCompletionBox;
 
     function IsFirstShared(Sender: TObject): boolean;
@@ -467,6 +479,7 @@ type
     function GetBlockEnd: TPoint; override;
     procedure SetBlockBegin(const AValue: TPoint); override;
     procedure SetBlockEnd(const AValue: TPoint); override;
+    function GetLinesInWindow: Integer; override;
     function GetTopLine: Integer; override;
     procedure SetTopLine(const AValue: Integer); override;
     function CursorInPixel: TPoint; override;
@@ -596,6 +609,9 @@ type
   { TSourceNotebook }
 
   TSourceNotebook = class(TSourceEditorWindowInterface)
+    GoToLineMenuItem: TMenuItem;
+    OpenFolderMenuItem: TMenuItem;
+    StatusPopUpMenu: TPopupMenu;
     StatusBar: TStatusBar;
     procedure CompleteCodeMenuItemClick(Sender: TObject);
     procedure DbgPopUpMenuPopup(Sender: TObject);
@@ -605,6 +621,7 @@ type
     procedure FindOverloadsMenuItemClick(Sender: TObject);
     procedure FormMouseUp(Sender: TObject; {%H-}Button: TMouseButton;
       {%H-}Shift: TShiftState; {%H-}X, {%H-}Y: Integer);
+    procedure GoToLineMenuItemClick(Sender: TObject);
     procedure HighlighterClicked(Sender: TObject);
     procedure InsertCharacter(const C: TUTF8Char);
     procedure InvertAssignmentMenuItemClick(Sender: TObject);
@@ -616,6 +633,7 @@ type
     procedure OnPopupOpenPackageFile(Sender: TObject);
     procedure OnPopupOpenProjectInsp(Sender: TObject);
     procedure OpenAtCursorClicked(Sender: TObject);
+    procedure OpenFolderMenuItemClick(Sender: TObject);
     procedure RenameIdentifierMenuItemClick(Sender: TObject);
     procedure ShowAbstractMethodsMenuItemClick(Sender: TObject);
     procedure ShowEmptyMethodsMenuItemClick(Sender: TObject);
@@ -628,6 +646,8 @@ type
     procedure SrcPopUpMenuPopup(Sender: TObject);
     procedure StatusBarClick(Sender: TObject);
     procedure StatusBarDblClick(Sender: TObject);
+    procedure StatusBarContextPopup(Sender: TObject; MousePos: TPoint;
+      var {%H-}Handled: Boolean);
     procedure StatusBarDrawPanel({%H-}AStatusBar: TStatusBar; APanel: TStatusPanel;
       const ARect: TRect);
     procedure TabPopUpMenuPopup(Sender: TObject);
@@ -635,7 +655,7 @@ type
     FNotebook: TExtendedNotebook;
     FBaseCaption: String;
     FIsClosing: Boolean;
-    FSrcEditsSortedForFilenames: TAvgLvlTree; // TSourceEditorInterface sorted for Filename
+    FSrcEditsSortedForFilenames: TAvlTree; // TSourceEditorInterface sorted for Filename
     TabPopUpMenu, SrcPopUpMenu, DbgPopUpMenu: TPopupMenu;
     procedure ApplyPageIndex;
     procedure ExecuteEditorItemClick(Sender: TObject);
@@ -953,6 +973,7 @@ type
     function  GetActiveCompletionPlugin: TSourceEditorCompletionPlugin; override;
     function  GetCompletionBoxPosition: integer; override;
     function  GetCompletionPlugins(Index: integer): TSourceEditorCompletionPlugin; override;
+    function GetDefaultSynCompletionForm: TCustomForm; override;
     function  FindIdentCompletionPlugin(SrcEdit: TSourceEditor; JumpToError: boolean;
                                var s: string; var BoxX, BoxY: integer;
                                var UseWordCompletion: boolean): boolean;
@@ -1107,6 +1128,7 @@ type
     procedure BookMarkNextClicked(Sender: TObject);
     procedure BookMarkPrevClicked(Sender: TObject);
     procedure JumpToPos(FileName: string; Pos: TCodeXYPosition; TopLine: Integer);
+    procedure JumpToPos(FileName: string; Pos: TCodeXYPosition; TopLine, BlockTopLine, BlockBottomLine: Integer);
     procedure JumpToSection(JumpType: TJumpToSectionType);
     procedure JumpToInterfaceClicked(Sender: TObject);
     procedure JumpToInterfaceUsesClicked(Sender: TObject);
@@ -1408,7 +1430,8 @@ begin
 end;
 
 function dbgs(AFlags: TSourceNotebookUpdateFlags): string; overload;
-var i: TSourceNotebookUpdateFlag;
+var
+  i: TSourceNotebookUpdateFlag;
 begin
   Result := '';
   for i := low(TSourceNotebookUpdateFlags) to high(TSourceNotebookUpdateFlags) do
@@ -1433,7 +1456,11 @@ begin
   if not (Sender is TIDESpecialCommand) then exit;
   if TIDESpecialCommand(Sender).Command = nil then exit;
   ActEdit := SourceEditorManager.ActiveEditor;
-  if ActEdit = nil then exit;
+  if ActEdit = nil then
+  begin
+    TIDESpecialCommand(Sender).Command.Execute(Sender);
+    exit;
+  end;
   r := TIDESpecialCommand(Sender).Command.OnExecuteProc = @ExecuteIdeMenuClick;
   if r then
     TIDESpecialCommand(Sender).Command.OnExecuteProc := nil;
@@ -1461,59 +1488,55 @@ begin
 
     {$IFnDEF SingleSrcWindow}
     // Lock Editor
-    SrcEditMenuEditorLock := RegisterIDEMenuCommand
-        (AParent, 'LockEditor', uemLockPage, nil, @ExecuteIdeMenuClick);
+    SrcEditMenuEditorLock := RegisterIDEMenuCommand(AParent,
+        'LockEditor', uemLockPage, nil, @ExecuteIdeMenuClick);
     SrcEditMenuEditorLock.ShowAlwaysCheckable := True;
     // Move to other Window
-    SrcEditMenuMoveToNewWindow := RegisterIDEMenuCommand
-        (AParent, 'MoveToNewWindow', uemMoveToNewWindow, nil, @ExecuteIdeMenuClick);
+    SrcEditMenuMoveToNewWindow := RegisterIDEMenuCommand(AParent,
+        'MoveToNewWindow', uemMoveToNewWindow, nil, @ExecuteIdeMenuClick);
 
     {%region * Move To Other *}
-      SrcEditMenuMoveToOtherWindow := RegisterIDESubMenu
-          (AParent, 'MoveToOtherWindow', uemMoveToOtherWindow);
-
-      SrcEditMenuMoveToOtherWindowNew := RegisterIDEMenuCommand
-          (SrcEditMenuMoveToOtherWindow, 'MoveToOtherWindowNew', uemMoveToOtherWindowNew,
-           nil, @ExecuteIdeMenuClick);
+      SrcEditMenuMoveToOtherWindow := RegisterIDESubMenu(AParent,
+          'MoveToOtherWindow', uemMoveToOtherWindow);
+      SrcEditMenuMoveToOtherWindowNew := RegisterIDEMenuCommand(SrcEditMenuMoveToOtherWindow,
+          'MoveToOtherWindowNew', uemMoveToOtherWindowNew, nil, @ExecuteIdeMenuClick);
       // Section for dynamically created targets
-      SrcEditMenuMoveToOtherWindowList := RegisterIDEMenuSection
-          (SrcEditMenuMoveToOtherWindow, 'MoveToOtherWindowList Section');
+      SrcEditMenuMoveToOtherWindowList := RegisterIDEMenuSection(SrcEditMenuMoveToOtherWindow,
+          'MoveToOtherWindowList Section');
     {%endregion}
 
-    SrcEditMenuCopyToNewWindow := RegisterIDEMenuCommand
-        (AParent, 'CopyToNewWindow', uemCopyToNewWindow, nil, @ExecuteIdeMenuClick);
+    SrcEditMenuCopyToNewWindow := RegisterIDEMenuCommand(AParent,
+        'CopyToNewWindow', uemCopyToNewWindow, nil, @ExecuteIdeMenuClick);
 
     {%region * Copy To Other *}
-      SrcEditMenuCopyToOtherWindow := RegisterIDESubMenu
-          (AParent, 'CopyToOtherWindow', uemCopyToOtherWindow);
-
-      SrcEditMenuCopyToOtherWindowNew := RegisterIDEMenuCommand
-          (SrcEditMenuCopyToOtherWindow, 'CopyToOtherWindowNew', uemCopyToOtherWindowNew,
-           nil, @ExecuteIdeMenuClick);
+      SrcEditMenuCopyToOtherWindow := RegisterIDESubMenu(AParent,
+          'CopyToOtherWindow', uemCopyToOtherWindow);
+      SrcEditMenuCopyToOtherWindowNew := RegisterIDEMenuCommand(SrcEditMenuCopyToOtherWindow,
+          'CopyToOtherWindowNew', uemCopyToOtherWindowNew, nil, @ExecuteIdeMenuClick);
       // Section for dynamically created targets
-      SrcEditMenuCopyToOtherWindowList := RegisterIDEMenuSection
-          (SrcEditMenuCopyToOtherWindow, 'CopyToOtherWindowList Section');
+      SrcEditMenuCopyToOtherWindowList := RegisterIDEMenuSection(SrcEditMenuCopyToOtherWindow,
+          'CopyToOtherWindowList Section');
     {%endregion}
 
-    SrcEditMenuFindInOtherWindow := RegisterIDESubMenu
-        (AParent, 'FindInOtherWindow', uemFindInOtherWindow);
+    SrcEditMenuFindInOtherWindow := RegisterIDESubMenu(AParent,
+      'FindInOtherWindow', uemFindInOtherWindow);
     // Section for dynamically created targets
-    SrcEditMenuFindInOtherWindowList := RegisterIDEMenuSection
-        (SrcEditMenuFindInOtherWindow, 'FindInOtherWindowList Section');
+    SrcEditMenuFindInOtherWindowList := RegisterIDEMenuSection(SrcEditMenuFindInOtherWindow,
+        'FindInOtherWindowList Section');
     {$ENDIF}
 
     {%region * Move Page (left/right) *}
       SrcEditSubMenuMovePage:=RegisterIDESubMenu(AParent, 'Move Page', lisMovePage);
       AParent:=SrcEditSubMenuMovePage;
 
-      SrcEditMenuMoveEditorLeft := RegisterIDEMenuCommand
-          (AParent,'MoveEditorLeft', uemMovePageLeft, nil, @ExecuteIdeMenuClick);
-      SrcEditMenuMoveEditorRight := RegisterIDEMenuCommand
-          (AParent,'MoveEditorRight', uemMovePageRight, nil, @ExecuteIdeMenuClick);
-      SrcEditMenuMoveEditorFirst := RegisterIDEMenuCommand
-          (AParent,'MoveEditorLeftmost', uemMovePageLeftmost, nil, @ExecuteIdeMenuClick);
-      SrcEditMenuMoveEditorLast := RegisterIDEMenuCommand
-          (AParent,'MoveEditorRightmost', uemMovePageRightmost, nil, @ExecuteIdeMenuClick);
+      SrcEditMenuMoveEditorLeft := RegisterIDEMenuCommand(AParent,
+          'MoveEditorLeft', uemMovePageLeft, nil, @ExecuteIdeMenuClick);
+      SrcEditMenuMoveEditorRight := RegisterIDEMenuCommand(AParent,
+          'MoveEditorRight', uemMovePageRight, nil, @ExecuteIdeMenuClick);
+      SrcEditMenuMoveEditorFirst := RegisterIDEMenuCommand(AParent,
+          'MoveEditorLeftmost', uemMovePageLeftmost, nil, @ExecuteIdeMenuClick);
+      SrcEditMenuMoveEditorLast := RegisterIDEMenuCommand(AParent,
+          'MoveEditorRightmost', uemMovePageRightmost, nil, @ExecuteIdeMenuClick);
     {%endregion}
   {%endregion}
 
@@ -1545,23 +1568,24 @@ begin
       SrcEditSubMenuFind := RegisterIDESubMenu(AParent, 'Find section', lisMenuFind);
       AParent:=SrcEditSubMenuFind;
 
-      SrcEditMenuProcedureJump := RegisterIDEMenuCommand
-          (AParent,'Procedure Jump', uemProcedureJump, nil, @ExecuteIdeMenuClick);
-      SrcEditMenuFindNextWordOccurrence := RegisterIDEMenuCommand
-          (AParent, 'Find next word occurrence', srkmecFindNextWordOccurrence,
-           nil, @ExecuteIdeMenuClick, nil, 'menu_search_find_next');
-      SrcEditMenuFindPrevWordOccurrence := RegisterIDEMenuCommand
-          (AParent, 'Find previous word occurrence', srkmecFindPrevWordOccurrence,
-           nil, @ExecuteIdeMenuClick, nil, 'menu_search_find_previous');
-      SrcEditMenuFindInFiles := RegisterIDEMenuCommand
-          (AParent, 'Find in files', srkmecFindInFiles + ' ...', nil,
-           @ExecuteIdeMenuClick, nil, 'menu_search_files');
-      SrcEditMenuFindIdentifierReferences := RegisterIDEMenuCommand
-          (AParent, 'FindIdentifierReferences',lisMenuFindIdentifierRefs, nil,
+      SrcEditMenuProcedureJump := RegisterIDEMenuCommand(AParent,
+          'Procedure Jump', uemProcedureJump, nil,
           @ExecuteIdeMenuClick);
-      SrcEditMenuFindUsedUnitReferences := RegisterIDEMenuCommand
-          (AParent, 'FindUsedUnitReferences', lisMenuFindReferencesOfUsedUnit,
-          nil, @ExecuteIdeMenuClick);
+      SrcEditMenuFindNextWordOccurrence := RegisterIDEMenuCommand(AParent,
+          'Find next word occurrence', srkmecFindNextWordOccurrence, nil,
+          @ExecuteIdeMenuClick, nil, 'menu_search_find_next');
+      SrcEditMenuFindPrevWordOccurrence := RegisterIDEMenuCommand(AParent,
+          'Find previous word occurrence', srkmecFindPrevWordOccurrence, nil,
+          @ExecuteIdeMenuClick, nil, 'menu_search_find_previous');
+      SrcEditMenuFindInFiles := RegisterIDEMenuCommand(AParent,
+          'Find in files', srkmecFindInFiles + ' ...', nil,
+          @ExecuteIdeMenuClick, nil, 'menu_search_files');
+      SrcEditMenuFindIdentifierReferences := RegisterIDEMenuCommand(AParent,
+          'FindIdentifierReferences',lisMenuFindIdentifierRefs, nil,
+          @ExecuteIdeMenuClick);
+      SrcEditMenuFindUsedUnitReferences := RegisterIDEMenuCommand(AParent,
+          'FindUsedUnitReferences', lisMenuFindReferencesOfUsedUnit, nil,
+          @ExecuteIdeMenuClick);
     {%endregion}
   {%endregion}
 
@@ -1613,28 +1637,28 @@ begin
     AParent:=SrcEditSubMenuGotoBookmarks;
       for I := 0 to 9 do
         RegisterIDEMenuCommand(AParent,'GotoBookmark'+IntToStr(I),
-                               uemBookmarkN+IntToStr(i), nil, @ExecuteIdeMenuClick);
-      SrcEditMenuNextBookmark:=RegisterIDEMenuCommand
-          (AParent, 'Goto next Bookmark',uemNextBookmark, nil,
-           @ExecuteIdeMenuClick, nil, 'menu_search_next_bookmark');
-      SrcEditMenuPrevBookmark:=RegisterIDEMenuCommand
-          (AParent, 'Goto previous Bookmark',uemPrevBookmark, nil,
-           @ExecuteIdeMenuClick, nil, 'menu_search_previous_bookmark');
+            uemBookmarkN+IntToStr(I), nil, @ExecuteIdeMenuClick, nil, 'menu_goto_bookmark'+IntToStr(I));
+      SrcEditMenuNextBookmark:=RegisterIDEMenuCommand(AParent,
+          'Goto next Bookmark',uemNextBookmark, nil,
+          @ExecuteIdeMenuClick, nil, 'menu_search_next_bookmark');
+      SrcEditMenuPrevBookmark:=RegisterIDEMenuCommand(AParent,
+          'Goto previous Bookmark',uemPrevBookmark, nil,
+          @ExecuteIdeMenuClick, nil, 'menu_search_previous_bookmark');
   {%endregion}
 
   {%region *** Toggle Bookmarks Submenu ***}
-    SrcEditSubMenuToggleBookmarks:=RegisterIDESubMenu
-        (SrcEditMenuSectionMarks, 'Toggle bookmarks',uemToggleBookmark);
+    SrcEditSubMenuToggleBookmarks:=RegisterIDESubMenu(SrcEditMenuSectionMarks,
+                                           'Toggle bookmarks',uemToggleBookmark);
     AParent:=SrcEditSubMenuToggleBookmarks;
       for I := 0 to 9 do
-        RegisterIDEMenuCommand(AParent, 'ToggleBookmark'+IntToStr(I), uemBookmarkN+IntToStr(i),
-                               nil, @ExecuteIdeMenuClick);
-      SrcEditMenuSetFreeBookmark:=RegisterIDEMenuCommand
-          (AParent, 'Set a free Bookmark',uemSetFreeBookmark, nil, @ExecuteIdeMenuClick);
-      SrcEditMenuClearFileBookmark:=RegisterIDEMenuCommand
-          (AParent, 'Clear Bookmark for current file',srkmecClearBookmarkForFile, nil, @ExecuteIdeMenuClick);
-      SrcEditMenuClearAllBookmark:=RegisterIDEMenuCommand
-          (AParent, 'Clear all Bookmark',srkmecClearAllBookmark, nil, @ExecuteIdeMenuClick);
+        RegisterIDEMenuCommand(AParent, 'ToggleBookmark'+IntToStr(I),
+            uemBookmarkN+IntToStr(I), nil, @ExecuteIdeMenuClick, nil, 'menu_toggle_bookmark'+IntToStr(I));
+      SrcEditMenuSetFreeBookmark:=RegisterIDEMenuCommand(AParent,
+          'Set a free Bookmark',uemSetFreeBookmark, nil, @ExecuteIdeMenuClick, nil, 'menu_set_free_bookmark');
+      SrcEditMenuClearFileBookmark:=RegisterIDEMenuCommand(AParent,
+          'Clear Bookmark for current file',srkmecClearBookmarkForFile, nil, @ExecuteIdeMenuClick, nil, 'menu_clear_file_bookmarks');
+      SrcEditMenuClearAllBookmark:=RegisterIDEMenuCommand(AParent,
+          'Clear all Bookmark',srkmecClearAllBookmark, nil, @ExecuteIdeMenuClick, nil, 'menu_clear_all_bookmarks');
   {%endregion}
 
   {%region *** Debug Section ***}
@@ -1646,63 +1670,63 @@ begin
     AParent:=SrcEditSubMenuDebug;
 
       // register the Debug submenu items
-      SrcEditMenuToggleBreakpoint:=RegisterIDEMenuCommand
-          (AParent,'Toggle Breakpoint', uemToggleBreakpoint, nil, @ExecuteIdeMenuClick);
-      SrcEditMenuEvaluateModify:=RegisterIDEMenuCommand
-          (AParent,'Evaluate/Modify...', uemEvaluateModify, nil, nil, nil,'debugger_modify');
+      SrcEditMenuToggleBreakpoint:=RegisterIDEMenuCommand(AParent,
+          'Toggle Breakpoint', uemToggleBreakpoint, nil, @ExecuteIdeMenuClick);
+      SrcEditMenuEvaluateModify:=RegisterIDEMenuCommand(AParent,
+          'Evaluate/Modify...', uemEvaluateModify, nil, nil, nil, 'debugger_modify');
       SrcEditMenuEvaluateModify.Enabled:=False;
-      SrcEditMenuAddWatchAtCursor:=RegisterIDEMenuCommand
-          (AParent, 'Add Watch at Cursor',uemAddWatchAtCursor);
-      SrcEditMenuAddWatchPointAtCursor:=RegisterIDEMenuCommand
-          (AParent, 'Add Watch at Cursor',uemAddWatchPointAtCursor);
-      SrcEditMenuInspect:=RegisterIDEMenuCommand
-          (AParent, 'Inspect...', uemInspect, nil, nil, nil, 'debugger_inspect');
+      SrcEditMenuAddWatchAtCursor:=RegisterIDEMenuCommand(AParent,
+          'Add Watch at Cursor', uemAddWatchAtCursor);
+      SrcEditMenuAddWatchPointAtCursor:=RegisterIDEMenuCommand(AParent,
+          'Add Watch at Cursor', uemAddWatchPointAtCursor);
+      SrcEditMenuInspect:=RegisterIDEMenuCommand(AParent,
+          'Inspect...', uemInspect, nil, nil, nil, 'debugger_inspect');
       SrcEditMenuInspect.Enabled:=False;
-      SrcEditMenuRunToCursor:=RegisterIDEMenuCommand
-          (AParent, 'Run to cursor', uemRunToCursor, nil, nil, nil, 'menu_run_cursor');
-      SrcEditMenuViewCallStack:=RegisterIDEMenuCommand
-          (AParent, 'View Call Stack', uemViewCallStack, nil, @ExecuteIdeMenuClick, nil, 'debugger_call_stack');
+      SrcEditMenuRunToCursor:=RegisterIDEMenuCommand(AParent,
+          'Run to cursor', lisMenuRunToCursor, nil, nil, nil, 'menu_run_cursor');
+      SrcEditMenuViewCallStack:=RegisterIDEMenuCommand(AParent,
+          'View Call Stack', uemViewCallStack, nil, @ExecuteIdeMenuClick, nil, 'debugger_call_stack');
   {%endregion}
 
   {%region *** Source Section ***}
     SrcEditSubMenuSource:=RegisterIDESubMenu(SourceEditorMenuRoot,
                                              'Source',uemSource);
     AParent:=SrcEditSubMenuSource;
-    SrcEditMenuEncloseSelection := RegisterIDEMenuCommand
-        (AParent, 'EncloseSelection',lisMenuEncloseSelection);
-    SrcEditMenuEncloseInIFDEF := RegisterIDEMenuCommand
-        (AParent,'itmSourceEncloseInIFDEF',lisMenuEncloseInIFDEF);
-    SrcEditMenuCompleteCode := RegisterIDEMenuCommand
-        (AParent,'CompleteCode', lisMenuCompleteCode, nil, @ExecuteIdeMenuClick);
-    SrcEditMenuInvertAssignment := RegisterIDEMenuCommand
-        (AParent, 'InvertAssignment',uemInvertAssignment, nil, @ExecuteIdeMenuClick);
-    SrcEditMenuUseUnit := RegisterIDEMenuCommand
-        (AParent,'UseUnit', lisMenuUseUnit, nil, @ExecuteIdeMenuClick);
-    SrcEditMenuShowUnitInfo := RegisterIDEMenuCommand
-        (AParent,'ShowUnitInfo', lisMenuViewUnitInfo);
+    SrcEditMenuEncloseSelection := RegisterIDEMenuCommand(AParent,
+        'EncloseSelection', lisMenuEncloseSelection);
+    SrcEditMenuEncloseInIFDEF := RegisterIDEMenuCommand(AParent,
+        'itmSourceEncloseInIFDEF', lisMenuEncloseInIFDEF);
+    SrcEditMenuCompleteCode := RegisterIDEMenuCommand(AParent,
+        'CompleteCode', lisMenuCompleteCode, nil, @ExecuteIdeMenuClick);
+    SrcEditMenuInvertAssignment := RegisterIDEMenuCommand(AParent,
+        'InvertAssignment', uemInvertAssignment, nil, @ExecuteIdeMenuClick);
+    SrcEditMenuUseUnit := RegisterIDEMenuCommand(AParent,
+        'UseUnit', lisMenuUseUnit, nil, @ExecuteIdeMenuClick);
+    SrcEditMenuShowUnitInfo := RegisterIDEMenuCommand(AParent,
+        'ShowUnitInfo', lisMenuViewUnitInfo);
   {%endregion}
 
   {%region *** Refactoring Section ***}
     SrcEditSubMenuRefactor:=RegisterIDESubMenu(SourceEditorMenuRoot,
                                                'Refactoring',uemRefactor);
     AParent:=SrcEditSubMenuRefactor;
-    SrcEditMenuRenameIdentifier := RegisterIDEMenuCommand
-        (AParent, 'RenameIdentifier',lisMenuRenameIdentifier, nil, @ExecuteIdeMenuClick);
-    SrcEditMenuExtractProc := RegisterIDEMenuCommand
-        (AParent, 'ExtractProc',lisMenuExtractProc, nil, @ExecuteIdeMenuClick);
-    SrcEditMenuShowAbstractMethods := RegisterIDEMenuCommand
-        (AParent, 'ShowAbstractMethods',srkmecAbstractMethods, nil, @ExecuteIdeMenuClick);
-    SrcEditMenuShowEmptyMethods := RegisterIDEMenuCommand
-        (AParent, 'ShowEmptyMethods', srkmecEmptyMethods, nil, @ExecuteIdeMenuClick);
-    SrcEditMenuShowUnusedUnits := RegisterIDEMenuCommand
-        (AParent, 'ShowUnusedUnits', srkmecUnusedUnits, nil, @ExecuteIdeMenuClick);
-    SrcEditMenuFindOverloads := RegisterIDEMenuCommand
-        (AParent, 'FindOverloads', srkmecFindOverloadsCapt, nil, @ExecuteIdeMenuClick);
+    SrcEditMenuRenameIdentifier := RegisterIDEMenuCommand(AParent,
+        'RenameIdentifier', lisMenuRenameIdentifier, nil, @ExecuteIdeMenuClick);
+    SrcEditMenuExtractProc := RegisterIDEMenuCommand(AParent,
+        'ExtractProc', lisMenuExtractProc, nil, @ExecuteIdeMenuClick);
+    SrcEditMenuShowAbstractMethods := RegisterIDEMenuCommand(AParent,
+        'ShowAbstractMethods', srkmecAbstractMethods, nil, @ExecuteIdeMenuClick);
+    SrcEditMenuShowEmptyMethods := RegisterIDEMenuCommand(AParent,
+        'ShowEmptyMethods', srkmecEmptyMethods, nil, @ExecuteIdeMenuClick);
+    SrcEditMenuShowUnusedUnits := RegisterIDEMenuCommand(AParent,
+        'ShowUnusedUnits', srkmecUnusedUnits, nil, @ExecuteIdeMenuClick);
+    SrcEditMenuFindOverloads := RegisterIDEMenuCommand(AParent,
+        'FindOverloads', srkmecFindOverloadsCapt, nil, @ExecuteIdeMenuClick);
     {$IFnDEF EnableFindOverloads}
     SrcEditMenuFindOverloads.Visible:=false;
     {$ENDIF}
-    SrcEditMenuMakeResourceString := RegisterIDEMenuCommand
-        (AParent, 'MakeResourceString', lisMenuMakeResourceString, nil, @ExecuteIdeMenuClick);
+    SrcEditMenuMakeResourceString := RegisterIDEMenuCommand(AParent,
+        'MakeResourceString', lisMenuMakeResourceString, nil, @ExecuteIdeMenuClick);
   {%endregion}
 
   SrcEditMenuEditorProperties:=RegisterIDEMenuCommand(SourceEditorMenuRoot,
@@ -1810,8 +1834,7 @@ begin
   end;
 end;
 
-procedure TBrowseEditorTabHistoryDialog.KeyUp(var Key: Word; Shift: TShiftState
-  );
+procedure TBrowseEditorTabHistoryDialog.KeyUp(var Key: Word; Shift: TShiftState);
 begin
   if Key = VK_CONTROL then
   begin
@@ -1855,13 +1878,13 @@ procedure TBrowseEditorTabHistoryDialog.Show(aForward: Boolean);
 var
   I: Integer;
   xPage: TCustomPage;
-  xIndex: TAvgLvlTree;
+  xIndex: TAvlTree;
 begin
   if FNotebook.PageCount <= 1 then
     Exit;
 
   FEditorList.Items.BeginUpdate;
-  xIndex := TAvgLvlTree.Create;
+  xIndex := TAvlTree.Create;
   try
     FEditorList.Items.Clear;
     for I := 0 to FNotebook.FHistoryList.Count-1 do
@@ -1920,19 +1943,18 @@ begin
   begin
     FAutoHintMousePos := Mouse.CursorPos;
     if not(HintIsVisible and (FLastHint = AHint)) then
-      ShowHint(ScreenRect.TopLeft,AHint,AMouseOffset);
+      ShowHint(Point(ScreenRect.Left, ScreenRect.Bottom),AHint,AMouseOffset);
   end else
   begin
     if HintIsVisible and (FLastHint = AHint) then
       HideIfVisible
     else
-      ShowHint(ScreenRect.TopLeft,AHint,AMouseOffset);
+      ShowHint(Point(ScreenRect.Left, ScreenRect.Bottom),AHint,AMouseOffset);
   end;
   FAutoHideHintTimer.Enabled := AAutoShown;
 end;
 
-constructor TSourceEditorHintWindowManager.Create(AManager: TSourceEditorManager
-  );
+constructor TSourceEditorHintWindowManager.Create(AManager: TSourceEditorManager);
 begin
   inherited Create;
 
@@ -2019,34 +2041,33 @@ begin
   FAutoHideHintTimer.Enabled := False;
   if HintIsVisible then begin
     Cur := Mouse.CursorPos; // Desktop coordinates
-
-    hw := CurHintWindow;
-    OkX := ( (FAutoHintMousePos.x <= hw.Left) and
-             (Cur.x > FAutoHintMousePos.x) and (Cur.x <= hw.Left + hw.Width)
-           ) or
-           ( (FAutoHintMousePos.x >= hw.Left + hw.Width) and
-             (Cur.x < FAutoHintMousePos.x) and (Cur.x >= hw.Left)
-           ) or
-           ( (Cur.x >= hw.Left) and (Cur.x <= hw.Left + hw.Width) );
-    OkY := ( (FAutoHintMousePos.y <= hw.Top) and
-             (Cur.y > FAutoHintMousePos.y) and (Cur.y <= hw.Top + hw.Height)
-           ) or
-           ( (FAutoHintMousePos.y >= hw.Top + hw.Height) and
-             (Cur.y < FAutoHintMousePos.y) and (Cur.y >= hw.Top)
-           ) or
-           ( (Cur.y >= hw.Top) and (Cur.y <= hw.Top + hw.Height) );
-
-    // Update FAutoHintMousePos, if outside the HintWin, and new CurPos is closer to HintWin
-    if OkX then FAutoHintMousePos.x := Cur.x;
-    if OkY then FAutoHintMousePos.y := Cur.y;
-
-    if (not IsRectEmpty(FScreenRect)) and PtInRect(FScreenRect, Cur) then
+    if (not IsRectEmpty(FScreenRect)) then
     begin
       // Do not close, if mouse still over the same word, that triggered the hint
+      if PtInRect(FScreenRect, Cur) then
         Exit;
     end else
     begin
-      // Do not close if mouse moves towards the hint. Allow mouse to enter hint
+      // Fallback if FScreenRect is empty (for legacy calls)
+      hw := CurHintWindow;
+      OkX := ( (FAutoHintMousePos.x <= hw.Left) and
+               (Cur.x > FAutoHintMousePos.x) and (Cur.x <= hw.Left + hw.Width)
+             ) or
+             ( (FAutoHintMousePos.x >= hw.Left + hw.Width) and
+               (Cur.x < FAutoHintMousePos.x) and (Cur.x >= hw.Left)
+             ) or
+             ( (Cur.x >= hw.Left) and (Cur.x <= hw.Left + hw.Width) );
+      OkY := ( (FAutoHintMousePos.y <= hw.Top) and
+               (Cur.y > FAutoHintMousePos.y) and (Cur.y <= hw.Top + hw.Height)
+             ) or
+             ( (FAutoHintMousePos.y >= hw.Top + hw.Height) and
+               (Cur.y < FAutoHintMousePos.y) and (Cur.y >= hw.Top)
+             ) or
+             ( (Cur.y >= hw.Top) and (Cur.y <= hw.Top + hw.Height) );
+
+      if OkX then FAutoHintMousePos.x := Cur.x;
+      if OkY then FAutoHintMousePos.y := Cur.y;
+
       OkX := OkX or
              ( (FAutoHintMousePos.x <= hw.Left + MaxJitter) and
                (Cur.x > FAutoHintMousePos.x - MaxJitter) and (Cur.x <= hw.Left + hw.Width + MaxJitter)
@@ -2089,6 +2110,11 @@ begin
   EnvironmentOptions.Desktop.CompletionWindowHeight := TheForm.NbLinesInWindow;
 end;
 
+function TSourceEditCompletion.GetCompletionFormClass: TSynBaseCompletionFormClass;
+begin
+  Result := TSourceEditCompletionForm;
+end;
+
 procedure TSourceEditCompletion.ccExecute(Sender: TObject);
 // init completion form
 // called by OnExecute just before showing
@@ -2097,15 +2123,19 @@ var
   Prefix: String;
   I: Integer;
   NewStr: String;
+  SynEditor: TIDESynEditor;
 Begin
   {$IFDEF VerboseIDECompletionBox}
   debugln(['TSourceEditCompletion.ccExecute START']);
   {$ENDIF}
   TheForm.Font := Editor.Font;
-  FActiveEditDefaultFGColor := Editor.Font.Color;
-  FActiveEditDefaultBGColor := Editor.Color;
-  FActiveEditSelectedFGColor := TSynEdit(Editor).SelectedColor.Foreground;
-  FActiveEditSelectedBGColor := TSynEdit(Editor).SelectedColor.Background;
+
+  FActiveEditTextColor := Editor.Font.Color;
+  FActiveEditBorderColor := RGBToColor(200, 200, 200);
+  FActiveEditBackgroundColor := Editor.Color;
+  FActiveEditTextSelectedColor := TSynEdit(Editor).SelectedColor.Foreground;
+  FActiveEditBackgroundSelectedColor := TSynEdit(Editor).SelectedColor.Background;
+  FActiveEditTextHighLightColor := clNone;
 
   if Editor.Highlighter<>nil
   then begin
@@ -2113,11 +2143,28 @@ Begin
       if IdentifierAttribute<>nil
       then begin
         if IdentifierAttribute.ForeGround<>clNone then
-          FActiveEditDefaultFGColor:=IdentifierAttribute.ForeGround;
+          FActiveEditTextColor:=IdentifierAttribute.ForeGround;
         if IdentifierAttribute.BackGround<>clNone then
-          FActiveEditDefaultBGColor:=IdentifierAttribute.BackGround;
+          FActiveEditBackgroundColor:=IdentifierAttribute.BackGround;
       end;
     end;
+  end;
+
+  if Editor is TIDESynEditor then
+  begin
+    SynEditor := TIDESynEditor(Editor);
+    if SynEditor.MarkupIdentComplWindow.TextColor<>clNone then
+      FActiveEditTextColor := SynEditor.MarkupIdentComplWindow.TextColor;
+    if SynEditor.MarkupIdentComplWindow.BorderColor<>clNone then
+      FActiveEditBorderColor := SynEditor.MarkupIdentComplWindow.BorderColor;
+    if SynEditor.MarkupIdentComplWindow.WindowColor<>clNone then
+      FActiveEditBackgroundColor := SynEditor.MarkupIdentComplWindow.WindowColor;
+    if SynEditor.MarkupIdentComplWindow.TextSelectedColor<>clNone then
+      FActiveEditTextSelectedColor := SynEditor.MarkupIdentComplWindow.TextSelectedColor;
+    if SynEditor.MarkupIdentComplWindow.BackgroundSelectedColor<>clNone then
+      FActiveEditBackgroundSelectedColor := SynEditor.MarkupIdentComplWindow.BackgroundSelectedColor;
+    if SynEditor.MarkupIdentComplWindow.HighlightColor<>clNone then
+      FActiveEditTextHighLightColor := SynEditor.MarkupIdentComplWindow.HighlightColor;
   end;
 
   S := TStringList.Create;
@@ -2161,12 +2208,14 @@ Begin
   CurrentString:=Prefix;
   // set colors
   if (Editor<>nil) and (TheForm<>nil) then begin
-    with TheForm do begin
-      BackgroundColor   := FActiveEditDefaultBGColor;
-      clSelect          := FActiveEditSelectedBGColor;
-      TextColor         := FActiveEditDefaultFGColor;
-      TextSelectedColor := FActiveEditSelectedFGColor;
-      //debugln('TSourceNotebook.ccExecute A Color=',DbgS(Color),
+    with TheForm as TSourceEditCompletionForm do begin
+      DrawBorderColor       := FActiveEditBorderColor;
+      BackgroundColor   := FActiveEditBackgroundColor;
+      clSelect          := FActiveEditBackgroundSelectedColor;
+      TextColor         := FActiveEditTextColor;
+      TextSelectedColor := FActiveEditTextSelectedColor;
+      TextHighLightColor:= FActiveEditTextHighLightColor;
+      //debugln('TSourceEditCompletion.ccExecute A Color=',DbgS(Color),
       // ' clSelect=',DbgS(clSelect),
       // ' TextColor=',DbgS(TextColor),
       // ' TextSelectedColor=',DbgS(TextSelectedColor),
@@ -2341,12 +2390,12 @@ Begin
 end;
 
 function TSourceEditCompletion.OnSynCompletionPaintItem(const AKey: string;
-  ACanvas: TCanvas; X, Y: integer; ItemSelected: boolean; Index: integer
-  ): boolean;
+  ACanvas: TCanvas; X, Y: integer; ItemSelected: boolean; Index: integer): boolean;
 var
   MaxX: Integer;
   t: TCompletionType;
   hl: TSynCustomHighlighter;
+  Colors: TPaintCompletionItemColors;
 begin
   with ACanvas do begin
     if (Editor<>nil) then
@@ -2356,11 +2405,12 @@ begin
       Font.Name:=EditorOpts.EditorFont;
     end;
     Font.Style:=[];
-    if not ItemSelected then
-      Font.Color := FActiveEditDefaultFGColor
-    else
-      Font.Color := FActiveEditSelectedFGColor;
   end;
+  Colors.BackgroundColor := ColorToRGB(FActiveEditBackgroundColor);
+  Colors.BackgroundSelectedColor := ColorToRGB(FActiveEditBackgroundSelectedColor);
+  Colors.TextColor := ColorToRGB(FActiveEditTextColor);
+  Colors.TextSelectedColor := ColorToRGB(FActiveEditTextSelectedColor);
+  Colors.TextHighLightColor := ColorToRGB(FActiveEditTextHighLightColor);
   MaxX:=TheForm.ClientWidth;
   t:=CurrentCompletionType;
   if Manager.ActiveCompletionPlugin<>nil then
@@ -2375,7 +2425,7 @@ begin
   hl := nil;
   if Editor <> nil then
     hl := Editor.Highlighter;
-  PaintCompletionItem(AKey, ACanvas, X, Y, MaxX, ItemSelected, Index, self, t, hl);
+  PaintCompletionItem(AKey, ACanvas, X, Y, MaxX, ItemSelected, Index, self, t, hl, @Colors);
   Result:=true;
 end;
 
@@ -2393,10 +2443,6 @@ begin
       Font.Name:=EditorOpts.EditorFont;
     end;
     Font.Style:=[];
-    if not ItemSelected then
-      Font.Color := FActiveEditDefaultFGColor
-    else
-      Font.Color := FActiveEditSelectedFGColor;
   end;
   MaxX := Screen.Width-20;
   t:=CurrentCompletionType;
@@ -2410,7 +2456,7 @@ begin
     end;
   end;
   Result := PaintCompletionItem(AKey,ACanvas,0,0,MaxX,ItemSelected,Index,
-                                self,t,nil,True);
+                                self,t,nil,nil,True);
   Result.Y:=FontHeight;
 end;
 
@@ -2441,6 +2487,7 @@ begin
         // rebuild completion list
         APosition:=0;
         CurStr:=CurrentString;
+        CodeToolBoss.IdentifierList.ContainsFilter := CodeToolsOpts.IdentComplUseContainsFilter;
         CodeToolBoss.IdentifierList.Prefix:=CurStr;
         ItemCnt:=CodeToolBoss.IdentifierList.GetFilteredCount;
         SL:=TStringList.Create;
@@ -2549,7 +2596,7 @@ begin
   if LogCaret.Y>=Editor.Lines.Count then exit;
   Line:=Editor.Lines[LogCaret.Y-1];
   if LogCaret.X>length(Line) then exit;
-  CharLen:=UTF8CharacterLength(@Line[LogCaret.X]);
+  CharLen:=UTF8CodepointSize(@Line[LogCaret.X]);
   AddPrefix:=copy(Line,LogCaret.X,CharLen);
   NewPrefix:=CurrentString+AddPrefix;
   //debugln('TSourceNotebook.OnSynCompletionNextChar NewPrefix="',NewPrefix,'" LogCaret.X=',dbgs(LogCaret.X));
@@ -2568,7 +2615,7 @@ begin
   if Editor=nil then exit;
   Editor.CaretX:=Editor.CaretX-1;
   NewLen:=UTF8FindNearestCharStart(PChar(NewPrefix),length(NewPrefix),
-                                   length(NewPrefix))-1;
+                                   length(NewPrefix)-1);
   NewPrefix:=copy(NewPrefix,1,NewLen);
   CurrentString:=NewPrefix;
 end;
@@ -2688,8 +2735,7 @@ end;
 
 { TSourceEditorSharedValues }
 
-function TSourceEditorSharedValues.GetSharedEditors(Index: Integer
-  ): TSourceEditor;
+function TSourceEditorSharedValues.GetSharedEditors(Index: Integer): TSourceEditor;
 begin
   Result := TSourceEditor(FSharedEditorList[Index]);
 end;
@@ -3098,8 +3144,7 @@ begin
     FMainLinkScanner:=nil;
 end;
 
-function TSourceEditorSharedValues.GetMainLinkScanner(Scan: boolean
-  ): TLinkScanner;
+function TSourceEditorSharedValues.GetMainLinkScanner(Scan: boolean): TLinkScanner;
 // Note: if this is an include file, the main scanner may change
 var
   SrcEdit: TIDESynEditor;
@@ -3323,13 +3368,13 @@ end;
 
 {------------------------------S T A R T  F I N D-----------------------------}
 procedure TSourceEditor.StartFindAndReplace(Replace:boolean);
-const
-  SaveOptions = [ssoMatchCase,ssoWholeWord,ssoRegExpr,ssoRegExprMultiLine,ssoPrompt,ssoBackwards];
 var
   NewOptions: TSynSearchOptions;
   ALeft,ATop:integer;
   DlgResult: TModalResult;
+  AState: TLazFindReplaceState;
 begin
+  LazFindReplaceDialog.SaveState(AState);
   LazFindReplaceDialog.ResetUserHistory;
   //debugln('TSourceEditor.StartFindAndReplace A LazFindReplaceDialog.FindText="',dbgstr(LazFindReplaceDialog.FindText),'"');
   if ReadOnly then Replace := False;
@@ -3338,16 +3383,14 @@ begin
     NewOptions := NewOptions + [ssoReplace, ssoReplaceAll]
   else
     NewOptions := NewOptions - [ssoReplace, ssoReplaceAll];
-  NewOptions:=NewOptions-SaveOptions+InputHistoriesSO.FindOptions*SaveOptions
-                        -[ssoSelectedOnly, ssoEntireScope];
+  NewOptions:=NewOptions-InputHistoriesSO.SaveOptions
+    +InputHistoriesSO.FindOptions[EditorComponent.SelAvail];
 
   // Fill in history items
   LazFindReplaceDialog.TextToFindComboBox.Items.Assign(InputHistoriesSO.FindHistory);
   LazFindReplaceDialog.ReplaceTextComboBox.Items.Assign(InputHistoriesSO.ReplaceHistory);
 
   with EditorComponent do begin
-    if SelAvail then
-      NewOptions := NewOptions + [ssoSelectedOnly, ssoEntireScope];
     if EditorOpts.FindTextAtCursor then begin
       if SelAvail and (BlockBegin.Y = BlockEnd.Y) and
          (  ((ComparePoints(BlockBegin, LogicalCaretXY) <= 0) and
@@ -3378,10 +3421,13 @@ begin
 
   LazFindReplaceDialog.Options := NewOptions;
   DlgResult:=LazFindReplaceDialog.ShowModal;
-  InputHistoriesSO.FindOptions:=LazFindReplaceDialog.Options*SaveOptions;
+  InputHistoriesSO.FindOptions[EditorComponent.SelAvail]:=LazFindReplaceDialog.Options;
   InputHistoriesSO.FindAutoComplete:=LazFindReplaceDialog.EnableAutoComplete;
   if DlgResult = mrCancel then
+  begin
+    LazFindReplaceDialog.RestoreState(AState);
     exit;
+  end;
   //debugln('TSourceEditor.StartFindAndReplace B LazFindReplaceDialog.FindText="',dbgstr(LazFindReplaceDialog.FindText),'"');
 
   Replace:=ssoReplace in LazFindReplaceDialog.Options;
@@ -3828,168 +3874,63 @@ Begin
   //debugln('TSourceEditor.ProcessUserCommand A ',dbgs(Command));
   FSharedValues.SetActiveSharedEditor(Self);
   Handled:=true;
-
   CheckActiveWindow;
 
   case Command of
-  ecMultiPaste:
-    MultiPasteText;
-
-  ecContextHelp:
-    FindHelpForSourceAtCursor;
-
-  ecSmartHint:
-    ShowSmartHintForSourceAtCursor;
-
-  ecIdentCompletion :
-    StartIdentCompletionBox(CodeToolsOpts.IdentComplJumpToError);
-
-  ecShowCodeContext :
-    SourceNotebook.StartShowCodeContext(CodeToolsOpts.IdentComplJumpToError);
-
-  ecWordCompletion :
-    StartWordCompletionBox;
-
-  ecFind:
-    StartFindAndReplace(false);
-
-  ecFindNext:
-    FindNextUTF8;
-
-  ecFindPrevious:
-    FindPrevious;
-
-  ecIncrementalFind:
-    if FSourceNoteBook<>nil then FSourceNoteBook.BeginIncrementalFind;
-
-  ecReplace:
-    StartFindAndReplace(true);
-
-  ecGotoLineNumber :
-    ShowGotoLineDialog;
-
-  ecFindNextWordOccurrence:
-    FindNextWordOccurrence(true);
-
-  ecFindPrevWordOccurrence:
-    FindNextWordOccurrence(false);
-
-  ecSelectionEnclose:
-    EncloseSelection;
-
-  ecSelectionUpperCase:
-    UpperCaseSelection;
-
-  ecSelectionLowerCase:
-    LowerCaseSelection;
-
-  ecSelectionSwapCase:
-    SwapCaseSelection;
-
-  ecSelectionTabs2Spaces:
-    TabsToSpacesInSelection;
-
-  ecSelectionComment:
-    CommentSelection;
-
-  ecSelectionUnComment:
-    UncommentSelection;
-
-  ecToggleComment:
-    ToggleCommentSelection;
-
-  ecSelectionEncloseIFDEF:
-    ConditionalSelection;
-
-  ecSelectionSort:
-    SortSelection;
-
-  ecSelectionBreakLines:
-    BreakLinesInSelection;
-
-  ecInvertAssignment:
-    InvertAssignment;
-
-  ecSelectToBrace:
-    SelectToBrace;
-
-  ecSelectCodeBlock:
-    SelectCodeBlock;
-
-  ecSelectLine:
-    SelectLine;
-
-  ecSelectWord:
-    SelectWord;
-
-  ecSelectParagraph:
-    SelectParagraph;
-
-  ecInsertCharacter:
-    InsertCharacterFromMap;
-
-  ecInsertGPLNotice:
-    InsertGPLNotice(comtDefault,false);
-  ecInsertGPLNoticeTranslated:
-    InsertGPLNotice(comtDefault,true);
-
-  ecInsertLGPLNotice:
-    InsertLGPLNotice(comtDefault,false);
-  ecInsertLGPLNoticeTranslated:
-    InsertLGPLNotice(comtDefault,true);
-
-  ecInsertModifiedLGPLNotice:
-    InsertModifiedLGPLNotice(comtDefault,false);
-  ecInsertModifiedLGPLNoticeTranslated:
-    InsertModifiedLGPLNotice(comtDefault,true);
-
-  ecInsertMITNotice:
-    InsertMITNotice(comtDefault,false);
-  ecInsertMITNoticeTranslated:
-    InsertMITNotice(comtDefault,true);
-
-  ecInsertUserName:
-    InsertUsername;
-
-  ecInsertDateTime:
-    InsertDateTime;
-
-  ecInsertChangeLogEntry:
-    InsertChangeLogEntry;
-
-  ecInsertCVSAuthor:
-    InsertCVSKeyword('Author');
-
-  ecInsertCVSDate:
-    InsertCVSKeyword('Date');
-
-  ecInsertCVSHeader:
-    InsertCVSKeyword('Header');
-
-  ecInsertCVSID:
-    InsertCVSKeyword('ID');
-
-  ecInsertCVSLog:
-    InsertCVSKeyword('Log');
-
-  ecInsertCVSName:
-    InsertCVSKeyword('Name');
-
-  ecInsertCVSRevision:
-    InsertCVSKeyword('Revision');
-
-  ecInsertCVSSource:
-    InsertCVSKeyword('Source');
-
-  ecInsertGUID:
-    InsertGUID;
-
-  ecInsertFilename:
-    InsertFilename;
-
-  ecLockEditor:
-    IsLocked := not IsLocked;
-
+  ecMultiPaste:                MultiPasteText;
+  ecContextHelp:               FindHelpForSourceAtCursor;
+  ecSmartHint:                 ShowSmartHintForSourceAtCursor;
+  ecIdentCompletion: StartIdentCompletionBox(CodeToolsOpts.IdentComplJumpToError,true);
+  ecShowCodeContext: SourceNotebook.StartShowCodeContext(CodeToolsOpts.IdentComplJumpToError);
+  ecWordCompletion:            StartWordCompletionBox;
+  ecFind:                      StartFindAndReplace(false);
+  ecFindNext:                  FindNextUTF8;
+  ecFindPrevious:              FindPrevious;
+  ecIncrementalFind: if FSourceNoteBook<>nil then FSourceNoteBook.BeginIncrementalFind;
+  ecReplace:                   StartFindAndReplace(true);
+  ecGotoLineNumber:            ShowGotoLineDialog;
+  ecFindNextWordOccurrence:    FindNextWordOccurrence(true);
+  ecFindPrevWordOccurrence:    FindNextWordOccurrence(false);
+  ecSelectionEnclose:          EncloseSelection;
+  ecSelectionUpperCase:        UpperCaseSelection;
+  ecSelectionLowerCase:        LowerCaseSelection;
+  ecSelectionSwapCase:         SwapCaseSelection;
+  ecSelectionTabs2Spaces:      TabsToSpacesInSelection;
+  ecSelectionComment:          CommentSelection;
+  ecSelectionUnComment:        UncommentSelection;
+  ecToggleComment:             ToggleCommentSelection;
+  ecSelectionEncloseIFDEF:     ConditionalSelection;
+  ecSelectionSort:             SortSelection;
+  ecSelectionBreakLines:       BreakLinesInSelection;
+  ecInvertAssignment:          InvertAssignment;
+  ecSelectToBrace:             SelectToBrace;
+  ecSelectCodeBlock:           SelectCodeBlock;
+  ecSelectLine:                SelectLine;
+  ecSelectWord:                SelectWord;
+  ecSelectParagraph:           SelectParagraph;
+  ecInsertCharacter:           InsertCharacterFromMap;
+  ecInsertGPLNotice:           InsertGPLNotice(comtDefault,false);
+  ecInsertGPLNoticeTranslated: InsertGPLNotice(comtDefault,true);
+  ecInsertLGPLNotice:          InsertLGPLNotice(comtDefault,false);
+  ecInsertLGPLNoticeTranslated:InsertLGPLNotice(comtDefault,true);
+  ecInsertModifiedLGPLNotice:  InsertModifiedLGPLNotice(comtDefault,false);
+  ecInsertModifiedLGPLNoticeTranslated: InsertModifiedLGPLNotice(comtDefault,true);
+  ecInsertMITNotice:           InsertMITNotice(comtDefault,false);
+  ecInsertMITNoticeTranslated: InsertMITNotice(comtDefault,true);
+  ecInsertUserName:            InsertUsername;
+  ecInsertDateTime:            InsertDateTime;
+  ecInsertChangeLogEntry:      InsertChangeLogEntry;
+  ecInsertCVSAuthor:           InsertCVSKeyword('Author');
+  ecInsertCVSDate:             InsertCVSKeyword('Date');
+  ecInsertCVSHeader:           InsertCVSKeyword('Header');
+  ecInsertCVSID:               InsertCVSKeyword('ID');
+  ecInsertCVSLog:              InsertCVSKeyword('Log');
+  ecInsertCVSName:             InsertCVSKeyword('Name');
+  ecInsertCVSRevision:         InsertCVSKeyword('Revision');
+  ecInsertCVSSource:           InsertCVSKeyword('Source');
+  ecInsertGUID:                InsertGUID;
+  ecInsertFilename:            InsertFilename;
+  ecLockEditor:                IsLocked := not IsLocked;
   ecSynMacroPlay: begin
       If ActiveEditorMacro = EditorMacroForRecording then begin
         if EditorMacroForRecording.State = emRecording
@@ -4002,7 +3943,6 @@ Begin
         then
           SelectedEditorMacro.PlaybackMacro(FEditor);
     end;
-
   ecSynMacroRecord: begin
       If ActiveEditorMacro = nil then
         EditorMacroForRecording.RecordMacro(FEditor)
@@ -4010,7 +3950,6 @@ Begin
       If ActiveEditorMacro = EditorMacroForRecording then
         EditorMacroForRecording.Stop;
     end;
-
   ecClearBookmarkForFile: begin
       if Assigned(Manager) and Assigned(Manager.OnClearBookmarkId) then
         for i := 0 to 9 do
@@ -5024,6 +4963,8 @@ Begin
       RegisterMouseActionExecHandler(@EditorHandleMouseAction);
       // IMPORTANT: when you change above, don't forget updating UnbindEditor
       Parent := AParent;
+      if AParent.Font.PixelsPerInch<>96 then
+        AutoAdjustLayout(lapAutoAdjustForDPI, 96, AParent.Font.PixelsPerInch, 0, 0);
     end;
     Manager.CodeTemplateModul.AddEditor(FEditor);
     Manager.FMacroRecorder.AddEditor(FEditor);
@@ -5048,7 +4989,8 @@ begin
   FSharedValues.CodeBuffer := NewCodeBuffer;
 end;
 
-procedure TSourceEditor.StartIdentCompletionBox(JumpToError: boolean);
+procedure TSourceEditor.StartIdentCompletionBox(JumpToError,
+  CanAutoComplete: boolean);
 var
   I: Integer;
   TextS, TextS2: String;
@@ -5086,7 +5028,7 @@ begin
   if UseWordCompletion then
     Completion.CurrentCompletionType:=ctWordCompletion;
 
-  Completion.AutoUseSingleIdent := CodeToolsOpts.IdentComplAutoUseSingleIdent;
+  Completion.AutoUseSingleIdent := CanAutoComplete and CodeToolsOpts.IdentComplAutoUseSingleIdent;
   Completion.Execute(TextS2, CompletionRect);
   {$IFDEF VerboseIDECompletionBox}
   debugln(['TSourceEditor.StartIdentCompletionBox END Completion.TheForm.Visible=',Completion.TheForm.Visible]);
@@ -5705,6 +5647,11 @@ begin
   Result:=FEditor.Lines;
 end;
 
+function TSourceEditor.GetLinesInWindow: Integer;
+begin
+  Result := FEditor.LinesInWindow;
+end;
+
 procedure TSourceEditor.SetLines(const AValue: TStrings);
 begin
   FEditor.Lines:=AValue;
@@ -5927,7 +5874,7 @@ procedure TSourceEditor.FillExecutionMarks;
 var
   ASource: String;
   i, idx: integer;
-  Addr: TDBGPtr;
+  HasAddr: Boolean;
   j: Integer;
 begin
   if EditorComponent.IDEGutterMarks.HasDebugMarks then Exit;
@@ -5952,15 +5899,15 @@ begin
   try
     for i := 1 to EditorComponent.Lines.Count do
     begin
-      Addr := DebugBoss.LineInfo.GetAddress(idx, i);
-      if (Addr <> 0) and (j < 0) then
+      HasAddr := DebugBoss.LineInfo.HasAddress(idx, i);
+      if (HasAddr) and (j < 0) then
         j := i;
-      if (Addr = 0) and (j >= 0) then begin
+      if (not HasAddr) and (j >= 0) then begin
         EditorComponent.IDEGutterMarks.SetDebugMarks(j, i-1);
         j := -1;
       end;
     end;
-    if (Addr <> 0) and (j >= 0) then
+    if (HasAddr) and (j >= 0) then
       EditorComponent.IDEGutterMarks.SetDebugMarks(j, EditorComponent.Lines.Count);
   finally
     EditorComponent.IDEGutterMarks.EndSetDebugMarks;
@@ -6269,7 +6216,7 @@ begin
 
   FSourceEditorList := TFPList.Create;
   FHistoryList := TFPList.Create;
-  FSrcEditsSortedForFilenames := TAvgLvlTree.Create(@CompareSrcEditIntfWithFilename);
+  FSrcEditsSortedForFilenames := TAvlTree.Create(@CompareSrcEditIntfWithFilename);
 
   FHistoryDlg := TBrowseEditorTabHistoryDialog.CreateNew(Self);
   FOnEditorPageCaptionUpdate := TMethodList.Create;
@@ -6289,7 +6236,7 @@ begin
   Application.AddOnDeactivateHandler(@OnApplicationDeactivate);
   Application.AddOnMinimizeHandler(@OnApplicationDeactivate);
 
-  FStopBtnIdx := IDEImages.LoadImage(16, 'menu_stop');
+  FStopBtnIdx := IDEImages.LoadImage('menu_stop');
 
   {$IFNDEF LCLGtk2}
   try
@@ -6443,13 +6390,13 @@ begin
     end else if NewEncoding=lisUtf8WithBOM then begin
       NewEncoding:=EncodingUTF8BOM;
     end;
-    DebugLn(['TSourceNotebook.EncodingClicked NewEncoding=',NewEncoding]);
+    DebugLn(['Hint: (lazarus) TSourceNotebook.EncodingClicked NewEncoding=',NewEncoding]);
     if SrcEdit.CodeBuffer<>nil then begin
       OldEncoding:=NormalizeEncoding(SrcEdit.CodeBuffer.DiskEncoding);
       if OldEncoding='' then
         OldEncoding:=GetDefaultTextEncoding;
       if NewEncoding<>SrcEdit.CodeBuffer.DiskEncoding then begin
-        DebugLn(['TSourceNotebook.EncodingClicked Old=',OldEncoding,' New=',NewEncoding]);
+        DebugLn(['Hint: (lazarus) TSourceNotebook.EncodingClicked Old=',OldEncoding,' New=',NewEncoding]);
         if SrcEdit.ReadOnly then begin
           if SrcEdit.CodeBuffer.IsVirtual then
             CurResult:=mrCancel
@@ -6476,11 +6423,11 @@ begin
           SrcEdit.CodeBuffer.Modified:=true;
           // set override
           InputHistoriesSO.FileEncodings[SrcEdit.CodeBuffer.Filename]:=NewEncoding;
-          DebugLn(['TSourceNotebook.EncodingClicked Change file to ',SrcEdit.CodeBuffer.DiskEncoding]);
+          DebugLn(['Hint: (lazarus) TSourceNotebook.EncodingClicked Change file to ',SrcEdit.CodeBuffer.DiskEncoding]);
           if (not SrcEdit.CodeBuffer.IsVirtual)
           and (LazarusIDE.DoSaveEditorFile(SrcEdit, []) <> mrOk)
           then begin
-            DebugLn(['TSourceNotebook.EncodingClicked LazarusIDE.DoSaveEditorFile failed']);
+            DebugLn(['Hint: (lazarus) TSourceNotebook.EncodingClicked LazarusIDE.DoSaveEditorFile failed']);
           end;
         end else if CurResult=mrOK then begin
           // reopen with another encoding
@@ -6852,6 +6799,8 @@ begin
     Images := IDEImages.Images_16;
   end;
 
+  GoToLineMenuItem.Caption := lisMenuGotoLine;
+  OpenFolderMenuItem.Caption := lisMenuOpenFolder;
   {$IFDEF VerboseMenuIntf}
   SrcPopupMenu.Items.WriteDebugReport('TSourceNotebook.BuildPopupMenu ');
   SourceTabMenuRoot.ConsistencyCheck;
@@ -7884,27 +7833,43 @@ begin
     ActSE.DoEditorExecuteCommand(ecPaste);
 end;
 
+procedure TSourceNotebook.StatusBarClick(Sender: TObject);
+var
+  P: TPoint;
+begin
+  P := StatusBar.ScreenToClient(Mouse.CursorPos);
+  if StatusBar.GetPanelIndexAt(P.X, P.Y) = 1  then
+    EditorMacroForRecording.Stop;
+end;
+
 procedure TSourceNotebook.StatusBarDblClick(Sender: TObject);
 var
   P: TPoint;
-  i: Integer;
 begin
   P := StatusBar.ScreenToClient(Mouse.CursorPos);
-  i := StatusBar.GetPanelIndexAt(P.X, P.Y);
-  // if we clicked on first panel which shows position in code
-  if assigned(Manager) and (i = 0) then
-  begin
-    // then show goto line dialog
-    Manager.GotoLineClicked(nil);
+  case StatusBar.GetPanelIndexAt(P.X, P.Y) of  // Based on panel:
+    0: GoToLineMenuItemClick(Nil);    // Show "Goto Line" dialog.
+    4: OpenFolderMenuItemClick(Nil);  // Show system file manager on file's folder.
   end;
+end;
+
+procedure TSourceNotebook.StatusBarContextPopup(Sender: TObject; MousePos: TPoint;
+  var Handled: Boolean);
+var
+  Pnl: Integer;
+begin
+  Pnl := StatusBar.GetPanelIndexAt(MousePos.X, MousePos.Y);
+  GoToLineMenuItem.Visible := Pnl=0;
+  OpenFolderMenuItem.Visible := Pnl=4;
+  if Pnl in [0, 4] then
+    StatusPopUpMenu.PopUp;
 end;
 
 procedure TSourceNotebook.StatusBarDrawPanel(AStatusBar: TStatusBar; APanel: TStatusPanel;
   const ARect: TRect);
 begin
-  if APanel = StatusBar.Panels[1] then begin
+  if APanel = StatusBar.Panels[1] then
     IDEImages.Images_16.Draw(StatusBar.Canvas, ARect.Left,  ARect.Top, FStopBtnIdx);
-  end;
 end;
 
 procedure TSourceNotebook.ToggleBreakpointClicked(Sender: TObject);
@@ -8091,16 +8056,16 @@ begin
   Cursor:=crDefault;
 end;
 
-procedure TSourceNotebook.StatusBarClick(Sender: TObject);
-var
-  P: TPoint;
-  i: Integer;
+// Two Popup menu handlers:
+procedure TSourceNotebook.GoToLineMenuItemClick(Sender: TObject);
 begin
-  P := StatusBar.ScreenToClient(Mouse.CursorPos);
-  i := StatusBar.GetPanelIndexAt(P.X, P.Y);
+  if Assigned(Manager) then
+    Manager.GotoLineClicked(nil);
+end;
 
-  if (i = 1)  then
-    EditorMacroForRecording.Stop;
+procedure TSourceNotebook.OpenFolderMenuItemClick(Sender: TObject);
+begin
+  OpenDocument(ExtractFilePath(Statusbar.Panels[4].Text));
 end;
 
 procedure TSourceNotebook.ExecuteEditorItemClick(Sender: TObject);
@@ -8165,7 +8130,7 @@ end;
 function TSourceNotebook.SourceEditorIntfWithFilename(const Filename: string
   ): TSourceEditorInterface;
 var
-  Node: TAvgLvlTreeNode;
+  Node: TAvlTreeNode;
 begin
   Node:=FSrcEditsSortedForFilenames.FindKey(Pointer(Filename),@CompareFilenameWithSrcEditIntf);
   if Node<>nil then
@@ -8363,8 +8328,7 @@ begin
     StatusBar.Panels[2].Text := PanelFileMode;
     Statusbar.Panels[3].Text := PanelCharMode;
     Statusbar.Panels[4].Text := PanelFilename;
-    if(EditorMacroForRecording.IsRecording(CurEditor))
-    then
+    if(EditorMacroForRecording.IsRecording(CurEditor)) then
       Statusbar.Panels[1].Width := 20
     else
       Statusbar.Panels[1].Width := 0;
@@ -8375,8 +8339,7 @@ begin
   CheckCurrentCodeBufferChanged;
 End;
 
-function TSourceNotebook.FindPageWithEditor(
-  ASourceEditor: TSourceEditor):integer;
+function TSourceNotebook.FindPageWithEditor(ASourceEditor: TSourceEditor): integer;
 var
   LParent: TWinControl;
   LTabSheet: TWinControl;
@@ -8618,86 +8581,50 @@ begin
 
   Handled:=true;
   case Command of
-
-  ecNextEditor:
-    NextEditor;
-
-  ecPrevEditor :
-    PrevEditor;
-
-  ecPrevEditorInHistory :
-    FHistoryDlg.Show(True);
-
-  ecNextEditorInHistory:
-    FHistoryDlg.Show(False);
-
-  ecMoveEditorLeft:
-    MoveActivePageLeft;
-
-  ecMoveEditorRight:
-    MoveActivePageRight;
-
-  ecMoveEditorLeftmost:
-    MoveActivePageFirst;
-
-  ecMoveEditorRightmost:
-    MoveActivePageLast;
-
-  ecNextSharedEditor:
-    GotoNextSharedEditor(False);
-  ecPrevSharedEditor:
-    GotoNextSharedEditor(True);
-  ecNextWindow:
-    GotoNextWindow(False);
-  ecPrevWindow:
-    GotoNextWindow(True);
-  ecMoveEditorNextWindow:
-    MoveEditorNextWindow(False, False);
-  ecMoveEditorPrevWindow:
-    MoveEditorNextWindow(True, False);
+  ecNextEditor:           NextEditor;
+  ecPrevEditor:           PrevEditor;
+  ecPrevEditorInHistory:  FHistoryDlg.Show(True);
+  ecNextEditorInHistory:  FHistoryDlg.Show(False);
+  ecMoveEditorLeft:       MoveActivePageLeft;
+  ecMoveEditorRight:      MoveActivePageRight;
+  ecMoveEditorLeftmost:   MoveActivePageFirst;
+  ecMoveEditorRightmost:  MoveActivePageLast;
+  ecNextSharedEditor:     GotoNextSharedEditor(False);
+  ecPrevSharedEditor:     GotoNextSharedEditor(True);
+  ecNextWindow:           GotoNextWindow(False);
+  ecPrevWindow:           GotoNextWindow(True);
+  ecMoveEditorNextWindow: MoveEditorNextWindow(False, False);
+  ecMoveEditorPrevWindow: MoveEditorNextWindow(True, False);
   ecMoveEditorNewWindow:
     if EditorCount > 1 then
-      MoveEditor(FindPageWithEditor(GetActiveSE), Manager.IndexOfSourceWindow(Manager.CreateNewWindow(True)), -1);
-  ecCopyEditorNextWindow:
-    MoveEditorNextWindow(False, True);
-  ecCopyEditorPrevWindow:
-    MoveEditorNextWindow(True, True);
+      MoveEditor(FindPageWithEditor(GetActiveSE),
+                 Manager.IndexOfSourceWindow(Manager.CreateNewWindow(True)), -1);
+
+  ecCopyEditorNextWindow: MoveEditorNextWindow(False, True);
+  ecCopyEditorPrevWindow: MoveEditorNextWindow(True, True);
   ecCopyEditorNewWindow:
-    CopyEditor(FindPageWithEditor(GetActiveSE), Manager.IndexOfSourceWindow(Manager.CreateNewWindow(True)), -1, True);
+    CopyEditor(FindPageWithEditor(GetActiveSE),
+               Manager.IndexOfSourceWindow(Manager.CreateNewWindow(True)), -1, True);
 
-
-  ecOpenFileAtCursor:
-    OpenAtCursorClicked(self);
-
+  ecOpenFileAtCursor:     OpenAtCursorClicked(self);
   ecGotoEditor1..ecGotoEditor9,ecGotoEditor0:
     if PageCount>Command-ecGotoEditor1 then
       PageIndex := Command-ecGotoEditor1;
 
-  ecToggleFormUnit:
-    ToggleFormUnitClicked(Self);
-
-  ecToggleObjectInsp:
-    ToggleObjectInspClicked(Self);
-
+  ecToggleFormUnit:       ToggleFormUnitClicked(Self);
+  ecToggleObjectInsp:     ToggleObjectInspClicked(Self);
   ecSetFreeBookmark:
     if Assigned(Manager.OnSetBookmark) then
       Manager.OnSetBookmark(GetActiveSE, -1, False);
 
   ecClearAllBookmark:
-    if Assigned(Manager) and Assigned(Manager.OnClearBookmarkId) then
+    if Assigned(Manager.OnClearBookmarkId) then
       Manager.OnClearBookmarkId(Self, -1);
 
-  ecJumpBack:
-    Manager.HistoryJump(Self,jhaBack);
-
-  ecJumpForward:
-    Manager.HistoryJump(Self,jhaForward);
-
-  ecAddJumpPoint:
-    Manager.AddJumpPointClicked(Self);
-
-  ecViewJumpHistory:
-    Manager.ViewJumpHistoryClicked(Self);
+  ecJumpBack:             Manager.HistoryJump(Self,jhaBack);
+  ecJumpForward:          Manager.HistoryJump(Self,jhaForward);
+  ecAddJumpPoint:         Manager.AddJumpPointClicked(Self);
+  ecViewJumpHistory:      Manager.ViewJumpHistoryClicked(Self);
 
   else
     Handled:=ExecuteIDECommand(Self,Command);
@@ -8711,7 +8638,8 @@ procedure TSourceNotebook.ParentCommandProcessed(Sender: TObject;
   var Command: TSynEditorCommand; var AChar: TUTF8Char; Data: pointer;
   var Handled: boolean);
 begin
-  if assigned(Manager) and Assigned(Manager.OnUserCommandProcessed) then begin
+  Assert(Assigned(Manager), 'TSourceNotebook.ParentCommandProcessed: Manager=Nil.');
+  if Assigned(Manager.OnUserCommandProcessed) then begin
     Handled:=false;
     Manager.OnUserCommandProcessed(Self,Command,Handled);
     if Handled then exit;
@@ -9042,7 +8970,8 @@ end;
 //-----------------------------------------------------------------------------
 
 procedure InternalInit;
-var h: TLazSyntaxHighlighter;
+var
+  h: TLazSyntaxHighlighter;
 begin
   // fetch the resourcestrings before they are translated
   EnglishGPLNotice:=lisGPLNotice;
@@ -9064,7 +8993,8 @@ begin
 end;
 
 procedure InternalFinal;
-var h: TLazSyntaxHighlighter;
+var
+  h: TLazSyntaxHighlighter;
 begin
   for h:=Low(TLazSyntaxHighlighter) to High(TLazSyntaxHighlighter) do
     FreeThenNil(Highlighters[h]);
@@ -9215,8 +9145,7 @@ begin
     Result := nil;
 end;
 
-function TSourceEditorManagerBase.GetUniqueSourceEditors(Index: integer
-  ): TSourceEditorInterface;
+function TSourceEditorManagerBase.GetUniqueSourceEditors(Index: integer): TSourceEditorInterface;
 var
   i: Integer;
 begin
@@ -9338,6 +9267,14 @@ begin
   Result := FDefaultCompletionForm;
   for i:=0 to SourceEditorCount - 1 do
     FDefaultCompletionForm.AddEditor(TSourceEditor(SourceEditors[i]).EditorComponent);
+end;
+
+function TSourceEditorManagerBase.GetDefaultSynCompletionForm: TCustomForm;
+begin
+  if Assigned(GetDefaultCompletionForm) then
+    Result := GetDefaultCompletionForm.TheForm
+  else
+    Result := nil;
 end;
 
 procedure TSourceEditorManagerBase.FreeCompletionPlugins;
@@ -9481,22 +9418,19 @@ begin
   CodeToolBoss.IdentifierList.Clear;
   FDefaultCompletionForm.CurrentCompletionType:=ctNone;
 
-  (* SetFocus and Deactivate will all trigger this proc to be reentered.
-     Setting "CurrentCompletionType:=ctNone" ensures an immediate exit
-  *)
+  // SetFocus and Deactivate will all trigger this proc to be reentered.
+  //   Setting "CurrentCompletionType:=ctNone" ensures an immediate exit
 
-  (* Due to a bug under XFCE we must move focus before we close the form
-     This is relevant if the form is closed by enter/escape key
-  *)
+  // Due to a bug under XFCE we must move focus before we close the form
+  // This is relevant if the form is closed by enter/escape key
   if PluginFocused and (ActiveEditor<>nil) then
     TSourceEditor(ActiveEditor).FocusEditor;
 
-  (* hide/close the form *)
+  // hide/close the form
   FDefaultCompletionForm.Deactivate;
 
-  (* Ensure focus *after* the form was closed.
-     This is the normal implementation (all but XFCE)
-  *)
+  // Ensure focus *after* the form was closed.
+  // This is the normal implementation (all but XFCE)
   if PluginFocused and (ActiveEditor<>nil) then
     TSourceEditor(ActiveEditor).FocusEditor;
   {$IFDEF VerboseIDECompletionBox}
@@ -9646,8 +9580,7 @@ procedure TSourceEditorManagerBase.InvalidateMarklingsOfAllFiles(
   aProducer: TSourceMarklingProducer);
 var
   SrcWnd: TSourceEditorWindowInterface;
-  i: Integer;
-  j: Integer;
+  i, j: Integer;
   SrcEdit: TSourceEditor;
 begin
   if aProducer=nil then exit;
@@ -9867,8 +9800,7 @@ begin
   end;
 end;
 
-function TSourceEditorManager.SourceWindowWithPage(const APage: TTabSheet
-  ): TSourceNotebook;
+function TSourceEditorManager.SourceWindowWithPage(const APage: TTabSheet): TSourceNotebook;
 var
   i: Integer;
 begin
@@ -9959,7 +9891,6 @@ begin
   for i := 0 to SourceWindowCount - 1 do
     Result := Result + SourceWindows[i].Count;
 end;
-
 
 function TSourceEditorManager.GetActiveSE: TSourceEditor;
 begin
@@ -10190,17 +10121,22 @@ begin
 end;
 
 procedure TSourceEditorManager.JumpToPos(FileName: string;
-  Pos: TCodeXYPosition; TopLine: Integer);
+  Pos: TCodeXYPosition; TopLine, BlockTopLine, BlockBottomLine: Integer);
 begin
   if (LazarusIDE.DoOpenFileAndJumpToPos(Filename
-       ,Point(Pos.X,Pos.Y), TopLine, -1,-1
+       ,Point(Pos.X,Pos.Y), TopLine, BlockTopLine, BlockBottomLine, -1,-1
        ,[ofRegularFile,ofUseCache]) = mrOk)
   then
     ActiveEditor.EditorControl.SetFocus;
 end;
 
-procedure TSourceEditorManager.JumpToProcedure(
-  const JumpType: TJumpToProcedureType);
+procedure TSourceEditorManager.JumpToPos(FileName: string;
+  Pos: TCodeXYPosition; TopLine: Integer);
+begin
+  JumpToPos(FileName, Pos, TopLine, TopLine, TopLine);
+end;
+
+procedure TSourceEditorManager.JumpToProcedure(const JumpType: TJumpToProcedureType);
 const
   cJumpNames: array[TJumpToProcedureType] of string = (
     'procedure header', 'procedure begin');
@@ -10210,7 +10146,7 @@ var
   Tool: TCodeTool;
   CleanPos: integer;
   NewPos: TCodeXYPosition;
-  NewTopLine: integer;
+  NewTopLine, BlockTopLine, BlockBottomLine: integer;
   JumpFound: Boolean;
 begin
   if not LazarusIDE.BeginCodeTools then Exit; //==>
@@ -10232,17 +10168,18 @@ begin
     if (ProcNode <> nil) and (ProcNode.Desc = ctnProcedure) then
     begin
       if JumpType = jmpBegin then
-        JumpFound := Tool.FindJumpPointInProcNode(ProcNode, NewPos, NewTopLine)
+        JumpFound := Tool.FindJumpPointInProcNode(ProcNode, NewPos, NewTopLine, BlockTopLine, BlockBottomLine)
       else
-        JumpFound := Tool.JumpToCleanPos(ProcNode.StartPos, ProcNode.StartPos, ProcNode.EndPos, NewPos, NewTopLine, True);
+        JumpFound := Tool.JumpToCleanPos(ProcNode.StartPos, ProcNode.StartPos, ProcNode.EndPos, NewPos, NewTopLine, BlockTopLine, BlockBottomLine, True);
     end else
       JumpFound := False;
 
     if JumpFound then
-      JumpToPos(NewPos.Code.Filename, NewPos, NewTopLine)
+      JumpToPos(NewPos.Code.Filename, NewPos, NewTopLine, BlockTopLine, BlockBottomLine)
     else
     begin
-      CodeToolBoss.SetError(nil, 0, 0, Format(lisCannotFind, [cJumpNames[JumpType]]));
+      CodeToolBoss.SetError(20170421203224, nil, 0, 0,
+        Format(lisCannotFind, [cJumpNames[JumpType]]));
       LazarusIDE.DoJumpToCodeToolBossError;
     end;
   end
@@ -10305,7 +10242,8 @@ begin
       JumpToPos(NewCodePos.Code.Filename, NewCodePos, NewTopLine)
     else
     begin
-      CodeToolBoss.SetError(nil, 0, 0, Format(lisCannotFind, [cJumpNames[JumpType]]));
+      CodeToolBoss.SetError(20170421203236, nil, 0, 0,
+        Format(lisCannotFind, [cJumpNames[JumpType]]));
       LazarusIDE.DoJumpToCodeToolBossError;
     end;
   end
@@ -10462,6 +10400,7 @@ procedure TSourceEditorManager.SetupShortCuts;
 
 var
   i: Integer;
+  IDEmi: TIDEMenuItem;
 begin
   {%region *** first static section *** }
     SrcEditMenuFindDeclaration.Command := GetCommand(ecFindDeclaration);
@@ -10503,10 +10442,10 @@ begin
   SrcEditMenuOpenFileAtCursor.Command := GetCommand(ecOpenFileAtCursor);
 
   {%region * sub menu Flags section *}
-    SrcEditMenuReadOnly.OnClick          :=@ReadOnlyClicked;
-    SrcEditMenuShowLineNumbers.OnClick   :=@ToggleLineNumbersClicked;
-    SrcEditMenuDisableI18NForLFM.OnClick :=@ToggleI18NForLFMClicked;
-    SrcEditMenuShowUnitInfo.OnClick      :=@ShowUnitInfo;
+    SrcEditMenuReadOnly.OnClick          := @ReadOnlyClicked;
+    SrcEditMenuShowLineNumbers.OnClick   := @ToggleLineNumbersClicked;
+    SrcEditMenuDisableI18NForLFM.OnClick := @ToggleI18NForLFMClicked;
+    SrcEditMenuShowUnitInfo.OnClick      := @ShowUnitInfo;
   {%endregion}
 
   {%region *** Clipboard section ***}
@@ -10525,10 +10464,10 @@ begin
   SrcEditMenuClearAllBookmark.Command:=GetCommand(ecClearAllBookmark);
 
   for i:=0 to 9 do begin
-    TIDEMenuCommand(SrcEditSubMenuGotoBookmarks.FindByName('GotoBookmark'+IntToStr(i)))
-      .Command := GetCommand(ecGotoMarker0 + i);
-    TIDEMenuCommand(SrcEditSubMenuToggleBookmarks.FindByName('ToggleBookmark'+IntToStr(i)))
-      .Command := GetCommand(ecToggleMarker0 + i);
+    IDEmi:=SrcEditSubMenuGotoBookmarks.FindByName('GotoBookmark'+IntToStr(i));
+    IDEmi.Command := GetCommand(ecGotoMarker0 + i);
+    IDEmi:=SrcEditSubMenuToggleBookmarks.FindByName('ToggleBookmark'+IntToStr(i));
+    IDEmi.Command := GetCommand(ecToggleMarker0 + i);
   end;
 
   {%region *** Source Section ***}
@@ -10616,11 +10555,10 @@ end;
 procedure TSourceEditorManager.OnIdle(Sender: TObject; var Done: Boolean);
 var
   SrcEdit: TSourceEditor;
-  i: Integer;
+  i, j: Integer;
   aFilename: String;
   FreeList, FreeMarklings: boolean;
   Marklings: TFPList;
-  j: Integer;
   Markling: TSourceMarkling;
 begin
   SrcEdit:=ActiveEditor;
@@ -10662,8 +10600,12 @@ begin
     if FHints.PtIsOnHint(Mouse.CursorPos) then begin // ignore any action over Hint
       if FHints.CurHintWindow.Active then
         exit;
-      if (Msg = WM_MOUSEMOVE) {$IFDEF WINDOWS} or (Msg = WM_NCMOUSEMOVE)or
-         ((Msg >= WM_MOUSEFIRST) and (Msg <= WM_MOUSELAST)) {$ENDIF}
+      if (Msg = WM_MOUSEMOVE)
+         or (Msg = LM_MOUSELEAVE)
+         {$IFDEF WINDOWS}
+         or (Msg = WM_NCMOUSEMOVE)
+         or ((Msg >= WM_MOUSEFIRST) and (Msg <= WM_MOUSELAST))
+         {$ENDIF}
       then
         exit;
     end;
@@ -10827,7 +10769,8 @@ end;
 
 procedure TSourceEditorManager.OnWordCompletionGetSource(var Source: TStrings;
   SourceIndex: integer);
-var TempEditor: TSourceEditor;
+var
+  TempEditor: TSourceEditor;
   i:integer;
 begin
   TempEditor:=GetActiveSE;
@@ -10899,7 +10842,7 @@ procedure TSourceEditorManager.OnSourceCompletionTimer(Sender: TObject);
     end;
 
     // invoke identifier completion
-    SrcEdit.StartIdentCompletionBox(false);
+    SrcEdit.StartIdentCompletionBox(false,false);
     Result:=true;
   end;
 

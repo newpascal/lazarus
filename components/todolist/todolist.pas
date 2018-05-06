@@ -59,14 +59,18 @@ unit TodoList;
 interface
 
 uses
-  // FCL, RTL, LCL
-  Classes, SysUtils, Math, LCLProc, Forms, Controls, Dialogs, StrUtils,
-  ComCtrls, ActnList, AvgLvlTree, LazUTF8Classes, LCLType, ButtonPanel,
-  CodeCache, CodeToolManager, BasicCodeTools, FileProcs, LazFileUtils,
-  LazFileCache, LclIntf, StdCtrls, XMLPropStorage,
+  // FCL, RTL
+  Classes, SysUtils, Math, StrUtils, Laz_AVL_Tree,
+  // LCL
+  LCLProc, LCLType, LclIntf, Forms, Controls, StdCtrls, Dialogs, ComCtrls,
+  ActnList, XMLPropStorage,
+  // LazUtils
+  LazUTF8Classes, LazFileUtils, LazFileCache,
+  // Codetools
+  CodeCache, CodeToolManager, BasicCodeTools, FileProcs,
   // IDEIntf
   LazIDEIntf, IDEImagesIntf, PackageIntf, ProjectIntf, IDEUtils,
-  // IDE
+  // ToDoList
   ToDoListStrConsts;
 
 
@@ -136,8 +140,8 @@ type
     acGoto: TAction;
     acRefresh: TAction;
     acExport: TAction;
+    acHelp: TAction;
     ActionList: TActionList;
-    ButtonPanel: TButtonPanel;
     chkListed: TCheckBox;
     chkUsed: TCheckBox;
     chkPackages: TCheckBox;
@@ -150,19 +154,20 @@ type
     tbRefresh: TToolButton;
     tbExport: TToolButton;
     N1: TToolButton;
+    tbHelp: TToolButton;
     XMLPropStorage: TXMLPropStorage;
     procedure acExportExecute(Sender: TObject);
     procedure acGotoExecute(Sender: TObject);
+    procedure acHelpExecute(Sender: TObject);
     procedure acRefreshExecute(Sender: TObject);
     procedure chkListedChange(Sender: TObject);
     procedure chkPackagesChange(Sender: TObject);
     procedure chkSourceEditorChange(Sender: TObject);
     procedure chkUsedChange(Sender: TObject);
-    procedure FormCloseQuery(Sender: TObject; var CanClose: boolean);
+    procedure FormCloseQuery(Sender: TObject; var {%H-}CanClose: boolean);
     procedure FormCreate(Sender: TObject);
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift:TShiftState);
     procedure FormShow(Sender: TObject);
-    procedure HelpButtonClick(Sender: TObject);
     procedure lvTodoClick(Sender: TObject);
     procedure lvTodoColumnClick(Sender : TObject; Column : TListColumn);
     procedure lvTodoCompare(Sender : TObject; Item1, Item2 : TListItem;
@@ -178,7 +183,7 @@ type
     FLoadingOptions: boolean;
     fStartFilename: String;
     FOnOpenFile  : TOnOpenFile;
-    fScannedFiles: TAvgLvlTree;// tree of TTLScannedFile
+    fScannedFiles: TAvlTree;// tree of TTLScannedFile
 
     procedure SetIDEItem(AValue: string);
     procedure SetIdleConnected(const AValue: boolean);
@@ -201,7 +206,7 @@ type
     procedure UpdateTodos(Immediately: boolean = false);
 
     property IDEItem: string read FIDEItem write SetIDEItem; // package name or empty for active project
-    property StartFilename : String read fStartFilename write SetStartFilename; // lpi, lpk or a source file
+    property StartFilename: String read fStartFilename write SetStartFilename; // lpi, lpk or a source file
     property BaseDirectory: string read FBaseDirectory;
     property OnOpenFile: TOnOpenFile read FOnOpenFile write FOnOpenFile;
     property IdleConnected: boolean read FIdleConnected write SetIdleConnected;
@@ -236,9 +241,10 @@ begin
   inherited Create(AOwner);
   if Name<>ToDoWindowName then RaiseGDBException('');
   ToolBar.Images := IDEImages.Images_16;
-  acGoto.ImageIndex := IDEImages.LoadImage(16, 'menu_goto_line');
-  acRefresh.ImageIndex := IDEImages.LoadImage(16, 'laz_refresh');
-  acExport.ImageIndex := IDEImages.LoadImage(16, 'menu_saveas');
+  acGoto.ImageIndex := IDEImages.LoadImage('menu_goto_line');
+  acRefresh.ImageIndex := IDEImages.LoadImage('laz_refresh');
+  acExport.ImageIndex := IDEImages.LoadImage('menu_saveas');
+  acHelp.ImageIndex := IDEImages.LoadImage('menu_help');
 
   SaveDialog.Filter:= dlgFilterCsv+'|*.csv';
 end;
@@ -255,7 +261,7 @@ var
   i: integer;
   St : String;
   CurOwner: TObject;
-  Node: TAvgLvlTreeNode;
+  Node: TAvlTreeNode;
   CurFile: TTLScannedFile;
   Units: TStrings;
   CurProject: TLazProject;
@@ -270,11 +276,7 @@ begin
     exit;
   end;
   fUpdateNeeded:=false;
-
   if fUpdating then Exit;
-
-  DebugLn(['TfrmTodo.UpdateTodos StartFilename=',StartFilename,' IDEItem=',IDEItem]);
-
   LazarusIDE.SaveSourceEditorChangesToCodeCache(nil);
 
   Screen.Cursor:=crHourGlass;
@@ -298,9 +300,9 @@ begin
     end;
 
     ResolveIDEItem(CurOwner,CurProject,CurPkg);
+    if CurOwner=nil then Exit;
 
     Flags:=[];
-
     if chkListed.Checked then
       Include(Flags, fuooListed);
     if chkUsed.Checked then
@@ -339,14 +341,7 @@ end;
 
 procedure TIDETodoWindow.FormShow(Sender: TObject);
 begin
-  IdleConnected:=true;
-  UpdateTodos(true);
-end;
-
-procedure TIDETodoWindow.HelpButtonClick(Sender: TObject);
-begin
-  // usual API from IdeHelpIntf don't work
-  OpenURL('http://wiki.freepascal.org/IDE_Window:_ToDo_List');
+  UpdateTodos;
 end;
 
 procedure TIDETodoWindow.lvTodoClick(Sender: TObject);
@@ -633,7 +628,7 @@ end;
 procedure TIDETodoWindow.FormCreate(Sender: TObject);
 begin
   fUpdating := False;
-  fScannedFiles := TAvgLvlTree.Create(@CompareTLScannedFiles);
+  fScannedFiles := TAvlTree.Create(@CompareTLScannedFiles);
 
   Caption := lisToDoList;
 
@@ -643,6 +638,7 @@ begin
   tbRefresh.Caption := dlgUnitDepRefresh;
   tbGoto.Caption := lisToDoGoto;
   tbExport.Caption := lisToDoExport;
+  tbHelp.Caption := lisHelp;
 
   grbOptions.Caption := lisOptions;
   chkListed.Caption := lisToDoListed;
@@ -691,6 +687,12 @@ begin
       LazarusIDE.DoOpenFileAndJumpToPos(CurFilename,Point(1,TheLine),-1,-1,-1,
         [ofOnlyIfExists,ofRegularFile,ofVirtualFile,ofDoNotLoadResource]);
   end;
+end;
+
+procedure TIDETodoWindow.acHelpExecute(Sender: TObject);
+begin
+  // usual API from IdeHelpIntf don't work
+  OpenURL('http://wiki.freepascal.org/IDE_Window:_ToDo_List');
 end;
 
 procedure TIDETodoWindow.acExportExecute(Sender: TObject);
@@ -787,7 +789,7 @@ end;
 procedure TIDETodoWindow.ScanFile(aFileName: string);
 var
   ExpandedFilename: String;
-  AVLNode: TAvgLvlTreeNode;
+  AVLNode: TAvlTreeNode;
   Tool: TCodeTool;
   Code: TCodeBuffer;
   CurFile: TTLScannedFile;

@@ -288,7 +288,7 @@ procedure TInspectChksumChgDialog.SearchInFPCFiles(
 var
   UnitSetID: String;
   UnitSet: TFPCUnitSetCache;
-  CfgCache: TFPCTargetConfigCache;
+  CfgCache: TPCTargetConfigCache;
   i: Integer;
   HasChanged: boolean;
   CurDir: String;
@@ -296,7 +296,7 @@ begin
   // search in fpc unit paths
   UnitSetID:=CodeToolBoss.GetUnitSetIDForDirectory('');
   if UnitSetID='' then exit;
-  UnitSet:=CodeToolBoss.FPCDefinesCache.FindUnitSetWithID(UnitSetID,HasChanged,false);
+  UnitSet:=CodeToolBoss.CompilerDefinesCache.FindUnitSetWithID(UnitSetID,HasChanged,false);
   if UnitSet=nil then exit;
   CfgCache:=UnitSet.GetConfigCache(false);
   if CfgCache=nil then exit;
@@ -335,6 +335,7 @@ begin
   if Files<>nil then begin
     PPUCount:=0;
     SrcCount:=0;
+    FileNode:=nil;
     for i:=0 to Files.Count-1 do begin
       aFile:=Files[i];
       if CompareFileExt(aFile.Filename,'.ppu',false)=0 then

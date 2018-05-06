@@ -169,8 +169,7 @@ begin
   APaintData.Context := nil;
 end;
 
-function TQtSystemTrayIcon.EventFilter(Sender: QObjectH; Event: QEventH
-  ): Boolean; cdecl;
+function TQtSystemTrayIcon.EventFilter(Sender: QObjectH; Event: QEventH): Boolean; cdecl;
 var
   X, Y: Integer;
   R: TRect;
@@ -225,7 +224,7 @@ begin
       begin
         R := GetGeometry;
         QtPoint(R.Left, R.Top);
-        AHint := UTF8ToUTF16(FTrayIcon.Hint);
+        AHint := FTrayIcon{%H-}.Hint;
         QToolTip_showText(@P, @AHint);
       end;
     end;
@@ -312,11 +311,10 @@ end;
 procedure TQtSystemTrayIcon.showBaloonHint(const ATitle, AHint: String;
   const AFlag: QSystemTrayIconMessageIcon; const ATimeOut: Integer);
 var
-  WHint: WideString;
-  WTitle: WideString;
+  WHint, WTitle: WideString;
 begin
-  WHint := GetUTF8String(AHint);
-  WTitle := GetUTF8String(ATitle);
+  WHint := {%H-}AHint;
+  WTitle := {%H-}ATitle;
   QSystemTrayIcon_showMessage(QSystemTrayIconH(TheObject), @WTitle, @WHint, AFlag, ATimeOut);
 end;
 

@@ -32,13 +32,14 @@ unit etMessageFrame;
 interface
 
 uses
-  Math, strutils, Classes, SysUtils,
-  UTF8Process, FileProcs, LazFileCache,
-  LazUTF8Classes, LazFileUtils, LazUTF8, AvgLvlTree, SynEdit,
-  LResources, Forms, Buttons, ExtCtrls, Controls, LMessages,
-  LCLType, Graphics, LCLIntf, Themes, ImgList, GraphType, Menus, Clipbrd,
-  Dialogs, StdCtrls,
-  SynEditMarks,
+  Math, strutils, Classes, SysUtils, Laz_AVL_Tree,
+  // LCL
+  Forms, Buttons, ExtCtrls, Controls, LMessages, LCLType, LCLIntf,
+  Graphics, Themes, ImgList, GraphType, Menus, Clipbrd, Dialogs, StdCtrls,
+  // LazUtils
+  UTF8Process, FileProcs, LazFileCache, LazUTF8Classes, LazFileUtils, LazUTF8,
+  // SynEdit
+  SynEdit, SynEditMarks,
   // IDEIntf
   IDEExternToolIntf, IDEImagesIntf, MenuIntf, PackageIntf,
   IDECommands, IDEDialogs, ProjectIntf, CompOptsIntf, LazIDEIntf,
@@ -878,7 +879,7 @@ function TLMsgWndView.ApplySrcChanges(Changes: TETSingleSrcChanges): boolean;
 var
   Queue: TETSingleSrcChanges;
   Change: TETSrcChange;
-  Node: TAvgLvlTreeNode;
+  Node: TAvlTreeNode;
   aFilename: String;
 begin
   Result:=false;
@@ -3442,12 +3443,12 @@ begin
   inherited Create(TheOwner);
 
   MessagesCtrl:=TMessagesCtrl.Create(Self);
-  ImgIDInfo:=IDEImages.LoadImage(12, 'state12x12_information');
-  ImgIDHint:=IDEImages.LoadImage(12, 'state12x12_hint');
-  ImgIDNote:=IDEImages.LoadImage(12, 'state12x12_note');
-  ImgIDWarning:=IDEImages.LoadImage(12, 'state12x12_warning');
-  ImgIDError:=IDEImages.LoadImage(12, 'state12x12_error');
-  ImgIDFatal:=IDEImages.LoadImage(12, 'state12x12_fatal');
+  ImgIDInfo:=IDEImages.LoadImage('state12x12_information', 12);
+  ImgIDHint:=IDEImages.LoadImage('state12x12_hint', 12);
+  ImgIDNote:=IDEImages.LoadImage('state12x12_note', 12);
+  ImgIDWarning:=IDEImages.LoadImage('state12x12_warning', 12);
+  ImgIDError:=IDEImages.LoadImage('state12x12_error', 12);
+  ImgIDFatal:=IDEImages.LoadImage('state12x12_fatal', 12);
   with MessagesCtrl do begin
     Name:='MessagesCtrl';
     Align:=alClient;
@@ -3486,11 +3487,11 @@ begin
   // search
   SearchPanel.Visible:=false; // by default the search is hidden
   HideSearchSpeedButton.Hint:=lisHideSearch;
-  HideSearchSpeedButton.LoadGlyphFromResourceName(HInstance, 'debugger_power_grey');
+  TIDEImages.AssignImage(HideSearchSpeedButton.Glyph, 'debugger_power_grey');
   SearchNextSpeedButton.Hint:=lisUDSearchNextOccurrenceOfThisPhrase;
-  SearchNextSpeedButton.LoadGlyphFromResourceName(HInstance, 'callstack_bottom');
+  TIDEImages.AssignImage(SearchNextSpeedButton.Glyph, 'callstack_bottom');
   SearchPrevSpeedButton.Hint:=lisUDSearchPreviousOccurrenceOfThisPhrase;
-  SearchPrevSpeedButton.LoadGlyphFromResourceName(HInstance, 'callstack_top');
+  TIDEImages.AssignImage(SearchPrevSpeedButton.Glyph, 'callstack_top');
   SearchEdit.TextHint:=lisUDSearch;
 end;
 
@@ -3550,7 +3551,7 @@ end;
 
 procedure TMessagesFrame.ApplyMultiSrcChanges(Changes: TETMultiSrcChanges);
 var
-  Node: TAvgLvlTreeNode;
+  Node: TAvlTreeNode;
 begin
   for Node in Changes.PendingChanges do
     ApplySrcChanges(TETSingleSrcChanges(Node.Data));

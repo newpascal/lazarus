@@ -47,20 +47,20 @@ uses
   InterfaceBase;
 
 type
-  { TGtk3WSDragImageList }
+  { TGtk3WSDragImageListResolution }
 
-  TGtk3WSDragImageList = class(TWSDragImageList)
+  TGtk3WSDragImageListResolution = class(TWSDragImageListResolution)
   published
-    class function BeginDrag(const ADragImageList: TDragImageList; Window: HWND; AIndex, X, Y: Integer): Boolean; override;
-    class function DragMove(const ADragImageList: TDragImageList; X, Y: Integer): Boolean; override;
-    class procedure EndDrag(const ADragImageList: TDragImageList); override;
-    class function HideDragImage(const ADragImageList: TDragImageList;
+    class function BeginDrag(const ADragImageList: TDragImageListResolution; Window: HWND; AIndex, X, Y: Integer): Boolean; override;
+    class function DragMove(const ADragImageList: TDragImageListResolution; X, Y: Integer): Boolean; override;
+    class procedure EndDrag(const ADragImageList: TDragImageListResolution); override;
+    class function HideDragImage(const ADragImageList: TDragImageListResolution;
       ALockedWindow: HWND; DoUnLock: Boolean): Boolean; override;
-    class function ShowDragImage(const ADragImageList: TDragImageList;
+    class function ShowDragImage(const ADragImageList: TDragImageListResolution;
       ALockedWindow: HWND; X, Y: Integer; DoLock: Boolean): Boolean; override;
   end;
 
-  TGtk3WSDragImageListClass = class of TGtk3WSDragImageList;
+  TGtk3WSDragImageListResolutionClass = class of TGtk3WSDragImageListResolution;
 
 
   { TGtk3WSControl }
@@ -334,6 +334,7 @@ var
   AWidget: PGtkWidget;
   ARect: TGdkRectangle;
   Alloc: TGtkAllocation;
+  AMinSize, ANaturalSize: gint;
 begin
   if not WSCheckHandleAllocated(AWinControl, 'SetBounds') then
     Exit;
@@ -354,6 +355,10 @@ begin
   end;
   TGtk3Widget(AWinControl.Handle).BeginUpdate;
   try
+    {fixes gtk3 assertion}
+    AWidget^.get_preferred_width(@AMinSize, @ANaturalSize);
+    AWidget^.get_preferred_height(@AMinSize, @ANaturalSize);
+
     AWidget^.size_allocate(@ARect);
     AWidget^.set_size_request(AWidth, AHeight);
     if AWinControl.Parent <> nil then
@@ -465,7 +470,7 @@ begin
   ' pxPerInch ',dbgs(AFont.PixelsPerInch));
   {$ENDIF}
   AWidget := TGtk3Widget(AWinControl.Handle);
-  if LowerCase(AFont.Name) = 'default' then
+  if IsFontNameDefault(AFont.Name) then
   begin
     AGtkFont := TGtk3Widget(AWinControl.Handle).Font;
     if AFont.Size <> 0 then
@@ -603,31 +608,31 @@ begin
 end;
 
 
-{ TGtk3WSDragImageList }
+{ TGtk3WSDragImageListResolution }
 
-class function TGtk3WSDragImageList.BeginDrag(const ADragImageList: TDragImageList;
+class function TGtk3WSDragImageListResolution.BeginDrag(const ADragImageList: TDragImageListResolution;
   Window: HWND; AIndex, X, Y: Integer): Boolean;
 begin
   Result := False;
 end;
 
-class function TGtk3WSDragImageList.DragMove(const ADragImageList: TDragImageList;
+class function TGtk3WSDragImageListResolution.DragMove(const ADragImageList: TDragImageListResolution;
   X, Y: Integer): Boolean;
 begin
   Result := False;
 end;
 
-class procedure TGtk3WSDragImageList.EndDrag(const ADragImageList: TDragImageList);
+class procedure TGtk3WSDragImageListResolution.EndDrag(const ADragImageList: TDragImageListResolution);
 begin
 end;
 
-class function TGtk3WSDragImageList.HideDragImage(const ADragImageList: TDragImageList;
+class function TGtk3WSDragImageListResolution.HideDragImage(const ADragImageList: TDragImageListResolution;
   ALockedWindow: HWND; DoUnLock: Boolean): Boolean;
 begin
   Result := False;
 end;
 
-class function TGtk3WSDragImageList.ShowDragImage(const ADragImageList: TDragImageList;
+class function TGtk3WSDragImageListResolution.ShowDragImage(const ADragImageList: TDragImageListResolution;
   ALockedWindow: HWND; X, Y: Integer; DoLock: Boolean): Boolean;
 begin
   Result := False;

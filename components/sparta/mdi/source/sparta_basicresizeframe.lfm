@@ -5,15 +5,16 @@ object BasicResizeFrame: TBasicResizeFrame
   Width = 320
   ClientHeight = 460
   ClientWidth = 320
-  Color = clDefault
-  ParentColor = True
+  ParentFont = False
   TabOrder = 0
+  DesignLeft = 789
+  DesignTop = 488
   object pR: TPanel
     AnchorSideTop.Control = Owner
     Cursor = crSizeWE
-    Left = 295
+    Left = 296
     Height = 443
-    Top = 0
+    Top = 37
     Width = 8
     Anchors = []
     BevelOuter = bvNone
@@ -45,7 +46,7 @@ object BasicResizeFrame: TBasicResizeFrame
     Cursor = crSizeNS
     Left = 0
     Height = 8
-    Top = 435
+    Top = 436
     Width = 303
     Anchors = [akLeft, akRight]
     BevelOuter = bvNone
@@ -72,9 +73,9 @@ object BasicResizeFrame: TBasicResizeFrame
   object pL: TPanel
     AnchorSideLeft.Control = Owner
     AnchorSideTop.Control = Owner
-    Left = 0
+    Left = 1
     Height = 443
-    Top = 0
+    Top = 37
     Width = 8
     Anchors = []
     BevelOuter = bvNone
@@ -107,7 +108,7 @@ object BasicResizeFrame: TBasicResizeFrame
     AnchorSideTop.Control = Owner
     Left = 0
     Height = 8
-    Top = 0
+    Top = 1
     Width = 303
     Anchors = [akLeft, akRight]
     BevelOuter = bvNone
@@ -158,17 +159,16 @@ object BasicResizeFrame: TBasicResizeFrame
     AnchorSideTop.Side = asrBottom
     AnchorSideRight.Control = pR
     AnchorSideBottom.Control = pB
-    Left = 8
+    Left = 9
     Height = 427
-    Top = 8
+    Top = 9
     Width = 287
     Anchors = [akTop, akLeft, akRight, akBottom]
     BevelOuter = bvNone
     ClientHeight = 427
     ClientWidth = 287
-    Color = clDefault
-    ParentColor = True
     TabOrder = 4
+    OnPaint = pBGPaint
     object pFakeMenu: TPanel
       AnchorSideLeft.Control = pBG
       AnchorSideTop.Control = pBG
@@ -192,14 +192,25 @@ object BasicResizeFrame: TBasicResizeFrame
     AnchorSideTop.Side = asrBottom
     AnchorSideRight.Control = pR
     AnchorSideBottom.Control = pB
-    Left = 0
+    Left = 13
     Height = 152
-    Top = 0
+    Top = 13
     Width = 152
     Anchors = []
     BevelOuter = bvNone
-    Color = clDefault
-    ParentColor = True
+    ClientHeight = 152
+    ClientWidth = 152
+    Color = clBtnFace
+    ParentColor = False
     TabOrder = 5
+    object pFormHandler: TPanel
+      Left = 24
+      Height = 33
+      Top = 56
+      Width = 113
+      BevelOuter = bvNone
+      ParentColor = False
+      TabOrder = 0
+    end
   end
 end

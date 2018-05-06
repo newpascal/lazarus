@@ -1,5 +1,6 @@
-{*****************************************************************************
-  This file is part of the Lazarus Component Library (LCL)
+{
+ *****************************************************************************
+  This file is part of the Printer4Lazarus package
 
   See the file COPYING.modifiedLGPL.txt, included in this distribution,
   for details about the license.
@@ -21,26 +22,79 @@ unit PrintersDlgs;
 
 interface
 
+{$IFDEF WinCE}
+{$FATAL This unit (and therefore the Printers4Lazarus package) cannot be built for WinCE}
+{$ENDIF}
+
 uses
-  Classes, SysUtils, Forms, Controls, Dialogs, LResources, Printers, OsPrinters;
+  Classes, SysUtils, Forms, Controls, Dialogs,
+  LResources,
+  Printer4LazStrConst,
+  Printers, OsPrinters;
 
 type
+  TPageMeasureUnits = (
+    pmDefault,
+    pmMillimeters,
+    pmInches
+    );
 
-  TMeasureUnits = (unMM,unInch);
-  { Type for compatibility with delphi }
-  
+type
+  TPageSetupDialogOption = (
+    psoDefaultMinMargins,
+    psoDisableMargins,
+    psoDisableOrientation,
+    psoDisablePagePainting,
+    psoDisablePaper,
+    psoDisablePrinter,
+    psoMargins,
+    psoMinMargins,
+    psoShowHelp,
+    psoWarning,
+    psoNoNetworkButton
+    );
+
+  TPageSetupDialogOptions = set of TPageSetupDialogOption;
+
+const
+  cDefaultPageSetupDialogOptions = [psoDefaultMinMargins];
+  cDefaultPageSetupMargin = 0;
+  cDefaultPageSetupMinMargin = 400; //400: in mm it's 4mm, in inches it's ~10mm
+
+type
   { TPageSetupDialog }
   
   TPageSetupDialog = class(TCustomPrinterSetupDialog)
   private
-   fMargins : TRect;
-   fUnits : TMeasureUnits;
+    FPageWidth: integer;
+    FPageHeight: integer;
+    FMarginLeft: integer;
+    FMarginTop: integer;
+    FMarginRight: integer;
+    FMarginBottom: integer;
+    FMinMarginLeft: integer;
+    FMinMarginTop: integer;
+    FMinMarginRight: integer;
+    FMinMarginBottom: integer;
+    FUnits: TPageMeasureUnits;
+    FOptions: TPageSetupDialogOptions;
   protected
     function DoExecute: Boolean; override;
   public
     constructor Create(TheOwner: TComponent); override;
-    property Margins : TRect read fMargins write fMargins;
-    property Units : TMeasureUnits read fUnits;
+  published
+    property PageWidth: integer read FPageWidth write FPageWidth default 0;
+    property PageHeight: integer read FPageHeight write FPageHeight default 0;
+    property MarginLeft: integer read FMarginLeft write FMarginLeft default cDefaultPageSetupMargin;
+    property MarginTop: integer read FMarginTop write FMarginTop default cDefaultPageSetupMargin;
+    property MarginRight: integer read FMarginRight write FMarginRight default cDefaultPageSetupMargin;
+    property MarginBottom: integer read FMarginBottom write FMarginBottom default cDefaultPageSetupMargin;
+    property MinMarginLeft: integer read FMinMarginLeft write FMinMarginLeft default cDefaultPageSetupMinMargin;
+    property MinMarginTop: integer read FMinMarginTop write FMinMarginTop default cDefaultPageSetupMinMargin;
+    property MinMarginRight: integer read FMinMarginRight write FMinMarginRight default cDefaultPageSetupMinMargin;
+    property MinMarginBottom: integer read FMinMarginBottom write FMinMarginBottom default cDefaultPageSetupMinMargin;
+    property Options: TPageSetupDialogOptions read FOptions write FOptions default cDefaultPageSetupDialogOptions;
+    property Units: TPageMeasureUnits read FUnits write FUnits default pmDefault;
   end;
 
   { TPrinterDialog }
@@ -91,11 +145,11 @@ implementation
       {$I cocoaprndialogs.inc}
     {$ENDIF}
     {$IFDEF LCLQt}
-      uses qtobjects, qt4, qtint;
+      uses qtobjects, qt4, qtint, LazUTF8;
       {$I qtprndialogs.inc}
     {$ENDIF}
     {$IFDEF LCLQt5}
-      uses qtobjects, qt5, qtint;
+      uses qtobjects, qt5, qtint, LazUTF8;
       {$I qtprndialogs.inc}
     {$ENDIF}    
     {$IFDEF LCLGtk2}
@@ -104,11 +158,11 @@ implementation
     {$ENDIF}
   {$ELSE}
     {$IFDEF LCLQt}
-      uses qtobjects, qt4, qtint;
+      uses qtobjects, qt4, qtint, LazUTF8;
       {$I qtprndialogs.inc}
     {$ELSE}
     {$IFDEF LCLQt5}
-      uses qtobjects, qt5, qtint;
+      uses qtobjects, qt5, qtint, LazUTF8;
       {$I qtprndialogs.inc}
     {$ELSE}    
       uses udlgSelectPrinter, udlgPropertiesPrinter, udlgPageSetup;
@@ -121,12 +175,12 @@ implementation
 {$IFDEF MSWindows}
   {$IFDEF LCLQt}
     uses Windows,
-    qtobjects, qtwidgets, qt4, LCLIntf, LCLType;
+    qtobjects, qtwidgets, qt4, LCLIntf, LCLType, LazUTF8;
     {$I qtprndialogs.inc}
   {$ELSE}
   {$IFDEF LCLQt5}
     uses Windows,
-    qtobjects, qtwidgets, qt5, LCLIntf, LCLType;
+    qtobjects, qtwidgets, qt5, LCLIntf, LCLType, LazUTF8;
     {$I qtprndialogs.inc}
   {$ELSE}  
     uses Windows, WinUtilPrn, InterfaceBase, LCLIntf, LCLType, WinVer;
@@ -138,11 +192,19 @@ implementation
 
 constructor TPageSetupDialog.Create(TheOwner: TComponent);
 begin
- inherited Create(TheOwner);
- fMargins.Bottom := 0;
- fMargins.Left := 0;
- fMargins.Right := 0;
- fMargins.Top := 0;
+  inherited Create(TheOwner);
+  FPageWidth:= 0;
+  FPageHeight:= 0;
+  FMarginLeft:= cDefaultPageSetupMargin;
+  FMarginTop:= cDefaultPageSetupMargin;
+  FMarginRight:= cDefaultPageSetupMargin;
+  FMarginBottom:= cDefaultPageSetupMargin;
+  FMinMarginLeft:= cDefaultPageSetupMinMargin;
+  FMinMarginTop:= cDefaultPageSetupMinMargin;
+  FMinMarginRight:= cDefaultPageSetupMinMargin;
+  FMinMarginBottom:= cDefaultPageSetupMinMargin;
+  FOptions:= cDefaultPageSetupDialogOptions;
+  FUnits:= pmDefault;
 end;
 
 procedure Register;

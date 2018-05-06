@@ -28,8 +28,11 @@ unit opkman_repositories;
 interface
 
 uses
-  Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, ExtCtrls,
-  StdCtrls, Menus, opkman_VirtualTrees;
+  Classes, SysUtils, VirtualTrees,
+  // LCL
+  Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls, ButtonPanel,
+  // OpkMan
+  opkman_const, opkman_common, opkman_options;
 
 type
 
@@ -37,13 +40,11 @@ type
 
   TRepositoriesFrm = class(TForm)
     bEdit: TButton;
-    bCancel: TButton;
     bDelete: TButton;
     bAdd: TButton;
-    bOk: TButton;
+    ButtonPanel1: TButtonPanel;
     imTree: TImageList;
     pnBottom: TPanel;
-    pnBottom1: TPanel;
     procedure bAddClick(Sender: TObject);
     procedure bOkClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
@@ -51,7 +52,7 @@ type
   private
     FVST: TVirtualStringTree;
     FSortCol: Integer;
-    FSortDir: opkman_VirtualTrees.TSortDirection;
+    FSortDir: VirtualTrees.TSortDirection;
     procedure VSTGetText(Sender: TBaseVirtualTree; Node: PVirtualNode;
       Column: TColumnIndex; {%H-}TextType: TVSTTextType; var CellText: String);
     procedure VSTGetImageIndex(Sender: TBaseVirtualTree; Node: PVirtualNode;
@@ -62,11 +63,11 @@ type
     procedure VSTFocuseChanged(Sender: TBaseVirtualTree; {%H-}Node: PVirtualNode; {%H-}Column: TColumnIndex);
     procedure VSTPaintText(Sender: TBaseVirtualTree; const TargetCanvas: TCanvas;
       Node: PVirtualNode; {%H-}Column: TColumnIndex; {%H-}TextType: TVSTTextType);
-    procedure VSTHeaderClick(Sender: TVTHeader; Column: TColumnIndex;
-      Button: TMouseButton; {%H-}Shift: TShiftState; {%H-}X, {%H-}Y: Integer);
+    procedure VSTHeaderClick(Sender: TVTHeader; HitInfo: TVTHeaderHitInfo);
     procedure VSTFreeNode(Sender: TBaseVirtualTree; Node: PVirtualNode);
     procedure PopulateTree;
     procedure EnableDisableButtons;
+    function IsDuplicateRepository(const AAddress: String; const AUniqueID: Integer): Boolean;
   public
   end;
 
@@ -74,7 +75,7 @@ var
   RepositoriesFrm: TRepositoriesFrm;
 
 implementation
-uses opkman_const, opkman_common, opkman_options;
+
 {$R *.lfm}
 
 type
@@ -83,18 +84,21 @@ type
     FAddress: string;
     FType: Integer;
     FImageIndex: Integer;
+    FUniqueID: Integer;
   end;
 
 { TRepositoriesFrm }
 
 procedure TRepositoriesFrm.FormCreate(Sender: TObject);
 begin
+  if not Options.UseDefaultTheme then
+    Self.Color := clBtnFace;
   Caption := rsRepositories_Caption;
   bAdd.Caption := rsRepositories_bAdd_Caption;
   bEdit.Caption := rsRepositories_bEdit_Caption;
   bDelete.Caption := rsRepositories_bDelete_Caption;
-  bOk.Caption := rsRepositories_bOk_Caption;
-  bCancel.Caption := rsRepositories_bCancel_Caption;
+  //ButtonPanel1.OKButton.Caption := rsRepositories_bOk_Caption;
+  //ButtonPanel1.CancelButton.Caption := rsRepositories_bCancel_Caption;
 
   FVST := TVirtualStringTree.Create(nil);
   with FVST do
@@ -154,17 +158,22 @@ begin
          Value := InputBox(rsRepositories_InputBox_Caption0, rsRepositories_InputBox_Text, '');
          if Value <> '' then
          begin
-           Node := FVST.AddChild(nil);
-           Data := FVST.GetNodeData(Node);
-           Data^.FAddress := Trim(Value);
-           Data^.FAddress := FixProtocol(Data^.FAddress);
-           if Data^.FAddress[Length(Data^.FAddress)] <> '/' then
-             Data^.FAddress := Data^.FAddress + '/';
-           Data^.FType := 1;
-           Data^.FImageIndex := 0;
-           FVST.Selected[Node] := True;
-           FVST.FocusedNode := Node;
-           FVST.SortTree(0, FSortDir);
+           if Trim(Value[Length(Value)]) <> '/' then
+             Value := Trim(Value) + '/';
+           if not IsDuplicateRepository(Value, -1) then
+           begin
+             Node := FVST.AddChild(nil);
+             Data := FVST.GetNodeData(Node);
+             Data^.FAddress := Trim(Value);
+             Data^.FAddress := FixProtocol(Data^.FAddress);
+             Data^.FType := 1;
+             Data^.FImageIndex := 0;
+             FVST.Selected[Node] := True;
+             FVST.FocusedNode := Node;
+             FVST.SortTree(0, FSortDir);
+           end
+           else
+             MessageDlgEx(Format(rsRepositories_Info1, [value]), mtInformation, [mbOk], Self);
          end;
        end;
     1: begin
@@ -175,12 +184,19 @@ begin
            Value := InputBox(rsRepositories_InputBox_Caption1, rsRepositories_InputBox_Text, Data^.FAddress);
            if Value <> '' then
            begin
-             Data^.FAddress := Trim(Value);
-             Data^.FAddress := FixProtocol(Data^.FAddress);
-             if Data^.FAddress[Length(Data^.FAddress)] <> '/' then
-               Data^.FAddress := Data^.FAddress + '/';
-             FVST.ReinitNode(Node, False);
-             FVST.RepaintNode(Node);
+             if Trim(Value[Length(Value)]) <> '/' then
+               Value := Trim(Value) + '/';
+             if not IsDuplicateRepository(Value, Data^.FUniqueID) then
+             begin
+               Data^.FAddress := Trim(Value);
+               Data^.FAddress := FixProtocol(Data^.FAddress);
+               if Data^.FAddress[Length(Data^.FAddress)] <> '/' then
+                 Data^.FAddress := Data^.FAddress + '/';
+               FVST.ReinitNode(Node, False);
+               FVST.RepaintNode(Node);
+            end
+            else
+              MessageDlgEx(Format(rsRepositories_Info1, [value]), mtInformation, [mbOk], Self);
            end;
            FVST.SortTree(0, FSortDir);
           end;
@@ -212,7 +228,7 @@ var
 begin
   Options.RemoteRepositoryTmp.Clear;
   FVST.BeginUpdate;
-  FVST.SortTree(0, opkman_VirtualTrees.sdAscending);
+  FVST.SortTree(0, VirtualTrees.sdAscending);
   Node := FVST.GetFirst;
   while Assigned(Node) do
   begin
@@ -287,26 +303,25 @@ begin
     TargetCanvas.Font.Style := TargetCanvas.Font.Style - [fsBold]
 end;
 
-procedure TRepositoriesFrm.VSTHeaderClick(Sender: TVTHeader;
-  Column: TColumnIndex; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+procedure TRepositoriesFrm.VSTHeaderClick(Sender: TVTHeader; HitInfo: TVTHeaderHitInfo);
 begin
-  if (Column <> 0) and (Column <> 1) and (Column <> 3) then
+  if (HitInfo.Column <> 0) and (HitInfo.Column <> 1) and (HitInfo.Column <> 3) then
     Exit;
-  if Button = mbLeft then
+  if HitInfo.Button = mbLeft then
   begin
     with Sender, Treeview do
     begin
-      if (SortColumn = NoColumn) or (SortColumn <> Column) then
+      if (SortColumn = NoColumn) or (SortColumn <> HitInfo.Column) then
       begin
-        SortColumn    := Column;
-        SortDirection := opkman_VirtualTrees.sdAscending;
+        SortColumn    := HitInfo.Column;
+        SortDirection := VirtualTrees.sdAscending;
       end
       else
       begin
-        if SortDirection = opkman_VirtualTrees.sdAscending then
-          SortDirection := opkman_VirtualTrees.sdDescending
+        if SortDirection = VirtualTrees.sdAscending then
+          SortDirection := VirtualTrees.sdDescending
         else
-          SortDirection := opkman_VirtualTrees.sdAscending;
+          SortDirection := VirtualTrees.sdAscending;
         FSortDir := SortDirection;
       end;
       SortTree(SortColumn, SortDirection, False);
@@ -340,18 +355,41 @@ begin
   bDelete.Enabled := SelData^.FType > 0;
 end;
 
+function TRepositoriesFrm.IsDuplicateRepository(const AAddress: String;
+  const AUniqueID: Integer): Boolean;
+var
+  Node: PVirtualNode;
+  Data: PData;
+begin
+  Result := False;
+  Node := FVST.GetFirst;
+  while Assigned(Node) do
+  begin
+    Data := FVST.GetNodeData(Node);
+    if (UpperCase(Data^.FAddress) = UpperCase(AAddress)) and (Data^.FUniqueID <> AUniqueID) then
+    begin
+      Result := True;
+      Break;
+    end;
+    Node := FVST.GetNext(Node);
+  end;
+end;
+
 procedure TRepositoriesFrm.PopulateTree;
 var
   I: Integer;
   Node: PVirtualNode;
   Data: PData;
+  UniqueID: Integer;
 begin
   if Trim(Options.RemoteRepositoryTmp.Text) = '' then
     Options.RemoteRepositoryTmp.Text := Options.RemoteRepository.Text;
+  UniqueID := 0;
   for I := 0 to Options.RemoteRepositoryTmp.Count - 1 do
   begin
     if Trim(Options.RemoteRepositoryTmp.Strings[I]) <> '' then
     begin
+      Inc(UniqueID);
       Node := FVST.AddChild(nil);
       Data := FVST.GetNodeData(Node);
       Data^.FAddress := Options.RemoteRepositoryTmp.Strings[I];
@@ -360,9 +398,10 @@ begin
       else
         Data^.FType := 1;
       Data^.FImageIndex := 0;
+      Data^.FUniqueID := UniqueID;
     end;
   end;
-  FVST.SortTree(0, opkman_VirtualTrees.sdAscending);
+  FVST.SortTree(0, VirtualTrees.sdAscending);
   Node := FVST.GetFirst;
   if Node <> nil then
   begin

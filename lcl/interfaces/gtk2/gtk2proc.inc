@@ -1183,7 +1183,7 @@ begin
 end;
 
 {$IFDEF VerboseGtkToDos}{$note remove when gtk native imagelist will be ready}{$ENDIF}
-procedure DrawImageListIconOnWidget(ImgList: TCustomImageList;
+procedure DrawImageListIconOnWidget(ImgList: TScaledImageListResolution;
   Index: integer; AEffect: TGraphicsDrawEffect; Checked: boolean; DestWidget: PGTKWidget;
   CenterHorizontally, CenterVertically: boolean;
   DestLeft, DestTop: integer);
@@ -1198,7 +1198,6 @@ var
   FixedWidget: PGtkWidget;
   r:TRect;
 begin
-  if ImgList=nil then exit;
   if (Index<0) or (Index>=ImgList.Count) then exit;
   if (DestWidget=nil) then exit;
   ImageWidth:=ImgList.Width;
@@ -1240,7 +1239,7 @@ begin
   Bitmap.Free;
 end;
 
-procedure DrawImageListIconOnWidget(ImgList: TCustomImageList;
+procedure DrawImageListIconOnWidget(ImgList: TScaledImageListResolution;
   Index: integer; DestWidget: PGTKWidget);
 begin
   DrawImageListIconOnWidget(ImgList, Index, gdeNormal, false, DestWidget, true, true, 0, 0);
@@ -2176,7 +2175,8 @@ var
 
     if (
         GtkWidgetIsA(TargetWidget, gtk_type_entry) or
-        GtkWidgetIsA(TargetWidget, gtk_type_text_view)
+        GtkWidgetIsA(TargetWidget, gtk_type_text_view) or
+        GtkWidgetIsA(TargetWidget, gtk_type_tree_view)
        )
        and
       (gdk_event_get_type(AEvent) = GDK_KEY_PRESS) and
@@ -2242,14 +2242,17 @@ begin
   EventStopped := False;
   HandledByLCL := KeyEventWasHandledByLCL(AEvent, ABeforeEvent);
 
-  {$IFDEF VerboseKeyboard}
-  DebugLn(['[HandleGTKKeyUpDown] ',DbgSName(TControl(AData)),
+  {$IF defined(VerboseKeyboard) or defined(LCLGtk2Fix30544)}
+  DebugLn(['[HandleGTKKeyUpDown] START ',DbgSName(TControl(AData)),
     ' ',(AEvent^. _Type),' Widget=',GetWidgetClassName(AWidget),
     ' Before=',ABeforeEvent,' Down=',AHandleDown,' HandledByLCL=',HandledByLCL]);
   {$ENDIF}
   
   // handle every key event only once
   if HandledByLCL then exit;
+
+  while (not GtkWidgetIsA(AWidget, gtk_window_get_type)) and (AWidget^.parent <> nil) do
+    AWidget := AWidget^.parent;
 
   TargetWidget := AWidget;
   TargetObj := AData;
@@ -2297,7 +2300,9 @@ begin
   FillChar(Msg, SizeOf(Msg), 0);
 
   gdk_event_key_get_string(AEvent, EventString{%H-});
-  //DebugLn(['HandleGTKKeyUpDown TargetWidget=',GetWidgetDebugReport(TargetWidget),' ',DbgStr(EventString),' state=',AEvent^.state,' keyval=',AEvent^.keyval]);
+  {$IFDEF VerboseKeyboard}
+  DebugLn(['HandleGTKKeyUpDown EVENTSTRING TargetWidget=',GetWidgetDebugReport(TargetWidget),' "',DbgStr(EventString),'" state=',AEvent^.state,' keyval=',AEvent^.keyval]);
+  {$ENDIF}
 
   {$IfDef Gtk2LatinAccents}
   gtk_im_context_filter_keypress (im_context, AEvent);
@@ -2330,7 +2335,7 @@ begin
 
 
     // ssAlt + a key pressed is always a syskey
-    // ssAltGr + a key is only a syskey when the key pressed has no levelshift or when ssHift is pressed to0
+    // ssAltGr + a key is only a syskey when the key pressed has no levelshift or when ssShift is pressed too
     SysKey := (ssAlt in ShiftState);
     if not SysKey then
     begin
@@ -2344,7 +2349,7 @@ begin
         SysKey := (ShiftState * [ssShift, ssAltGr] = [ssShift, ssAltGr]);
 
         // This is not true for TCustomControl, issues 22703,25874.
-        if Assigned(LCLObject) and (LCLObject is TCustomControl) then
+        if LCLObject is TCustomControl then
           SysKey := False;
       end;
     end;
@@ -2502,7 +2507,7 @@ begin
       begin
         FillChar(Msg, SizeOf(Msg), 0);
 
-        Msg.KeyData := CommonKeyData;
+        Msg.KeyData := CommonKeyData or (Flags shl 16) or $0001;
         Msg.Msg := CHAR_MAP[SysKey, ABeforeEvent];
 
         // send the (Sys)Char message directly (not queued) to the LCL
@@ -4252,19 +4257,19 @@ var
   procedure UpdateTabImage;
   var
     HasIcon: Boolean;
-    IconSize: TPoint;
+    IconSize: Types.TSize;
     ImageIndex: Integer;
   begin
     HasIcon:=false;
-    IconSize:=Point(0,0);
+    IconSize:=Size(0,0);
     ImageIndex := TheNoteBook.GetImageIndex(ThePage.PageIndex);
     if (TheNoteBook.Images<>nil)
     and (ImageIndex >= 0)
     and (ImageIndex < TheNoteBook.Images.Count) then
     begin
       // page has valid image
-      IconSize := Point(TheNoteBook.Images.Width, TheNoteBook.Images.Height);
-      HasIcon := (IconSize.X>0) and (IconSize.Y>0);
+      IconSize := TheNoteBook.Images.SizeForPPI[TheNoteBook.ImagesWidth, TheNoteBook.Font.PixelsPerInch];
+      HasIcon := (IconSize.cx>0) and (IconSize.cy>0);
     end;
 
     if HasIcon then
@@ -4274,7 +4279,7 @@ var
       begin
         // there is already an icon widget for the image in the tab
         // -> resize the icon widget
-        gtk_widget_set_usize(TabImageWidget,IconSize.X,IconSize.Y);
+        gtk_widget_set_usize(TabImageWidget,IconSize.cx,IconSize.cy);
       end else
       begin
         // there is no pixmap for the image in the tab
@@ -4283,7 +4288,7 @@ var
         g_signal_connect(PgtkObject(TabImageWidget), 'expose_event',
                            TGTKSignalFunc(@PageIconWidgetExposeAfter), ThePage);
         g_object_set_data(PGObject(TabWidget), 'TabImage', TabImageWidget);
-        gtk_widget_set_usize(TabImageWidget, IconSize.X, IconSize.Y);
+        gtk_widget_set_usize(TabImageWidget, IconSize.cx, IconSize.cy);
         gtk_widget_show(TabImageWidget);
         gtk_box_pack_start_defaults(PGtkBox(TabWidget), TabImageWidget);
         gtk_box_reorder_child(PGtkBox(TabWidget), TabImageWidget, 0);
@@ -4292,7 +4297,7 @@ var
       begin
         // there is already an icon widget for the image in the menu
         // -> resize the icon widget
-        gtk_widget_set_usize(MenuImageWidget, IconSize.X, IconSize.Y);
+        gtk_widget_set_usize(MenuImageWidget, IconSize.cx, IconSize.cy);
       end else
       begin
         // there is no icon widget for the image in the menu
@@ -4300,7 +4305,7 @@ var
         MenuImageWidget:=gtk_label_new(#0);
         g_signal_connect_after(PgtkObject(MenuImageWidget), 'expose_event',
                           TGTKSignalFunc(@PageIconWidgetExposeAfter), ThePage);
-        gtk_widget_set_usize(MenuImageWidget,IconSize.X,IconSize.Y);
+        gtk_widget_set_usize(MenuImageWidget,IconSize.cx,IconSize.cy);
         g_object_set_data(PGObject(MenuWidget),'TabImage',MenuImageWidget);
         gtk_widget_show(MenuImageWidget);
         gtk_box_pack_start_defaults(PGtkBox(MenuWidget),MenuImageWidget);
@@ -5743,6 +5748,7 @@ var
   FreeImageList: Boolean;
   AImageIndex: Integer;
   ItemBmp: TBitmap;
+  DC: HDC;
 begin
   if (MenuItem=nil) then
     exit;
@@ -5762,15 +5768,18 @@ begin
     OldCheckMenuItemDrawProc(MenuItem,Area);
     exit;
   end;
-  IconSize:=LCLMenuItem.GetIconSize;
-  IconWidth:=IconSize.X;
-  IconHeight:=IconSize.Y;
-
   // calculate left and top
   Widget := PGtkWidget(MenuItem);
   AWindow:=GetControlWindow(Widget);
   if AWindow = nil then
     exit;
+
+  DC := Widgetset.GetDC(HWND({%H-}PtrUInt(Widget)));
+  IconSize:=LCLMenuItem.GetIconSize(DC);
+  WidgetSet.ReleaseDC(HWND({%H-}PtrUInt(Widget)), DC);
+  IconWidth:=IconSize.X;
+  IconHeight:=IconSize.Y;
+
   Container := GTK_CONTAINER (MenuItem);
   BorderWidth := Container^.flag0 and bm_TGtkContainer_border_width;
 
@@ -5791,16 +5800,17 @@ begin
 
   // draw icon
   AImageList := LCLMenuItem.GetImageList;
-  if AImageList = nil then
+  if (AImageList = nil) or (LCLMenuItem.ImageIndex < 0) then
   begin
     AImageList := TImageList.Create(nil);
     // prevent multiple calls to GetBitmap;
     ItemBmp := LCLMenuItem.Bitmap;
     AImageList.Width := ItemBmp.Width; // maybe height to prevent too wide bitmaps?
     AImageList.Height := ItemBmp.Height;
-    if ItemBmp.Masked
-    then AImageIndex := AImageList.AddMasked(ItemBmp, ItemBmp.TransparentColor)
-    else AImageIndex := AImageList.Add(ItemBmp, nil);
+    if not ItemBmp.Transparent then
+      AImageIndex := AImageList.AddMasked(ItemBmp, ItemBmp.Canvas.Pixels[0, AImageList.Height-1])
+    else
+      AImageIndex := AImageList.Add(ItemBmp, nil);
     FreeImageList := True;
   end
   else
@@ -5816,7 +5826,7 @@ begin
 
   if AImageIndex < AImageList.Count then
     {$IFDEF VerboseGtkToDos}{$note reimplement}{$ENDIF}
-    DrawImageListIconOnWidget(AImageList, AImageIndex, AEffect,
+    DrawImageListIconOnWidget(AImageList.ResolutionForPPI[IconWidth, 96, 1], AImageIndex, AEffect,
         LCLMenuItem.Checked, Widget, false, false, ALeft, ATop);
 
   if FreeImageList then
@@ -5838,6 +5848,7 @@ var
   CheckMenuItem: PGtkMenuItem;
   LCLMenuItem: TMenuItem;
   IconSize: TPoint;
+  DC: HDC;
 begin
   MaxToggleSize:=0;
   MenuShell:=GTK_MENU_SHELL(widget);
@@ -5850,8 +5861,10 @@ begin
       CurToggleSize:=OldCheckMenuItemToggleSize;
       LCLMenuItem:=TMenuItem(GetLCLObject(MenuItem));
       if LCLMenuItem<>nil then begin
-        IconSize:=LCLMenuItem.GetIconSize;
-        {if IconSize.X>100 then
+        DC := Widgetset.GetDC(HWND({%H-}PtrUInt(widget)));
+        IconSize:=LCLMenuItem.GetIconSize(DC);
+        WidgetSet.ReleaseDC(HWND({%H-}PtrUInt(Widget)), DC);
+        {if IconSize.Width>100 then
           debugln('MenuSizeRequest LCLMenuItem=',LCLMenuItem.Name,' ',LCLMenuItem.Caption,
             ' ');}
         if CurToggleSize<IconSize.X then
@@ -5959,7 +5972,6 @@ var
   begin
     // the icon will be painted instead of the toggle
     // of a normal gtkcheckmenuitem
-
     if LCLMenuItem.HasIcon then
     begin
       GTK_MENU_ITEM(MenuItemWidget)^.flag0:=
@@ -5970,6 +5982,8 @@ var
       if OldCheckMenuItemDrawProc = nil then
         OldCheckMenuItemDrawProc := CHECK_MENU_ITEM_CLASS(MenuItemWidget)^.draw_indicator;
       CHECK_MENU_ITEM_CLASS(MenuItemWidget)^.draw_indicator := @DrawMenuItemIcon;
+
+      MinHeightWidget := MenuItemWidget;
     end
     else
       MinHeightWidget := nil;
@@ -6509,6 +6523,7 @@ var
     LCLHeight:=LCLControl.Height;
     WidthHeightChanged:=(LCLWidth<>GtkWidth) or (LCLHeight<>GtkHeight);
     if LCLControl.ClientRectNeedsInterfaceUpdate then begin
+      WidthHeightChanged:=true;
       //DebugLn(['UpdateLCLSize InvalidateClientRectCache ',DbgSName(LCLControl)]);
       LCLControl.InvalidateClientRectCache(false);
     end;
@@ -9386,7 +9401,7 @@ begin
   // X warns if marking a fixed size window resizeable:
   if ((AForm.Constraints.MinWidth>0)
   and (AForm.Constraints.MinWidth=AForm.Constraints.MaxWidth))
-  or ((AForm.Constraints.MinHeight>0)
+  and ((AForm.Constraints.MinHeight>0)
   and (AForm.Constraints.MinHeight=AForm.Constraints.MaxHeight)) then
     Result:=Result-GDK_FUNC_RESIZE;
 

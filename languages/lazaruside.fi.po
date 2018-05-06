@@ -410,6 +410,10 @@ msgstr "Koodin laskostuspuu"
 msgid "Default Text"
 msgstr "Oletus teksti"
 
+#: lazarusidestrconsts.dlgaddhiattrdefaultwindow
+msgid "Default Text / Window"
+msgstr ""
+
 #: lazarusidestrconsts.dlgaddhiattrdisabledbreakpoint
 msgid "Disabled breakpoint"
 msgstr "Estetty keskeytyskohta"
@@ -454,6 +458,10 @@ msgctxt "lazarusidestrconsts.dlgaddhiattrgroupline"
 msgid "Line"
 msgstr "Rivi"
 
+#: lazarusidestrconsts.dlgaddhiattrgroupoutlinecolors
+msgid "Outline Colors"
+msgstr ""
+
 #: lazarusidestrconsts.dlgaddhiattrgroupsyncroedit
 msgid "Syncron Edit"
 msgstr "Tahdistettu muokkaus"
@@ -477,6 +485,11 @@ msgstr ""
 
 #: lazarusidestrconsts.dlgaddhiattrhighlightall
 msgid "Incremental others"
+msgstr ""
+
+#: lazarusidestrconsts.dlgaddhiattrhighlightprefix
+msgctxt "lazarusidestrconsts.dlgaddhiattrhighlightprefix"
+msgid "Highlight prefix"
 msgstr ""
 
 #: lazarusidestrconsts.dlgaddhiattrhighlightword
@@ -506,6 +519,46 @@ msgstr "Muutettu rivi"
 #: lazarusidestrconsts.dlgaddhiattrmouselink
 msgid "Mouse link"
 msgstr "Hiiren linkki"
+
+#: lazarusidestrconsts.dlgaddhiattroutlinelevel10color
+msgid "Level 10"
+msgstr ""
+
+#: lazarusidestrconsts.dlgaddhiattroutlinelevel1color
+msgid "Level  1"
+msgstr ""
+
+#: lazarusidestrconsts.dlgaddhiattroutlinelevel2color
+msgid "Level  2"
+msgstr ""
+
+#: lazarusidestrconsts.dlgaddhiattroutlinelevel3color
+msgid "Level  3"
+msgstr ""
+
+#: lazarusidestrconsts.dlgaddhiattroutlinelevel4color
+msgid "Level  4"
+msgstr ""
+
+#: lazarusidestrconsts.dlgaddhiattroutlinelevel5color
+msgid "Level  5"
+msgstr ""
+
+#: lazarusidestrconsts.dlgaddhiattroutlinelevel6color
+msgid "Level  6"
+msgstr ""
+
+#: lazarusidestrconsts.dlgaddhiattroutlinelevel7color
+msgid "Level  7"
+msgstr ""
+
+#: lazarusidestrconsts.dlgaddhiattroutlinelevel8color
+msgid "Level  8"
+msgstr ""
+
+#: lazarusidestrconsts.dlgaddhiattroutlinelevel9color
+msgid "Level  9"
+msgstr ""
 
 #: lazarusidestrconsts.dlgaddhiattrsyncroeditarea
 msgid "Selected Area"
@@ -549,6 +602,10 @@ msgstr "Tekstilohko"
 msgid "Unknown breakpoint"
 msgstr "Tuntematon keskeytyskohta"
 
+#: lazarusidestrconsts.dlgaddhiattrwindowborder
+msgid "Window border"
+msgstr ""
+
 #: lazarusidestrconsts.dlgaddhiattrwordgroup
 msgid "Word-Brackets"
 msgstr "Sana-sulut"
@@ -556,6 +613,10 @@ msgstr "Sana-sulut"
 #: lazarusidestrconsts.dlgaddhispecialvisiblechars
 msgid "Visualized Special Chars"
 msgstr "Näytä erikoismerkit"
+
+#: lazarusidestrconsts.dlgaddnewmode
+msgid "Add new mode"
+msgstr ""
 
 #: lazarusidestrconsts.dlgaddsemicolon
 msgid "Add semicolon"
@@ -596,6 +657,14 @@ msgstr "Sovelluksen asetukset"
 #: lazarusidestrconsts.dlgassertcode
 msgid "Include assertion code"
 msgstr "Ota mukaan assertion-koodi"
+
+#: lazarusidestrconsts.dlgassociateddebugdesktop
+msgid "Associated debug desktop"
+msgstr ""
+
+#: lazarusidestrconsts.dlgassociateddebugdesktophint
+msgid "If you select the desktop, the associated debug desktop will be selected as well."
+msgstr ""
 
 #: lazarusidestrconsts.dlgautocreateforms
 msgid "Auto-create forms:"
@@ -662,6 +731,10 @@ msgstr "Käytettävissä olevat lomakkeet:"
 #: lazarusidestrconsts.dlgavailableformshint
 msgid "These forms must be created and freed in the program code."
 msgstr "Nämä lomakkeet pitää luoda ja tuhota ohjelmakoodissa."
+
+#: lazarusidestrconsts.dlgavoidunnecessaryjumps
+msgid "Avoid unnecessary jumps"
+msgstr ""
 
 #: lazarusidestrconsts.dlgbackcolor
 msgid "Background"
@@ -824,10 +897,6 @@ msgstr "Muuttujan etuliite"
 msgid "Write prefix"
 msgstr "'Write' etuliite"
 
-#: lazarusidestrconsts.dlgcentercursorline
-msgid "Center cursor line"
-msgstr "Keskitä aktiivinen rivi"
-
 #: lazarusidestrconsts.dlgcharcasefileact
 msgid "Save As - auto rename Pascal files lower case"
 msgstr "Tiedoston nimen automaattinen muuntaminen pieneksi tallennettaessa"
@@ -917,7 +986,7 @@ msgstr "Piilota"
 
 #: lazarusidestrconsts.dlgcodefoldpopuporder
 msgid "Reverse fold-order in Popup"
-msgstr "Käänteinen laskostusjärjestys popup-luettelossa"
+msgstr "Käänteinen laskostusjärjestys popup-valikossa"
 
 #: lazarusidestrconsts.dlgcogdb
 msgid "Generate debugging info for GDB (slower / increases exe-size)"
@@ -968,7 +1037,9 @@ msgid "Command line parameters (without application name)"
 msgstr "Komentorivin parametrit (ilman ohjelman omaa nimeä)"
 
 #: lazarusidestrconsts.dlgcommentalignmaxdefault
-msgid "Make default indent for new line if comment opens at column:"
+#, fuzzy
+#| msgid "Make default indent for new line if comment opens at column:"
+msgid "Max indent for new line if prefix is based on start of comment on first comment line:"
 msgstr "Sisennä uutta riviä oletuksen mukaan jos kommentti alkaa sarakkeesta:"
 
 #: lazarusidestrconsts.dlgcommentalignmaxtoken
@@ -1058,7 +1129,7 @@ msgstr "Täydennyksen ominaisuudet"
 
 #: lazarusidestrconsts.dlgcomponentundermousecursorisfirstselected
 msgid "Component under mouse cursor is first selected, then the popup menu commands work on it."
-msgstr "Hiirikursorin alla oleva komponentti valitaan ensin, sitten popup valikon komennot vaikuttavat siihen."
+msgstr "Hiirikursorin alla oleva komponentti valitaan ensin, sitten popup-valikon komennot vaikuttavat siihen."
 
 #: lazarusidestrconsts.dlgconfigandtarget
 msgid "Config and Target"
@@ -1170,6 +1241,10 @@ msgstr "Monisanaisuus"
 msgid "C++ styled INLINE"
 msgstr "C++ -tyylinen INLINE"
 
+#: lazarusidestrconsts.dlgcreatenewrunparameterssettings
+msgid "Create new Run Parameters settings"
+msgstr ""
+
 #: lazarusidestrconsts.dlgctrlmiddletabcloseotherpages
 msgid "Ctrl-middle-click on tab closes all others"
 msgstr "Ctrl-keskinäppäin-klikkaus välilehdellä sulkee kaikki muut"
@@ -1221,6 +1296,10 @@ msgstr "Editorin oletuskirjasin"
 #: lazarusidestrconsts.dlgdefvaluecolor
 msgid "Default Value"
 msgstr "Oletusarvo"
+
+#: lazarusidestrconsts.dlgdeletemode
+msgid "Delete mode"
+msgstr ""
 
 #: lazarusidestrconsts.dlgdeltemplate
 msgid "Delete template "
@@ -1779,14 +1858,16 @@ msgid "Program"
 msgstr "Ohjelma"
 
 #: lazarusidestrconsts.dlgfoldpasrecord
+#, fuzzy
 msgctxt "lazarusidestrconsts.dlgfoldpasrecord"
 msgid "Record"
-msgstr ""
+msgstr "Nauhoita"
 
 #: lazarusidestrconsts.dlgfoldpasrepeat
+#, fuzzy
 msgctxt "lazarusidestrconsts.dlgfoldpasrepeat"
 msgid "Repeat"
-msgstr ""
+msgstr "Toistoja"
 
 #: lazarusidestrconsts.dlgfoldpasslashcomment
 msgid "Comment //"
@@ -1848,6 +1929,14 @@ msgstr "Solmu"
 msgid "Processing Instruction"
 msgstr "Toimintaohjeet"
 
+#: lazarusidestrconsts.dlgforcedpiscalingindesigntime
+msgid "Force DPI scaling in design-time"
+msgstr ""
+
+#: lazarusidestrconsts.dlgforcedpiscalingindesigntimehint
+msgid "When checked the project scaling settings will be ignored - only the form/frame/datamodule Scaled property will be taken into account."
+msgstr ""
+
 #: lazarusidestrconsts.dlgforceuniqueinstancemodalerror
 msgid "The running Lazarus instance cannot accept any files."
 msgstr "Käynnissä oleva Lazarus ei huoli tiedostoja."
@@ -1896,10 +1985,6 @@ msgstr "&Alusta"
 msgid "&From cursor"
 msgstr "&Kursorin kohdasta"
 
-#: lazarusidestrconsts.dlggetposition
-msgid "Get position"
-msgstr "Hae sijainti"
-
 #: lazarusidestrconsts.dlgglobal
 msgid "&Global"
 msgstr "&Julkinen"
@@ -1911,6 +1996,10 @@ msgstr "Generoi koodi gprof:ia varten"
 #: lazarusidestrconsts.dlggrabbercolor
 msgid "Grabber color"
 msgstr "Tarttujan väri"
+
+#: lazarusidestrconsts.dlggrayeddesktopsdocked
+msgid "Grayed desktops are for docked environment."
+msgstr ""
 
 #: lazarusidestrconsts.dlggrayeddesktopsundocked
 msgid "Grayed desktops are for undocked environment."
@@ -2104,6 +2193,10 @@ msgstr ""
 "Samanniminen työpöytä on jo olemassa.\n"
 "Vahvista työpöydän nimi:\n"
 
+#: lazarusidestrconsts.dlgincludeidentifierscontainingprefix
+msgid "Include identifiers containing prefix"
+msgstr ""
+
 #: lazarusidestrconsts.dlgincludesystemvariables
 msgid "Include system variables"
 msgstr "Ota järjestelmän muuttujat mukaan"
@@ -2156,9 +2249,17 @@ msgstr "Välilyönti ennen seuraavia"
 msgid "Interval in secs"
 msgstr "Aika sekunteina"
 
+#: lazarusidestrconsts.dlgjumpcodeblockpos
+msgid "Vertical position for a code block jump in % (0=top, 100=bottom)"
+msgstr ""
+
 #: lazarusidestrconsts.dlgjumpingetc
 msgid "Jumping (e.g. Method Jumping)"
 msgstr "Hyppely (esim. metodeihin)"
+
+#: lazarusidestrconsts.dlgjumpsinglelinepos
+msgid "Vertical position for a single line jump in % (0=top, 100=bottom)"
+msgstr ""
 
 #: lazarusidestrconsts.dlgjumptomethodbody
 msgid "Jump directly to method body"
@@ -2200,10 +2301,6 @@ msgstr "Viimeinen (esim. lähdekoodin lopussa)"
 #: lazarusidestrconsts.dlglazarusdir
 msgid "Lazarus directory (default for all projects)"
 msgstr "Lazaruksen kansio (oletus kaikille projekteille)"
-
-#: lazarusidestrconsts.dlgleftpos
-msgid "Left:"
-msgstr "Vasemmalta:"
 
 #: lazarusidestrconsts.dlglefttopclr
 msgid "Guide lines Left,Top"
@@ -2358,7 +2455,7 @@ msgstr "nykyinen sana"
 
 #: lazarusidestrconsts.dlgmarkupuserdefinednewbykeyopts
 msgid "Settings for terms added by key"
-msgstr "Avaimen asettaman termin asetukset"
+msgstr "Näppäimen asettaman termin asetukset"
 
 #: lazarusidestrconsts.dlgmarkupuserdefinednewbykeysmartselect
 msgid "Smart match selection bounds"
@@ -2378,7 +2475,7 @@ msgstr "Valitse ..."
 
 #: lazarusidestrconsts.dlgmarkupuserdefinedpagekeys
 msgid "Key Settings"
-msgstr "Avainasetukset"
+msgstr "Näppäinasetukset"
 
 #: lazarusidestrconsts.dlgmarkupuserdefinedpagemain
 msgid "Main settings"
@@ -2389,7 +2486,9 @@ msgid "Word Brackets on caret (global)"
 msgstr ""
 
 #: lazarusidestrconsts.dlgmarkupwordfulllen
-msgid "Match word boundaries for words up to this length:"
+#, fuzzy
+#| msgid "Match word boundaries for words up to this length:"
+msgid "Match whole words, if length is less or equal to:"
 msgstr "Käytä sanan rajoja tähän pituuteen saakka:"
 
 #: lazarusidestrconsts.dlgmarkupwordnokeyword
@@ -2423,6 +2522,10 @@ msgstr "Projekteja muistetaan"
 #: lazarusidestrconsts.dlgmixmethodsandproperties
 msgid "Mix methods and properties"
 msgstr "Sekoita metodeja ja ominaisuuksia"
+
+#: lazarusidestrconsts.dlgmode
+msgid "Mode"
+msgstr ""
 
 #: lazarusidestrconsts.dlgmouseaction
 msgid "Mouse Action"
@@ -2998,6 +3101,10 @@ msgstr "Vista-8: pois, 8.1+: per monitori"
 msgid "Vista-8: on, 8.1+: per monitor"
 msgstr "Vista-8: päällä, 8.1+: per monitori"
 
+#: lazarusidestrconsts.dlgpodpiawarenessoldonnewpermonitorv2
+msgid "Vista-8: on, 8.1/10+: per monitor/V2"
+msgstr ""
+
 #: lazarusidestrconsts.dlgpodpiawarenesson
 msgid "on"
 msgstr "päällä"
@@ -3150,7 +3257,9 @@ msgid "Replace &All"
 msgstr "Korvaa &kaikki"
 
 #: lazarusidestrconsts.dlgreplacewith
-msgid "&Replace with"
+#, fuzzy
+#| msgid "&Replace with"
+msgid "Replace wit&h"
 msgstr "&Korvaava"
 
 #: lazarusidestrconsts.dlgreport
@@ -3253,6 +3362,10 @@ msgstr "Tallenna editorin tiedot vain projektin tiedostoista"
 #: lazarusidestrconsts.dlgsaveeditorinfoprojecthint
 msgid "Only files that belong to this project."
 msgstr "Vain tähän projektiin kuuluvat tiedostot."
+
+#: lazarusidestrconsts.dlgsavein
+msgid "Save in"
+msgstr ""
 
 #: lazarusidestrconsts.dlgscrollbyoneless
 msgid "Scroll by one less"
@@ -3566,6 +3679,10 @@ msgstr "Kohderiippuvaiset asetukset"
 msgid "Directory for building test projects"
 msgstr "Kansio testiprojektien kokoamiseen"
 
+#: lazarusidestrconsts.dlgtextstyle
+msgid "Text-Style"
+msgstr ""
+
 #: lazarusidestrconsts.dlgtexttofind
 msgid "&Text to find"
 msgstr "&Etsittävä"
@@ -3578,10 +3695,6 @@ msgstr "Vaihda debug-työpöydäksi"
 #: lazarusidestrconsts.dlgtopinfohint
 msgid "Current Class/Proc Hint"
 msgstr "Nykyisen luokan/metodin vihje"
-
-#: lazarusidestrconsts.dlgtoppos
-msgid "Top:"
-msgstr "Ylhäältä:"
 
 #: lazarusidestrconsts.dlgtrimspacetypecaption
 msgid "Trim spaces style"
@@ -3653,6 +3766,10 @@ msgstr "Jakajan piirto"
 msgid "Use standard compiler config file (fpc.cfg)"
 msgstr "Käytä standardia kääntäjän asetustiedostoa (fpc.cfg)"
 
+#: lazarusidestrconsts.dlguseiconsincompletionbox
+msgid "Icons in code completion box"
+msgstr ""
+
 #: lazarusidestrconsts.dlguselaunchingapp
 msgid "Use launching application"
 msgstr "Käytä käynnistävää ohjelmaa"
@@ -3717,10 +3834,6 @@ msgstr "Windows graafinen ohjelma"
 #: lazarusidestrconsts.dlgwindow
 msgid "Window"
 msgstr "Ikkuna"
-
-#: lazarusidestrconsts.dlgwinpos
-msgid "Window positions"
-msgstr "Ikkunoiden sijainnit"
 
 #: lazarusidestrconsts.dlgwordexceptions
 msgid "Exceptions"
@@ -3941,7 +4054,9 @@ msgid "File is used"
 msgstr "Tiedosto on käytössä"
 
 #: lazarusidestrconsts.lisa2pfilename2
-msgid "Filename"
+#, fuzzy
+#| msgid "Filename"
+msgid "Filename/URL"
 msgstr "Tiedoston nimi"
 
 #: lazarusidestrconsts.lisa2pfilenotunit
@@ -4223,6 +4338,14 @@ msgstr "Aktiivinen suodatin"
 msgctxt "lazarusidestrconsts.lisadd"
 msgid "Add"
 msgstr "Lisää"
+
+#: lazarusidestrconsts.lisaddanewseparatoraboveselecteditem
+msgid "Add a new separator above selected item"
+msgstr ""
+
+#: lazarusidestrconsts.lisaddanewseparatorbelowselecteditem
+msgid "Add a new separator below selected item"
+msgstr ""
 
 #: lazarusidestrconsts.lisadddelphidefine
 msgid "Add defines simulating Delphi7"
@@ -4525,6 +4648,10 @@ msgstr "Ankkuroi yläreuna sisarusten yläreunaan. Käytä BorderSpacing välima
 msgid "An error occurred at last startup while loading %s!%sLoad this project again?"
 msgstr "Virhe esiintyi, kun avattiin projektia %s!%sAvataanko tämä projekti uudelleen?"
 
+#: lazarusidestrconsts.lisappearance
+msgid "Appearance"
+msgstr ""
+
 #: lazarusidestrconsts.lisapplicationclassname
 msgid "&Application class name"
 msgstr "&Sovelluksen luokan nimi"
@@ -4739,6 +4866,12 @@ msgstr "Kun tämä tiedosto on aktiivinen editorissa"
 msgid "Working directory (leave empty for file path)"
 msgstr "Työhakemisto (tyhjä = tiedoston polku)"
 
+#: lazarusidestrconsts.lisbinary
+#, fuzzy
+msgctxt "lazarusidestrconsts.lisbinary"
+msgid "Binary"
+msgstr "Binaari"
+
 #: lazarusidestrconsts.lisboldnondefaultobjectinspector
 msgid "Bold non default values"
 msgstr "Lihavoi muutetut arvot"
@@ -4772,6 +4905,18 @@ msgstr "Tämä on naapurikontrolli, mihin alareuna on ankkuroitu. Tyhjä tarkoit
 msgid "Bottom space equally"
 msgstr "Tasaa välit alhaalla"
 
+#: lazarusidestrconsts.lisbpsdisabled
+#, fuzzy
+msgctxt "lazarusidestrconsts.lisbpsdisabled"
+msgid "Disabled"
+msgstr "Estetty"
+
+#: lazarusidestrconsts.lisbpsenabled
+#, fuzzy
+msgctxt "lazarusidestrconsts.lisbpsenabled"
+msgid "Enabled"
+msgstr "Sallittu"
+
 #: lazarusidestrconsts.lisbreak
 msgctxt "lazarusidestrconsts.lisbreak"
 msgid "Break"
@@ -4780,6 +4925,10 @@ msgstr "Keskeytä"
 #: lazarusidestrconsts.lisbreakpointproperties
 msgid "Breakpoint Properties"
 msgstr "Keskeytyskohdan ominaisuudet"
+
+#: lazarusidestrconsts.lisbrowseandselectacompiler
+msgid "Browse and select a compiler (e.g. ppcx64"
+msgstr ""
 
 #: lazarusidestrconsts.lisbtnadd
 msgctxt "lazarusidestrconsts.lisbtnadd"
@@ -4823,6 +4972,10 @@ msgstr "&Lopeta"
 msgctxt "lazarusidestrconsts.lisbtnremove"
 msgid "&Remove"
 msgstr "&Poista"
+
+#: lazarusidestrconsts.lisbtnrename
+msgid "&Rename"
+msgstr ""
 
 #: lazarusidestrconsts.lisbtnreplace
 msgid "&Replace"
@@ -4943,6 +5096,10 @@ msgstr "Päätason komponenttia ei voida kopioida"
 #: lazarusidestrconsts.liscannotcreatefile
 msgid "Cannot create file \"%s\""
 msgstr "Ei voi luoda tiedostoa \"%s\""
+
+#: lazarusidestrconsts.liscannotdeletelastmode
+msgid "Cannot delete last mode."
+msgstr ""
 
 #: lazarusidestrconsts.liscannotexecute
 msgid "cannot execute \"%s\""
@@ -5883,11 +6040,6 @@ msgstr ""
 msgctxt "lazarusidestrconsts.liscodecreationdialoglocation"
 msgid "Location"
 msgstr "Sijainti"
-
-#: lazarusidestrconsts.liscodeexplorer
-msgctxt "lazarusidestrconsts.liscodeexplorer"
-msgid "Code Explorer"
-msgstr "Koodin tutkija"
 
 #: lazarusidestrconsts.liscodegenerationoptions
 msgid "Code generation options"
@@ -7086,10 +7238,6 @@ msgctxt "lazarusidestrconsts.liscoolbarborderstyleitem1"
 msgid "Single"
 msgstr "Yksittäinen"
 
-#: lazarusidestrconsts.liscoolbarclearselection
-msgid "Clear selection"
-msgstr "Tyhjennä valinta"
-
 #: lazarusidestrconsts.liscoolbarcodeexplorer
 msgctxt "lazarusidestrconsts.liscoolbarcodeexplorer"
 msgid "Code Explorer"
@@ -7505,6 +7653,7 @@ msgid "A Custom Free Pascal program."
 msgstr "Mukautettu Free Pascal -ohjelma."
 
 #: lazarusidestrconsts.liscut
+msgctxt "lazarusidestrconsts.liscut"
 msgid "Cut"
 msgstr "Leikkaa"
 
@@ -7680,6 +7829,11 @@ msgstr "Merkitse tämä kuitenkin keskeyskohdaksi"
 msgid "There is no debugger specified.%sSetting breakpoints have no effect until you set up a Debugger in the debugger options dialog in the menu."
 msgstr "Virheenjäljitintä ei ole valittu.%sKeskeytyskohdalla ei ole vaikutusta ennenkuin 'Käyttöliittymä'-valikon 'Virheenjäljittimen asetus' on asetettu."
 
+#: lazarusidestrconsts.lisdbgterminal
+msgctxt "lazarusidestrconsts.lisdbgterminal"
+msgid "Console In/Output"
+msgstr ""
+
 #: lazarusidestrconsts.lisdbgwinpower
 msgid "On/Off"
 msgstr "Päällä/Pois"
@@ -7797,7 +7951,9 @@ msgid "Module"
 msgstr "Moduuli"
 
 #: lazarusidestrconsts.lisdebugoptionsfrmnotifyonlazarusexceptions
-msgid "Notify on Lazarus Exceptions"
+#, fuzzy
+#| msgid "Notify on Lazarus Exceptions"
+msgid "Notify on Exceptions"
 msgstr "Ilmoita Lazaruksen keskeytyksistä"
 
 #: lazarusidestrconsts.lisdebugoptionsfrmosexceptions
@@ -8108,6 +8264,7 @@ msgid "Disable Breakpoint"
 msgstr "Estä keskeytyskohta"
 
 #: lazarusidestrconsts.lisdisabled
+msgctxt "lazarusidestrconsts.lisdisabled"
 msgid "Disabled"
 msgstr "Estetty"
 
@@ -8273,6 +8430,12 @@ msgstr "Älä näytä tätä viestiä enää"
 msgid "Do not write updated project info file after build. If not specified, build number will be incremented if configured."
 msgstr "Älä kirjoita päivitettyjä projektin tietoja koonnan jälkeen. Jos ei määritelty, koontanumeroa lisätään asetuksen mukaan."
 
+#: lazarusidestrconsts.lisdonwloadonlinepackages
+msgid ""
+"The following package(s) are not available locally: %s.\n"
+"In order to install it, you must download them first. Download now?\n"
+msgstr ""
+
 #: lazarusidestrconsts.lisdown
 msgid "Down"
 msgstr "Alas"
@@ -8284,6 +8447,10 @@ msgstr "Palauta aikaisempaan"
 #: lazarusidestrconsts.lisdowngradeconfiguration
 msgid "Downgrade configuration"
 msgstr "Palauta asetukset aikaisempaan"
+
+#: lazarusidestrconsts.lisdownload
+msgid "Download"
+msgstr ""
 
 #: lazarusidestrconsts.lisdoyoustillwanttocreatethenewproject
 msgid "Do you still want to create the new project?"
@@ -8353,6 +8520,10 @@ msgstr "Päällekkäinen tiedostonimi"
 msgid "Duplicate found of value \"%s\"."
 msgstr "Päällekkäinen arvo \"%s\"."
 
+#: lazarusidestrconsts.lisduplicatemodename
+msgid "Mode \"%s\" is already present in the list."
+msgstr ""
+
 #: lazarusidestrconsts.lisduplicatename
 msgid "Duplicate Name"
 msgstr "Päällekkäinen nimi"
@@ -8407,7 +8578,9 @@ msgid "Editor Colors"
 msgstr "Editorin värit"
 
 #: lazarusidestrconsts.liseditormacros
-msgid "Editor macros"
+#, fuzzy
+#| msgid "Editor macros"
+msgid "Editor Macros"
 msgstr "Editorin makrot"
 
 #: lazarusidestrconsts.liseditortoolbar
@@ -8489,7 +8662,7 @@ msgstr "Muokkaa työkalua"
 #: lazarusidestrconsts.lisedtexttoolkey
 msgctxt "lazarusidestrconsts.lisedtexttoolkey"
 msgid "Key"
-msgstr "Avain"
+msgstr "Näppäin"
 
 #: lazarusidestrconsts.lisedtexttoolmacros
 msgctxt "lazarusidestrconsts.lisedtexttoolmacros"
@@ -9658,6 +9831,10 @@ msgstr "Piilota viesti %s:ssa lisäämällä IDE:n ohje {%H-}"
 msgid "Hide message by inserting IDE directive {%H-}"
 msgstr "Piilota viesti lisäämällä IDE:n ohje {%H-}"
 
+#: lazarusidestrconsts.lishidemessagebyinsertingwarnofftounit
+msgid "Hide message by inserting {$warn %s off} to unit \"%s\""
+msgstr ""
+
 #: lazarusidestrconsts.lishidesearch
 msgid "Hide Search"
 msgstr "Piilota haku"
@@ -9812,6 +9989,10 @@ msgstr "Varoitus: käännösyksikön %s nimi ei kelpaa, paketti=%s"
 #: lazarusidestrconsts.lisidemacros
 msgid "IDE Macros"
 msgstr "IDE-makrot"
+
+#: lazarusidestrconsts.lisidemaintainsscaledinmainunit
+msgid "The IDE maintains Application.Scaled (Hi-DPI) in main unit."
+msgstr ""
 
 #: lazarusidestrconsts.lisidemaintainsthetitleinmainunit
 msgid "The IDE maintains the title in main unit."
@@ -10167,7 +10348,9 @@ msgid "&Inspect"
 msgstr "&Tutki"
 
 #: lazarusidestrconsts.lisinspectclassinherit
-msgid "%s : Class %s inherits from %s"
+#, fuzzy
+#| msgid "%s : Class %s inherits from %s"
+msgid "%s: class %s inherits from %s"
 msgstr "%s : Luokka %s periytyy %s:sta"
 
 #: lazarusidestrconsts.lisinspectdata
@@ -10203,9 +10386,9 @@ msgstr "Näytä tyypin sarake"
 msgid "Show visibility column"
 msgstr "Näytä näkyvyyden sarake"
 
-#: lazarusidestrconsts.lisinspectunavailable
-msgid "%s : unavailable"
-msgstr "%s : ei saatavilla"
+#: lazarusidestrconsts.lisinspectunavailableerror
+msgid "%s: unavailable (error: %s)"
+msgstr ""
 
 #: lazarusidestrconsts.lisinspectuseinstance
 msgid "Instance"
@@ -10226,6 +10409,12 @@ msgstr "asennettu"
 #: lazarusidestrconsts.lisinstallitilikethefat
 msgid "Install it, I like the fat"
 msgstr "Asenna, pidän siitä turvonneena"
+
+#: lazarusidestrconsts.lisinstallpackagesmsg
+msgid ""
+"The following packages are not installed, but available in the main repository: %s.\n"
+"Do you wish to install missing packages?\n"
+msgstr ""
 
 #: lazarusidestrconsts.lisinstallselection
 msgid "Install selection"
@@ -10323,9 +10512,9 @@ msgstr "Kelvoton (Päällä)"
 msgid "Invalid Pascal Identifier"
 msgstr "Kelvoton Pascal-tunniste"
 
-#: lazarusidestrconsts.lisinvalidpascalidentifiertext
-msgid "The name \"%s\" is not a valid Pascal identifier."
-msgstr "Nimi \"%s\" ei ole kelvollinen Pascal-tunniste."
+#: lazarusidestrconsts.lisinvalidpascalidentifiername
+msgid "The name \"%s\" is not a valid Pascal identifier.%sUse it anyway?"
+msgstr ""
 
 #: lazarusidestrconsts.lisinvalidprocname
 msgid "Invalid proc name"
@@ -10535,15 +10724,19 @@ msgid "Convert DFM File to LFM"
 msgstr "Muunna DFM-tiedosto LFM:ksi"
 
 #: lazarusidestrconsts.liskmcopyselectedcomponentstoclipboard
-msgid "Copy selected Components to clipboard"
+#, fuzzy
+#| msgid "Copy selected Components to clipboard"
+msgid "Copy selected components"
 msgstr "Kopioi valitut komponentit leikepöydälle"
 
 #: lazarusidestrconsts.liskmcutselectedcomponentstoclipboard
-msgid "Cut selected Components to clipboard"
+#, fuzzy
+#| msgid "Cut selected Components to clipboard"
+msgid "Cut selected components"
 msgstr "Leikkaa valitut komponentit leikepöydälle"
 
 #: lazarusidestrconsts.liskmdefaulttoosx
-msgid "Default adapted to OS X"
+msgid "Default adapted to macOS"
 msgstr ""
 
 #: lazarusidestrconsts.liskmdeletelastchar
@@ -10679,15 +10872,21 @@ msgid "Keymapping Scheme"
 msgstr "Näppäinkartan kaava"
 
 #: lazarusidestrconsts.liskmlazarusdefault
-msgid "Lazarus (default)"
+#, fuzzy
+#| msgid "Lazarus (default)"
+msgid "Lazarus default"
 msgstr "Lazarus (oletus)"
 
 #: lazarusidestrconsts.liskmmacosxapple
-msgid "Mac OS X (Apple style)"
+#, fuzzy
+#| msgid "Mac OS X (Apple style)"
+msgid "macOS, Apple style"
 msgstr "Mac OS X (Applen tyyli)"
 
 #: lazarusidestrconsts.liskmmacosxlaz
-msgid "Mac OS X (Lazarus style)"
+#, fuzzy
+#| msgid "Mac OS X (Lazarus style)"
+msgid "macOS, Lazarus style"
 msgstr "Mac OS X (Lazarus tyyli)"
 
 #: lazarusidestrconsts.liskmnewpackage
@@ -10716,7 +10915,9 @@ msgid "Open package file"
 msgstr "Avaa pakettitiedosto"
 
 #: lazarusidestrconsts.liskmpastecomponentsfromclipboard
-msgid "Paste Components from clipboard"
+#, fuzzy
+#| msgid "Paste Components from clipboard"
+msgid "Paste Components"
 msgstr "Liitä komponentit leikepöydältä"
 
 #: lazarusidestrconsts.liskmpauseprogram
@@ -10937,8 +11138,10 @@ msgid "Toggle view Object Inspector"
 msgstr "Vaihda komponenttimuokkain näkymä"
 
 #: lazarusidestrconsts.liskmtoggleviewpseudoterminal
+#, fuzzy
+#| msgid "View Terminal Output"
 msgctxt "lazarusidestrconsts.liskmtoggleviewpseudoterminal"
-msgid "View Terminal Output"
+msgid "View Console In/Output"
 msgstr "Näytä komentorivituloste"
 
 #: lazarusidestrconsts.liskmtoggleviewregisters
@@ -11322,7 +11525,10 @@ msgid "&Local"
 msgstr "&Paikallinen"
 
 #: lazarusidestrconsts.lislocals
-msgid "Locals"
+#, fuzzy
+#| msgid "Locals"
+msgctxt "lazarusidestrconsts.lislocals"
+msgid "Local Variables"
 msgstr "Paikalliset"
 
 #: lazarusidestrconsts.lislocalsdlgcopyname
@@ -11394,9 +11600,13 @@ msgstr "Syötä suoritusparametrit"
 msgid "Main unit has Application.CreateForm statements"
 msgstr "Pääohjelmassa on Application.CreateForm -lause"
 
-#: lazarusidestrconsts.lismainunithasapplicationtitlestatements
-msgid "Main unit has Application.Title statements"
-msgstr "Pääohjelmassa on Application.Title -lause"
+#: lazarusidestrconsts.lismainunithasapplicationscaledstatement
+msgid "Main unit has Application.Scaled statement"
+msgstr ""
+
+#: lazarusidestrconsts.lismainunithasapplicationtitlestatement
+msgid "Main unit has Application.Title statement"
+msgstr ""
 
 #: lazarusidestrconsts.lismainunithasusessectioncontainingallunitsofproject
 msgid "Main unit has Uses section containing all units of project"
@@ -11409,6 +11619,12 @@ msgstr "Päätiedosto on Pascal-koodia"
 #: lazarusidestrconsts.lismainunitispascalsourcehint
 msgid "Assume Pascal even if it does not end with .pas/.pp suffix."
 msgstr "Oleta Pascal vaikkei pääte olisi .pas/.pp."
+
+#: lazarusidestrconsts.lismakecurrent
+#, fuzzy
+msgctxt "lazarusidestrconsts.lismakecurrent"
+msgid "Current"
+msgstr "Nykyinen"
 
 #: lazarusidestrconsts.lismakeexe
 msgid "Make Executable"
@@ -11807,7 +12023,7 @@ msgstr "Otsikko ei saa olla tyhjä"
 
 #: lazarusidestrconsts.lismenueditorchangeconflictingaccelerators
 msgid "Change conflicting accelerator \"%s\""
-msgstr ""
+msgstr "Muuta ristiriitainen pikanäppäin \"%s\""
 
 #: lazarusidestrconsts.lismenueditorchangeimagelisticon
 msgid "Change imagelist &icon"
@@ -11819,73 +12035,71 @@ msgstr "Muuta %s %s:ksi"
 
 #: lazarusidestrconsts.lismenueditorchangeshortcutconflicts
 msgid "Change shortcut conflict \"%s\""
-msgstr ""
+msgstr "Muuta pikanäppäimen ristiriita \"%s\""
 
 #: lazarusidestrconsts.lismenueditorchangetheshortcutfors
 msgid "Change the shortCut for %s"
-msgstr ""
+msgstr "%s:n pikanäppäimen muuttaminen"
 
 #: lazarusidestrconsts.lismenueditorchangetheshortcutkey2fors
 msgid "Change the shortCutKey2 for %s"
-msgstr ""
+msgstr "Muuta %s:n pikanäppäin2"
 
 #: lazarusidestrconsts.lismenueditorchoosetemplatetodelete
 msgid "Choose template to delete"
-msgstr ""
+msgstr "Valitse poistettava malline"
 
 #: lazarusidestrconsts.lismenueditorchoosetemplatetoinsert
 msgid "Choose template to insert"
-msgstr ""
+msgstr "Valitse lisättävä malline"
 
 #: lazarusidestrconsts.lismenueditorclickanongreyeditemtoedititsshortcut
 msgid "Click a non-greyed item to edit its shortcut or click header to sort by that column"
-msgstr ""
+msgstr "Klikkaa ei-tummennettua kohtaa muokataksesi pikanäppäintä tai klikkaa otsikkoa järjestääksesi rivit"
 
 #: lazarusidestrconsts.lismenueditorcomponentisunexpectedkind
 msgid "Component is unexpected kind"
-msgstr ""
+msgstr "Komponentin tyyppi on odottamaton"
 
 #: lazarusidestrconsts.lismenueditorcomponentisunnamed
 msgid "Component is unnamed"
-msgstr ""
+msgstr "Komponenttia ei ole nimetty"
 
 #: lazarusidestrconsts.lismenueditorconflictresolutioncomplete
 msgid "<conflict resolution complete>"
-msgstr ""
+msgstr "<Ristiriidan käsittely valmis>"
 
 #: lazarusidestrconsts.lismenueditorconflictsfoundinitiallyd
 msgid "Conflicts found initially: %d"
-msgstr ""
+msgstr "Ristiriitoja löytyi aluksi: %d"
 
 #: lazarusidestrconsts.lismenueditordeepestnestedmenulevels
 msgid "Deepest nested menu level: %s"
-msgstr ""
+msgstr "Sisäkkäisten kohtien syvin taso: %s"
 
 #: lazarusidestrconsts.lismenueditordeleteitem
-#, fuzzy
-#| msgid "Delete Item"
 msgid "&Delete item"
-msgstr "Poista valikon kohta"
+msgstr "&Poista kohta"
 
 #: lazarusidestrconsts.lismenueditordeletemenutemplate
 msgid "&Delete menu template ..."
-msgstr ""
+msgstr "&Poista valikon malline ..."
 
 #: lazarusidestrconsts.lismenueditordeletesavedmenutemplate
 msgid "Delete saved menu template"
-msgstr ""
+msgstr "Poista talletettu valikon malline"
 
 #: lazarusidestrconsts.lismenueditordeleteselectedmenutemplate
 msgid "Delete selected menu template"
-msgstr ""
+msgstr "Poista valittu valikon malline"
 
 #: lazarusidestrconsts.lismenueditordeletethisitemanditssubitems
 msgid "Delete this item and its subitems?"
-msgstr ""
+msgstr "Poista tämä kohta ja sen alikohdat?"
 
 #: lazarusidestrconsts.lismenueditordisplaypreviewaspopupmenu
 msgid "Display preview as &Popup menu"
-msgstr ""
+msgstr "Esikatselu &Popup-valikkona"
 
 #: lazarusidestrconsts.lismenueditoreditcaption
 msgid "Edit &Caption"
@@ -11897,67 +12111,71 @@ msgstr "Muokataan otsikkoa %s"
 
 #: lazarusidestrconsts.lismenueditoreditingsdots
 msgid "To resolve conflict edit %s.%s"
-msgstr ""
+msgstr "Selvittääksesi ristiriidat muokkaa %s.%s"
 
 #: lazarusidestrconsts.lismenueditoreditingsfors
 msgid "Editing %s for %s"
-msgstr ""
+msgstr "Muokataan %s %s:lle"
 
 #: lazarusidestrconsts.lismenueditoreditingssnomenuitemselected
 msgid "Editing %s.%s - no menuitem selected"
-msgstr ""
+msgstr "Muokataan %s.%s - ei yhtään kohtaa valittuna"
 
 #: lazarusidestrconsts.lismenueditorenteramenudescription
 msgid "Enter a menu &Description:"
-msgstr ""
+msgstr "Syötä valikon &Kuvaus:"
 
 #: lazarusidestrconsts.lismenueditorenteranewshortcutfors
 msgid "Enter a new ShortCut for %s"
-msgstr ""
+msgstr "Syötä uusi pikanäppäin %s:lle"
 
 #: lazarusidestrconsts.lismenueditorenteranewshortcutkey2fors
 msgid "Enter a new ShortCutKey2 for %s"
-msgstr ""
+msgstr "Syötä uusi pikanäppäin2 %s:lle"
 
 #: lazarusidestrconsts.lismenueditorexistingsavedtemplates
 msgid "Existing saved templates"
-msgstr ""
+msgstr "Tallennetut mallineet"
 
 #: lazarusidestrconsts.lismenueditorfurthershortcutconflict
 msgid "Further shortcut conflict"
-msgstr ""
+msgstr "Muita pikanäppäimen ristiriitoja"
 
 #: lazarusidestrconsts.lismenueditorgethelptousethiseditor
 msgid "Get help to use this editor"
-msgstr ""
+msgstr "Hae apua tämän editorin käyttöön"
 
 #: lazarusidestrconsts.lismenueditorgrabkey
 msgid "&Grab key"
+msgstr "Sieppaa näppäin"
+
+#: lazarusidestrconsts.lismenueditorgroupindexd
+msgid "GroupIndex: %d"
 msgstr ""
 
 #: lazarusidestrconsts.lismenueditorgroupindexvaluess
-msgid "GroupIndex value(s): %s"
-msgstr ""
+msgid "Values in use: %s"
+msgstr "Käytetyt arvot: %s"
 
 #: lazarusidestrconsts.lismenueditorinadequatedescription
 msgid "Inadequate Description"
-msgstr ""
+msgstr "Puutteellinen kuvaus"
 
 #: lazarusidestrconsts.lismenueditorinsertmenutemplateintorootofs
 msgid "Insert menu template into root of %s"
-msgstr ""
+msgstr "Lisää valikkomalline %s:n juureen"
 
 #: lazarusidestrconsts.lismenueditorinsertselectedmenutemplate
 msgid "Insert selected menu template"
-msgstr ""
+msgstr "Lisää valittu valikkomalline"
 
 #: lazarusidestrconsts.lismenueditorisnotassigned
 msgid "is not assigned"
-msgstr ""
+msgstr "ei kytketty"
 
 #: lazarusidestrconsts.lismenueditoritemswithicons
 msgid "Items with icon: %s"
-msgstr ""
+msgstr "Kuvakkeella varustettuja: %s"
 
 #: lazarusidestrconsts.lismenueditorlistshortcutsandaccelerators
 msgid "List shortcuts and &accelerators for %s ..."
@@ -11965,7 +12183,7 @@ msgstr ""
 
 #: lazarusidestrconsts.lismenueditorlistshortcutsfors
 msgid "List shortcuts for %s ..."
-msgstr ""
+msgstr "%s:n pikanäppäinten luettelo ..."
 
 #: lazarusidestrconsts.lismenueditormenueditor
 msgid "Menu Editor"
@@ -11973,11 +12191,11 @@ msgstr "Valikkomuokkain"
 
 #: lazarusidestrconsts.lismenueditormenuitemactions
 msgid "Menu Item actions"
-msgstr ""
+msgstr "Valikon kohdan toiminnot"
 
 #: lazarusidestrconsts.lismenueditormenuitemshortcutconflictsins
 msgid "Menuitem shortcut conflicts in %s"
-msgstr ""
+msgstr "Valikon pikanäppäimen ristiriita %s:ssa"
 
 #: lazarusidestrconsts.lismenueditormovedown
 msgid "Move Down (or right)"
@@ -11985,36 +12203,34 @@ msgstr "Siirrä alaspäin (tai oikeallepäin)"
 
 #: lazarusidestrconsts.lismenueditormoveitemdown
 msgid "Mo&ve item down"
-msgstr ""
+msgstr "Siirrä kohtaa alasäin"
 
 #: lazarusidestrconsts.lismenueditormoveitemleft
 msgid "&Move item left"
-msgstr ""
+msgstr "Siirrä kohtaa vasemmalle"
 
 #: lazarusidestrconsts.lismenueditormoveitemright
 msgid "Mo&ve item right"
-msgstr ""
+msgstr "Siirrä kohtaa oikealle"
 
 #: lazarusidestrconsts.lismenueditormoveitemup
 msgid "&Move item up"
-msgstr ""
+msgstr "Siirrä kohtaa ylöspäin"
 
 #: lazarusidestrconsts.lismenueditormoveselecteditemdown
-#, fuzzy
 msgctxt "lazarusidestrconsts.lismenueditormoveselecteditemdown"
 msgid "Move selected item down"
 msgstr "Siirrä valittua kohtaa alas"
 
 #: lazarusidestrconsts.lismenueditormoveselecteditemtotheleft
 msgid "Move selected item to the left"
-msgstr ""
+msgstr "Siirrä valittua kohtaa vasemmalle"
 
 #: lazarusidestrconsts.lismenueditormoveselecteditemtotheright
 msgid "Move selected item to the right"
-msgstr ""
+msgstr "Siirrä valittua kohtaa oikealle"
 
 #: lazarusidestrconsts.lismenueditormoveselecteditemup
-#, fuzzy
 msgctxt "lazarusidestrconsts.lismenueditormoveselecteditemup"
 msgid "Move selected item up"
 msgstr "Siirrä valittua kohtaa ylös"
@@ -12029,7 +12245,7 @@ msgstr ""
 
 #: lazarusidestrconsts.lismenueditornomenuselected
 msgid "(no menu selected)"
-msgstr ""
+msgstr "(ei valittua valikkoa)"
 
 #: lazarusidestrconsts.lismenueditornone
 msgid "<none>"
@@ -12039,97 +12255,89 @@ msgstr ""
 msgid "<none>,<none>"
 msgstr ""
 
-#: lazarusidestrconsts.lismenueditornoradioitemsinthismenu
-msgid "No radioitems in this menu"
-msgstr ""
-
 #: lazarusidestrconsts.lismenueditornoshortcutconflicts
 msgid "<no shortcut conflicts>"
-msgstr ""
+msgstr "<ei ristiriitaisia pikanäppäimiä>"
 
 #: lazarusidestrconsts.lismenueditornousersavedtemplates
 msgid "No user-saved templates"
-msgstr ""
+msgstr "Ei käyttäjän tallettamia mallineita"
 
 #: lazarusidestrconsts.lismenueditorpickaniconfroms
 msgid "Pick an icon from %s"
-msgstr ""
+msgstr "Valitse kuvake %s:sta"
 
 #: lazarusidestrconsts.lismenueditorpopupassignmentss
 msgid "Popup assignments: %s"
+msgstr "Popup määrittelyt: %s"
+
+#: lazarusidestrconsts.lismenueditorradioitem
+msgid "RadioItem"
 msgstr ""
 
 #: lazarusidestrconsts.lismenueditorremainingconflictss
 msgid "Remaining conflicts: %s"
-msgstr ""
+msgstr "Ristiriitoja jäljellä: %s"
 
 #: lazarusidestrconsts.lismenueditorremoveallseparators
 msgid "&Remove all separators"
-msgstr ""
+msgstr "Poista kaikki erottimet"
 
 #: lazarusidestrconsts.lismenueditorresolvedconflictss
 msgid "Resolved conflicts: %s"
-msgstr ""
+msgstr "Ratkaistut ristiriidat: %s"
 
 #: lazarusidestrconsts.lismenueditorresolveselectedconflict
 msgid "Resolve selected conflict"
-msgstr ""
+msgstr "Ratkaise valitut ristiriidat"
 
 #: lazarusidestrconsts.lismenueditorresolveshortcutconflicts
 msgid "&Resolve shortcut conflicts ..."
-msgstr ""
-
-#: lazarusidestrconsts.lismenueditorrootmenu
-msgid "Root menu"
-msgstr ""
+msgstr "&Ratkaise pikanäppäinten ristiriidat ..."
 
 #: lazarusidestrconsts.lismenueditorsavedtemplates
 msgid "Saved templates"
-msgstr ""
+msgstr "Tallennetut mallineet"
 
 #: lazarusidestrconsts.lismenueditorsavemenuasatemplate
 msgid "&Save menu as a template ..."
-msgstr ""
+msgstr "&Tallenna valikko malliksi ..."
 
 #: lazarusidestrconsts.lismenueditorsavemenuastemplate
 msgid "Save menu as template"
-msgstr ""
+msgstr "Tallenna valikko malliksi"
 
 #: lazarusidestrconsts.lismenueditorsavemenuastemplateforfutureuse
 msgid "Save menu as template for future use"
-msgstr ""
+msgstr "Tallenna valikko mallina uusintakäyttöä varten"
 
 #: lazarusidestrconsts.lismenueditorsavemenushownasanewtemplate
 msgid "Save menu shown as a new template"
-msgstr ""
+msgstr "Tallenna valikko uutena mallineena"
 
 #: lazarusidestrconsts.lismenueditorsconflictswiths
 msgid "%s conflicts with %s"
-msgstr ""
+msgstr "%s on ristiriidassa %s:n kanssa"
 
 #: lazarusidestrconsts.lismenueditorseparators
 msgid "Se&parators"
-msgstr ""
-
-#: lazarusidestrconsts.lismenueditorsgroupindexd
-msgid "%s.GroupIndex: %d"
-msgstr ""
+msgstr "&Erottimet"
 
 #: lazarusidestrconsts.lismenueditorshortcutitemss
 msgid "Shortcut items: %s"
-msgstr ""
+msgstr "Valikon pikanäpäimiä: %s"
 
 #: lazarusidestrconsts.lismenueditorshortcutnotyetchanged
 msgid "Shortcut not yet changed"
-msgstr ""
+msgstr "Pikanäppäintä ei ole vielä vaihdettu"
 
 #: lazarusidestrconsts.lismenueditorshortcuts
 msgid "Shortcuts"
-msgstr ""
+msgstr "Pikanäppäimet"
 
 #: lazarusidestrconsts.lismenueditorshortcuts2
 msgid "Shortc&uts"
-msgstr ""
+msgstr "&Pikanäppäimet"
 
 #: lazarusidestrconsts.lismenueditorshortcutsandacceleratorkeys
 msgid "Shortcuts and Accelerator keys"
@@ -12137,7 +12345,7 @@ msgstr ""
 
 #: lazarusidestrconsts.lismenueditorshortcutsd
 msgid "Shortcuts (%d)"
-msgstr ""
+msgstr "Pikanappäimet (%d)"
 
 #: lazarusidestrconsts.lismenueditorshortcutsdandacceleratorkeysd
 msgid "Shortcuts (%d) and Accelerator keys (%d)"
@@ -12149,19 +12357,19 @@ msgstr ""
 
 #: lazarusidestrconsts.lismenueditorshortcutsusedins
 msgid "Shortcuts used in %s"
-msgstr ""
+msgstr "%s:n pikanappäinten käyttö"
 
 #: lazarusidestrconsts.lismenueditorshortcutsusedinsd
 msgid "Shortcuts used in %s (%d)"
-msgstr ""
+msgstr "%:ssa käytetään %d kpl pikanäppäintä"
 
 #: lazarusidestrconsts.lismenueditorshowmenueditortmenuparameterisnil
 msgid "ShowMenuEditor: TMenu parameter is nil"
-msgstr ""
+msgstr "ShowMenuEditor: TMenu parametri on nil"
 
 #: lazarusidestrconsts.lismenueditorsins
 msgid "\"%s\" in %s"
-msgstr ""
+msgstr "\"%s\" %s:ssa"
 
 #: lazarusidestrconsts.lismenueditorsisalreadyinuse
 msgid ""
@@ -12169,21 +12377,17 @@ msgid ""
 "Try a different shortcut.\n"
 msgstr ""
 
-#: lazarusidestrconsts.lismenueditorsisnotaradioitem
-msgid "%s is not a radioitem"
-msgstr ""
-
 #: lazarusidestrconsts.lismenueditorsisnotasufficientdescriptionpleaseexpand
 msgid "Please expand: \"%s\" is not a sufficient Description"
-msgstr ""
+msgstr "Pidennä: \"%s\" ei riitä kuvaukseksi"
 
 #: lazarusidestrconsts.lismenueditorsomewidgetsetsdonotallowseparatorsinthemainmenubar
 msgid "Some widgetsets do not allow separators in the main menubar"
-msgstr ""
+msgstr "Jotkut widgetsetit eivät salli erottimia päävalikossa"
 
 #: lazarusidestrconsts.lismenueditorsshortcuts
 msgid "%s: Shortcuts"
-msgstr ""
+msgstr "%s: Pikanäppäimet"
 
 #: lazarusidestrconsts.lismenueditorsshortcutsandacceleratorkeys
 msgid "%s: Shortcuts and accelerator keys"
@@ -12199,19 +12403,19 @@ msgstr ""
 
 #: lazarusidestrconsts.lismenueditorstandardtemplates
 msgid "Standard templates"
-msgstr ""
+msgstr "Vakiomallineet"
 
 #: lazarusidestrconsts.lismenueditortemplatedescription
 msgid "Template description:"
-msgstr ""
+msgstr "Mallineen kuvaus:"
 
 #: lazarusidestrconsts.lismenueditortemplates
 msgid "&Templates"
-msgstr ""
+msgstr "Mallineet"
 
 #: lazarusidestrconsts.lismenueditortemplatesaved
 msgid "Template saved"
-msgstr ""
+msgstr "Malline on tallennettu"
 
 #: lazarusidestrconsts.lismenueditortherearenousersavedmenutemplates
 msgid ""
@@ -12525,6 +12729,10 @@ msgstr "&Avaa ..."
 #: lazarusidestrconsts.lismenuopenfilenameatcursor
 msgid "Open Filename at Cursor"
 msgstr "Avaa kursorin osoittama tiedosto"
+
+#: lazarusidestrconsts.lismenuopenfolder
+msgid "Open Folder ..."
+msgstr ""
 
 #: lazarusidestrconsts.lismenuopenpackage
 msgid "Open Loaded Package ..."
@@ -12910,6 +13118,7 @@ msgid "Jump History"
 msgstr "Hyppyhistoria"
 
 #: lazarusidestrconsts.lismenuviewlocalvariables
+msgctxt "lazarusidestrconsts.lismenuviewlocalvariables"
 msgid "Local Variables"
 msgstr "Paikalliset muuttujat"
 
@@ -12928,7 +13137,10 @@ msgid "&View Project Source"
 msgstr "&Näytä projektin lähdekoodi"
 
 #: lazarusidestrconsts.lismenuviewpseudoterminal
-msgid "Terminal Output"
+#, fuzzy
+#| msgid "Terminal Output"
+msgctxt "lazarusidestrconsts.lismenuviewpseudoterminal"
+msgid "Console In/Output"
 msgstr "Komentorivin tuloste"
 
 #: lazarusidestrconsts.lismenuviewregisters
@@ -12976,6 +13188,7 @@ msgid "Units ..."
 msgstr "Käännösyksiköt ..."
 
 #: lazarusidestrconsts.lismenuviewwatches
+msgctxt "lazarusidestrconsts.lismenuviewwatches"
 msgid "Watches"
 msgstr "Vahdit"
 
@@ -13645,6 +13858,10 @@ msgstr "Ei toteutettu vielä:%s%s"
 msgid "not installed"
 msgstr "ei asennettu"
 
+#: lazarusidestrconsts.lisnotinstalledpackages
+msgid "Not installed packages"
+msgstr ""
+
 #: lazarusidestrconsts.lisnotnow
 msgid "Not now"
 msgstr "Ei nyt"
@@ -13790,6 +14007,10 @@ msgstr "? (Päällä)"
 msgid "On break line (i.e. return or enter key)"
 msgstr "Riviä vaihdettaessa (Enter näppäin)"
 
+#: lazarusidestrconsts.lisonlinepackage
+msgid "available in the main repository"
+msgstr ""
+
 #: lazarusidestrconsts.lisonly32bit
 msgid "only 32bit"
 msgstr "vain 32bit"
@@ -13851,6 +14072,10 @@ msgstr "Avaa tiedosto"
 msgid "Open file"
 msgstr "Avaa tiedosto"
 
+#: lazarusidestrconsts.lisopenfileatcursor
+msgid "Open file at cursor"
+msgstr ""
+
 #: lazarusidestrconsts.lisopenlfm
 msgid "Open %s"
 msgstr "Avaa %s"
@@ -13909,7 +14134,7 @@ msgstr "Avaa työkaluasetukset"
 
 #: lazarusidestrconsts.lisopenunit
 msgid "Open Unit"
-msgstr ""
+msgstr "Avaa käännösyksikkö"
 
 #: lazarusidestrconsts.lisopenurl
 msgid "Open URL"
@@ -13944,9 +14169,17 @@ msgstr ""
 msgid "other sources path of package \"%s\" contains directory \"%s\", which is already in the unit search path."
 msgstr "paketin \"%s\" muut lähdekoodit polku sisältää hakemiston \"%s\", mikä on jo käännösyksikköjen hakupolussa."
 
+#: lazarusidestrconsts.lisoutputdirectoryofcontainspascalunitsource
+msgid "output directory of %s contains Pascal unit source \"%s\""
+msgstr ""
+
 #: lazarusidestrconsts.lisoverridelanguage
 msgid "Override language. For example --language=de. For possible values see files in the languages directory."
 msgstr "Syrjäytä kieli. Esim. --language=fi. Mahdolliset arvot selviävät katsomalla languages hakemiston tiedostoja."
+
+#: lazarusidestrconsts.lisoverridestringtypeswithfirstparamtype
+msgid "Override function result string types with the first parameter expression type"
+msgstr ""
 
 #: lazarusidestrconsts.lisoverridethedefaultcompileregppc386ppcx64ppcppcetcd
 msgid "%soverride the default compiler. e.g. ppc386 ppcx64 ppcppc etc. default is stored in environmentoptions.xml"
@@ -14057,9 +14290,21 @@ msgstr ", jäsennetty "
 msgid "parser \"%s\": %s"
 msgstr "jäsentäjä \"%s\": %s"
 
+#: lazarusidestrconsts.lisparsers
+msgid "Parsers:"
+msgstr ""
+
 #: lazarusidestrconsts.lispasscount
 msgid "Pass Count"
 msgstr "Suoritusmäärä"
+
+#: lazarusidestrconsts.lispassingcompilerdefinetwicewithdifferentvalues
+msgid "passing compiler define \"%s\" twice with different values"
+msgstr ""
+
+#: lazarusidestrconsts.lispassingcompileroptiontwicewithdifferentvalues
+msgid "passing compiler option -%s twice with different values"
+msgstr ""
 
 #: lazarusidestrconsts.lispaste
 msgctxt "lazarusidestrconsts.lispaste"
@@ -14169,6 +14414,10 @@ msgstr "Lisää projektiin"
 #: lazarusidestrconsts.lispckeditapplychanges
 msgid "Apply changes"
 msgstr "Toteuta muutokset"
+
+#: lazarusidestrconsts.lispckeditavailableonline
+msgid "(available online)"
+msgstr ""
 
 #: lazarusidestrconsts.lispckeditcallregisterprocedureofselectedunit
 msgid "Call %sRegister%s procedure of selected unit"
@@ -14567,6 +14816,10 @@ msgstr "Kelvoton käännösyksikön nimi"
 msgid "Missing files of package %s"
 msgstr "Paketin %s puuttuvat tiedostot"
 
+#: lazarusidestrconsts.lispendingon
+msgid "Pending (On)"
+msgstr ""
+
 #: lazarusidestrconsts.lispenewfilenotinincludepath
 msgid "New file not in include path"
 msgstr "Uusi tiedosto ei ole include-polussa"
@@ -14630,6 +14883,10 @@ msgstr "Tyhjennä valinta"
 #: lazarusidestrconsts.lispkgdefscompiledsrcpathaddition
 msgid "CompiledSrcPath addition"
 msgstr "CompiledSrcPath lisäys"
+
+#: lazarusidestrconsts.lispkgdefsnamespaces
+msgid "Namespaces"
+msgstr ""
 
 #: lazarusidestrconsts.lispkgdefsoutputdirectory
 msgid "Output directory"
@@ -15269,6 +15526,10 @@ msgctxt "lazarusidestrconsts.lispldglobal"
 msgid "Global"
 msgstr "Julkinen"
 
+#: lazarusidestrconsts.lispldonline
+msgid "Online"
+msgstr ""
+
 #: lazarusidestrconsts.lispldpackagelinks
 msgid "Package Links"
 msgstr "Pakettilinkit"
@@ -15276,6 +15537,10 @@ msgstr "Pakettilinkit"
 #: lazarusidestrconsts.lispldshowgloballinksin
 msgid "Show global links in "
 msgstr "Näytä globaalit linkit: "
+
+#: lazarusidestrconsts.lispldshowonlinelinks
+msgid "Show online links"
+msgstr ""
 
 #: lazarusidestrconsts.lispldshowuserlinksin
 msgid "Show user links in "
@@ -15470,6 +15735,10 @@ msgstr "Kelvoton Pascal -käännösyksikön nimi"
 msgid "Invalid version"
 msgstr "Kelvoton versio"
 
+#: lazarusidestrconsts.lisprojaddlocalpkg
+msgid "Local (%s)"
+msgstr ""
+
 #: lazarusidestrconsts.lisprojaddmaximumversionoptional
 msgid "Maximum Version (optional):"
 msgstr "Maximiversio (valinnainen):"
@@ -15482,6 +15751,10 @@ msgstr "Pienin versio (valinnainen):"
 msgid "New Requirement"
 msgstr "Uusi riippuvuus"
 
+#: lazarusidestrconsts.lisprojaddonlinepkg
+msgid "Online (%s)"
+msgstr ""
+
 #: lazarusidestrconsts.lisprojaddpackagename
 msgid "Package Name:"
 msgstr "Paketin nimi:"
@@ -15489,6 +15762,10 @@ msgstr "Paketin nimi:"
 #: lazarusidestrconsts.lisprojaddpackagenotfound
 msgid "Package not found"
 msgstr "Pakettia ei löytynyt"
+
+#: lazarusidestrconsts.lisprojaddpackagetype
+msgid "Package Type:"
+msgstr ""
 
 #: lazarusidestrconsts.lisprojaddthedependencywasnotfound
 msgid "The dependency \"%s\" was not found.%sPlease choose an existing package."
@@ -15599,6 +15876,10 @@ msgstr "Projekti"
 #: lazarusidestrconsts.lisprojectmacroproperties
 msgid "Project macro properties"
 msgstr "Projektin makron ominaisuudet"
+
+#: lazarusidestrconsts.lisprojectnamespaces
+msgid "Project Namespaces"
+msgstr ""
 
 #: lazarusidestrconsts.lisprojectoption
 msgid "Project Option"
@@ -16520,6 +16801,10 @@ msgstr "Valitse tiedosto"
 msgid "Select FPC source directory"
 msgstr "Valitse FPC lähdehakemisto"
 
+#: lazarusidestrconsts.lisselectframe
+msgid "Select Frame"
+msgstr ""
+
 #: lazarusidestrconsts.lisselectionexceedsstringconstant
 msgid "Selection exceeds string constant"
 msgstr "Valinta ylittää merkkijonovakion"
@@ -16636,6 +16921,10 @@ msgstr "Näytä vain muutetut"
 #: lazarusidestrconsts.lisshowonlyonebuttoninthetaskbarforthewholeideinstead
 msgid "Show only one button in the taskbar for the whole IDE, instead of one per window. Some Linux Window Managers like Cinnamon do not support this and always show one button per window."
 msgstr "Näytä vain yksi nappi tehtäväpalkissa koko IDE:lle, ei siis nappi / ikkuna. Jotkin Linux ikkunamanagerit kuten Cinnamon eivät tue tätä ja näyttävät aina napin joka ikkunaa kohti."
+
+#: lazarusidestrconsts.lisshowoutput
+msgid "Show output"
+msgstr ""
 
 #: lazarusidestrconsts.lisshowoverviewgutter
 msgid "Show overview Gutter"
@@ -16816,6 +17105,10 @@ msgstr "Järjestä valinta"
 msgctxt "lazarusidestrconsts.lissortselwords"
 msgid "Words"
 msgstr "Sanat"
+
+#: lazarusidestrconsts.lissortunicoderangelistalphabetically
+msgid "Sort Unicode range list alphabetically"
+msgstr "Järjestä unicode lohkot aakkosjärjestykseen"
 
 #: lazarusidestrconsts.lissourceanddestinationarethesame
 msgid "Source and Destination are the same:%s%s"
@@ -17284,8 +17577,6 @@ msgid "The identifier is a unit. Please use the File - Save as function to renam
 msgstr "Tunniste on käännösyksikkö. Käytä Tiedosto - Tallenna nimetäksesi sen."
 
 #: lazarusidestrconsts.listhekeyisalreadyassignedtoremovetheoldassignmentand
-#, fuzzy
-#| msgid "The key %sis already assigned to %s%s.%s%sRemove the old assignment and assign the key to the new function %s?"
 msgid "The key %s is already assigned to %s%s.%s%sRemove the old assignment and assign the key to the new function %s?"
 msgstr "Näppäin %s%son jo kiinnitetty %s:lle.%sPoista vanha kiinnitys ja kiinnitä näppäin uuteen funktioon%s%s?"
 
@@ -17429,13 +17720,13 @@ msgstr "Projektin info-tiedosto \"%s\"%son muuttunut levyllä."
 msgid "The project must be saved before building%sIf you set the Test Directory in the IDE options,%syou can create new projects and build them at once.%sSave project?"
 msgstr "Projekti pitää tallentaa ennen kokoamista%sJos asetat testihakemiston IDE:n asetuksissa,%svoit luoda uusia projekteja ja koota ne saman tien.%sTallenna projekti?"
 
+#: lazarusidestrconsts.listheprojectusesfpcresourceswhichrequireatleast
+msgid "The project uses FPC resources, which require at least FPC 2.4"
+msgstr ""
+
 #: lazarusidestrconsts.listheprojectusestargetosandcputhesystemppuforthistar
 msgid "The project uses target OS=%s and CPU=%s.%sThe system.ppu for this target was not found in the FPC binary directories.%sMake sure fpc is installed correctly for this target and the fpc.cfg contains the right directories."
 msgstr "Projektin kohdekäyttöjärjestelmä=%s ja CPU=%s.%sKohteelle ei löydy system.ppu tiedostoa FPC:n binaari-hakemistoista.%sVarmista että fpc on asennettu oikein tälle kohteelle ja että fpc.cfg:ssa on oikeat hakemistot."
-
-#: lazarusidestrconsts.listheprojectusesthenewfpcresourceswhichrequiresatlea
-msgid "The project uses the new FPC resources, which requires at least FPC 2.4"
-msgstr "Projekti käyttää uutta FPC resurssia, mikä vaatii vähintään FPC 2.4"
 
 #: lazarusidestrconsts.listheprojectwritesthedebugsymbolstoanexternalfilethe
 msgid "The project writes the debug symbols to an external file. The \"%s\" supports only symbols within the executable."
@@ -18298,6 +18589,10 @@ msgstr "Muutujan nimeäminen lähdekoodissa ei onnistu."
 msgid "Unable to run"
 msgstr "Suoritus ei onnistu"
 
+#: lazarusidestrconsts.lisunabletorun2
+msgid "Unable to run \"%s\""
+msgstr ""
+
 #: lazarusidestrconsts.lisunabletosetanchorsidecontrol
 msgid "Unable to set AnchorSide Control"
 msgstr "Ankkurikontrollin asettaminen ei onnistu"
@@ -18451,6 +18746,10 @@ msgstr "%s:n käyttämättömät yksiköt"
 #: lazarusidestrconsts.lisunusualcompilerfilenameusuallyitstartswithfpcppcor
 msgid "Unusual compiler file name. Usually it starts with fpc, ppc or ppcross."
 msgstr "Epätavallinen kääntäjän nimi. Yleensä se alkaa fpc, ppc tai ppcross."
+
+#: lazarusidestrconsts.lisunusualpas2jscompilerfilenameusuallyitstartswithpa
+msgid "Unusual pas2js compiler file name. Usually it starts with pas2js."
+msgstr ""
 
 #: lazarusidestrconsts.lisup
 msgctxt "lazarusidestrconsts.lisup"
@@ -18832,7 +19131,10 @@ msgid "&Properties"
 msgstr "&Ominaisuudet"
 
 #: lazarusidestrconsts.liswlwatchlist
-msgid "Watch List"
+#, fuzzy
+#| msgid "Watch List"
+msgctxt "lazarusidestrconsts.liswlwatchlist"
+msgid "Watches"
 msgstr "Vahtiluettelo"
 
 #: lazarusidestrconsts.liswordatcursorincurrenteditor
@@ -18886,6 +19188,10 @@ msgstr "FPC ja sen lähdekoodit löytyvät: http://sourceforge.net/projects/laza
 #: lazarusidestrconsts.lisyoucannotbuildlazaruswhiledebuggingorcompiling
 msgid "You cannot build Lazarus while debugging or compiling."
 msgstr "Lazarusta ei voi koota kun ohjelmaa ajetaan tai käännetään."
+
+#: lazarusidestrconsts.lisyoucannotchangethebuildmodewhilecompiling
+msgid "You cannot change the build mode while compiling."
+msgstr ""
 
 #: lazarusidestrconsts.lisyoucanselectitemsbysimplypressingunderscoredletter
 msgid "You can select items by simply pressing underscored letters"
@@ -19023,8 +19329,8 @@ msgstr "Löytyi, muttei ole luettelossa: "
 msgid "Excluded"
 msgstr ""
 
-#: lazarusidestrconsts.rsi18nforceupdatepofilesonnextcompile
-msgid "Force update PO files on next compile"
+#: lazarusidestrconsts.rsi18nforceupdatepofilesonnextbuild
+msgid "Force update PO files on next build"
 msgstr ""
 
 #: lazarusidestrconsts.rsi18nidentifiers
@@ -19046,70 +19352,6 @@ msgstr "Versiotieto talletetaan jos ohjelmatiedoston formaatti tukee sitä."
 #: lazarusidestrconsts.rsincludeversioninfoinexecutable
 msgid "Include version info in executable"
 msgstr "Lisää versiotieto suoritettavaan ohjelmaan"
-
-#: lazarusidestrconsts.rsiwpcolumnnameshint
-msgid "Column Names"
-msgstr "Sarakenimet"
-
-#: lazarusidestrconsts.rsiwpcolumnstrategyhint
-msgid "Strategy for saving Columns"
-msgstr "Sarakkeiden tallennuksen strategia"
-
-#: lazarusidestrconsts.rsiwpcolumnwidthhint
-msgid "Column Width"
-msgstr "Sarakeleveys"
-
-#: lazarusidestrconsts.rsiwpcustomgeometry
-msgid "Custom geometry"
-msgstr "Mukautetut mitat"
-
-#: lazarusidestrconsts.rsiwpcustomgeometryhint
-msgid "User can define window's position and size"
-msgstr "Käyttäjä voi määritellä ikkunan sijainnin ja koon"
-
-#: lazarusidestrconsts.rsiwpfixeddefaultgeometry
-msgid "Fixed default geometry"
-msgstr "Kiinteät oletusmitat"
-
-#: lazarusidestrconsts.rsiwpfixeddefaultgeometryhint
-msgid "Always the same fixed position and size"
-msgstr "Aina sama kiinteä sijainti ja koko"
-
-#: lazarusidestrconsts.rsiwpletwindowmanagerdecide
-msgid "Let windowmanager decide"
-msgstr "Anna ikkunamanagerin päättää"
-
-#: lazarusidestrconsts.rsiwpletwindowmanagerdecidehint
-msgid "System windowmanagers have different strategies for positioning windows"
-msgstr "Järjestelmillä on eri strategiat ikkunoiden sijoittamiseen"
-
-#: lazarusidestrconsts.rsiwppositionwindowlisthint
-msgid "Windows that have been open. They may be closed now."
-msgstr "Auki olleet ikkunat. Ne pitää nyt sulkea."
-
-#: lazarusidestrconsts.rsiwprestorewindowgeometry
-msgid "Restore window geometry"
-msgstr "Palauta ikkunan mitat"
-
-#: lazarusidestrconsts.rsiwprestorewindowgeometryhint
-msgid "Use previous position and size"
-msgstr "Käytä edellistä sijaintia ja kokoa"
-
-#: lazarusidestrconsts.rsiwpsplittercustomposition
-msgid "Custom Size"
-msgstr "Mukautettu koko"
-
-#: lazarusidestrconsts.rsiwpsplitterdefault
-msgid "Default Size"
-msgstr "Oletuskoko"
-
-#: lazarusidestrconsts.rsiwpsplitterfollowwindow
-msgid "Restore with window"
-msgstr "Palauta ikkunan kanssa"
-
-#: lazarusidestrconsts.rsiwpsplitterrestorewindowgeometry
-msgid "Restore Size"
-msgstr "Palauta koko"
 
 #: lazarusidestrconsts.rslanguageafrikaans
 msgid "Afrikaans"
@@ -19569,7 +19811,10 @@ msgid "config build file"
 msgstr "configuroi kokoa tiedosto"
 
 #: lazarusidestrconsts.srkmeccopy
-msgid "Copy selection to clipboard"
+#, fuzzy
+#| msgid "Copy selection to clipboard"
+msgctxt "lazarusidestrconsts.srkmeccopy"
+msgid "Copy"
 msgstr "Kopioi valinta leikepöydälle"
 
 #: lazarusidestrconsts.srkmeccopyeditornewwindow
@@ -19585,7 +19830,10 @@ msgid "Copy editor to prior free window"
 msgstr "Kopioi editori edelliseen vapaaseen ikkunaan"
 
 #: lazarusidestrconsts.srkmeccut
-msgid "Cut selection to clipboard"
+#, fuzzy
+#| msgid "Cut selection to clipboard"
+msgctxt "lazarusidestrconsts.srkmeccut"
+msgid "Cut"
 msgstr "Leikkaa valinta leikepöydälle"
 
 #: lazarusidestrconsts.srkmecdeletebol
@@ -19943,7 +20191,10 @@ msgid "Move editor rightmost"
 msgstr "Siirrä editori oikeaan reunaan"
 
 #: lazarusidestrconsts.srkmecmultipaste
-msgid "MultiPaste clipboard to current position"
+#, fuzzy
+#| msgid "MultiPaste clipboard to current position"
+msgctxt "lazarusidestrconsts.srkmecmultipaste"
+msgid "MultiPaste"
 msgstr "MoniLiitä leikepöytä nykyiseen sijaintiin"
 
 #: lazarusidestrconsts.srkmecnextbookmark
@@ -20003,7 +20254,10 @@ msgid "Move cursor up one page"
 msgstr "Siirrä kursoria sivu ylös"
 
 #: lazarusidestrconsts.srkmecpaste
-msgid "Paste clipboard to current position"
+#, fuzzy
+#| msgid "Paste clipboard to current position"
+msgctxt "lazarusidestrconsts.srkmecpaste"
+msgid "Paste"
 msgstr "Liitä leikepöydältä"
 
 #: lazarusidestrconsts.srkmecpause
@@ -20558,8 +20812,10 @@ msgid "View History"
 msgstr "Näytä historia"
 
 #: lazarusidestrconsts.srkmecviewpseudoterminal
+#, fuzzy
+#| msgid "View Terminal Output"
 msgctxt "lazarusidestrconsts.srkmecviewpseudoterminal"
-msgid "View Terminal Output"
+msgid "View console in/output"
 msgstr "Näytä komentorivin tuloste"
 
 #: lazarusidestrconsts.srkmecviewtaborder
@@ -20877,10 +21133,6 @@ msgstr "Vain luettavissa"
 #: lazarusidestrconsts.uemrefactor
 msgid "Refactoring"
 msgstr "Järjestele uudelleen"
-
-#: lazarusidestrconsts.uemruntocursor
-msgid "&Run to Cursor"
-msgstr "&Jatka kursorin kohtaan"
 
 #: lazarusidestrconsts.uemsetfreebookmark
 msgctxt "lazarusidestrconsts.uemsetfreebookmark"

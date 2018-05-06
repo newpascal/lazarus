@@ -3,8 +3,8 @@ object EditorCodetoolsOptionsFrame: TEditorCodetoolsOptionsFrame
   Height = 492
   Top = 0
   Width = 634
-  HorzScrollBar.Page = 634
-  VertScrollBar.Page = 492
+  HorzScrollBar.Page = 1
+  VertScrollBar.Page = 1
   AutoScroll = True
   ClientHeight = 492
   ClientWidth = 634

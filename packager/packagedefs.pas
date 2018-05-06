@@ -38,18 +38,18 @@ interface
 
 uses
   // FCL, LCL
-  Classes, SysUtils, contnrs, typinfo, AVL_Tree,
+  Classes, SysUtils, contnrs, typinfo, Laz_AVL_Tree,
   LCLProc, LCLType, LResources, Graphics, Controls, Forms, Dialogs,
   // Codetools
   FileProcs, FileUtil, LazConfigStorage, Laz2_XMLCfg, BasicCodeTools,
   DefineTemplates, CodeToolManager, CodeCache, CodeToolsCfgScript, CodeToolsStructs,
   // LazUtils
-  LazFileUtils, LazFileCache, LazUTF8,
+  LazFileUtils, LazFileCache, LazUTF8, AvgLvlTree,
   // IDEIntf
-  PropEdits, LazIDEIntf, MacroIntf, MacroDefIntf, PackageIntf, IDEOptionsIntf,
-  ProjPackIntf, IDEDialogs, ComponentReg,
+  PropEdits, LazIDEIntf, MacroIntf, MacroDefIntf, IDEOptionsIntf,
+  PackageDependencyIntf, PackageIntf, IDEDialogs, ComponentReg, IDEImagesIntf,
   // IDE
-  EditDefineTree, CompilerOptions, CompOptsModes, IDEOptionDefs, ProjPackBase,
+  EditDefineTree, CompilerOptions, CompOptsModes, IDEOptionDefs, ProjPackCommon,
   LazarusIDEStrConsts, IDEProcs, TransferMacros, FileReferenceList, PublishModule;
 
 type
@@ -65,8 +65,6 @@ type
     );
   TPackageUpdatePolicies = set of TPackageUpdatePolicy;
 
-  TIteratePackagesEvent =
-    procedure(APackage: TLazPackageID) of object;
   TGetAllRequiredPackagesEvent =
     procedure(APackage: TLazPackage; // if not nil then ignore FirstDependency and do not add APackage to Result
               FirstDependency: TPkgDependency;
@@ -221,25 +219,12 @@ type
   
   { TPkgDependency }
   
-  TPkgDependencyFlag = (
-    pdfMinVersion, // >= MinVersion
-    pdfMaxVersion // <= MaxVersion
-    );
-  TPkgDependencyFlags = set of TPkgDependencyFlag;
-  
   TPkgMarkerFlag = (
     pmfVisited,
     pmfMarked
     );
   TPkgMarkerFlags = set of TPkgMarkerFlag;
   
-  TLoadPackageResult = (
-    lprUndefined,
-    lprSuccess,
-    lprNotFound,
-    lprLoadError
-    );
-
   TPkgDependencyList = (
     pdlRequires,
     pdlUsedBy
@@ -247,77 +232,65 @@ type
   
   { TPkgDependency }
 
-  TPkgDependency = class
+  TPkgDependency = class(TPkgDependencyID)
   private
     FDefaultFilename: string;
-    FFlags: TPkgDependencyFlags;
     FHoldPackage: boolean;
-    FLoadPackageResult: TLoadPackageResult;
     FMarkerFlags: TPKgMarkerFlags;
     FOwner: TObject;
-    FMaxVersion: TPkgVersion;
-    FMinVersion: TPkgVersion;
-    FPackageName: string;
     FPreferDefaultFilename: boolean;
-    FRemoved: boolean;
-    FRequiredPackage: TLazPackage;
-    procedure SetFlags(const AValue: TPkgDependencyFlags);
+    function GetRequiredPackage: TLazPackage;
     procedure SetHoldPackage(const AValue: boolean);
-    procedure SetLoadPackageResult(const AValue: TLoadPackageResult);
-    procedure SetMaxVersion(const AValue: TPkgVersion);
-    procedure SetMinVersion(const AValue: TPkgVersion);
-    procedure SetPackageName(const AValue: string);
-    procedure SetRemoved(const AValue: boolean);
-    procedure SetRequiredPackage(const AValue: TLazPackage);
+    procedure SetRequiredPackage(AValue: TLazPackage);
+  protected
+    procedure SetPackageName(const AValue: string); override;
   public
     NextDependency, PrevDependency: array[TPkgDependencyList] of TPkgDependency;
     constructor Create;
     destructor Destroy; override;
-    procedure Clear;
+    procedure Clear; override;
     procedure LoadFromXMLConfig(XMLConfig: TXMLConfig; const Path: string;
                                 FileVersion: integer);
     procedure SaveToXMLConfig(XMLConfig: TXMLConfig; const Path: string;
       UsePathDelim: TPathDelimSwitch);
-    function IsMakingSense: boolean;
-    function IsCompatible(const Version: TPkgVersion): boolean;
-    function IsCompatible(const PkgName: string;
-      const Version: TPkgVersion): boolean;
+
     function Compare(Dependency2: TPkgDependency): integer;
     procedure Assign(Source: TPkgDependency);
     procedure Assign(Source: TLazPackageID);
     procedure ConsistencyCheck;
-    function IsCompatible(Pkg: TLazPackageID): boolean;
+    function IsCompatible(Pkg: TLazPackageID): boolean; overload;
     procedure MakeCompatible(const PkgName: string; const Version: TPkgVersion);
     function AsString(WithOwner: boolean = false; WithDefaults: boolean = false): string;
-    function NextUsedByDependency: TPkgDependency;
-    function PrevUsedByDependency: TPkgDependency;
-    function NextRequiresDependency: TPkgDependency;
-    function PrevRequiresDependency: TPkgDependency;
+    // API for iterating dependencies.
+    function NextUsedByDependency: TPkgDependency; override;
+    function PrevUsedByDependency: TPkgDependency; override;
+    function NextRequiresDependency: TPkgDependency; override;
+    function PrevRequiresDependency: TPkgDependency; override;
+    // API for adding / removing dependencies, defined in base class.
+    procedure AddUsedByDep(var FirstDependency: TPkgDependencyBase); override;
+    procedure RemoveUsedByDep(var FirstDependency: TPkgDependencyBase); override;
+    procedure AddRequiresDep(var FirstDependency: TPkgDependencyBase); override;
+    procedure RemoveRequiresDep(var FirstDependency: TPkgDependencyBase); override;
+    // API using ListType.
     procedure AddToList(var FirstDependency: TPkgDependency;
-      ListType: TPkgDependencyList);
+                        ListType: TPkgDependencyList);
     procedure AddToEndOfList(var LastDependency: TPkgDependency;
-      ListType: TPkgDependencyList);
+                             ListType: TPkgDependencyList);
     procedure RemoveFromList(var FirstDependency: TPkgDependency;
-      ListType: TPkgDependencyList);
+                             ListType: TPkgDependencyList);
     function MoveUpInList(var FirstDependency: TPkgDependency;
-      ListType: TPkgDependencyList): Boolean;
+                          ListType: TPkgDependencyList): Boolean;
     function MoveDownInList(var FirstDependency: TPkgDependency;
       ListType: TPkgDependencyList): Boolean;
     function MakeFilenameRelativeToOwner(const AFilename: string): string;
     function FindDefaultFilename: string;
   public
-    property PackageName: string read FPackageName write SetPackageName;
-    property Flags: TPkgDependencyFlags read FFlags write SetFlags;
-    property MinVersion: TPkgVersion read FMinVersion write SetMinVersion;
-    property MaxVersion: TPkgVersion read FMaxVersion write SetMaxVersion;
-    property Removed: boolean read FRemoved write SetRemoved;
     property Owner: TObject read FOwner write FOwner;// package or project or IDE
-    property RequiredPackage: TLazPackage read FRequiredPackage write SetRequiredPackage;
-    property LoadPackageResult: TLoadPackageResult read FLoadPackageResult write SetLoadPackageResult;
     property HoldPackage: boolean read FHoldPackage write SetHoldPackage;
     property MarkerFlags: TPKgMarkerFlags read FMarkerFlags write FMarkerFlags;
     property DefaultFilename: string read FDefaultFilename write FDefaultFilename;
     property PreferDefaultFilename: boolean read FPreferDefaultFilename write FPreferDefaultFilename;
+    property RequiredPackage: TLazPackage read GetRequiredPackage write SetRequiredPackage;
   end;
   PPkgDependency = ^TPkgDependency;
   
@@ -446,18 +419,6 @@ type
 
   { TLazPackage }
   
-  TLazPackageType = (
-    lptRunTime,         // RunTime packages can't register anything in the IDE.
-                        // They can be used by designtime packages.
-    lptDesignTime,      // DesignTime packages can register anything in the IDE
-                        // and are not compiled into projects.
-                        // The IDE calls the 'register' procedures of each unit.
-    lptRunAndDesignTime,// RunAndDesignTime packages can do anything.
-    lptRunTimeOnly      // as lptRunTime, but they can not be installed in the
-                        // IDE, not even indirectly
-    );
-  TLazPackageTypes = set of TLazPackageType;
-    
   TLazPackageFlag = (
     lpfAutoIncrementVersionOnBuild, // increment version before
     lpfModified,       // package needs saving
@@ -556,7 +517,6 @@ type
     FModifiedLock: integer;
     FOutputStateFile: string;
     FPackageEditor: TBasePackageEditor;
-    FPackageType: TLazPackageType;
     FPOOutputDirectory: string;
     FProvides: TStrings;
     fPublishOptions: TPublishPackageOptions;
@@ -736,8 +696,8 @@ type
                                       WithUsedPackages: boolean);
     procedure SetAllComponentPriorities(const p: TComponentPriority);
     // used by dependencies
-    procedure AddUsedByDependency(Dependency: TPkgDependency);
-    procedure RemoveUsedByDependency(Dependency: TPkgDependency);
+    procedure AddUsedByDependency(Dependency: TPkgDependencyBase); override;
+    procedure RemoveUsedByDependency(Dependency: TPkgDependencyBase); override;
     function UsedByDepByIndex(Index: integer): TPkgDependency;
     function FindUsedByDepPrefer(Ignore: TPkgDependency): TPkgDependency;
     // provides
@@ -818,11 +778,6 @@ type
 const
   LazPkgXMLFileVersion = 4;
   
-  PkgFileTypeIdents: array[TPkgFileType] of string = (
-    'Unit', 'Virtual Unit', 'Main Unit',
-    'LFM', 'LRS', 'Include', 'Issues', 'Text', 'Binary');
-  LazPackageTypeIdents: array[TLazPackageType] of string = (
-    'RunTime', 'DesignTime', 'RunAndDesignTime', 'RunTimeOnly');
   AutoUpdateNames: array[TPackageUpdatePolicy] of string = (
     'Manually', 'OnRebuildingAll', 'AsNeeded');
     
@@ -849,8 +804,6 @@ function ComparePkgFilesAlphabetically(PkgFile1, PkgFile2: TPkgFile): integer;
 
 function GetUsageOptionsList(PackageList: TFPList): TFPList;
 
-function PkgFileTypeIdentToType(const s: string): TPkgFileType;
-function LazPackageTypeIdentToType(const s: string): TLazPackageType;
 function GetPkgFileTypeLocalizedName(FileType: TPkgFileType): string;
 function NameToAutoUpdatePolicy(const s: string): TPackageUpdatePolicy;
 function FileNameToPkgFileType(AFilename: string): TPkgFileType;
@@ -890,17 +843,12 @@ function FindNextPkgDependencyNodeWithSameName(Node: TAVLTreeNode): TAVLTreeNode
 function GetDependencyOwnerAsString(Dependency: TPkgDependency): string;
 function GetDependencyOwnerDirectory(Dependency: TPkgDependency): string;
 
-function PackageFileNameIsValid(const AFilename: string): boolean;
-
 procedure PkgVersionLoadFromXMLConfig(Version: TPkgVersion;
   XMLConfig: TXMLConfig; const Path: string; FileVersion: integer);
 procedure PkgVersionSaveToXMLConfig(Version: TPkgVersion; XMLConfig: TXMLConfig;
   const Path: string);
 procedure PkgVersionLoadFromXMLConfig(Version: TPkgVersion;
   XMLConfig: TXMLConfig);
-
-function IsValidUnitName(AUnitName: String): Boolean; inline;
-function IsValidPkgName(APkgName: String): Boolean; inline;
 
 var
   Package1: TLazPackage; // don't use it - only for options dialog
@@ -909,32 +857,8 @@ function dbgs(p: TPackageUpdatePolicy): string; overload;
 function dbgs(p: TLazPackageType): string; overload;
 function PackagePathToStr(PathList: TFPList): string;
 
+
 implementation
-
-
-function IsValidUnitName(AUnitName: String): Boolean;
-begin
-  Result := IsDottedIdentifier(AUnitName);
-end;
-
-function IsValidPkgName(APkgName: String): Boolean;
-begin
-  Result := IsDottedIdentifier(APkgName);
-end;
-
-function PkgFileTypeIdentToType(const s: string): TPkgFileType;
-begin
-  for Result:=Low(TPkgFileType) to High(TPkgFileType) do
-    if SysUtils.CompareText(s,PkgFileTypeIdents[Result])=0 then exit;
-  Result:=pftUnit;
-end;
-
-function LazPackageTypeIdentToType(const s: string): TLazPackageType;
-begin
-  for Result:=Low(TLazPackageType) to High(TLazPackageType) do
-    if SysUtils.CompareText(s,LazPackageTypeIdents[Result])=0 then exit;
-  Result:=lptRunTime;
-end;
 
 function GetPkgFileTypeLocalizedName(FileType: TPkgFileType): string;
 begin
@@ -1353,17 +1277,6 @@ function GetDependencyOwnerDirectory(Dependency: TPkgDependency): string;
 begin
   Result := '';
   OnGetDependencyOwnerDirectory(Dependency,Result);
-end;
-
-function PackageFileNameIsValid(const AFilename: string): boolean;
-var
-  PkgName: String;
-begin
-  Result:=false;
-  if CompareFileExt(AFilename,'.lpk',false)<>0 then exit;
-  PkgName:=ExtractFileNameOnly(AFilename);
-  if (PkgName='') or (not IsValidPkgName(PkgName)) then exit;
-  Result:=true;
 end;
 
 procedure PkgVersionLoadFromXMLConfig(Version: TPkgVersion;
@@ -1813,12 +1726,6 @@ end;
 
 { TPkgDependency }
 
-procedure TPkgDependency.SetFlags(const AValue: TPkgDependencyFlags);
-begin
-  if FFlags=AValue then exit;
-  FFlags:=AValue;
-end;
-
 procedure TPkgDependency.SetHoldPackage(const AValue: boolean);
 begin
   if FHoldPackage=AValue then exit;
@@ -1831,22 +1738,14 @@ begin
   end;
 end;
 
-procedure TPkgDependency.SetLoadPackageResult(const AValue: TLoadPackageResult);
+function TPkgDependency.GetRequiredPackage: TLazPackage;
 begin
-  if FLoadPackageResult=AValue then exit;
-  FLoadPackageResult:=AValue;
+  Result := TLazPackage(FRequiredPackage);
 end;
 
-procedure TPkgDependency.SetMaxVersion(const AValue: TPkgVersion);
+procedure TPkgDependency.SetRequiredPackage(AValue: TLazPackage);
 begin
-  if FMaxVersion=AValue then exit;
-  FMaxVersion:=AValue;
-end;
-
-procedure TPkgDependency.SetMinVersion(const AValue: TPkgVersion);
-begin
-  if FMinVersion=AValue then exit;
-  FMinVersion:=AValue;
+  RequiredIDEPackage := AValue;
 end;
 
 procedure TPkgDependency.SetPackageName(const AValue: string);
@@ -1860,47 +1759,19 @@ begin
   FDefaultFilename:='';
 end;
 
-procedure TPkgDependency.SetRemoved(const AValue: boolean);
-begin
-  if FRemoved=AValue then exit;
-  FRemoved:=AValue;
-end;
-
-procedure TPkgDependency.SetRequiredPackage(const AValue: TLazPackage);
-begin
-  if FRequiredPackage=AValue then exit;
-  if FRequiredPackage<>nil then
-    FRequiredPackage.RemoveUsedByDependency(Self);
-  fLoadPackageResult:=lprUndefined;
-  FRequiredPackage:=AValue;
-  if FRequiredPackage<>nil then
-    FRequiredPackage.AddUsedByDependency(Self);
-end;
-
 constructor TPkgDependency.Create;
 begin
-  MinVersion:=TPkgVersion.Create;
-  MaxVersion:=TPkgVersion.Create;
-  Clear;
+  inherited Create;
 end;
 
 destructor TPkgDependency.Destroy;
 begin
-  RequiredPackage:=nil;
-  PackageName:='';
-  FreeAndNil(fMinVersion);
-  FreeAndNil(fMaxVersion);
   inherited Destroy;
 end;
 
 procedure TPkgDependency.Clear;
 begin
-  RequiredPackage:=nil;
-  PackageName:='';
-  FRemoved:=false;
-  FFlags:=[];
-  FMaxVersion.Clear;
-  FMinVersion.Clear;
+  inherited Clear;
   FDefaultFilename:='';
   FPreferDefaultFilename:=false;
 end;
@@ -1961,30 +1832,6 @@ begin
   XMLConfig.SetDeleteValue(Path+'DefaultFilename/Prefer',PreferDefaultFilename,false);
 end;
 
-function TPkgDependency.IsMakingSense: boolean;
-begin
-  Result:=IsValidPkgName(PackageName);
-  if Result
-  and (pdfMinVersion in FFlags) and (pdfMaxVersion in FFlags)
-  and (MinVersion.Compare(MaxVersion)>0) then
-    Result:=false;
-end;
-
-function TPkgDependency.IsCompatible(const Version: TPkgVersion): boolean;
-begin
-  if ((pdfMinVersion in FFlags) and (MinVersion.Compare(Version)>0))
-  or ((pdfMaxVersion in FFlags) and (MaxVersion.Compare(Version)<0)) then
-    Result:=false
-  else
-    Result:=true;
-end;
-
-function TPkgDependency.IsCompatible(const PkgName: string;
-  const Version: TPkgVersion): boolean;
-begin
-  Result:=(SysUtils.CompareText(PkgName,PackageName)=0) and IsCompatible(Version);
-end;
-
 function TPkgDependency.Compare(Dependency2: TPkgDependency): integer;
 begin
   Result:=SysUtils.CompareText(PackageName,Dependency2.PackageName);
@@ -2033,8 +1880,7 @@ begin
   if MaxVersion.Compare(Version)<0 then MaxVersion.Assign(Version);
 end;
 
-function TPkgDependency.AsString(WithOwner: boolean; WithDefaults: boolean
-  ): string;
+function TPkgDependency.AsString(WithOwner: boolean; WithDefaults: boolean): string;
 begin
   if Self=nil then
     exit('(nil)');
@@ -2076,6 +1922,26 @@ end;
 function TPkgDependency.PrevRequiresDependency: TPkgDependency;
 begin
   Result:=PrevDependency[pdlRequires];
+end;
+
+procedure TPkgDependency.AddUsedByDep(var FirstDependency: TPkgDependencyBase);
+begin
+  AddToList(TPkgDependency(FirstDependency), pdlUsedBy);
+end;
+
+procedure TPkgDependency.RemoveUsedByDep(var FirstDependency: TPkgDependencyBase);
+begin
+  RemoveFromList(TPkgDependency(FirstDependency), pdlUsedBy);
+end;
+
+procedure TPkgDependency.AddRequiresDep(var FirstDependency: TPkgDependencyBase);
+begin
+  AddToList(TPkgDependency(FirstDependency), pdlRequires);
+end;
+
+procedure TPkgDependency.RemoveRequiresDep(var FirstDependency: TPkgDependencyBase);
+begin
+  RemoveFromList(TPkgDependency(FirstDependency), pdlRequires);
 end;
 
 procedure TPkgDependency.AddToList(var FirstDependency: TPkgDependency;
@@ -3098,9 +2964,7 @@ end;
 
 function TLazPackage.IsMakingSense: boolean;
 begin
-  Result:=false;
-  if not IsValidPkgName(Name) then exit;
-  Result:=true;
+  Result:=IsValidPkgName(Name);
 end;
 
 procedure TLazPackage.ShortenFilename(var ExpandedFilename: string; UseUp: boolean);
@@ -3142,8 +3006,7 @@ begin
     Result:=RemoveSearchPaths(Result,GetOutputDirectory);
 end;
 
-procedure TLazPackage.IterateComponentClasses(
-  Event: TIterateComponentClassesEvent;
+procedure TLazPackage.IterateComponentClasses(Event: TIterateComponentClassesEvent;
   WithUsedPackages: boolean);
 var
   Cnt: Integer;
@@ -3364,8 +3227,7 @@ begin
   Result:=GetDependencyWithIndex(FFirstUsedByDependency,pdlUsedBy,Index);
 end;
 
-function TLazPackage.FindUsedByDepPrefer(Ignore: TPkgDependency
-  ): TPkgDependency;
+function TLazPackage.FindUsedByDepPrefer(Ignore: TPkgDependency): TPkgDependency;
 begin
   Result:=FFirstUsedByDependency;
   while (Result<>nil) do begin
@@ -3772,17 +3634,17 @@ begin
                   APackage)<>nil;
 end;
 
-procedure TLazPackage.AddUsedByDependency(Dependency: TPkgDependency);
+procedure TLazPackage.AddUsedByDependency(Dependency: TPkgDependencyBase);
 begin
-  Dependency.AddToList(FFirstUsedByDependency,pdlUsedBy);
-  if Dependency.HoldPackage then
+  Dependency.AddUsedByDep(TPkgDependencyBase(FFirstUsedByDependency));
+  if TPkgDependency(Dependency).HoldPackage then
     inc(FHoldPackageCount);
 end;
 
-procedure TLazPackage.RemoveUsedByDependency(Dependency: TPkgDependency);
+procedure TLazPackage.RemoveUsedByDependency(Dependency: TPkgDependencyBase);
 begin
-  Dependency.RemoveFromList(FFirstUsedByDependency,pdlUsedBy);
-  if Dependency.HoldPackage then
+  Dependency.RemoveUsedByDep(TPkgDependencyBase(FFirstUsedByDependency));
+  if TPkgDependency(Dependency).HoldPackage then
     dec(FHoldPackageCount);
 end;
 
@@ -4120,16 +3982,10 @@ end;
 
 function TPkgComponent.GetIconCopy: TCustomBitMap;
 var
-  ResHandle: TLResource;
   ResName: String;
 begin
   ResName := ComponentClass.ClassName;
-  // prevent raising exception and speedup a bit search/load
-  ResHandle := LazarusResources.Find(ResName);
-  if ResHandle <> nil then
-    Result := CreateBitmapFromLazarusResource(ResHandle)
-  else
-    Result := CreateBitmapFromResourceName(HInstance, ResName);
+  Result := TIDEImages.CreateImage(ResName, 24);
 
   if Result = nil then
     Result := CreateBitmapFromResourceName(HInstance, 'default')

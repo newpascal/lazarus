@@ -85,6 +85,19 @@ const
     Result:=Widget.LCLObject.ScreenToClient(Mouse.CursorPos);
   end;
 
+  function GetMouseWheelAxisHorz: boolean;
+  var
+    Val: EventMouseWheelAxis;
+  begin
+    Result := False;
+    if OSError(
+      GetEventParameter(AEvent, kEventParamMouseWheelAxis, typeMouseWheelAxis, nil,
+        SizeOf(Val), nil, @Val),
+      SName, SGetEvent, 'kEventParamMouseWheelAxis') then Exit;
+
+    Result := Val=kEventMouseWheelAxisX;
+  end;
+
   function GetMouseWheelDelta: Integer;
   var
     WheelDelta: SInt32;
@@ -217,7 +230,7 @@ const
   procedure HandleMouseWheelEvent(var AMsg);
   var
     MousePoint: TPoint;
-    MSg: ^TLMMouseEvent;
+    Msg: ^TLMMouseEvent;
   begin
     {$IFDEF VerboseMouse}
       DebugLn('HandleMouseWheelEvent');
@@ -226,7 +239,10 @@ const
 
     MousePoint := GetMousePoint;
 
-    Msg^.Msg := LM_MOUSEWHEEL;
+    if GetMouseWheelAxisHorz then
+      Msg^.Msg := LM_MOUSEHWHEEL
+    else
+      Msg^.Msg := LM_MOUSEWHEEL;
     Msg^.Button := GetCarbonMouseButton(AEvent);
     Msg^.X := MousePoint.X;
     Msg^.Y := MousePoint.Y;
@@ -260,7 +276,7 @@ begin
       SizeOf(WindowPartCode), nil, @Part),
     SName, SGetEvent, 'kEventParamWindowPartCode', eventParameterNotFoundErr) then
   begin
-    if Part <> inContent then Exit;
+    if (Part <> inContent) and (Part <> inDesk) then Exit;
   end;
   
   //Find out which control the mouse event should occur for
@@ -486,12 +502,16 @@ const
       MK_F10      : VKKeyCode:=VK_F10;
       MK_F11      : VKKeyCode:=VK_F11;
       MK_F12      : VKKeyCode:=VK_F12;
-      MK_F13      : VKKeyCode:=VK_SNAPSHOT;
-      MK_F14      : VKKeyCode:=VK_SCROLL;
-      MK_F15      : VKKeyCode:=VK_PAUSE;
+      MK_F13      : VKKeyCode:=VK_F13;
+      MK_F14      : VKKeyCode:=VK_F14;
+      MK_F15      : VKKeyCode:=VK_F15;
+      MK_F16      : VKKeyCode:=VK_F16;
+      MK_F17      : VKKeyCode:=VK_F17;
+      MK_F18      : VKKeyCode:=VK_F18;
+      MK_F19      : VKKeyCode:=VK_F19;
       MK_POWER    : VKKeyCode:=VK_SLEEP; //?
       MK_TAB      : VKKeyCode:=VK_TAB; //strangely enough, tab is "non printable"
-      MK_INS      : VKKeyCode:=VK_INSERT;
+      MK_HELP     : VKKeyCode:=VK_HELP;
       MK_DEL      : VKKeyCode:=VK_DELETE;
       MK_HOME     : VKKeyCode:=VK_HOME;
       MK_END      : VKKeyCode:=VK_END;
@@ -501,7 +521,7 @@ const
       MK_DOWN     : VKKeyCode:=VK_DOWN;
       MK_LEFT     : VKKeyCode:= VK_LEFT;
       MK_RIGHT    : VKKeyCode:= VK_RIGHT;
-      MK_NUMLOCK  : VKKeyCode:= VK_NUMLOCK;
+      MK_CLEAR    : VKKeyCode:= VK_CLEAR;
     end;
     
     if VKKeyCode<>VK_UNKNOWN then
@@ -536,7 +556,7 @@ const
       if TextLen>0 then begin
         u:=UTF16CharacterToUnicode(@WideBuf[1],CharLen);
         if CharLen>0 then begin
-          UTF8VKCharacter:=LazUTF8.UnicodeToUTF8(u);
+          UTF8VKCharacter:=UnicodeToUTF8(u);
           if (UTF8VKCharacter<>'') and (ord(Utf8VKCharacter[1])<=127) then //It's (true) ascii.
             VKKeyChar:=Utf8VKCharacter[1]
           else //not ascii, get the Mac character.
@@ -591,7 +611,7 @@ const
 
       u:=UTF16CharacterToUnicode(@WideBuf[1],CharLen);
       if CharLen=0 then exit;
-      UTF8Character:=LazUTF8.UnicodeToUTF8(u);
+      UTF8Character:=UnicodeToUTF8(u);
 
       if (UTF8Character<>'') and (ord(Utf8Character[1])<=127) then //It's (true) ascii.
         KeyChar:=Utf8Character[1]
@@ -635,6 +655,7 @@ const
           MK_PADSUB  : VKKeyCode:=VK_SUBTRACT;
           MK_PADADD  : VKKeyCode:=VK_ADD;
           MK_PADDEC  : VKKeyCode:=VK_DECIMAL;
+          MK_PADEQUALS: VKKeyCode:=VK_OEM_PLUS;
           MK_PADENTER:
             begin
               VKKeyCode:=VK_RETURN;
@@ -684,7 +705,7 @@ const
   begin
     if AUTF8Char='' then Exit;
     // only one character should be used
-    WideBuf:={%H-}UTF8Encode(LazUTF8.UTF8Copy(AUTF8Char, 1,1));
+    WideBuf:={%H-}UTF8Encode(UTF8Copy(AUTF8Char, 1,1));
     Result:=(length(WideBuf)>0) and
       (not OSError(SetEventParameter(AEvent, kEventParamKeyUnicodes, typeUnicodeText,
         length(WideBuf)*2, @WideBuf[1]), SName, ASetEvent, 'kEventParamKeyUnicodes'));
@@ -891,21 +912,29 @@ begin
   Result := EventNotHandledErr;
 
   Control := nil;
-  if OSError(GetKeyboardFocus( TCarbonWindow(AWidget).fWindowRef, Control), SName,
-    SGetKeyboardFocus) then Exit;
-  if Control = nil then Control := AWidget.Content;
-
-  // if a control other than root is found, send the message
-  // to the control instead of the window
-  // if a lower control without widget is found, use its parent
-  Widget := nil;
-  while Control <> AWidget.Content do
+  if Assigned(AWidget.FPopupWin) then
   begin
-    Widget := GetCarbonControl(Pointer(Control));
-    if Widget <> nil then Break;
-    Control := HIViewGetSuperview(Control);
-  end;
-  if (Widget = nil) or (Control = AWidget.Content) then Widget := AWidget;
+    if OSError(GetKeyboardFocus(AWidget.FPopupWin, Control), SName, SGetKeyboardFocus) then Exit;
+    Widget := AWidget;
+  end
+  else
+  begin
+    if OSError(GetKeyboardFocus( TCarbonWindow(AWidget).fWindowRef, Control), SName,
+      SGetKeyboardFocus) then Exit;
+    if Control = nil then Control := AWidget.Content;
+
+    // if a control other than root is found, send the message
+    // to the control instead of the window
+    // if a lower control without widget is found, use its parent
+    Widget := nil;
+    while Control <> AWidget.Content do
+    begin
+      Widget := GetCarbonControl(Pointer(Control));
+      if Widget <> nil then Break;
+      Control := HIViewGetSuperview(Control);
+    end;
+    if (Widget = nil) or (Control = AWidget.Content) then Widget := AWidget;
+  end;  
 
   Widget.BeginEventProc;
   try
@@ -1919,6 +1948,16 @@ begin
     begin
       if OSError(CollapseWindow(fWindowRef, True),
         Self, SName, SCollapse) then Exit;
+    end;
+  SW_RESTORE:
+    begin
+      if IsIconic then
+        SetForeground
+      else if IsZoomed then begin
+        if OSError(ZoomWindowIdeal(fWindowRef, inZoomIn, P),
+          Self, SName, SZoomIdeal, 'inZoomIn') then Exit;
+        SetForeground;
+      end;
     end;
   end;
 

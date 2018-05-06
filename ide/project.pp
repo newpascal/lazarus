@@ -63,7 +63,7 @@ uses
   CompOptsModes, ProjectResources, LazConf, W32Manifest, ProjectIcon,
   IDECmdLine, IDEProcs, CompilerOptions, RunParamsOpts, ModeMatrixOpts,
   TransferMacros, ProjectDefs, FileReferenceList, EditDefineTree,
-  LazarusIDEStrConsts, ProjPackBase, PackageDefs, PackageSystem;
+  LazarusIDEStrConsts, ProjPackCommon, PackageDefs, PackageSystem;
 
 type
   TUnitInfo = class;
@@ -521,6 +521,7 @@ type
     procedure SetIncludePaths(const AValue: string); override;
     procedure SetLibraryPaths(const AValue: string); override;
     procedure SetLinkerOptions(const AValue: string); override;
+    procedure SetNamespaces(const AValue: string); override;
     procedure SetObjectPath(const AValue: string); override;
     procedure SetSrcPath(const AValue: string); override;
     procedure SetUnitPaths(const AValue: string); override;
@@ -679,6 +680,7 @@ type
   public
     constructor Create(AProject: TProject);
     destructor Destroy; override;
+    function GetProject: TLazProject; override;
     class function GetInstance: TAbstractIDEOptions; override;
     class function GetGroupCaption: string; override;
     property Project: TProject read FProject;
@@ -1135,7 +1137,7 @@ function dbgs(Flags: TUnitInfoFlags): string; overload;
 implementation
 
 const
-  ProjectInfoFileVersion = 10;
+  ProjectInfoFileVersion = 11;
   ProjOptionsPath = 'ProjectOptions/';
 
 
@@ -2638,6 +2640,11 @@ begin
   inherited Destroy;
 end;
 
+function TProjectIDEOptions.GetProject: TLazProject;
+begin
+  Result:=FProject;
+end;
+
 class function TProjectIDEOptions.GetInstance: TAbstractIDEOptions;
 begin
   if Project1<>nil then
@@ -2779,6 +2786,7 @@ begin
     SetFlag(pfMainUnitHasUsesSectionForAllUnits, OldProjectType in [ptProgram,ptApplication]);
     SetFlag(pfMainUnitHasCreateFormStatements, OldProjectType in [ptApplication]);
     SetFlag(pfMainUnitHasTitleStatement,OldProjectType in [ptApplication]);
+    SetFlag(pfMainUnitHasScaledStatement,OldProjectType in [ptApplication]);
     SetFlag(pfRunnable, OldProjectType in [ptProgram,ptApplication,ptCustomProgram]);
   end;
   Flags:=Flags-[pfUseDefaultCompilerOptions];
@@ -2913,7 +2921,11 @@ begin
   LoadPkgDependencyList(FXMLConfig,Path+'RequiredPackages/',
                         FFirstRequiredDependency,pdlRequires,Self,true,false);
   // load the Run and Build parameter Options
-  RunParameterOptions.Load(FXMLConfig,Path,fPathDelimChanged);
+  RunParameterOptions.Clear;
+  if FFileVersion<11 then
+    RunParameterOptions.LegacyLoad(FXMLConfig,Path,fPathDelimChanged)
+  else
+    RunParameterOptions.Load(FXMLConfig,Path+'RunParams/',fPathDelimChanged,rpsLPI);
   // load the Publish Options
   PublishOptions.LoadFromXMLConfig(FXMLConfig,Path+'PublishOptions/',fPathDelimChanged);
   // load defines used for custom options
@@ -2945,6 +2957,9 @@ begin
   LoadOtherDefines(Path);
   // load session info
   LoadSessionInfo(Path,true);
+
+  if FFileVersion>=11 then
+    RunParameterOptions.Load(FXMLConfig,Path+'RunParams/',fPathDelimChanged,rpsLPS);
 
   // call hooks to read their info (e.g. DebugBoss)
   if Assigned(OnLoadProjectInfo) then
@@ -3227,7 +3242,8 @@ begin
   // save the Publish Options
   PublishOptions.SaveToXMLConfig(FXMLConfig,Path+'PublishOptions/',fCurStorePathDelim);
   // save the Run and Build parameter options
-  RunParameterOptions.Save(FXMLConfig,Path,fCurStorePathDelim);
+  RunParameterOptions.LegacySave(FXMLConfig,Path,fCurStorePathDelim);
+  RunParameterOptions.Save(FXMLConfig,Path+'RunParams/',fCurStorePathDelim,rpsLPI);
   // save dependencies
   SavePkgDependencyList(FXMLConfig,Path+'RequiredPackages/',
     FFirstRequiredDependency,pdlRequires,fCurStorePathDelim);
@@ -3288,6 +3304,8 @@ begin
   SaveOtherDefines(Path);
   // save session info
   SaveSessionInfo(Path);
+  // save the Run and Build parameter options
+  RunParameterOptions.Save(FXMLConfig,Path+'RunParams/',fCurStorePathDelim,rpsLPS);
 
   // Notifiy hooks
   if Assigned(OnSaveProjectInfo) then
@@ -3838,11 +3856,12 @@ end;
 
 procedure TProject.SetSessionModified(const AValue: boolean);
 begin
-  if AValue=SessionModified then exit;
   {$IFDEF VerboseIDEModified}
   debugln(['TProject.SetSessionModified new Modified=',AValue]);
   {$ENDIF}
   inherited SetSessionModified(AValue);
+  if AValue then
+    IncreaseSessionChangeStamp;
 end;
 
 procedure TProject.SetExecutableType(const AValue: TProjectExecutableType);
@@ -4049,7 +4068,7 @@ begin
   else begin
     CurPath:=copy(ExtractFilePath(Result),1,length(BaseDir));
     if CompareFilenames(BaseDir,CurPath)=0 then
-      Result:=copy(Result,length(CurPath)+1,length(Result));
+      delete(Result,1,length(CurPath));
   end;
 end;
 
@@ -4383,15 +4402,18 @@ begin
 end;
 
 function TProject.FileIsInProjectDir(const AFilename: string): boolean;
-var ProjectDir, FilePath: string;
+var
+  ProjectDir, FilePath: string;
 begin
-  if FilenameIsAbsolute(AFilename) then begin
-    if (not IsVirtual) then begin
+  if FilenameIsAbsolute(AFilename) then
+  begin
+    if IsVirtual then
+      Result:=false
+    else begin
       ProjectDir:=Directory;
       FilePath:=LeftStr(AFilename,length(ProjectDir));
-      Result:=(CompareFileNames(ProjectDir,FilePath)=0);
-    end else
-      Result:=false;
+      Result:=CompareFileNames(ProjectDir,FilePath)=0;
+    end;
   end else
     Result:=true;
 end;
@@ -4410,6 +4432,7 @@ procedure TProject.GetVirtualDefines(DefTree: TDefineTree; DirDef: TDirectoryDef
   
 begin
   if (not IsVirtual) then exit;
+  ExtendPath(NamespacesMacroName,CompilerOptions.Namespaces);
   ExtendPath(UnitPathMacroName,CompilerOptions.OtherUnitFiles);
   ExtendPath(IncludePathMacroName,CompilerOptions.IncludePath);
   ExtendPath(SrcPathMacroName,CompilerOptions.SrcPath);
@@ -4638,7 +4661,7 @@ procedure TProject.UpdateUnitComponentDependencies;
     PropInfo: PPropInfo;
     PropList: PPropList;
     CurCount,i: integer;
-    ReferenceComponent: TComponent;
+    ReferenceComp: TObject;
     OwnerComponent: TComponent;
     ReferenceUnit: TUnitInfo;
     Dependency: TUnitComponentDependency;
@@ -4671,11 +4694,11 @@ procedure TProject.UpdateUnitComponentDependencies;
           PropInfo:=PropList^[i];
           if (PropInfo^.PropType^.Kind=tkClass) then begin
             // property of kind TObject
-            ReferenceComponent:=TComponent(GetObjectProp(AComponent,PropInfo));
-            //debugln('TProject.UpdateUnitComponentDependencies Property ',dbgsName(AComponent),' Name=',PropInfo^.Name,' Type=',PropInfo^.PropType^.Name,' Value=',dbgsName(ReferenceComponent),' TypeInfo=',TypeInfo^.Name);
-            if ReferenceComponent is TComponent then begin
+            ReferenceComp:=GetObjectProp(AComponent,PropInfo);
+            //debugln('TProject.UpdateUnitComponentDependencies Property ',dbgsName(AComponent),' Name=',PropInfo^.Name,' Type=',PropInfo^.PropType^.Name,' Value=',dbgsName(ReferenceComp),' TypeInfo=',TypeInfo^.Name);
+            if ReferenceComp is TComponent then begin
               // reference is a TComponent
-              OwnerComponent:=ReferenceComponent;
+              OwnerComponent:=TComponent(ReferenceComp);
               while OwnerComponent.Owner<>nil do
                 OwnerComponent:=OwnerComponent.Owner;
               if OwnerComponent<>AnUnitInfo.Component then begin
@@ -4694,7 +4717,7 @@ procedure TProject.UpdateUnitComponentDependencies;
                                          ReferenceUnit,[ucdtOldProperty]);
                     Dependency.SetUsedByPropPath(
                       Dependency.CreatePropPath(AComponent,PropInfo^.Name),
-                      Dependency.CreatePropPath(ReferenceComponent));
+                      Dependency.CreatePropPath(TComponent(ReferenceComp)));
                   end;
                 end;
               end;
@@ -5843,7 +5866,7 @@ begin
 
   if (MainUnitID>=0) then begin
     if Requires(PackageGraph.LCLPackage,true)
-    and (Flags*[pfMainUnitHasCreateFormStatements,pfMainUnitHasTitleStatement]<>[])
+    and (Flags*[pfMainUnitHasCreateFormStatements,pfMainUnitHasTitleStatement,pfMainUnitHasScaledStatement]<>[])
     then begin
       // this is a probably a LCL project where the main source only contains
       // automatic code
@@ -6107,6 +6130,13 @@ begin
   inherited SetLinkerOptions(AValue);
 end;
 
+procedure TProjectCompilerOptions.SetNamespaces(const AValue: string);
+begin
+  if Namespaces=AValue then exit;
+  InvalidateOptions;
+  inherited SetNamespaces(AValue);
+end;
+
 procedure TProjectCompilerOptions.SetObjectPath(const AValue: string);
 begin
   if ObjectPath=AValue then exit;
@@ -6326,6 +6356,7 @@ end;
 procedure TProjectDefineTemplates.UpdateSrcDirIfDef;
 var
   Changed: Boolean;
+  NamespacesDefTempl: TDefineTemplate;
   UnitPathDefTempl: TDefineTemplate;
   IncPathDefTempl: TDefineTemplate;
   SrcPathDefTempl: TDefineTemplate;
@@ -6354,21 +6385,27 @@ begin
       da_If);
     FMain.AddChild(FSrcDirIf);
     
+    // create namespaces template for this directory
+    NamespacesDefTempl:=TDefineTemplate.Create('Namespaces', lisPkgDefsNamespaces,
+      NamespacesMacroName,NamespacesMacro+';$ProjectNamespaces('+Owner.IDAsString+')',
+      da_Define);
+    FSrcDirIf.AddChild(NamespacesDefTempl);
+
     // create unit path template for this directory
     UnitPathDefTempl:=TDefineTemplate.Create('UnitPath', lisPkgDefsUnitPath,
-      '#UnitPath','$(#UnitPath);$ProjectUnitPath('+Owner.IDAsString+')',
+      UnitPathMacroName,UnitPathMacro+';$ProjectUnitPath('+Owner.IDAsString+')',
       da_Define);
     FSrcDirIf.AddChild(UnitPathDefTempl);
 
     // create include path template for this directory
     IncPathDefTempl:=TDefineTemplate.Create('IncPath','Include Path',
-      '#IncPath','$(#IncPath);$ProjectIncPath('+Owner.IDAsString+')',
+      IncludePathMacroName,IncludePathMacro+';$ProjectIncPath('+Owner.IDAsString+')',
       da_Define);
     FSrcDirIf.AddChild(IncPathDefTempl);
 
     // create src path template for this directory
     SrcPathDefTempl:=TDefineTemplate.Create('SrcPath','Src Path',
-      '#SrcPath','$(#SrcPath);$ProjectSrcPath('+Owner.IDAsString+')',
+      SrcPathMacroName,SrcPathMacro+';$ProjectSrcPath('+Owner.IDAsString+')',
       da_Define);
     FSrcDirIf.AddChild(SrcPathDefTempl);
 
@@ -6395,7 +6432,7 @@ begin
   if FOutputDir=nil then begin
     //DebugLn('TProjectDefineTemplates.UpdateDefinesForOutputDirectory ',Owner.IDAsString,' creating FOutputDir');
     FOutputDir:=TDefineTemplate.Create(ProjectOutputDirDefTemplName,
-      'Output directoy of proj', '', Proj.GetOutputDirectory, da_Directory);
+      'Output directory of proj', '', Proj.GetOutputDirectory, da_Directory);
     FOutputDir.SetDefineOwner(Proj,false);
     FOutputDir.SetFlags([dtfAutoGenerated],[],false);
     DisableDefaultsInDirectories(FOutputDir,false);

@@ -96,7 +96,8 @@ type
     rsAfterClassField,    // after ";" of a field (static needs highlight)
     rsVarTypeInSpecification, // between ":"/"=" and ";" in a var or type section (or class members)
                               // var a: Integer; type b = Int64;
-    rsInTypeBlock
+    rsInTypeBlock,
+    rsSkipAllPasBlocks        // used for: class of ... ;
   );
   TRangeStates = set of TRangeState;
 
@@ -283,6 +284,7 @@ type
   TSynPasSynRange = class(TSynCustomHighlighterRange)
   private
     FMode: TPascalCompilerMode;
+    FNestedComments: Boolean;
     FBracketNestLevel : Integer;
     FLastLineCodeFoldLevelFix: integer;
     FPasFoldFixLevel: Smallint;
@@ -296,6 +298,7 @@ type
     procedure DecLastLineCodeFoldLevelFix;
     procedure DecLastLinePasFoldFix;
     property Mode: TPascalCompilerMode read FMode write FMode;
+    property NestedComments: Boolean read FNestedComments write FNestedComments;
     property BracketNestLevel: integer read FBracketNestLevel write FBracketNestLevel;
     property LastLineCodeFoldLevelFix: integer
       read FLastLineCodeFoldLevelFix write FLastLineCodeFoldLevelFix;
@@ -354,6 +357,7 @@ type
     function GetPasCodeFoldRange: TSynPasSynRange;
     procedure SetCompilerMode(const AValue: TPascalCompilerMode);
     procedure SetExtendedKeywordsMode(const AValue: Boolean);
+    procedure SetNestedComments(const ANestedComments: boolean);
     procedure SetStringKeywordMode(const AValue: TSynPasStringMode);
     function TextComp(aText: PChar): Boolean;
     function KeyHash: Integer;
@@ -421,8 +425,9 @@ type
     function Func103: TtkTokenKind;
     function Func105: TtkTokenKind;
     function Func106: TtkTokenKind;
-    function Func108: TtkTokenKind;  // "operator"
-    function Func112: TtkTokenKind;  // "requires"
+    function Func108: TtkTokenKind; // "operator"
+    function Func111: TtkTokenKind; // "vectorcall"
+    function Func112: TtkTokenKind; // "requires"
     function Func117: TtkTokenKind;
     function Func122: TtkTokenKind; // "otherwise"
     function Func124: TtkTokenKind;
@@ -507,7 +512,7 @@ type
     function StartPascalCodeFoldBlock
              (ABlockType: TPascalCodeFoldBlockType; ForceDisabled: Boolean = False
               ): TSynCustomCodeFoldBlock;
-    procedure EndPascalCodeFoldBlock(NoMarkup: Boolean = False);
+    procedure EndPascalCodeFoldBlock(NoMarkup: Boolean = False; UndoInvalidOpen: Boolean = False);
     procedure CloseBeginEndBlocksBeforeProc;
     procedure SmartCloseBeginEndBlocks(SearchFor: TPascalCodeFoldBlockType);
     procedure EndPascalCodeFoldBlockLastLine;
@@ -606,7 +611,7 @@ type
     property DirectiveAttri: TSynHighlighterAttributes read fDirectiveAttri
       write fDirectiveAttri;
     property CompilerMode: TPascalCompilerMode read FCompilerMode write SetCompilerMode;
-    property NestedComments: boolean read FNestedComments write FNestedComments;
+    property NestedComments: boolean read FNestedComments write SetNestedComments;
     property D4syntax: boolean read FD4syntax write SetD4syntax default true;
     property ExtendedKeywordsMode: Boolean
              read FExtendedKeywordsMode write SetExtendedKeywordsMode default False;
@@ -783,6 +788,7 @@ begin
   fIdentFuncTable[105] := @Func105;
   fIdentFuncTable[106] := @Func106;
   fIdentFuncTable[108] := @Func108; // "operator"
+  fIdentFuncTable[111] := @Func111; // "vectorcall"
   fIdentFuncTable[112] := @Func112; // "requires"
   fIdentFuncTable[117] := @Func117;
   fIdentFuncTable[122] := @Func122;
@@ -886,9 +892,9 @@ end;
 
 procedure TSynPasSyn.SetCompilerMode(const AValue: TPascalCompilerMode);
 begin
+  NestedComments:=AValue in [pcmFPC,pcmObjFPC]; // NestedComments has to be reset even if CompilerMode doesn't change
   if FCompilerMode=AValue then exit;
   FCompilerMode:=AValue;
-  FNestedComments:=FCompilerMode in [pcmFPC,pcmObjFPC];
   PasCodeFoldRange.Mode:=FCompilerMode;
   //DebugLn(['TSynPasSyn.SetCompilerMode FCompilerMode=',ord(FCompilerMode),' FNestedComments=',FNestedComments]);
 end;
@@ -917,6 +923,7 @@ end;
 function TSynPasSyn.Func15: TtkTokenKind;
 begin
   if KeyComp('If') then begin
+//TODO: case a of 1: while x do if e then ...
     StartPascalCodeFoldBlock(cfbtIfThen, TopPascalCodeFoldBlockType in [cfbtCase, cfbtIfThen]);
     Result := tkKey
   end
@@ -953,8 +960,9 @@ begin
        (PasCodeFoldRange.BracketNestLevel = 0)
     then begin
       // Accidental start of block // End at next semicolon (usually same line)
-      CodeFoldRange.Pop(false); // avoid minlevel
-      CodeFoldRange.Add(Pointer(PtrInt(cfbtUses)), false);
+      fRange := fRange + [rsSkipAllPasBlocks];
+      //CodeFoldRange.Pop(false); // avoid minlevel // does not work, still minlevel for disabled
+      //CodeFoldRange.Add(Pointer(PtrInt(cfbtUses)), false);
     end
     else
     if (TopPascalCodeFoldBlockType = cfbtCase) then begin
@@ -1157,7 +1165,8 @@ function TSynPasSyn.Func39: TtkTokenKind;
 begin
   if KeyComp('For') then begin
     Result := tkKey;
-    StartPascalCodeFoldBlock(cfbtForDo);
+    if TopPascalCodeFoldBlockType in PascalStatementBlocks then
+      StartPascalCodeFoldBlock(cfbtForDo);
   end
   else
     if KeyComp('Shl') then Result := tkKey else Result := tkIdentifier;
@@ -1289,9 +1298,9 @@ function TSynPasSyn.Func54: TtkTokenKind;
 begin
   if KeyComp('Class') then begin
     Result := tkKey;
-    if (rsAfterEqualOrColon in fRange) and (PasCodeFoldRange.BracketNestLevel = 0)
+    if (rsAfterEqual in fRange) and (PasCodeFoldRange.BracketNestLevel = 0)
     then begin
-      fRange := fRange + [rsAtClass] - [rsVarTypeInSpecification];
+      fRange := fRange + [rsAtClass] - [rsVarTypeInSpecification, rsAfterEqual];
       StartPascalCodeFoldBlock(cfbtClass);
     end;
   end
@@ -1305,7 +1314,7 @@ begin
     Result := tkKey;
     if (rsAfterEqualOrColon in fRange) and (PasCodeFoldRange.BracketNestLevel = 0)
     then begin
-      fRange := fRange + [rsAtClass] - [rsVarTypeInSpecification];
+      fRange := fRange + [rsAtClass] - [rsVarTypeInSpecification, rsAfterEqual];
       StartPascalCodeFoldBlock(cfbtClass);
     end;
   end
@@ -1384,7 +1393,7 @@ begin
     StartPascalCodeFoldBlock(cfbtRecord);
     fRange := fRange - [rsVarTypeInSpecification];
     if CompilerMode = pcmDelphi then
-      fRange := fRange + [rsAtClass]; // highlight helper
+      fRange := fRange + [rsAtClass] - [rsAfterEqual]; // highlight helper
     Result := tkKey;
   end
   else if KeyComp('Array') then Result := tkKey
@@ -2319,9 +2328,17 @@ begin
     Result := tkKey else Result := tkIdentifier;
 end;
 
+function TSynPasSyn.Func111: TtkTokenKind;
+begin
+  if KeyComp('vectorcall') and (TopPascalCodeFoldBlockType in ProcModifierAllowed) then
+    Result := tkKey
+  else
+    Result := tkIdentifier;
+end;
+
 function TSynPasSyn.AltFunc: TtkTokenKind;
 begin
-  Result := tkIdentifier
+  Result := tkIdentifier;
 end;
 
 function TSynPasSyn.IdentKind(p: integer): TtkTokenKind;
@@ -2330,7 +2347,7 @@ var
 begin
   fToIdent := p;
   HashKey := KeyHash;
-  if HashKey < 192 then
+  if HashKey <= High(fIdentFuncTable) then
     Result := fIdentFuncTable[HashKey]()
   else
     Result := tkIdentifier;
@@ -2456,6 +2473,13 @@ begin
     Next;
 end; { SetLine }
 
+procedure TSynPasSyn.SetNestedComments(const ANestedComments: boolean);
+begin
+  if FNestedComments = ANestedComments then Exit;
+  FNestedComments := ANestedComments;
+  PasCodeFoldRange.NestedComments:=FNestedComments;
+end;
+
 procedure TSynPasSyn.AddressOpProc;
 begin
   fTokenID := tkSymbol;
@@ -2538,6 +2562,23 @@ end;
 procedure TSynPasSyn.DirectiveProc;
 begin
   fTokenID := tkDirective;
+  if TextComp('modeswitch') then begin
+    // modeswitch directive
+    inc(Run,10);
+    // skip space
+    while (fLine[Run] in [' ',#9,#10,#13]) do inc(Run);
+    if TextComp('nestedcomments') then
+    begin
+      inc(Run,14);
+      // skip space
+      while (fLine[Run] in [' ',#9,#10,#13]) do inc(Run);
+      if fLine[Run] in ['+', '}'] then
+        NestedComments:=True
+      else
+      if fLine[Run] = '-' then
+        NestedComments:=False;
+    end;
+  end;
   if TextComp('mode') then begin
     // $mode directive
     inc(Run,4);
@@ -2982,22 +3023,26 @@ end;
 procedure TSynPasSyn.SemicolonProc;
 var
   tfb: TPascalCodeFoldBlockType;
+  InSkipBlocks: Boolean;
 begin
-  Inc(Run);
   fTokenID := tkSymbol;
   tfb := TopPascalCodeFoldBlockType;
+  InSkipBlocks := rsSkipAllPasBlocks in fRange;
+  Exclude(fRange, rsSkipAllPasBlocks);
 
+  fStringLen := 1;
   if tfb = cfbtUses then
     EndPascalCodeFoldBlock;
 
-  if (tfb = cfbtClass) and (rsAfterClass in fRange) then
-    EndPascalCodeFoldBlock(True);
+  if (tfb = cfbtClass) and ((rsAfterClass in fRange) or InSkipBlocks) then
+    EndPascalCodeFoldBlock(True, True);
 
-  fStringLen:=0;
   while (tfb in [cfbtIfThen,cfbtIfElse,cfbtForDo,cfbtWhileDo,cfbtWithDo]) do begin
     EndPascalCodeFoldBlock(True);
     tfb := TopPascalCodeFoldBlockType;
   end;
+
+  Inc(Run);
 
   if (tfb = cfbtCase) then
     fRange := fRange + [rsAtCaseLabel];
@@ -3273,6 +3318,7 @@ begin
   //DebugLn(['TSynPasSyn.SetRange START']);
   inherited SetRange(Value);
   CompilerMode := PasCodeFoldRange.Mode;
+  NestedComments := PasCodeFoldRange.NestedComments;
   fRange := TRangeStates(Integer(PtrUInt(CodeFoldRange.RangeType)));
   FSynPasRangeInfo := TSynHighlighterPasRangeList(CurrentRanges).PasRangeInfo[LineIndex-1];
 end;
@@ -3347,8 +3393,11 @@ var
   r, r2: Pointer;
 begin
   Assert(CurrentRanges <> nil, 'TSynCustomFoldHighlighter.FoldBlockEndLevel requires CurrentRanges');
-
   Result := 0;
+  inf.EndLevelIfDef := 0;
+  inf.MinLevelIfDef := 0;
+  inf.EndLevelRegion := 0;
+  inf.MinLevelRegion := 0;
   if (ALineIndex < 0) or (ALineIndex >= CurrentLines.Count - 1) then
     exit;
 
@@ -3397,8 +3446,11 @@ var
   r, r2: Pointer;
 begin
   Assert(CurrentRanges <> nil, 'TSynCustomFoldHighlighter.FoldBlockMinLevel requires CurrentRanges');
-
   Result := 0;
+  inf.EndLevelIfDef := 0;
+  inf.MinLevelIfDef := 0;
+  inf.EndLevelRegion := 0;
+  inf.MinLevelRegion := 0;
   if (ALineIndex < 0) or (ALineIndex >= CurrentLines.Count - 1) then
     exit;
 
@@ -3842,11 +3894,12 @@ var
   act: TSynFoldActions;
   nd: TSynFoldNodeInfo;
 begin
+  if rsSkipAllPasBlocks in fRange then exit(nil);
   BlockEnabled := FFoldConfig[ord(ABlockType)].Enabled;
   if (not BlockEnabled) and (not ForceDisabled) and
      (not FFoldConfig[ord(ABlockType)].IsEssential)
   then
-    exit;
+    exit(nil);
 
   FoldBlock := BlockEnabled and (FFoldConfig[ord(ABlockType)].Modes * [fmFold, fmHide] <> []);
   p := 0;
@@ -3865,13 +3918,15 @@ begin
   Result:=TSynCustomCodeFoldBlock(StartCodeFoldBlock(p+Pointer(PtrInt(ABlockType)), FoldBlock, True));
 end;
 
-procedure TSynPasSyn.EndPascalCodeFoldBlock(NoMarkup: Boolean = False);
+procedure TSynPasSyn.EndPascalCodeFoldBlock(NoMarkup: Boolean;
+  UndoInvalidOpen: Boolean);
 var
   DecreaseLevel, BlockEnabled: Boolean;
   act: TSynFoldActions;
   BlockType: TPascalCodeFoldBlockType;
   nd: TSynFoldNodeInfo;
 begin
+  Exclude(fRange, rsSkipAllPasBlocks);
   BlockType := TopPascalCodeFoldBlockType;
   if BlockType in [cfbtVarType, cfbtLocalVarType] then
     fRange := fRange - [rsInTypeBlock];
@@ -3887,6 +3942,8 @@ begin
       act := act - [sfaFold, sfaFoldFold, sfaFoldHide];
     if NoMarkup then
       exclude(act, sfaMarkup);
+    if UndoInvalidOpen then
+      act := act - [sfaMarkup, {sfaFold,} sfaFoldFold, sfaFoldHide, sfaOutline]; // sfaFold affects the EndOffset for the fold-lvl
     DoInitNode(nd{%H-}, True, Pointer(PtrUInt(BlockType)), act, DecreaseLevel);
     CollectingNodeInfoList.Add(nd);
   end;
@@ -4422,6 +4479,8 @@ begin
 
   Result:=ord(FMode)-ord(TSynPasSynRange(Range).FMode);
   if Result<>0 then exit;
+  Result:=ord(FNestedComments)-ord(TSynPasSynRange(Range).FNestedComments);
+  if Result<>0 then exit;
   Result := FBracketNestLevel - TSynPasSynRange(Range).FBracketNestLevel;
   if Result<>0 then exit;
   Result := FLastLineCodeFoldLevelFix - TSynPasSynRange(Range).FLastLineCodeFoldLevelFix;
@@ -4434,6 +4493,7 @@ begin
   if (Src<>nil) and (Src<>TSynCustomHighlighterRange(NullRange)) then begin
     inherited Assign(Src);
     FMode:=TSynPasSynRange(Src).FMode;
+    FNestedComments:=TSynPasSynRange(Src).FNestedComments;
     FBracketNestLevel:=TSynPasSynRange(Src).FBracketNestLevel;
     FLastLineCodeFoldLevelFix := TSynPasSynRange(Src).FLastLineCodeFoldLevelFix;
     FPasFoldFixLevel := TSynPasSynRange(Src).FPasFoldFixLevel;

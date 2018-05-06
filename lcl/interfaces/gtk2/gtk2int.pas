@@ -39,7 +39,7 @@ uses
   {$EndIf}
   gdk2pixbuf, gtk2, gdk2, glib2, Pango,
   // LazUtils
-  LazFileUtils, LazUTF8, DynHashArray, Maps,
+  LazFileUtils, LazUTF8, DynHashArray, Maps, IntegerList,
   // LCL
   Dialogs, Controls, Forms, LCLStrConsts,
   LMessages, LCLProc, LCLIntf, LCLType, GraphType, GraphMath,
@@ -259,6 +259,7 @@ type
     destructor Destroy; override;
 
     function LCLPlatform: TLCLPlatform; override;
+    function GetLCLCapability(ACapability: TLCLCapability): PtrUInt; override;
 
     procedure AppInit(var ScreenInfo: TScreenInfo); override;
     procedure AppBringToFront; override;

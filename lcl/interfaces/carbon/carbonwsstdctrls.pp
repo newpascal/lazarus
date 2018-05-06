@@ -72,7 +72,6 @@ type
     class procedure SetItemIndex(const ACustomComboBox: TCustomComboBox; NewIndex: integer); override;
     class procedure SetMaxLength(const ACustomComboBox: TCustomComboBox; NewLength: integer); override;
     class procedure SetStyle(const ACustomComboBox: TCustomComboBox; {%H-}NewStyle: TComboBoxStyle); override;
-    class procedure SetReadOnly(const ACustomComboBox: TCustomComboBox; NewReadOnly: boolean); override;
 
     class function  GetItems(const ACustomComboBox: TCustomComboBox): TStrings; override;
     class procedure Sort(const ACustomComboBox: TCustomComboBox; AList: TStrings; IsSorted: boolean); override;
@@ -104,6 +103,7 @@ type
     class procedure SetBorderStyle(const AWinControl: TWinControl; const ABorderStyle: TBorderStyle); override;
     //class procedure SetBorder(const ACustomListBox: TCustomListBox); override;
     class procedure SetItemIndex(const ACustomListBox: TCustomListBox; const AIndex: integer); override;
+    class procedure SetScrollWidth(const ACustomListBox: TCustomListBox; const AScrollWidth: Integer); override;
     class procedure SetSelectionMode(const ACustomListBox: TCustomListBox; const AExtendedSelect, AMultiSelect: boolean); override;
     class procedure SetStyle(const ACustomListBox: TCustomListBox); override;
     class procedure SetSorted(const ACustomListBox: TCustomListBox; AList: TStrings; ASorted: boolean); override;
@@ -448,21 +448,6 @@ begin
 end;
 
 {------------------------------------------------------------------------------
-  Method:  TCarbonWSCustomComboBox.SetReadOnly
-  Params:  ACustomComboBox - LCL custom combo box
-           NewReadOnly     - Read only behavior
-
-  Sets the read only behavior of combo box in Carbon interface
- ------------------------------------------------------------------------------}
-class procedure TCarbonWSCustomComboBox.SetReadOnly(const ACustomComboBox: TCustomComboBox;
-  NewReadOnly: boolean);
-begin
-  if not CheckHandle(ACustomComboBox, Self, 'SetReadOnly') then Exit;
-
-  TCarbonComboBox(ACustomComboBox.Handle).SetReadOnly(NewReadOnly);
-end;
-
-{------------------------------------------------------------------------------
   Method:  TCarbonWSCustomComboBox.GetItems
   Params:  ACustomEdit - LCL custom combo box
   Returns: Items of combo box in Carbon interface
@@ -686,6 +671,22 @@ begin
   if not CheckHandle(ACustomListBox, Self, 'SetItemIndex') then Exit;
 
   TCarbonListBox(ACustomListBox.Handle).SetItemIndex(AIndex);
+  TCarbonListBox(ACustomListBox.Handle).ShowItem(AIndex, False);
+end;
+
+{------------------------------------------------------------------------------
+  Method:  TCarbonWSCustomListBox.SetScrollWidth
+  Params:  ACustomListBox - LCL custom list box
+           AScrollWidth   - Scroll width
+
+  Sets scroll width of list box in Carbon interface
+ ------------------------------------------------------------------------------}
+class procedure TCarbonWSCustomListBox.SetScrollWidth(
+  const ACustomListBox: TCustomListBox; const AScrollWidth: Integer);
+begin
+  if not CheckHandle(ACustomListBox, Self, 'SetScrollWidth') then Exit;
+
+  TCarbonListBox(ACustomListBox.Handle).SetScrollWidth(AScrollWidth);
 end;
 
 {------------------------------------------------------------------------------

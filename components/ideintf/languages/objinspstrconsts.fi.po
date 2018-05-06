@@ -288,6 +288,10 @@ msgstr "Aseta arvo"
 msgid "Unable to find parser for tool \"%s\""
 msgstr "Jäsentäjää työkalulle \"%s\" ei löydy"
 
+#: objinspstrconsts.lisunabletofindparserwithname
+msgid "Unable to find parser with name \"%s\""
+msgstr ""
+
 #: objinspstrconsts.nbcesaddpage
 msgctxt "objinspstrconsts.nbcesaddpage"
 msgid "Add Page"
@@ -405,10 +409,6 @@ msgstr "Ko&mponentit"
 msgid "&Properties"
 msgstr "&Ominaisuudet"
 
-#: objinspstrconsts.oiscadd
-msgid "&Add"
-msgstr "&Lisää"
-
 #: objinspstrconsts.oiscancel
 msgctxt "objinspstrconsts.oiscancel"
 msgid "Cancel"
@@ -481,11 +481,11 @@ msgstr "Luo uusi kenttä ja lisää se nykyiseen kohtaan"
 
 #: objinspstrconsts.oiscurrentparent
 msgid "Current parent"
-msgstr ""
+msgstr "Nykyinen emokontrolli"
 
 #: objinspstrconsts.oiscurrentparents
 msgid "Current parents"
-msgstr ""
+msgstr "Nykyiset emokontrollit"
 
 #: objinspstrconsts.oiscutcomponents
 msgctxt "objinspstrconsts.oiscutcomponents"
@@ -593,6 +593,10 @@ msgstr ""
 #: objinspstrconsts.oisinterface
 msgid "Interface"
 msgstr "Rajapinta"
+
+#: objinspstrconsts.oisinvalid
+msgid "(Invalid)"
+msgstr ""
 
 #: objinspstrconsts.oisinvalidpropertyvalue
 msgid "Invalid property value"
@@ -790,11 +794,11 @@ msgstr "Valitse kaikki kentät"
 
 #: objinspstrconsts.oisselectedcontrol
 msgid "Selected control"
-msgstr ""
+msgstr "Valittu komponentti"
 
 #: objinspstrconsts.oisselectedcontrols
 msgid "Selected controls"
-msgstr ""
+msgstr "Valitut komponentit"
 
 #: objinspstrconsts.oisselectedproperties
 msgid "&Selected Properties"
@@ -832,9 +836,13 @@ msgstr "Aseta oletusarvo: %s"
 msgid "Set property value to Default"
 msgstr "Aseta ominaisuuden arvoksi oletus"
 
+#: objinspstrconsts.oisshowalloutputlines
+msgid "Show all output lines"
+msgstr ""
+
 #: objinspstrconsts.oisshowclasses
 msgid "Show classes"
-msgstr ""
+msgstr "Näytä luokat"
 
 #: objinspstrconsts.oisshowcomponenttree
 msgid "Show Component Tree"
@@ -1296,6 +1304,14 @@ msgstr "Lohkojen muokkain ..."
 msgid "&Add ..."
 msgstr "&Lisää ..."
 
+#: objinspstrconsts.sccsiledtaddmoreresolutions
+msgid "Add more resolutions ..."
+msgstr ""
+
+#: objinspstrconsts.sccsiledtaddnewresolution
+msgid "New resolution ..."
+msgstr ""
+
 #: objinspstrconsts.sccsiledtadjustment
 msgid "Adjustment"
 msgstr "Säätö"
@@ -1304,6 +1320,10 @@ msgstr "Säätö"
 msgctxt "objinspstrconsts.sccsiledtapply"
 msgid "&Apply"
 msgstr "&Käytä"
+
+#: objinspstrconsts.sccsiledtcannotdeleteresolution
+msgid "Cannot delete default resolution."
+msgstr ""
 
 #: objinspstrconsts.sccsiledtcaption
 msgid "ImageList Editor"
@@ -1327,6 +1347,14 @@ msgctxt "objinspstrconsts.sccsiledtdelete"
 msgid "&Delete"
 msgstr "&Poista"
 
+#: objinspstrconsts.sccsiledtdeleteresolution
+msgid "Delete resolution ..."
+msgstr ""
+
+#: objinspstrconsts.sccsiledtdeleteresolutionconfirmation
+msgid "Select the resolution to delete."
+msgstr ""
+
 #: objinspstrconsts.sccsiledtgrplcaption
 msgid "Images"
 msgstr "Kuvat"
@@ -1334,6 +1362,10 @@ msgstr "Kuvat"
 #: objinspstrconsts.sccsiledtgrprcaption
 msgid "Selected Image"
 msgstr "Valittu kuva"
+
+#: objinspstrconsts.sccsiledtimagewidthofnewresolution
+msgid "Image width of the new resolution:"
+msgstr ""
 
 #: objinspstrconsts.sccsiledtmovedown
 msgctxt "objinspstrconsts.sccsiledtmovedown"
@@ -1355,7 +1387,7 @@ msgstr "Lisää Kuvat"
 
 #: objinspstrconsts.sccsiledtopendialogn
 msgid "New Image"
-msgstr ""
+msgstr "Uusi kuva"
 
 #: objinspstrconsts.sccsiledtransparentcolor
 msgid "Transparent Color:"
@@ -1363,6 +1395,10 @@ msgstr "Läpinäkyvä väri:"
 
 #: objinspstrconsts.sccsiledtreplace
 msgid "&Replace ..."
+msgstr "&Korvaa ..."
+
+#: objinspstrconsts.sccsiledtreplaceallresolutions
+msgid "Replace all resolutions ..."
 msgstr ""
 
 #: objinspstrconsts.sccsiledtsave
@@ -1587,7 +1623,7 @@ msgstr "Lisää yksittäisenä"
 
 #: objinspstrconsts.s_confirm_clear
 msgid "Are you sure to clear image list?"
-msgstr ""
+msgstr "Tyhjennetäänkö kuvaluettelo?"
 
 #: objinspstrconsts.s_splitimage
 msgid "Split image"

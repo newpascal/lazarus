@@ -12,16 +12,15 @@ object IDEOptionsDialog: TIDEOptionsDialog
   Constraints.MinWidth = 500
   OnShow = FormShow
   Position = poScreenCenter
-  LCLVersion = '1.7'
-  Scaled = True
+  LCLVersion = '1.9.0.0'
   object ButtonPanel: TButtonPanel
     AnchorSideLeft.Control = Owner
     AnchorSideRight.Control = Owner
     AnchorSideRight.Side = asrBottom
     AnchorSideBottom.Control = Owner
     Left = 6
-    Height = 34
-    Top = 460
+    Height = 33
+    Top = 461
     Width = 788
     BorderSpacing.Left = 6
     BorderSpacing.Right = 6
@@ -41,7 +40,7 @@ object IDEOptionsDialog: TIDEOptionsDialog
   end
   object CatTVSplitter: TSplitter
     Left = 255
-    Height = 460
+    Height = 461
     Top = 0
     Width = 4
   end
@@ -49,12 +48,12 @@ object IDEOptionsDialog: TIDEOptionsDialog
     AnchorSideLeft.Control = Owner
     AnchorSideTop.Control = Owner
     Left = 0
-    Height = 460
+    Height = 461
     Top = 0
     Width = 255
     Align = alLeft
     BevelOuter = bvNone
-    ClientHeight = 460
+    ClientHeight = 461
     ClientWidth = 255
     Constraints.MinWidth = 150
     TabOrder = 2
@@ -66,12 +65,11 @@ object IDEOptionsDialog: TIDEOptionsDialog
       AnchorSideRight.Side = asrBottom
       AnchorSideBottom.Control = SettingsPanel
       Left = 6
-      Height = 405
+      Height = 406
       Top = 35
       Width = 249
       Anchors = [akTop, akLeft, akRight, akBottom]
       BorderSpacing.Top = 6
-      DefaultItemHeight = 18
       ReadOnly = True
       TabOrder = 0
       OnChange = CategoryTreeChange
@@ -89,21 +87,19 @@ object IDEOptionsDialog: TIDEOptionsDialog
       Top = 6
       Width = 249
       OnFilterItem = FilterEditFilterItem
-      UseFormActivate = True
       ButtonWidth = 23
       NumGlyphs = 1
       Anchors = [akTop, akLeft, akRight]
       BorderSpacing.Left = 6
       BorderSpacing.Top = 6
       MaxLength = 0
-      ParentFont = False
       TabOrder = 1
       FilteredTreeview = CategoryTree
     end
     object SettingsPanel: TPanel
       Left = 0
       Height = 20
-      Top = 440
+      Top = 441
       Width = 255
       Align = alBottom
       AutoSize = True
@@ -146,11 +142,13 @@ object IDEOptionsDialog: TIDEOptionsDialog
       AnchorSideLeft.Control = BuildModeComboBox
       AnchorSideLeft.Side = asrBottom
       AnchorSideTop.Control = BuildModeComboBox
-      AnchorSideTop.Side = asrCenter
+      AnchorSideBottom.Control = BuildModeComboBox
+      AnchorSideBottom.Side = asrBottom
       Left = 281
-      Height = 25
-      Top = 4
-      Width = 50
+      Height = 23
+      Top = 5
+      Width = 23
+      Anchors = [akTop, akLeft, akBottom]
       BorderSpacing.Left = 1
       Caption = '...'
       OnClick = BuildModeManageButtonClick
@@ -179,7 +177,7 @@ object IDEOptionsDialog: TIDEOptionsDialog
     AnchorSideRight.Side = asrBottom
     AnchorSideBottom.Control = ButtonPanel
     Left = 259
-    Height = 420
+    Height = 421
     Top = 40
     Width = 535
     HorzScrollBar.Page = 1

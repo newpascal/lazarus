@@ -6,9 +6,10 @@ msgstr ""
 "Project-Id-Version: \n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: \n"
-"Last-Translator: Marcelo B Paula\n"
+"Last-Translator: Marcelo B Paula <marcelo.bp@netsite.com.br>\n"
 "Language-Team: \n"
-"X-Generator: Poedit 1.5.4\n"
+"X-Generator: Poedit 1.8.13\n"
+"Language: pt_BR\n"
 
 #: codetoolsstrconsts.crsbracketnotfound
 msgid "bracket ) not found"
@@ -78,6 +79,10 @@ msgstr "parentêses %s não encontrado"
 msgid "bracket open expected, but %s found"
 msgstr "esperado parentêses de abertura, mas %s encontrado"
 
+#: codetoolsstrconsts.ctscannotaddaunittotheimplementationbecauseonlyaunith
+msgid "cannot add a unit to the implementation, because only a unit has one"
+msgstr "impossível adicionar uma unidade à implementação, porque apenas uma unidade possui uma"
+
 #: codetoolsstrconsts.ctscharacterconstantoutofrange
 msgid "character constant out of range"
 msgstr "constante caractere fora de faixa"
@@ -95,10 +100,12 @@ msgid "class node without parent node"
 msgstr "nó classe sem nó pai"
 
 #: codetoolsstrconsts.ctsclassnotfound
-#, fuzzy,badformat
-#| msgid "class %s%s%s not found"
 msgid "class \"%s\" not found"
-msgstr "classe %s%s%s não encontrada"
+msgstr "classe \"%s\" não encontrada"
+
+#: codetoolsstrconsts.ctsclassnotfound2
+msgid "class not found \"%s\""
+msgstr "classe não encontrada \"%s\""
 
 #: codetoolsstrconsts.ctsclassofdefinitionnotresolved
 msgid "\"class of\" definition not resolved: %s"
@@ -384,7 +391,7 @@ msgstr "Há Erros"
 
 #: codetoolsstrconsts.ctshelperisnotallowed
 msgid "Helper after %s is not allowed"
-msgstr ""
+msgstr "Helper após %s não é permitido"
 
 #: codetoolsstrconsts.ctsidedirectory
 msgid "IDE Directory"
@@ -495,16 +502,12 @@ msgid "interface section not found"
 msgstr "seção interface não encontrada"
 
 #: codetoolsstrconsts.ctsinvalidclassname
-#, fuzzy,badformat
-#| msgid "invalid class name=%s%s%s"
 msgid "invalid class name=\"%s\""
-msgstr "nome de classe inválida=%s%s%s"
+msgstr "nome de classe inválida=\"%s\""
 
 #: codetoolsstrconsts.ctsinvalidclassname2
-#, fuzzy,badformat
-#| msgid "invalid class name %s%s%s"
 msgid "invalid class name \"%s\""
-msgstr "nome de classe inválida %s%s%s"
+msgstr "nome de classe inválida \"%s\""
 
 #: codetoolsstrconsts.ctsinvalidflagvaluefordirective
 msgid "invalid flag value \"%s\" for directive %s"
@@ -522,6 +525,10 @@ msgstr "opção \"modo\" inválida \"%s\""
 msgid "invalid operator %s"
 msgstr "operador %s inválido"
 
+#: codetoolsstrconsts.ctsinvalidpositionforinsertionofstatements
+msgid "invalid position for insertion of statements"
+msgstr "posição inválida para inserção de declarações"
+
 #: codetoolsstrconsts.ctsinvalidsubrange
 msgid "invalid subrange"
 msgstr "subfaixa inválida"
@@ -531,16 +538,12 @@ msgid "invalid type"
 msgstr "tipo inválido"
 
 #: codetoolsstrconsts.ctsinvalidvariablename
-#, fuzzy,badformat
-#| msgid "invalid variable name %s%s%s"
 msgid "invalid variable name \"%s\""
-msgstr "nome de variável inválida %s%s%s"
+msgstr "nome de variável inválida \"%s\""
 
 #: codetoolsstrconsts.ctsinvalidvariabletype
-#, fuzzy,badformat
-#| msgid "invalid variable type %s%s%s"
 msgid "invalid variable type \"%s\""
-msgstr "tipo variável inválido %s%s%s"
+msgstr "tipo variável inválido \"%s\""
 
 #: codetoolsstrconsts.ctskeyword
 msgid "keyword"
@@ -561,6 +564,10 @@ msgstr "diretório principal do Lazarus"
 #: codetoolsstrconsts.ctslazarussources
 msgid "Lazarus Sources"
 msgstr "Fontes do Lazarus"
+
+#: codetoolsstrconsts.ctsmethodhasnodeclaration
+msgid "method \"%s\" has no declaration"
+msgstr "método \"%s\" não tem declaração"
 
 #: codetoolsstrconsts.ctsmethodname
 msgid "method name"
@@ -769,10 +776,8 @@ msgid "SrcPath Initialization"
 msgstr "Inicialização \"SrcPath\""
 
 #: codetoolsstrconsts.ctsstrexpectedbutatomfound
-#, fuzzy
-#| msgid "%s expected, but %s found"
 msgid "expected %s, but %s found"
-msgstr "%s esperado, mas %s encontrado"
+msgstr "esperando %s, mas %s encontrado"
 
 #: codetoolsstrconsts.ctsstringconstant
 msgid "string constant"
@@ -846,6 +851,10 @@ msgstr "palavra-chave inesperada \"%s\" encontrada em \"begin..end\""
 msgid "unexpected keyword \"%s\" found while reading blocks backwards"
 msgstr "palavra-chave inesperada \"%s\" encontrada durante leitura reversa dos blocos"
 
+#: codetoolsstrconsts.ctsunexpectedsectionkeyword
+msgid "unexpected section keyword %s found"
+msgstr "palavra-chave de seção inesperada %s encontrada"
+
 #: codetoolsstrconsts.ctsunexpectedsubrangeoperatorfound
 msgid "unexpected subrange operator '..' found"
 msgstr "operador subfaixa \"..\" encontrado inexperadamente"
@@ -865,10 +874,6 @@ msgstr "Função desconhecida %s"
 #: codetoolsstrconsts.ctsunknownmainfilename
 msgid "(unknown mainfilename)"
 msgstr "(arquivo principal desconhecido)"
-
-#: codetoolsstrconsts.ctsunknownsectionkeyword
-msgid "unknown section keyword %s found"
-msgstr "encontrada palavra-chave de seção desconhecida: %s "
 
 #: codetoolsstrconsts.ctsunknownsubdescriptor
 msgid "(unknown subdescriptor %s)"

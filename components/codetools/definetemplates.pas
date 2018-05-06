@@ -54,13 +54,13 @@ interface
 
 uses
   // RTL + FCL
-  Classes, SysUtils, AVL_Tree, contnrs, process,
+  Classes, SysUtils, contnrs, process, Laz_AVL_Tree,
   // CodeTools
   CodeToolsStrConsts, ExprEval, DirectoryCacher, BasicCodeTools,
   CodeToolsStructs, KeywordFuncLists, LinkScanner, FileProcs,
   // LazUtils
   LazUtilities, LazUTF8, LazUTF8Classes, LazFileUtils, UTF8Process,
-  LazFileCache, LazDbgLog, Laz2_XMLCfg;
+  LazFileCache, LazDbgLog, AvgLvlTree, Laz2_XMLCfg;
 
 const
   ExternalMacroStart = ExprEval.ExternalMacroStart;
@@ -86,6 +86,7 @@ const
   FPCUnitPathMacroName     = ExternalMacroStart+'FPCUnitPath';
   TargetOSMacroName        = ExternalMacroStart+'TargetOS';
   TargetCPUMacroName       = ExternalMacroStart+'TargetCPU';
+  NamespacesMacroName      = ExternalMacroStart+'Namespaces';
 
   DefinePathMacro          = '$('+DefinePathMacroName+')'; // the path of the define template
   UnitPathMacro            = '$('+UnitPathMacroName+')';
@@ -99,7 +100,9 @@ const
   FPCUnitPathMacro         = '$('+FPCUnitPathMacroName+')';
   TargetOSMacro            = '$('+TargetOSMacroName+')';
   TargetCPUMacro           = '$('+TargetCPUMacroName+')';
+  NamespacesMacro          = '$('+NamespacesMacroName+')';
 
+  MacOSMinSDKVersionMacro = 'MAC_OS_X_VERSION_MIN_REQUIRED';
 
   // virtual directories
   VirtualDirectory='VIRTUALDIRECTORY';
@@ -182,7 +185,7 @@ const
   FPCOperatingSystemAlternative2Names: array[1..2] of shortstring =(
       'bsd', 'linux' // see GetDefaultSrcOS2ForTargetOS
     );
-  FPCProcessorNames: array[1..12] of shortstring =(
+  FPCProcessorNames: array[1..13] of shortstring =(
       'aarch64',
       'arm',
       'avr',
@@ -193,6 +196,7 @@ const
       'mips',
       'mipsel',
       'powerpc',
+      'powerpc64',
       'sparc',
       'x86_64'
     );
@@ -200,7 +204,7 @@ const
     'FPC', 'ObjFPC', 'Delphi', 'TP', 'MacPas', 'ISO'
     );
 
-  Lazarus_CPU_OS_Widget_Combinations: array[1..81] of shortstring = (
+  Lazarus_CPU_OS_Widget_Combinations: array[1..91] of shortstring = (
     'i386-linux-gtk',
     'i386-linux-gtk2',
     'i386-linux-qt',
@@ -251,6 +255,16 @@ const
     'powerpc-linux-nogui',
     'powerpc-morphos-mui',
     'powerpc-morphos-nogui',
+    'powerpc64-darwin-gtk',
+    'powerpc64-darwin-gtk2',
+    'powerpc64-darwin-cocoa',
+    'powerpc64-darwin-nogui',
+    'powerpc64-linux-gtk',
+    'powerpc64-linux-gtk2',
+    'powerpc64-linux-nogui',
+    'powerpc64-aix-gtk',
+    'powerpc64-aix-gtk2',
+    'powerpc64-aix-nogui',
     'sparc-linux-gtk',
     'sparc-linux-gtk2',
     'sparc-linux-nogui',
@@ -713,49 +727,53 @@ const
 
 type
 
-  { TFPCConfigFileState
+  { TPCConfigFileState
     Store if a config file exists and its modification date }
 
-  TFPCConfigFileState = class
+  TPCConfigFileState = class
   public
     Filename: string;
     FileExists: boolean;
     FileDate: longint;
     constructor Create(const aFilename: string;
                        aFileExists: boolean; aFileDate: longint);
-    function Equals(Other: TFPCConfigFileState; CheckDate: boolean): boolean; reintroduce;
+    function Equals(Other: TPCConfigFileState; CheckDate: boolean): boolean; reintroduce;
     procedure LoadFromXMLConfig(XMLConfig: TXMLConfig; const Path: string);
     procedure SaveToXMLConfig(XMLConfig: TXMLConfig; const Path: string);
   end;
 
-  { TFPCConfigFileStateList
-    list of TFPCConfigFileState }
+  TFPCConfigFileState = TPCConfigFileState deprecated 'use TPCConfigFileState'; // Laz 1.9
 
-  TFPCConfigFileStateList = class
+  { TPCConfigFileStateList
+    list of TPCConfigFileState }
+
+  TPCConfigFileStateList = class
   private
     fItems: TFPList;
-    function GetItems(Index: integer): TFPCConfigFileState;
+    function GetItems(Index: integer): TPCConfigFileState;
   public
     constructor Create;
     destructor Destroy; override;
     procedure Clear;
-    procedure Assign(List: TFPCConfigFileStateList);
-    function Equals(List: TFPCConfigFileStateList; CheckDates: boolean): boolean; reintroduce;
+    procedure Assign(List: TPCConfigFileStateList);
+    function Equals(List: TPCConfigFileStateList; CheckDates: boolean): boolean; reintroduce;
     function Add(aFilename: string; aFileExists: boolean;
-                 aFileDate: longint): TFPCConfigFileState;
+                 aFileDate: longint): TPCConfigFileState;
     function Count: integer;
-    property Items[Index: integer]: TFPCConfigFileState read GetItems; default;
+    property Items[Index: integer]: TPCConfigFileState read GetItems; default;
     procedure LoadFromXMLConfig(XMLConfig: TXMLConfig; const Path: string);
     procedure SaveToXMLConfig(XMLConfig: TXMLConfig; const Path: string);
   end;
 
-  TFPCTargetConfigCaches = class;
+  TFPCConfigFileStateList = TPCConfigFileStateList deprecated 'use TPCConfigFileStateList'; // Laz 1.9
 
-  { TFPCTargetConfigCache
+  TPCTargetConfigCaches = class;
+
+  { TPCTargetConfigCache
     Storing all information (macros, search paths) of one compiler
     with one specific TargetOS and TargetCPU. }
 
-  TFPCTargetConfigCache = class(TComponent)
+  TPCTargetConfigCache = class(TComponent)
   private
     FChangeStamp: integer;
   public
@@ -765,6 +783,7 @@ type
     Compiler: string; // full file name
     CompilerOptions: string; // e.g. -V<version> -Xp<path>
     // values
+    Kind: TPascalCompiler;
     CompilerDate: longint;
     RealCompiler: string; // when Compiler is fpc, this is the real compiler (e.g. ppc386)
     RealCompilerDate: longint;
@@ -772,19 +791,21 @@ type
     RealTargetCPU: string;
     RealCompilerInPath: string; // the ppc<target> in PATH
     FullVersion: string; // Version.Release.Patch
-    ConfigFiles: TFPCConfigFileStateList;
+    ConfigFiles: TPCConfigFileStateList;
     UnitPaths: TStrings;
+    IncludePaths: TStrings;
     Defines: TStringToStringTree; // macro to value
     Undefines: TStringToStringTree; // macro
     Units: TStringToStringTree; // unit name to file name
+    Includes: TStringToStringTree; // inc name to file name
     ErrorMsg: string;
     ErrorTranslatedMsg: string;
-    Caches: TFPCTargetConfigCaches;
+    Caches: TPCTargetConfigCaches;
     HasPPUs: boolean;
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure Clear; // values, not keys
-    function Equals(Item: TFPCTargetConfigCache;
+    function Equals(Item: TPCTargetConfigCache;
                     CompareKey: boolean = true): boolean; reintroduce;
     procedure Assign(Source: TPersistent); override;
     procedure LoadFromXMLConfig(XMLConfig: TXMLConfig; const Path: string);
@@ -805,20 +826,22 @@ type
     property ChangeStamp: integer read FChangeStamp;
   end;
 
-  { TFPCTargetConfigCaches
-    List of TFPCTargetConfigCache }
+  TFPCTargetConfigCache = TPCTargetConfigCache deprecated 'use TPCTargetConfigCache'; // Laz 1.9
 
-  TFPCTargetConfigCaches = class(TComponent)
+  { TPCTargetConfigCaches
+    List of TPCTargetConfigCache }
+
+  TPCTargetConfigCaches = class(TComponent)
   private
     FChangeStamp: integer;
     FExtraOptions: string;
-    fItems: TAVLTree; // tree of TFPCTargetConfigCache
+    fItems: TAVLTree; // tree of TPCTargetConfigCache
     FTestFilename: string;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure Clear;
-    function Equals(Caches: TFPCTargetConfigCaches): boolean; reintroduce;
+    function Equals(Caches: TPCTargetConfigCaches): boolean; reintroduce;
     procedure Assign(Source: TPersistent); override;
     procedure LoadFromXMLConfig(XMLConfig: TXMLConfig; const Path: string);
     procedure SaveToXMLConfig(XMLConfig: TXMLConfig; const Path: string);
@@ -827,13 +850,15 @@ type
     procedure IncreaseChangeStamp;
     property ChangeStamp: integer read FChangeStamp;
     function Find(CompilerFilename, CompilerOptions, TargetOS, TargetCPU: string;
-                  CreateIfNotExists: boolean): TFPCTargetConfigCache;
+                  CreateIfNotExists: boolean): TPCTargetConfigCache;
     procedure GetDefaultCompilerTarget(const CompilerFilename,CompilerOptions: string;
                   out TargetOS, TargetCPU: string);
     function GetListing: string;
     property TestFilename: string read FTestFilename write FTestFilename; // an empty file to test the compiler, will be auto created
     property ExtraOptions: string read FExtraOptions write FExtraOptions; // additional compiler options not used as key, e.g. -Fr<language file>
   end;
+
+  TFPCTargetConfigCaches = TPCTargetConfigCaches deprecated 'use TPCTargetConfigCaches'; // Laz 1.9
 
   TFPCSourceCaches = class;
 
@@ -885,7 +910,7 @@ type
                   CreateIfNotExists: boolean): TFPCSourceCache;
   end;
 
-  TFPCDefinesCache = class;
+  TCompilerDefinesCache = class;
 
   TFPCUnitToSrcCacheFlag = (
     fuscfSrcRulesNeedUpdate,
@@ -899,14 +924,14 @@ type
 
   TFPCUnitSetCache = class(TComponent)
   private
-    FCaches: TFPCDefinesCache;
+    FCaches: TCompilerDefinesCache;
     FChangeStamp: integer;
     FCompilerFilename: string;
     FCompilerOptions: string;
     FFPCSourceDirectory: string;
     FTargetCPU: string;
     FTargetOS: string;
-    FConfigCache: TFPCTargetConfigCache;
+    FConfigCache: TPCTargetConfigCache;
     fSourceCache: TFPCSourceCache;
     fSourceRules: TFPCSourceRules;
     fRulesStampOfConfig: integer; // fSourceCache.ChangeStamp while creation of fFPCSourceRules
@@ -931,13 +956,13 @@ type
     destructor Destroy; override;
     procedure Clear;
     procedure Init;
-    property Caches: TFPCDefinesCache read FCaches;
+    property Caches: TCompilerDefinesCache read FCaches;
     property CompilerFilename: string read FCompilerFilename write SetCompilerFilename;
     property CompilerOptions: string read FCompilerOptions write SetCompilerOptions;
     property TargetOS: string read FTargetOS write SetTargetOS; // case insensitive, will be passed lowercase
     property TargetCPU: string read FTargetCPU write SetTargetCPU; // case insensitive, will be passed lowercase
     property FPCSourceDirectory: string read FFPCSourceDirectory write SetFPCSourceDirectory;
-    function GetConfigCache(AutoUpdate: boolean): TFPCTargetConfigCache;
+    function GetConfigCache(AutoUpdate: boolean): TPCTargetConfigCache;
     function GetSourceCache(AutoUpdate: boolean): TFPCSourceCache;
     function GetSourceRules(AutoUpdate: boolean): TFPCSourceRules;
     function GetUnitToSourceTree(AutoUpdate: boolean): TStringToStringTree; // unit name to file name (maybe relative)
@@ -953,18 +978,18 @@ type
     function GetFirstFPCCfg: string;
   end;
 
-  { TFPCDefinesCache }
+  { TCompilerDefinesCache }
 
-  TFPCDefinesCache = class(TComponent)
+  TCompilerDefinesCache = class(TComponent)
   private
-    FConfigCaches: TFPCTargetConfigCaches;
+    FConfigCaches: TPCTargetConfigCaches;
     FConfigCachesSaveStamp: integer;
     FSourceCaches: TFPCSourceCaches;
     FSourceCachesSaveStamp: integer;
     fUnitToSrcCaches: TFPList; // list of TFPCUnitSetCache
     function GetExtraOptions: string;
     function GetTestFilename: string;
-    procedure SetConfigCaches(const AValue: TFPCTargetConfigCaches);
+    procedure SetConfigCaches(const AValue: TPCTargetConfigCaches);
     procedure SetExtraOptions(AValue: string);
     procedure SetSourceCaches(const AValue: TFPCSourceCaches);
     procedure ClearUnitToSrcCaches;
@@ -979,7 +1004,7 @@ type
     procedure SaveToFile(Filename: string);
     function NeedsSave: boolean;
     property SourceCaches: TFPCSourceCaches read FSourceCaches write SetSourceCaches;
-    property ConfigCaches: TFPCTargetConfigCaches read FConfigCaches write SetConfigCaches;
+    property ConfigCaches: TPCTargetConfigCaches read FConfigCaches write SetConfigCaches;
     property TestFilename: string read GetTestFilename write SetTestFilename; // an empty file to test the compiler, will be auto created
     property ExtraOptions: string read GetExtraOptions write SetExtraOptions; // additional compiler options not used as key, e.g. -Fr<language file>
     function GetFPCVersion(const CompilerFilename, TargetOS, TargetCPU: string;
@@ -996,6 +1021,8 @@ type
                              out ChangeStamp: integer);
   end;
 
+  TFPCDefinesCache = TCompilerDefinesCache deprecated 'use TCompilerDefinesCache'; // 1.9
+
 function DefineActionNameToAction(const s: string): TDefineAction;
 function DefineTemplateFlagsToString(Flags: TDefineTemplateFlags): string;
 function GetDefaultSrcOSForTargetOS(const TargetOS: string): string;
@@ -1010,7 +1037,9 @@ function GetDefaultCompilerFilename(const TargetCPU: string = ''; Cross: boolean
 procedure GetTargetProcessors(const TargetCPU: string; aList: TStrings);
 function GetFPCTargetOS(TargetOS: string): string;
 function GetFPCTargetCPU(TargetCPU: string): string;
+function GetPascalCompilerFromExeName(Filename: string): TPascalCompiler;
 function IsFPCExecutable(AFilename: string; out ErrorMsg: string): boolean; // not thread-safe
+function IsPas2JSExecutable(AFilename: string; out ErrorMsg: string): boolean; // not thread-safe
 
 // functions to quickly setup some defines
 function CreateDefinesInDirectories(const SourcePaths, FlagName: string
@@ -1052,16 +1081,20 @@ function ParseFPCVerbose(List: TStrings; // fpc -va output
                          out ConfigFiles: TStrings; // prefix '-' for file not found, '+' for found and read
                          out RealCompilerFilename: string; // what compiler is used by fpc
                          out UnitPaths: TStrings; // unit search paths
+                         out IncludePaths: TStrings; // inc search paths
                          out Defines, Undefines: TStringToStringTree): boolean;
 function RunFPCVerbose(const CompilerFilename, TestFilename: string;
                        out ConfigFiles: TStrings;
                        out RealCompilerFilename: string;
                        out UnitPaths: TStrings;
+                       out IncludePaths: TStrings;
                        out Defines, Undefines: TStringToStringTree;
                        const Options: string = ''): boolean;
-function GatherUnitsInSearchPaths(SearchPaths: TStrings;
+procedure GatherUnitsInSearchPaths(SearchUnitPaths, SearchIncludePaths: TStrings;
                     const OnProgress: TDefinePoolProgress;
-                    CheckFPMkInst: boolean = false): TStringToStringTree; // unit names to full file name
+                    out Units: TStringToStringTree;
+                    out Includes: TStringToStringTree;
+                    CheckFPMkInst: boolean = false); // unit names to full file name
 function GatherUnitSourcesInDirectory(Directory: string;
                     MaxLevel: integer = 1): TStringToStringTree; // unit names to full file name
 procedure AdjustFPCSrcRulesForPPUPaths(Units: TStringToStringTree;
@@ -1071,7 +1104,7 @@ function GatherUnitsInFPCSources(Files: TStringList;
                    Duplicates: TStringToStringTree = nil; // unit to semicolon separated list of files
                    Rules: TFPCSourceRules = nil;
                    const DebugUnitName: string = ''): TStringToStringTree;
-function CreateFPCTemplate(Config: TFPCTargetConfigCache;
+function CreateFPCTemplate(Config: TPCTargetConfigCache;
                            Owner: TObject): TDefineTemplate; overload;
 function CreateFPCTemplate(Config: TFPCUnitSetCache;
                            Owner: TObject): TDefineTemplate; overload;
@@ -1084,9 +1117,9 @@ procedure CheckPPUSources(PPUFiles,  // unitname to filename
                           UnitToDuplicates: TStringToStringTree; // unitname to semicolon separated list of files
                           var Duplicates, Missing: TStringToStringTree);
 procedure LoadFPCCacheFromFile(Filename: string;
-            var Configs: TFPCTargetConfigCaches; var Sources: TFPCSourceCaches);
+            var Configs: TPCTargetConfigCaches; var Sources: TFPCSourceCaches);
 procedure SaveFPCCacheToFile(Filename: string;
-                    Configs: TFPCTargetConfigCaches; Sources: TFPCSourceCaches);
+                    Configs: TPCTargetConfigCaches; Sources: TFPCSourceCaches);
 
 // FPC
 const
@@ -1314,7 +1347,7 @@ begin
   if (BaseDir<>'') then
     for i:=0 to Result.Count-1 do begin
       Filename:=Result[i];
-      Filename:=copy(Filename,BaseDirLen+1,length(Filename));
+      delete(Filename,1,BaseDirLen);
       if (Filename<>'') and (Filename[1]=PathDelim) then
         System.Delete(Filename,1,1);
       Result[i]:=Filename;
@@ -1555,7 +1588,8 @@ end;
 
 function ParseFPCVerbose(List: TStrings; const WorkDir: string; out
   ConfigFiles: TStrings; out RealCompilerFilename: string; out
-  UnitPaths: TStrings; out Defines, Undefines: TStringToStringTree): boolean;
+  UnitPaths: TStrings; out IncludePaths: TStrings; out Defines,
+  Undefines: TStringToStringTree): boolean;
 
   procedure UndefineSymbol(const MacroName: string);
   begin
@@ -1678,6 +1712,16 @@ function ParseFPCVerbose(List: TStrings; const WorkDir: string; out
         DebugLn('Using unit path: "',NewPath,'"');
         {$ENDIF}
         UnitPaths.Add(NewPath);
+      end else if (StrLComp(@UpLine[CurPos], 'USING INCLUDE PATH: ', 20) = 0) then begin
+        Inc(CurPos, 20);
+        NewPath:=GetForcedPathDelims(copy(Line,CurPos,len));
+        if not FilenameIsAbsolute(NewPath) then
+          NewPath:=ExpFile(NewPath);
+        NewPath:=ChompPathDelim(TrimFilename(NewPath));
+        {$IFDEF VerboseFPCSrcScan}
+        DebugLn('Using include path: "',NewPath,'"');
+        {$ENDIF}
+        IncludePaths.Add(NewPath);
       end;
     end;
   end;
@@ -1689,6 +1733,7 @@ begin
   ConfigFiles:=TStringList.Create;
   RealCompilerFilename:='';
   UnitPaths:=TStringList.Create;
+  IncludePaths:=TStringList.Create;
   Defines:=TStringToStringTree.Create(false);
   Undefines:=TStringToStringTree.Create(false);
   try
@@ -1699,6 +1744,7 @@ begin
     if not Result then begin
       FreeAndNil(ConfigFiles);
       FreeAndNil(UnitPaths);
+      FreeAndNil(IncludePaths);
       FreeAndNil(Undefines);
       FreeAndNil(Defines);
     end;
@@ -1707,8 +1753,8 @@ end;
 
 function RunFPCVerbose(const CompilerFilename, TestFilename: string;
   out ConfigFiles: TStrings; out RealCompilerFilename: string;
-  out UnitPaths: TStrings; out Defines, Undefines: TStringToStringTree;
-  const Options: string): boolean;
+  out UnitPaths: TStrings; out IncludePaths: TStrings;
+  out Defines, Undefines: TStringToStringTree; const Options: string): boolean;
 var
   Params: String;
   Filename: String;
@@ -1720,6 +1766,7 @@ begin
   ConfigFiles:=nil;
   RealCompilerFilename:='';
   UnitPaths:=nil;
+  IncludePaths:=nil;
   Defines:=nil;
   Undefines:=nil;
 
@@ -1747,20 +1794,20 @@ begin
       exit;
     end;
     Result:=ParseFPCVerbose(List,WorkDir,ConfigFiles,RealCompilerFilename,
-                            UnitPaths,Defines,Undefines);
+                            UnitPaths,IncludePaths,Defines,Undefines);
   finally
     List.Free;
     DeleteFileUTF8(TestFilename);
   end;
 end;
 
-function GatherUnitsInSearchPaths(SearchPaths: TStrings;
-  const OnProgress: TDefinePoolProgress; CheckFPMkInst: boolean
-  ): TStringToStringTree;
+procedure GatherUnitsInSearchPaths(SearchUnitPaths, SearchIncludePaths: TStrings;
+  const OnProgress: TDefinePoolProgress; out Units: TStringToStringTree;
+  out Includes: TStringToStringTree; CheckFPMkInst: boolean);
 { returns a stringtree,
   where name is unitname and value is the full file name
 
-  SearchPaths are searched from last to start
+  SearchUnitsPaths are searched from last to start
   first found wins
   pas, pp, p replaces ppu
 
@@ -1789,57 +1836,91 @@ var
   ShortFilename: String;
   Filename: String;
   Ext: String;
-  Unit_Name, PkgName, FPMFilename, FPMSourcePath, Line, SrcFilename: String;
+  File_Name, PkgName, FPMFilename, FPMSourcePath, Line, SrcFilename: String;
   AVLNode: TAVLTreeNode;
-  S2SItem: PStringToStringTreeItem;
+  S2SItem: PStringToStringItem;
   FPMToUnitTree: TStringToPointerTree;// pkgname to TStringToStringTree (unitname to source filename)
   sl: TStringListUTF8;
   PkgUnitToFilename: TStringToStringTree;
 begin
-  Result:=TStringToStringTree.Create(false);
+  // units sources
+  Units:=TStringToStringTree.Create(false);
   FileCount:=0;
   Abort:=false;
-  for i:=SearchPaths.Count-1 downto 0 do begin
-    Directory:=TrimAndExpandDirectory(SearchPaths[i]);
-    if (Directory='') then continue;
-    if FindFirstUTF8(Directory+FileMask,faAnyFile,FileInfo)=0 then begin
-      repeat
-        inc(FileCount);
-        if (FileCount mod 100=0) and Assigned(OnProgress) then begin
-          OnProgress(nil, 0, -1, Format(ctsScannedFiles, [IntToStr(FileCount)]
-            ), Abort);
-          if Abort then break;
-        end;
-        ShortFilename:=FileInfo.Name;
-        if (ShortFilename='') or (ShortFilename='.') or (ShortFilename='..') then
-          continue;
-        //debugln(['GatherUnitsInSearchPaths ShortFilename=',ShortFilename,' IsDir=',(FileInfo.Attr and faDirectory)>0]);
-        Filename:=Directory+ShortFilename;
-        Ext:=LowerCase(ExtractFileExt(ShortFilename));
-        if (Ext='.pas') or (Ext='.pp') or (Ext='.p') or (Ext='.ppu') then begin
-          Unit_Name:=ExtractFileNameOnly(Filename);
-          if (not Result.Contains(Unit_Name))
-          or ((Ext<>'.ppu') and (CompareFileExt(Result[Unit_Name],'ppu',false)=0))
-          then
-            Result[Unit_Name]:=Filename;
-        end;
-      until FindNextUTF8(FileInfo)<>0;
+  if Assigned(SearchUnitPaths) then
+    for i:=SearchUnitPaths.Count-1 downto 0 do begin
+      Directory:=TrimAndExpandDirectory(SearchUnitPaths[i]);
+      if (Directory='') then continue;
+      if FindFirstUTF8(Directory+FileMask,faAnyFile,FileInfo)=0 then begin
+        repeat
+          inc(FileCount);
+          if (FileCount mod 100=0) and Assigned(OnProgress) then begin
+            OnProgress(nil, 0, -1, Format(ctsScannedFiles, [IntToStr(FileCount)]
+              ), Abort);
+            if Abort then break;
+          end;
+          ShortFilename:=FileInfo.Name;
+          if (ShortFilename='') or (ShortFilename='.') or (ShortFilename='..') then
+            continue;
+          //debugln(['GatherUnitsInSearchPaths ShortFilename=',ShortFilename,' IsDir=',(FileInfo.Attr and faDirectory)>0]);
+          Filename:=Directory+ShortFilename;
+          Ext:=LowerCase(ExtractFileExt(ShortFilename));
+          if (Ext='.pas') or (Ext='.pp') or (Ext='.p') or (Ext='.ppu') then begin
+            File_Name:=ExtractFileNameOnly(Filename);
+            if (not Units.Contains(File_Name))
+            or ((Ext<>'.ppu') and (CompareFileExt(Units[File_Name],'ppu',false)=0))
+            then
+              Units[File_Name]:=Filename;
+          end;
+        until FindNextUTF8(FileInfo)<>0;
+      end;
+      FindCloseUTF8(FileInfo);
     end;
-    FindCloseUTF8(FileInfo);
-  end;
 
+  // inc files
+  Includes:=TStringToStringTree.Create(false);
+  if Assigned(SearchIncludePaths) then
+    for i:=SearchIncludePaths.Count-1 downto 0 do begin
+      Directory:=TrimAndExpandDirectory(SearchIncludePaths[i]);
+      if (Directory='') then continue;
+      if FindFirstUTF8(Directory+FileMask,faAnyFile,FileInfo)=0 then begin
+        repeat
+          inc(FileCount);
+          if (FileCount mod 100=0) and Assigned(OnProgress) then begin
+            OnProgress(nil, 0, -1, Format(ctsScannedFiles, [IntToStr(FileCount)]
+              ), Abort);
+            if Abort then break;
+          end;
+          ShortFilename:=FileInfo.Name;
+          if (ShortFilename='') or (ShortFilename='.') or (ShortFilename='..') then
+            continue;
+          //debugln(['GatherUnitsInSearchPaths ShortFilename=',ShortFilename,' IsDir=',(FileInfo.Attr and faDirectory)>0]);
+          Filename:=Directory+ShortFilename;
+          Ext:=LowerCase(ExtractFileExt(ShortFilename));
+          if (Ext='.inc') then begin
+            File_Name:=ExtractFileName(Filename);
+            if (not Includes.Contains(File_Name))
+            then
+              Includes[File_Name]:=Filename;
+          end;
+        until FindNextUTF8(FileInfo)<>0;
+      end;
+      FindCloseUTF8(FileInfo);
+    end;
+
+  // units ppu
   if CheckFPMkInst then begin
     // try to resolve .ppu files via fpmkinst .fpm files
     FPMToUnitTree:=nil;
     try
-      AVLNode:=Result.Tree.FindLowest;
+      AVLNode:=Units.Tree.FindLowest;
       while AVLNode<>nil do begin
-        S2SItem:=PStringToStringTreeItem(AVLNode.Data);
-        Unit_Name:=S2SItem^.Name;
+        S2SItem:=PStringToStringItem(AVLNode.Data);
+        File_Name:=S2SItem^.Name;
         Filename:=S2SItem^.Value; // trimmed and expanded filename
         //if Pos('lazmkunit',Filename)>0 then
         //  debugln(['GatherUnitsInSearchPaths ===== ',Filename]);
-        AVLNode:=Result.Tree.FindSuccessor(AVLNode);
+        AVLNode:=Units.Tree.FindSuccessor(AVLNode);
         if CompareFileExt(Filename,'ppu',false)<>0 then continue;
         // check if filename has the form
         //                  /something/lib/fpc/<FPCVer>/units/<FPCTarget>/<pkgname>/
@@ -1899,11 +1980,11 @@ begin
 
         PkgUnitToFilename:=TStringToStringTree(FPMToUnitTree[PkgName]);
         if PkgUnitToFilename=nil then continue;
-        SrcFilename:=PkgUnitToFilename[Unit_Name];
+        SrcFilename:=PkgUnitToFilename[File_Name];
         if SrcFilename<>'' then begin
           // unit source found in fppkg -> replace ppu with src file
           //debugln(['GatherUnitsInSearchPaths ppu=',Filename,' -> fppkg src=',SrcFilename]);
-          Result[Unit_Name]:=SrcFilename;
+          Units[File_Name]:=SrcFilename;
         end;
       end;
     finally
@@ -2135,11 +2216,10 @@ begin
   end;
 end;
 
-function CreateFPCTemplate(Config: TFPCTargetConfigCache; Owner: TObject
-  ): TDefineTemplate;
+function CreateFPCTemplate(Config: TPCTargetConfigCache; Owner: TObject): TDefineTemplate;
 var
   Node: TAVLTreeNode;
-  StrItem: PStringToStringTreeItem;
+  StrItem: PStringToStringItem;
   NewDefTempl: TDefineTemplate;
   TargetOS: String;
   SrcOS: String;
@@ -2188,7 +2268,7 @@ begin
   if Config.Defines<>nil then begin
     Node:=Config.Defines.Tree.FindLowest;
     while Node<>nil do begin
-      StrItem:=PStringToStringTreeItem(Node.Data);
+      StrItem:=PStringToStringItem(Node.Data);
       NewDefTempl:=TDefineTemplate.Create('Define '+StrItem^.Name,
            'Macro',StrItem^.Name,StrItem^.Value,da_DefineRecurse);
       Result.AddChild(NewDefTempl);
@@ -2199,7 +2279,7 @@ begin
   if Config.Undefines<>nil then begin
     Node:=Config.Undefines.Tree.FindLowest;
     while Node<>nil do begin
-      StrItem:=PStringToStringTreeItem(Node.Data);
+      StrItem:=PStringToStringItem(Node.Data);
       NewDefTempl:=TDefineTemplate.Create('Undefine '+StrItem^.Name,
            'Macro',StrItem^.Name,'',da_UndefineRecurse);
       Result.AddChild(NewDefTempl);
@@ -2211,16 +2291,14 @@ begin
   Result.SetDefineOwner(Owner,true);
 end;
 
-function CreateFPCTemplate(Config: TFPCUnitSetCache; Owner: TObject
-  ): TDefineTemplate; overload;
+function CreateFPCTemplate(Config: TFPCUnitSetCache; Owner: TObject): TDefineTemplate; overload;
 begin
   Result:=CreateFPCTemplate(Config.GetConfigCache(false),Owner);
   Result.AddChild(TDefineTemplate.Create('UnitSet','UnitSet identifier',
                   UnitSetMacroName,Config.GetUnitSetID,da_DefineRecurse));
 end;
 
-function CreateFPCSourceTemplate(FPCSrcDir: string; Owner: TObject
-  ): TDefineTemplate;
+function CreateFPCSourceTemplate(FPCSrcDir: string; Owner: TObject): TDefineTemplate;
 const
   RTLPkgDirs: array[1..4] of string = ('rtl-console','rtl-extra','rtl-objpas','rtl-unicode');
 var
@@ -2248,10 +2326,12 @@ var
     RTLSrcOSDir:=TDefineTemplate.Create('SrcOS',SrcOS,'',
       SrcOS,da_Directory);
     IfTargetOSIsNotSrcOS.AddChild(RTLSrcOSDir);
+    // add include path inc
     RTLSrcOSDir.AddChild(TDefineTemplate.Create('Include Path',
       'include path',
       IncludePathMacroName,IncPathMacro+';inc',
       da_Define));
+    // add include path $(TargetOS)
     RTLSrcOSDir.AddChild(TDefineTemplate.Create('Include Path',
       'include path to TargetCPU directories',
       IncludePathMacroName,IncPathMacro+';'+aTargetCPU,
@@ -2447,6 +2527,39 @@ begin
         d(DefinePathMacro+'/inc'),da_DefineRecurse));
     end;
 
+    // packages/rtl-console
+    PackagesSubDir:=TDefineTemplate.Create('rtl-console','rtl-console','','rtl-console',da_Directory);
+    PackagesDir.AddChild(PackagesSubDir);
+    PackagesSubDir.AddChild(TDefineTemplate.Create('Include Path',
+      Format(ctsIncludeDirectoriesPlusDirs,['packages/rtl-console/src/inc']),
+      IncludePathMacroName,
+      d(DefinePathMacro+'/src/inc;'
+       +IncPathMacro)
+      ,da_DefineRecurse));
+
+    // packages/rtl-extra
+    PackagesSubDir:=TDefineTemplate.Create('rtl-extra','rtl-extra','','rtl-extra',da_Directory);
+    PackagesDir.AddChild(PackagesSubDir);
+    PackagesSubDir.AddChild(TDefineTemplate.Create('Include Path',
+      Format(ctsIncludeDirectoriesPlusDirs,['packages/rtl-extra/src/OS']),
+      IncludePathMacroName,
+      d(DefinePathMacro+'/src/inc;'
+       +DefinePathMacro+'/src/'+TargetOSMacro+';'
+       +DefinePathMacro+'/src/'+SrcOS+';'
+       +DefinePathMacro+'/src/'+SrcOS2+';'
+       +IncPathMacro)
+      ,da_DefineRecurse));
+
+    // packages/rtl-objpas
+    PackagesSubDir:=TDefineTemplate.Create('rtl-objpas','rtl-objpas','','rtl-objpas',da_Directory);
+    PackagesDir.AddChild(PackagesSubDir);
+    PackagesSubDir.AddChild(TDefineTemplate.Create('Include Path',
+      Format(ctsIncludeDirectoriesPlusDirs,['packages/rtl-objpas/src/inc']),
+      IncludePathMacroName,
+      d(DefinePathMacro+'/src/inc;'
+       +IncPathMacro)
+      ,da_DefineRecurse));
+
     // packages/fcl-base
     FCLBaseDir:=TDefineTemplate.Create('FCL-base',
         ctsFreePascalComponentLibrary,'','fcl-base',
@@ -2483,6 +2596,17 @@ begin
       +';'+DefinePathMacro+'/'+SrcOS+DS
       +';'+IncPathMacro)
       ,da_DefineRecurse));
+    // packages/fcl-process/src
+    //   IF SrcOS=win then add include path winall
+    IFTempl:=TDefineTemplate.Create('If SrcOS=win','If SrcOS=win',
+      '',''''+SrcOS+'''=''win''',da_If);
+    IFTempl.AddChild(TDefineTemplate.Create('Include Path',
+        Format(ctsIncludeDirectoriesPlusDirs,['winall']),
+        IncludePathMacroName,
+        IncPathMacro
+        +';winall',
+        da_DefineRecurse));
+    FCLSubDir.AddChild(IFTempl);
 
     // packages/fcl-async
     PackagesFCLAsyncDir:=TDefineTemplate.Create('fcl-async','fcl-async','','fcl-async',da_Directory);
@@ -2539,37 +2663,6 @@ begin
     PackagesDir.AddChild(PackagesSubDir);
     PackagesSubDir.AddChild(TDefineTemplate.Create('Include Path',
       Format(ctsIncludeDirectoriesPlusDirs,['packages/graph/src/inc']),
-      IncludePathMacroName,
-      d(DefinePathMacro+'/src/inc;'
-       +IncPathMacro)
-      ,da_DefineRecurse));
-
-    // packages/rtl-console
-    PackagesSubDir:=TDefineTemplate.Create('rtl-console','rtl-console','','rtl-console',da_Directory);
-    PackagesDir.AddChild(PackagesSubDir);
-    PackagesSubDir.AddChild(TDefineTemplate.Create('Include Path',
-      Format(ctsIncludeDirectoriesPlusDirs,['packages/rtl-console/src/inc']),
-      IncludePathMacroName,
-      d(DefinePathMacro+'/src/inc;'
-       +IncPathMacro)
-      ,da_DefineRecurse));
-
-    // packages/rtl-extra
-    PackagesSubDir:=TDefineTemplate.Create('rtl-extra','rtl-extra','','rtl-extra',da_Directory);
-    PackagesDir.AddChild(PackagesSubDir);
-    PackagesSubDir.AddChild(TDefineTemplate.Create('Include Path',
-      Format(ctsIncludeDirectoriesPlusDirs,['packages/rtl-extra/src/OS']),
-      IncludePathMacroName,
-      d(DefinePathMacro+'/src/inc;'
-       +DefinePathMacro+'/src/'+TargetOSMacro+';'
-       +IncPathMacro)
-      ,da_DefineRecurse));
-
-    // packages/rtl-objpas
-    PackagesSubDir:=TDefineTemplate.Create('rtl-objpas','rtl-objpas','','rtl-objpas',da_Directory);
-    PackagesDir.AddChild(PackagesSubDir);
-    PackagesSubDir.AddChild(TDefineTemplate.Create('Include Path',
-      Format(ctsIncludeDirectoriesPlusDirs,['packages/rtl-objpas/src/inc']),
       IncludePathMacroName,
       d(DefinePathMacro+'/src/inc;'
        +IncPathMacro)
@@ -2636,7 +2729,7 @@ procedure CheckPPUSources(PPUFiles, UnitToSource,
   var Duplicates, Missing: TStringToStringTree);
 var
   Node: TAVLTreeNode;
-  Item: PStringToStringTreeItem;
+  Item: PStringToStringItem;
   Unit_Name: String;
   Filename: String;
   SrcFilename: string;
@@ -2654,7 +2747,7 @@ begin
     raise Exception.Create('CheckPPUSources Missing is case sensitive');
   Node:=PPUFiles.Tree.FindLowest;
   while Node<>nil do begin
-    Item:=PStringToStringTreeItem(Node.Data);
+    Item:=PStringToStringItem(Node.Data);
     Unit_Name:=Item^.Name;
     Filename:=Item^.Value;
     if CompareFileExt(Filename,'.ppu',false)=0 then begin
@@ -2673,11 +2766,11 @@ begin
 end;
 
 procedure LoadFPCCacheFromFile(Filename: string;
-  var Configs: TFPCTargetConfigCaches; var Sources: TFPCSourceCaches);
+  var Configs: TPCTargetConfigCaches; var Sources: TFPCSourceCaches);
 var
   XMLConfig: TXMLConfig;
 begin
-  if Configs=nil then Configs:=TFPCTargetConfigCaches.Create(nil);
+  if Configs=nil then Configs:=TPCTargetConfigCaches.Create(nil);
   if Sources=nil then Sources:=TFPCSourceCaches.Create(nil);
   if not FileExistsUTF8(Filename) then exit;
   XMLConfig:=TXMLConfig.Create(Filename);
@@ -2689,7 +2782,7 @@ begin
   end;
 end;
 
-procedure SaveFPCCacheToFile(Filename: string; Configs: TFPCTargetConfigCaches;
+procedure SaveFPCCacheToFile(Filename: string; Configs: TPCTargetConfigCaches;
   Sources: TFPCSourceCaches);
 var
   XMLConfig: TXMLConfig;
@@ -2985,6 +3078,10 @@ begin
       'I': Add(p^,PChar(@p[1]),fpkMultiValue);
       'k': Add(p^,PChar(@p[1]),fpkMultiValue);
       'M': Add(p^,PChar(@p[1]),fpkValue);
+      'N':
+        case p[1] of
+        'S': Add('NS',PChar(@p[2]),fpkMultiValue); // -NS namespaces
+        end;
       'o': Add(p^,PChar(@p[1]),fpkValue);
       'O':
         case p[1] of
@@ -3251,8 +3348,8 @@ end;
 
 function CompareFPCTargetConfigCacheItems(CacheItem1, CacheItem2: Pointer): integer;
 var
-  Item1: TFPCTargetConfigCache absolute CacheItem1;
-  Item2: TFPCTargetConfigCache absolute CacheItem2;
+  Item1: TPCTargetConfigCache absolute CacheItem1;
+  Item2: TPCTargetConfigCache absolute CacheItem2;
 begin
   Result:=CompareStr(Item1.TargetOS,Item2.TargetOS);
   if Result<>0 then exit;
@@ -3478,6 +3575,18 @@ procedure GetTargetProcessors(const TargetCPU: string; aList: TStrings);
     aList.Add('970');
   end;
 
+  procedure PowerPC64;
+  begin
+    //aList.Add('power4');
+    aList.Add('970');
+    //aList.Add('power5');
+    //aList.Add('power5+');
+    //aList.Add('power6');
+    //aList.Add('power6x');
+    //aList.Add('power7');
+    //aList.Add('power8');
+  end;
+
   procedure Sparc;
   begin
     aList.Add('SPARC V7');
@@ -3529,12 +3638,13 @@ begin
     'avr'    : AVR;
     'i386'   : Intel_i386;
     'm68k'   : M68k;
-    'powerpc': PowerPC;
+    'powerpc'  : PowerPC;
+    'powerpc64': PowerPC64;
     'sparc'  : Sparc;
     'x86_64' : Intel_x86_64;
     'mipsel','mips' : Mips;
     'jvm'    : ;
-    'aarch64': ;
+    'aarch64'  : ;
   end;
 end;
 
@@ -3546,6 +3656,25 @@ end;
 function GetFPCTargetCPU(TargetCPU: string): string;
 begin
   Result:=LowerCase(TargetCPU);
+end;
+
+function GetPascalCompilerFromExeName(Filename: string): TPascalCompiler;
+var
+  ShortFilename: String;
+begin
+  ShortFilename:=ExtractFileNameOnly(Filename);
+
+  // pas2js*
+  if CompareText(LeftStr(ShortFilename,6),'pas2js')=0 then
+    exit(pcPas2js);
+
+  // dcc*.exe
+  if (CompareFilenames(LeftStr(ShortFilename,3),'dcc')=0)
+  and ((ExeExt='') or (CompareFileExt(Filename,ExeExt)=0))
+  then
+    exit(pcDelphi);
+
+  Result:=pcFPC;
 end;
 
 function IsFPCExecutable(AFilename: string; out ErrorMsg: string): boolean;
@@ -3585,12 +3714,48 @@ begin
     exit(true);
 
   // allow ppcxxx.exe
-  if (CompareFilenames(copy(ShortFilename,1,3),'ppc')=0)
-  and ((ExeExt='') or (LazFileUtils.CompareFileExt(AFilename,ExeExt)=0))
+  if (CompareFilenames(LeftStr(ShortFilename,3),'ppc')=0)
+  and ((ExeExt='') or (CompareFileExt(AFilename,ExeExt)=0))
   then
     exit(true);
 
-  ErrorMsg:='unknown file name';
+  ErrorMsg:='fpc executable should start with fpc or ppc';
+end;
+
+function IsPas2JSExecutable(AFilename: string; out ErrorMsg: string): boolean;
+var
+  ShortFilename: String;
+begin
+  Result:=false;
+  AFilename:=ResolveDots(aFilename);
+  if aFilename='' then begin
+    ErrorMsg:='missing file name';
+    exit;
+  end;
+  if not FilenameIsAbsolute(AFilename) then begin
+    ErrorMsg:='file missing path';
+    exit;
+  end;
+  if not FileExistsCached(AFilename) then begin
+    ErrorMsg:='file not found';
+    exit;
+  end;
+  if DirPathExistsCached(AFilename) then begin
+    ErrorMsg:='file is a directory';
+    exit;
+  end;
+  if not FileIsExecutableCached(AFilename) then begin
+    ErrorMsg:='file is not executable';
+    exit;
+  end;
+  ErrorMsg:='';
+
+  // allow scripts like pas2js*
+  ShortFilename:=ExtractFileNameOnly(AFilename);
+  if CompareText(LeftStr(ShortFilename,6),'pas2js')=0 then
+    exit(true);
+
+  ErrorMsg:='pas2js executable should start with pas2js';
 end;
 
 function CreateDefinesInDirectories(const SourcePaths, FlagName: string
@@ -5371,10 +5536,11 @@ var
         begin
           // template for a sub directory
           ReadValue(DirDef,DefTempl.Value,CurPath,TempValue);
-          // CurPath can be ''
+          // Note: CurPath can be ''
           SubPath:=AppendPathDelim(CurPath)+TempValue;
           // test if ExpandedDirectory is part of SubPath
-          if FilenameIsMatching(SubPath,ExpandedDirectory,false) then begin
+          if (SubPath<>'') and FilenameIsMatching(SubPath,ExpandedDirectory,false)
+          then begin
             if Assigned(OnCalculate) then
               OnCalculate(Self,DefTempl,true,SubPath,false,'',true);
             CalculateTemplate(DefTempl.FirstChild,SubPath);
@@ -5592,20 +5758,10 @@ begin
 end;
 
 procedure TDefineTree.ConsistencyCheck;
-{$IF FPC_FULLVERSION<30101}
-var
-  CurResult: LongInt;
-{$ENDIF}
 begin
   if FFirstDefineTemplate<>nil then
     FFirstDefineTemplate.ConsistencyCheck;
-  {$IF FPC_FULLVERSION<30101}
-  CurResult:=FCache.ConsistencyCheck;
-  if CurResult<>0 then
-    RaiseCatchableException(IntToStr(CurResult));
-  {$ELSE}
   FCache.ConsistencyCheck;
-  {$ENDIF}
 end;
 
 procedure TDefineTree.CalcMemSize(Stats: TCTMemStats);
@@ -7827,8 +7983,9 @@ var
   IncPath: String;
   Params: TStrings;
   i: Integer;
-  Param: String;
+  Param, Namespaces: String;
   p: PChar;
+  MacMinVer: single;
 begin
   Result:=nil;
   if AlwaysCreate then
@@ -7836,6 +7993,7 @@ begin
   CompilerMode:='';
   UnitPath:='';
   IncPath:='';
+  Namespaces:='';
   Params:=TStringList.Create;
   try
     SplitCmdLineParams(CmdLine,Params);
@@ -7888,6 +8046,11 @@ begin
           CompilerMode:=copy(Param,3,255);
         end;
 
+      'N':
+        case p[2] of
+        'S': Namespaces:=Namespaces+copy(Param,4,length(Param))
+        end;
+
       'W':
         case p[2] of
         'p':
@@ -7899,6 +8062,13 @@ begin
               AddDefine('Define '+MacroControllerUnit,
                 ctsDefine+MacroControllerUnit,MacroControllerUnit,
                 s);
+          end;
+        'M':
+          begin
+            val(copy(Param,4,255),MacMinVer,m);
+            if m=0 then
+              AddDefine(MacOSMinSDKVersionMacro,MacOSMinSDKVersionMacro,
+                MacOSMinSDKVersionMacro,IntToStr(Round(MacMinVer*100)));
           end;
         end;
 
@@ -7913,10 +8083,12 @@ begin
   end;
   if AddPaths then begin
     if UnitPath<>'' then
-      AddDefine('UnitPath','UnitPath addition',UnitPathMacroName,UnitPathMacro+UnitPath);
+      AddDefine('UnitPath','UnitPath addition',UnitPathMacroName,UnitPathMacro+';'+UnitPath);
     if IncPath<>'' then
-      AddDefine('IncPath','IncPath addition',IncludePathMacroName,IncludePathMacro+IncPath);
+      AddDefine('IncPath','IncPath addition',IncludePathMacroName,IncludePathMacro+';'+IncPath);
   end;
+  if Namespaces<>'' then
+    AddDefine('Namespaces','Namespaces addition',NamespacesMacroName,NamespacesMacro+';'+Namespaces);
 
   Result.SetDefineOwner(Owner,true);
 end;
@@ -8201,25 +8373,25 @@ begin
   Targets:=Rule.Targets;
 end;
 
-{ TFPCTargetConfigCacheItem }
+{ TPCTargetConfigCache }
 
-constructor TFPCTargetConfigCache.Create(AOwner: TComponent);
+constructor TPCTargetConfigCache.Create(AOwner: TComponent);
 begin
   CTIncreaseChangeStamp(FChangeStamp); // set to not 0
   inherited Create(AOwner);
-  ConfigFiles:=TFPCConfigFileStateList.Create;
-  if Owner is TFPCTargetConfigCaches then
-    Caches:=TFPCTargetConfigCaches(Owner);
+  ConfigFiles:=TPCConfigFileStateList.Create;
+  if Owner is TPCTargetConfigCaches then
+    Caches:=TPCTargetConfigCaches(Owner);
 end;
 
-destructor TFPCTargetConfigCache.Destroy;
+destructor TPCTargetConfigCache.Destroy;
 begin
   Clear;
   FreeAndNil(ConfigFiles);
   inherited Destroy;
 end;
 
-procedure TFPCTargetConfigCache.Clear;
+procedure TPCTargetConfigCache.Clear;
 begin
   // keep keys
   CompilerDate:=0;
@@ -8236,10 +8408,12 @@ begin
   FreeAndNil(Defines);
   FreeAndNil(Undefines);
   FreeAndNil(UnitPaths);
+  FreeAndNil(IncludePaths);
   FreeAndNil(Units);
+  FreeAndNil(Includes);
 end;
 
-function TFPCTargetConfigCache.Equals(Item: TFPCTargetConfigCache;
+function TPCTargetConfigCache.Equals(Item: TPCTargetConfigCache;
   CompareKey: boolean): boolean;
 
   function CompareStrings(List1, List2: TStrings): boolean;
@@ -8278,7 +8452,8 @@ begin
     then
       exit;
   end;
-  if (CompilerDate<>Item.CompilerDate)
+  if (Kind<>Item.Kind)
+    or (CompilerDate<>Item.CompilerDate)
     or (RealCompiler<>Item.RealCompiler)
     or (RealCompilerDate<>Item.RealCompilerDate)
     or (RealTargetOS<>Item.RealTargetOS)
@@ -8292,22 +8467,46 @@ begin
   if not CompareStringTrees(Defines,Item.Defines) then exit;
   if not CompareStringTrees(Undefines,Item.Undefines) then exit;
   if not CompareStrings(UnitPaths,Item.UnitPaths) then exit;
+  if not CompareStrings(IncludePaths,Item.IncludePaths) then exit;
   if not CompareStringTrees(Units,Item.Units) then exit;
+  if not CompareStringTrees(Includes,Item.Includes) then exit;
   Result:=true;
 end;
 
-procedure TFPCTargetConfigCache.Assign(Source: TPersistent);
+procedure TPCTargetConfigCache.Assign(Source: TPersistent);
 var
-  Item: TFPCTargetConfigCache;
+  Item: TPCTargetConfigCache;
+
+  procedure AssignStringTree(var Dest: TStringToStringTree; const Src: TStringToStringTree);
+  begin
+    if Src<>nil then begin
+      if Dest=nil then Dest:=TStringToStringTree.Create(false);
+      Dest.Assign(Src);
+    end else begin
+      FreeAndNil(Dest);
+    end;
+  end;
+
+  procedure AssignStringList(var Dest: TStrings; const Src: TStrings);
+  begin
+    if Src<>nil then begin
+      if Dest=nil then Dest:=TStringList.Create;
+      Dest.Assign(Src);
+    end else begin
+      FreeAndNil(Dest);
+    end;
+  end;
+
 begin
-  if Source is TFPCTargetConfigCache then begin
-    Item:=TFPCTargetConfigCache(Source);
+  if Source is TPCTargetConfigCache then begin
+    Item:=TPCTargetConfigCache(Source);
     // keys
     TargetOS:=Item.TargetOS;
     TargetCPU:=Item.TargetCPU;
     Compiler:=Item.Compiler;
     CompilerOptions:=Item.CompilerOptions;
     // values
+    Kind:=Item.Kind;
     CompilerDate:=Item.CompilerDate;
     RealCompiler:=Item.RealCompiler;
     RealCompilerDate:=Item.RealCompilerDate;
@@ -8317,30 +8516,13 @@ begin
     FullVersion:=Item.FullVersion;
     HasPPUs:=Item.HasPPUs;
     ConfigFiles.Assign(Item.ConfigFiles);
-    if Item.Defines<>nil then begin
-      if Defines=nil then Defines:=TStringToStringTree.Create(false);
-      Defines.Assign(Item.Defines);
-    end else begin
-      FreeAndNil(Defines);
-    end;
-    if Item.Undefines<>nil then begin
-      if Undefines=nil then Undefines:=TStringToStringTree.Create(false);
-      Undefines.Assign(Item.Undefines);
-    end else begin
-      FreeAndNil(Undefines);
-    end;
-    if Item.UnitPaths<>nil then begin
-      if UnitPaths=nil then UnitPaths:=TStringList.Create;
-      UnitPaths.Assign(Item.UnitPaths);
-    end else begin
-      FreeAndNil(UnitPaths);
-    end;
-    if Item.Units<>nil then begin
-      if Units=nil then Units:=TStringToStringTree.Create(false);
-      Units.Assign(Item.Units);
-    end else begin
-      FreeAndNil(Units);
-    end;
+
+    AssignStringTree(Defines,Item.Defines);
+    AssignStringTree(Undefines,Item.Undefines);
+    AssignStringList(UnitPaths,Item.UnitPaths);
+    AssignStringList(IncludePaths,Item.IncludePaths);
+    AssignStringTree(Units,Item.Units);
+    AssignStringTree(Includes,Item.Includes);
 
     ErrorMsg:=Item.ErrorMsg;
     ErrorTranslatedMsg:=Item.ErrorTranslatedMsg;
@@ -8348,7 +8530,7 @@ begin
     inherited Assign(Source);
 end;
 
-procedure TFPCTargetConfigCache.LoadFromXMLConfig(XMLConfig: TXMLConfig;
+procedure TPCTargetConfigCache.LoadFromXMLConfig(XMLConfig: TXMLConfig;
   const Path: string);
 var
   Cnt: integer;
@@ -8358,14 +8540,76 @@ var
   i: Integer;
   p: Integer;
   StartPos: Integer;
-  List: TStringList;
-  UnitList: TStringList;
-  Unit_Name: String;
   Filename: String;
-  BaseDir: String;
+
+  procedure LoadPathsFor(out ADest: TStrings; const ASubPath: string);
+  var
+    i: Integer;
+    List: TStringList;
+    BaseDir: String;
+  begin
+    // Paths: format: semicolon separated compressed list
+    List:=TStringList.Create;
+    try
+      s:=XMLConfig.GetValue(Path+ASubPath+'Value','');
+      List.Delimiter:=';';
+      List.StrictDelimiter:=true;
+      List.DelimitedText:=s;
+      ADest:=Decompress1FileList(List);
+      BaseDir:=TrimFilename(AppendPathDelim(XMLConfig.GetValue(Path+ASubPath+'BaseDir','')));
+      if BaseDir<>'' then
+        for i:=0 to ADest.Count-1 do
+          ADest[i]:=ChompPathDelim(TrimFilename(BaseDir+ADest[i]))
+      else
+        for i:=ADest.Count-1 downto 0 do
+          if ADest[i]='' then
+            ADest.Delete(i)
+          else
+            ADest[i]:=ChompPathDelim(TrimFilename(ADest[i]));
+      // do not sort, order is important (e.g. for httpd.ppu)
+    finally
+      List.Free;
+    end;
+  end;
+
+  procedure LoadFilesFor(var ADest: TStringToStringTree; const ASubPath: string);
+  var
+    i: Integer;
+    List: TStringList;
+    File_Name: String;
+    FileList: TStringList;
+  begin
+    // files: format: ASubPath+Values semicolon separated list of compressed filename
+    List:=TStringList.Create;
+    FileList:=nil;
+    try
+      SubPath:=Path+ASubPath+'Value';
+      s:=XMLConfig.GetValue(SubPath,'');
+      List.Delimiter:=';';
+      List.StrictDelimiter:=true;
+      List.DelimitedText:=s;
+      FileList:=Decompress1FileList(List);
+      for i:=0 to FileList.Count-1 do begin
+        Filename:=TrimFilename(FileList[i]);
+        File_Name:=ExtractFileNameOnly(Filename);
+        if (File_Name='') or not IsDottedIdentifier(File_Name) then begin
+          DebugLn(['Warning: [TPCTargetConfigCache.LoadFromXMLConfig] invalid filename "',File_Name,'" in "',XMLConfig.Filename,'" at "',SubPath,'"']);
+          continue;
+        end;
+        if ADest=nil then
+          ADest:=TStringToStringTree.Create(false);
+        ADest[File_Name]:=Filename;
+      end;
+    finally
+      List.Free;
+      FileList.Free;
+    end;
+  end;
+
 begin
   Clear;
 
+  Kind:=StrToPascalCompiler(XMLConfig.GetValue(Path+'Kind',PascalCompilerNames[pcFPC]));
   TargetOS:=XMLConfig.GetValue(Path+'TargetOS','');
   TargetCPU:=XMLConfig.GetValue(Path+'TargetCPU','');
   Compiler:=XMLConfig.GetValue(Path+'Compiler/File','');
@@ -8386,7 +8630,7 @@ begin
     SubPath:=Path+'Defines/Macro'+IntToStr(i)+'/';
     DefineName:=UpperCaseStr(XMLConfig.GetValue(SubPath+'Name',''));
     if not IsValidIdent(DefineName) then begin
-      DebugLn(['Warning: [TFPCTargetConfigCache.LoadFromXMLConfig] invalid define name ',DefineName]);
+      DebugLn(['Warning: [TPCTargetConfigCache.LoadFromXMLConfig] invalid define name ',DefineName]);
       continue;
     end;
     DefineValue:=XMLConfig.GetValue(SubPath+'Value','');
@@ -8412,70 +8656,92 @@ begin
     end;
   end;
 
-  // UnitPaths: format: semicolon separated compressed list
-  List:=TStringList.Create;
-  try
-    s:=XMLConfig.GetValue(Path+'UnitPaths/Value','');
-    List.Delimiter:=';';
-    List.StrictDelimiter:=true;
-    List.DelimitedText:=s;
-    UnitPaths:=Decompress1FileList(List);
-    BaseDir:=TrimFilename(AppendPathDelim(XMLConfig.GetValue(Path+'UnitPaths/BaseDir','')));
-    if BaseDir<>'' then
-      for i:=0 to UnitPaths.Count-1 do
-        UnitPaths[i]:=ChompPathDelim(TrimFilename(BaseDir+UnitPaths[i]))
-    else
-      for i:=UnitPaths.Count-1 downto 0 do
-        if UnitPaths[i]='' then
-          UnitPaths.Delete(i)
-        else
-          UnitPaths[i]:=ChompPathDelim(TrimFilename(UnitPaths[i]));
-    // do not sort, order is important (e.g. for httpd.ppu)
-  finally
-    List.Free;
-  end;
+  // Paths
+  LoadPathsFor(UnitPaths,'UnitPaths/');
+  LoadPathsFor(IncludePaths,'IncludePaths/');
 
-  // units: format: Units/Values semicolon separated list of compressed filename
-  List:=TStringList.Create;
-  UnitList:=nil;
-  try
-    SubPath:=Path+'Units/Value';
-    s:=XMLConfig.GetValue(SubPath,'');
-    List.Delimiter:=';';
-    List.StrictDelimiter:=true;
-    List.DelimitedText:=s;
-    UnitList:=Decompress1FileList(List);
-    for i:=0 to UnitList.Count-1 do begin
-      Filename:=TrimFilename(UnitList[i]);
-      Unit_Name:=ExtractFileNameOnly(Filename);
-      if (Unit_Name='') or not IsDottedIdentifier(Unit_Name) then begin
-        DebugLn(['Warning: [TFPCTargetConfigCache.LoadFromXMLConfig] invalid unitname "',Unit_Name,'" in "',XMLConfig.Filename,'" at "',SubPath,'"']);
-        continue;
-      end;
-      if Units=nil then
-        Units:=TStringToStringTree.Create(false);
-      Units[Unit_Name]:=Filename;
-    end;
-  finally
-    List.Free;
-    UnitList.Free;
-  end;
+  // Files
+  LoadFilesFor(Units,'Units/');
+  LoadFilesFor(Includes,'Includes/');
 end;
 
-procedure TFPCTargetConfigCache.SaveToXMLConfig(XMLConfig: TXMLConfig;
+procedure TPCTargetConfigCache.SaveToXMLConfig(XMLConfig: TXMLConfig;
   const Path: string);
 var
   Node: TAVLTreeNode;
-  Item: PStringToStringTreeItem;
+  Item: PStringToStringItem;
   Cnt: Integer;
   SubPath: String;
-  UnitList: TStringList;
-  Filename: String;
-  List: TStringList;
   s: String;
-  BaseDir: string;
-  RelativeUnitPaths: TStringList;
+
+  procedure SavePathsFor(const ASource: TStrings; const ASubPath: string);
+  var
+    List: TStringList;
+    RelativeUnitPaths: TStringList;
+    BaseDir: string;
+  begin
+    // Paths: write as semicolon separated compressed list
+    s:='';
+    BaseDir:='';
+    if ASource<>nil then begin
+      List:=nil;
+      RelativeUnitPaths:=nil;
+      try
+        RelativeUnitPaths:=MakeRelativeFileList(ASource,BaseDir);
+        List:=Compress1FileList(RelativeUnitPaths);
+        // do not sort, order is important (e.g. for httpd.ppu)
+        List.Delimiter:=';';
+        List.StrictDelimiter:=true;
+        s:=List.DelimitedText;
+      finally
+        RelativeUnitPaths.Free;
+        List.Free;
+      end;
+    end;
+    XMLConfig.SetDeleteValue(Path+ASubPath+'BaseDir',BaseDir,'');
+    XMLConfig.SetDeleteValue(Path+ASubPath+'Value',s,'');
+  end;
+
+  procedure SaveFilesFor(const ASource: TStringToStringTree; const ASubPath: string);
+  var
+    List: TStringList;
+    FileList: TStringList;
+    Filename: String;
+  begin
+    // Files: ASubPath+Values semicolon separated list of compressed filenames
+    // Files contains thousands of file names. This needs compression.
+    s:='';
+    List:=nil;
+    FileList:=TStringList.Create;
+    try
+      if ASource<>nil then begin
+        // Create a string list of filenames
+        Node:=ASource.Tree.FindLowest;
+        while Node<>nil do begin
+          Item:=PStringToStringItem(Node.Data);
+          Filename:=Item^.Value;
+          FileList.Add(Filename);
+          Node:=ASource.Tree.FindSuccessor(Node);
+        end;
+        // Sort the strings.
+        FileList.CaseSensitive:=true;
+        FileList.Sort;
+        // Compress the file names
+        List:=Compress1FileList(FileList);
+        // and write the semicolon separated list
+        List.Delimiter:=';';
+        List.StrictDelimiter:=true;
+        s:=List.DelimitedText;
+      end;
+    finally
+      List.Free;
+      FileList.Free;
+    end;
+    XMLConfig.SetDeleteValue(Path+ASubPath+'Value',s,'');
+  end;
+
 begin
+  XMLConfig.SetDeleteValue(Path+'Kind',PascalCompilerNames[Kind],PascalCompilerNames[pcFPC]);
   XMLConfig.SetDeleteValue(Path+'TargetOS',TargetOS,'');
   XMLConfig.SetDeleteValue(Path+'TargetCPU',TargetCPU,'');
   XMLConfig.SetDeleteValue(Path+'Compiler/File',Compiler,'');
@@ -8495,7 +8761,7 @@ begin
   if Defines<>nil then begin
     Node:=Defines.Tree.FindLowest;
     while Node<>nil do begin
-      Item:=PStringToStringTreeItem(Node.Data);
+      Item:=PStringToStringItem(Node.Data);
       if IsValidIdent(Item^.Name) then begin
         inc(Cnt);
         SubPath:=Path+'Defines/Macro'+IntToStr(Cnt)+'/';
@@ -8513,7 +8779,7 @@ begin
   if Undefines<>nil then begin
     Node:=Undefines.Tree.FindLowest;
     while Node<>nil do begin
-      Item:=PStringToStringTreeItem(Node.Data);
+      Item:=PStringToStringItem(Node.Data);
       inc(Cnt);
       if s<>'' then s:=s+',';
       s:=s+Item^.Name;
@@ -8522,60 +8788,16 @@ begin
   end;
   XMLConfig.SetDeleteValue(Path+'Undefines/Values',s,'');
 
-  // UnitPaths: write as semicolon separated compressed list
-  s:='';
-  BaseDir:='';
-  if UnitPaths<>nil then begin
-    List:=nil;
-    RelativeUnitPaths:=nil;
-    try
-      RelativeUnitPaths:=MakeRelativeFileList(UnitPaths,BaseDir);
-      List:=Compress1FileList(RelativeUnitPaths);
-      // do not sort, order is important (e.g. for httpd.ppu)
-      List.Delimiter:=';';
-      List.StrictDelimiter:=true;
-      s:=List.DelimitedText;
-    finally
-      RelativeUnitPaths.Free;
-      List.Free;
-    end;
-  end;
-  XMLConfig.SetDeleteValue(Path+'UnitPaths/BaseDir',BaseDir,'');
-  XMLConfig.SetDeleteValue(Path+'UnitPaths/Value',s,'');
+  // Paths
+  SavePathsFor(UnitPaths, 'UnitPaths/');
+  SavePathsFor(IncludePaths, 'IncludePaths/');
 
-  // Units: Units/Values semicolon separated list of compressed filenames
-  // Units contains thousands of file names. This needs compression.
-  s:='';
-  List:=nil;
-  UnitList:=TStringList.Create;
-  try
-    if Units<>nil then begin
-      // Create a string list of filenames
-      Node:=Units.Tree.FindLowest;
-      while Node<>nil do begin
-        Item:=PStringToStringTreeItem(Node.Data);
-        Filename:=Item^.Value;
-        UnitList.Add(Filename);
-        Node:=Units.Tree.FindSuccessor(Node);
-      end;
-      // Sort the strings.
-      UnitList.CaseSensitive:=true;
-      UnitList.Sort;
-      // Compress the file names
-      List:=Compress1FileList(UnitList);
-      // and write the semicolon separated list
-      List.Delimiter:=';';
-      List.StrictDelimiter:=true;
-      s:=List.DelimitedText;
-    end;
-  finally
-    List.Free;
-    UnitList.Free;
-  end;
-  XMLConfig.SetDeleteValue(Path+'Units/Value',s,'');
+  // Files
+  SaveFilesFor(Units, 'Units/');
+  SaveFilesFor(Includes, 'Includes/');
 end;
 
-procedure TFPCTargetConfigCache.LoadFromFile(Filename: string);
+procedure TPCTargetConfigCache.LoadFromFile(Filename: string);
 var
   XMLConfig: TXMLConfig;
 begin
@@ -8587,7 +8809,7 @@ begin
   end;
 end;
 
-procedure TFPCTargetConfigCache.SaveToFile(Filename: string);
+procedure TPCTargetConfigCache.SaveToFile(Filename: string);
 var
   XMLConfig: TXMLConfig;
 begin
@@ -8599,21 +8821,21 @@ begin
   end;
 end;
 
-function TFPCTargetConfigCache.NeedsUpdate: boolean;
+function TPCTargetConfigCache.NeedsUpdate: boolean;
 var
   i: Integer;
-  Cfg: TFPCConfigFileState;
+  Cfg: TPCConfigFileState;
   AFilename: String;
 begin
   Result:=true;
   if (not FileExistsCached(Compiler)) then begin
     if CTConsoleVerbosity>0 then
-      debugln(['Hint: [TFPCTargetConfigCache.NeedsUpdate] TargetOS="',TargetOS,'" TargetCPU="',TargetCPU,'" Options="',CompilerOptions,'" compiler file missing "',Compiler,'"']);
+      debugln(['Hint: [TPCTargetConfigCache.NeedsUpdate] TargetOS="',TargetOS,'" TargetCPU="',TargetCPU,'" Options="',CompilerOptions,'" compiler file missing "',Compiler,'"']);
     exit;
   end;
   if (FileAgeCached(Compiler)<>CompilerDate) then begin
     if CTConsoleVerbosity>0 then
-      debugln(['Hint: [TFPCTargetConfigCache.NeedsUpdate] TargetOS="',TargetOS,'" TargetCPU="',TargetCPU,'" Options="',CompilerOptions,'" compiler file changed "',Compiler,'" FileAge=',FileAgeCached(Compiler),' StoredAge=',CompilerDate]);
+      debugln(['Hint: [TPCTargetConfigCache.NeedsUpdate] TargetOS="',TargetOS,'" TargetCPU="',TargetCPU,'" Options="',CompilerOptions,'" compiler file changed "',Compiler,'" FileAge=',FileAgeCached(Compiler),' StoredAge=',CompilerDate]);
     exit;
   end;
   if (RealCompiler<>'') and (CompareFilenames(RealCompiler,Compiler)<>0)
@@ -8621,7 +8843,7 @@ begin
     if (not FileExistsCached(RealCompiler))
     or (FileAgeCached(RealCompiler)<>RealCompilerDate) then begin
       if CTConsoleVerbosity>0 then
-        debugln(['Hint: [TFPCTargetConfigCache.NeedsUpdate] TargetOS="',TargetOS,'" TargetCPU="',TargetCPU,'" Options="',CompilerOptions,'" real compiler file changed "',RealCompiler,'"']);
+        debugln(['Hint: [TPCTargetConfigCache.NeedsUpdate] TargetOS="',TargetOS,'" TargetCPU="',TargetCPU,'" Options="',CompilerOptions,'" real compiler file changed "',RealCompiler,'"']);
       exit;
     end;
   end;
@@ -8630,7 +8852,7 @@ begin
   AFilename:=FindRealCompilerInPath(TargetCPU,true);
   if RealCompilerInPath<>AFilename then begin
     if CTConsoleVerbosity>0 then
-      debugln(['Hint: [TFPCTargetConfigCache.NeedsUpdate] TargetOS="',TargetOS,'" TargetCPU="',TargetCPU,'" Options="',CompilerOptions,'" real compiler in PATH changed from "',RealCompilerInPath,'" to "',AFilename,'"']);
+      debugln(['Hint: [TPCTargetConfigCache.NeedsUpdate] TargetOS="',TargetOS,'" TargetCPU="',TargetCPU,'" Options="',CompilerOptions,'" real compiler in PATH changed from "',RealCompilerInPath,'" to "',AFilename,'"']);
     exit;
   end;
   for i:=0 to ConfigFiles.Count-1 do begin
@@ -8638,19 +8860,19 @@ begin
     if (Cfg.Filename='') or (not FilenameIsAbsolute(Cfg.Filename)) then continue;
     if FileExistsCached(Cfg.Filename)<>Cfg.FileExists then begin
       if CTConsoleVerbosity>0 then
-        debugln(['Hint: [TFPCTargetConfigCache.NeedsUpdate] TargetOS="',TargetOS,'" TargetCPU="',TargetCPU,'" Options="',CompilerOptions,'" config fileexists changed "',Cfg.Filename,'"']);
+        debugln(['Hint: [TPCTargetConfigCache.NeedsUpdate] TargetOS="',TargetOS,'" TargetCPU="',TargetCPU,'" Options="',CompilerOptions,'" config fileexists changed "',Cfg.Filename,'"']);
       exit;
     end;
     if Cfg.FileExists and (FileAgeCached(Cfg.Filename)<>Cfg.FileDate) then begin
       if CTConsoleVerbosity>0 then
-        debugln(['Hint: [TFPCTargetConfigCache.NeedsUpdate] TargetOS="',TargetOS,'" TargetCPU="',TargetCPU,'" Options="',CompilerOptions,'" config file changed "',Cfg.Filename,'"']);
+        debugln(['Hint: [TPCTargetConfigCache.NeedsUpdate] TargetOS="',TargetOS,'" TargetCPU="',TargetCPU,'" Options="',CompilerOptions,'" config file changed "',Cfg.Filename,'"']);
       exit;
     end;
   end;
   Result:=false;
 end;
 
-function TFPCTargetConfigCache.GetFPCInfoCmdLineOptions(ExtraOptions: string
+function TPCTargetConfigCache.GetFPCInfoCmdLineOptions(ExtraOptions: string
   ): string;
 begin
   Result:=CompilerOptions;
@@ -8663,19 +8885,19 @@ begin
   Result:=Trim(Result);
 end;
 
-procedure TFPCTargetConfigCache.IncreaseChangeStamp;
+procedure TPCTargetConfigCache.IncreaseChangeStamp;
 begin
   CTIncreaseChangeStamp(FChangeStamp);
   if Caches<>nil then
     Caches.IncreaseChangeStamp;
 end;
 
-function TFPCTargetConfigCache.Update(TestFilename: string;
+function TPCTargetConfigCache.Update(TestFilename: string;
   ExtraOptions: string; const OnProgress: TDefinePoolProgress): boolean;
 var
-  OldOptions: TFPCTargetConfigCache;
-  CfgFiles: TStrings;
   i: Integer;
+  OldOptions: TPCTargetConfigCache;
+  CfgFiles: TStrings;
   Filename: string;
   CfgFileExists: Boolean;
   CfgFileDate: Integer;
@@ -8684,8 +8906,18 @@ var
   InfoTypes: TFPCInfoTypes;
   BaseDir: String;
   FullFilename: String;
+
+  procedure PreparePaths(APaths: TStrings);
+  var
+    i: Integer;
+  begin
+    if APaths<>nil then
+      for i:=0 to APaths.Count-1 do
+        APaths[i]:=ChompPathDelim(TrimFilename(APaths[i]));
+  end;
+
 begin
-  OldOptions:=TFPCTargetConfigCache.Create(nil);
+  OldOptions:=TPCTargetConfigCache.Create(nil);
   CfgFiles:=nil;
   try
     // remember old state to find out if something changed
@@ -8693,7 +8925,7 @@ begin
     Clear;
 
     if CTConsoleVerbosity>0 then
-      debugln(['Hint: [TFPCTargetConfigCache.NeedsUpdate] ',Compiler,' TargetOS=',TargetOS,' TargetCPU=',TargetCPU,' CompilerOptions=',CompilerOptions,' ExtraOptions=',ExtraOptions,' PATH=',GetEnvironmentVariableUTF8('PATH')]);
+      debugln(['Hint: [TPCTargetConfigCache.NeedsUpdate] ',Compiler,' TargetOS=',TargetOS,' TargetCPU=',TargetCPU,' CompilerOptions=',CompilerOptions,' ExtraOptions=',ExtraOptions,' PATH=',GetEnvironmentVariableUTF8('PATH')]);
     CompilerDate:=FileAgeCached(Compiler);
     if FileExistsCached(Compiler) then begin
       ExtraOptions:=GetFPCInfoCmdLineOptions(ExtraOptions);
@@ -8719,16 +8951,15 @@ begin
       // run fpc and parse output
       HasPPUs:=false;
       RunFPCVerbose(Compiler,TestFilename,CfgFiles,RealCompiler,UnitPaths,
-                    Defines,Undefines,ExtraOptions);
-      if UnitPaths<>nil then
-        for i:=0 to UnitPaths.Count-1 do
-          UnitPaths[i]:=ChompPathDelim(TrimFilename(UnitPaths[i]));
+                    IncludePaths,Defines,Undefines,ExtraOptions);
+      PreparePaths(UnitPaths);
+      PreparePaths(IncludePaths);
       // store the real compiler file and date
       if (RealCompiler<>'') and FileExistsCached(RealCompiler) then begin
         RealCompilerDate:=FileAgeCached(RealCompiler);
       end else begin
         if CTConsoleVerbosity>=-1 then
-          debugln(['Warning: [TFPCTargetConfigCache.Update] invalid compiler: Compiler="'+Compiler+'" Options="'+ExtraOptions+'" RealCompiler="',RealCompiler,'"']);
+          debugln(['Warning: [TPCTargetConfigCache.Update] invalid compiler: Compiler="'+Compiler+'" Options="'+ExtraOptions+'" RealCompiler="',RealCompiler,'"']);
       end;
       // store the list of tried and read cfg files
       if CfgFiles<>nil then
@@ -8737,9 +8968,9 @@ begin
           if Filename='' then continue;
           CfgFileExists:=Filename[1]='+';
           Filename:=copy(Filename,2,length(Filename));
-          FullFilename:=LazFileUtils.ExpandFileNameUTF8(TrimFileName(Filename),BaseDir);
+          FullFilename:=ExpandFileNameUTF8(TrimFileName(Filename),BaseDir);
           if CfgFileExists<>FileExistsCached(FullFilename) then begin
-            debugln(['Warning: [TFPCTargetConfigCache.Update] fpc found cfg a file, the IDE did not: "',Filename,'"']);
+            debugln(['Warning: [TPCTargetConfigCache.Update] fpc found cfg a file, the IDE did not: "',Filename,'"']);
             CfgFileExists:=not CfgFileExists;
           end;
           CfgFileDate:=0;
@@ -8747,14 +8978,11 @@ begin
             CfgFileDate:=FileAgeCached(Filename);
           ConfigFiles.Add(Filename,CfgFileExists,CfgFileDate);
         end;
-      // gather all units in all unit search paths
-      if (UnitPaths<>nil) and (UnitPaths.Count>0) then begin
-        Units:=GatherUnitsInSearchPaths(UnitPaths,OnProgress,true);
-      end
-      else begin
+      // gather all units in all unit and inc files search paths
+      GatherUnitsInSearchPaths(UnitPaths,IncludePaths,OnProgress,Units,Includes,true);
+      if (UnitPaths.Count=0) then begin
         if CTConsoleVerbosity>=-1 then
-          debugln(['Warning: [TFPCTargetConfigCache.Update] no unit paths: ',Compiler,' ',ExtraOptions]);
-        Units:=TStringToStringTree.Create(false);
+          debugln(['Warning: [TPCTargetConfigCache.Update] no unit paths: ',Compiler,' ',ExtraOptions]);
       end;
       // check if the system ppu exists
       HasPPUs:=CompareFileExt(Units['system'],'ppu',false)=0;
@@ -8763,7 +8991,7 @@ begin
     if not Equals(OldOptions) then begin
       IncreaseChangeStamp;
       if CTConsoleVerbosity>=0 then
-        debugln(['Hint: [TFPCTargetConfigCache.Update] has changed']);
+        debugln(['Hint: [TPCTargetConfigCache.Update] has changed']);
     end;
     Result:=true;
   finally
@@ -8772,7 +9000,7 @@ begin
   end;
 end;
 
-function TFPCTargetConfigCache.FindRealCompilerInPath(aTargetCPU: string;
+function TPCTargetConfigCache.FindRealCompilerInPath(aTargetCPU: string;
   ResolveLinks: boolean): string;
 
   function Search(const ShortFileName: string): string;
@@ -8833,7 +9061,7 @@ begin
   end;
 end;
 
-function TFPCTargetConfigCache.GetUnitPaths: string;
+function TPCTargetConfigCache.GetUnitPaths: string;
 begin
   if UnitPaths=nil then exit('');
   UnitPaths.Delimiter:=';';
@@ -8841,7 +9069,7 @@ begin
   Result:=UnitPaths.DelimitedText;
 end;
 
-function TFPCTargetConfigCache.GetFPCVerNumbers(out FPCVersion, FPCRelease,
+function TPCTargetConfigCache.GetFPCVerNumbers(out FPCVersion, FPCRelease,
   FPCPatch: integer): boolean;
 var
   v: string;
@@ -8855,7 +9083,7 @@ begin
   end;
 end;
 
-function TFPCTargetConfigCache.GetFPCVer: string;
+function TPCTargetConfigCache.GetFPCVer: string;
 var
   FPCVersion: integer;
   FPCRelease: integer;
@@ -8867,7 +9095,7 @@ begin
     Result:='';
 end;
 
-function TFPCTargetConfigCache.GetFPC_FULLVERSION: integer;
+function TPCTargetConfigCache.GetFPC_FULLVERSION: integer;
 begin
   if Defines<>nil then
     Result:=StrToIntDef(Defines['FPC_FULLVERSION'],0)
@@ -8877,7 +9105,7 @@ begin
     Result:=GetCompiledFPCVersion;
 end;
 
-function TFPCTargetConfigCache.IndexOfUsedCfgFile: integer;
+function TPCTargetConfigCache.IndexOfUsedCfgFile: integer;
 begin
   if ConfigFiles=nil then exit(-1);
   Result:=0;
@@ -8886,42 +9114,42 @@ begin
   if Result=ConfigFiles.Count then Result:=-1;
 end;
 
-{ TFPCTargetConfigCaches }
+{ TPCTargetConfigCaches }
 
-constructor TFPCTargetConfigCaches.Create(AOwner: TComponent);
+constructor TPCTargetConfigCaches.Create(AOwner: TComponent);
 begin
   CTIncreaseChangeStamp(FChangeStamp); // set to not 0
   inherited Create(AOwner);
   fItems:=TAVLTree.Create(@CompareFPCTargetConfigCacheItems);
 end;
 
-destructor TFPCTargetConfigCaches.Destroy;
+destructor TPCTargetConfigCaches.Destroy;
 begin
   Clear;
   FreeAndNil(fItems);
   inherited Destroy;
 end;
 
-procedure TFPCTargetConfigCaches.Clear;
+procedure TPCTargetConfigCaches.Clear;
 begin
   if fItems.Count=0 then exit;
   fItems.FreeAndClear;
   IncreaseChangeStamp;
 end;
 
-function TFPCTargetConfigCaches.Equals(Caches: TFPCTargetConfigCaches): boolean;
+function TPCTargetConfigCaches.Equals(Caches: TPCTargetConfigCaches): boolean;
 var
   Node1, Node2: TAVLTreeNode;
-  Item1: TFPCTargetConfigCache;
-  Item2: TFPCTargetConfigCache;
+  Item1: TPCTargetConfigCache;
+  Item2: TPCTargetConfigCache;
 begin
   Result:=false;
   if Caches.fItems.Count<>fItems.Count then exit;
   Node1:=fItems.FindLowest;
   Node2:=Caches.fItems.FindLowest;
   while Node1<>nil do begin
-    Item1:=TFPCTargetConfigCache(Node1.Data);
-    Item2:=TFPCTargetConfigCache(Node2.Data);
+    Item1:=TPCTargetConfigCache(Node1.Data);
+    Item2:=TPCTargetConfigCache(Node2.Data);
     if not Item1.Equals(Item2) then exit;
     Node1:=fItems.FindSuccessor(Node1);
     Node2:=Caches.fItems.FindSuccessor(Node2);
@@ -8929,21 +9157,21 @@ begin
   Result:=true;
 end;
 
-procedure TFPCTargetConfigCaches.Assign(Source: TPersistent);
+procedure TPCTargetConfigCaches.Assign(Source: TPersistent);
 var
-  Caches: TFPCTargetConfigCaches;
+  Caches: TPCTargetConfigCaches;
   Node: TAVLTreeNode;
-  SrcItem: TFPCTargetConfigCache;
-  NewItem: TFPCTargetConfigCache;
+  SrcItem: TPCTargetConfigCache;
+  NewItem: TPCTargetConfigCache;
 begin
-  if Source is TFPCTargetConfigCaches then begin
-    Caches:=TFPCTargetConfigCaches(Source);
+  if Source is TPCTargetConfigCaches then begin
+    Caches:=TPCTargetConfigCaches(Source);
     if Equals(Caches) then exit; // no change, keep ChangeStamp
     Clear;
     Node:=Caches.fItems.FindLowest;
     while Node<>nil do begin
-      SrcItem:=TFPCTargetConfigCache(Node.Data);
-      NewItem:=TFPCTargetConfigCache.Create(Self);
+      SrcItem:=TPCTargetConfigCache(Node.Data);
+      NewItem:=TPCTargetConfigCache.Create(Self);
       NewItem.Assign(SrcItem);
       fItems.Add(NewItem);
       Node:=Caches.fItems.FindSuccessor(Node);
@@ -8953,17 +9181,17 @@ begin
     inherited Assign(Source);
 end;
 
-procedure TFPCTargetConfigCaches.LoadFromXMLConfig(XMLConfig: TXMLConfig;
+procedure TPCTargetConfigCaches.LoadFromXMLConfig(XMLConfig: TXMLConfig;
   const Path: string);
 var
   Cnt: integer;
   i: Integer;
-  Item: TFPCTargetConfigCache;
+  Item: TPCTargetConfigCache;
 begin
   Clear;
   Cnt:=XMLConfig.GetValue(Path+'Count',0);
   for i:=1 to Cnt do begin
-    Item:=TFPCTargetConfigCache.Create(Self);
+    Item:=TPCTargetConfigCache.Create(Self);
     Item.LoadFromXMLConfig(XMLConfig,Path+'Item'+IntToStr(i)+'/');
     if (Item.Compiler<>'') then
       fItems.Add(Item)
@@ -8973,17 +9201,17 @@ begin
   IncreaseChangeStamp;
 end;
 
-procedure TFPCTargetConfigCaches.SaveToXMLConfig(XMLConfig: TXMLConfig;
+procedure TPCTargetConfigCaches.SaveToXMLConfig(XMLConfig: TXMLConfig;
   const Path: string);
 var
   Node: TAVLTreeNode;
-  Item: TFPCTargetConfigCache;
+  Item: TPCTargetConfigCache;
   i: Integer;
 begin
   Node:=fItems.FindLowest;
   i:=0;
   while Node<>nil do begin
-    Item:=TFPCTargetConfigCache(Node.Data);
+    Item:=TPCTargetConfigCache(Node.Data);
     inc(i);
     Item.SaveToXMLConfig(XMLConfig,Path+'Item'+IntToStr(i)+'/');
     Node:=fItems.FindSuccessor(Node);
@@ -8991,7 +9219,7 @@ begin
   XMLConfig.SetDeleteValue(Path+'Count',i,0);
 end;
 
-procedure TFPCTargetConfigCaches.LoadFromFile(Filename: string);
+procedure TPCTargetConfigCaches.LoadFromFile(Filename: string);
 var
   XMLConfig: TXMLConfig;
 begin
@@ -9003,7 +9231,7 @@ begin
   end;
 end;
 
-procedure TFPCTargetConfigCaches.SaveToFile(Filename: string);
+procedure TPCTargetConfigCaches.SaveToFile(Filename: string);
 var
   XMLConfig: TXMLConfig;
 begin
@@ -9015,19 +9243,19 @@ begin
   end;
 end;
 
-procedure TFPCTargetConfigCaches.IncreaseChangeStamp;
+procedure TPCTargetConfigCaches.IncreaseChangeStamp;
 begin
   CTIncreaseChangeStamp(FChangeStamp);
 end;
 
-function TFPCTargetConfigCaches.Find(CompilerFilename, CompilerOptions,
+function TPCTargetConfigCaches.Find(CompilerFilename, CompilerOptions,
   TargetOS, TargetCPU: string; CreateIfNotExists: boolean
-  ): TFPCTargetConfigCache;
+  ): TPCTargetConfigCache;
 var
   Node: TAVLTreeNode;
-  Cmp: TFPCTargetConfigCache;
+  Cmp: TPCTargetConfigCache;
 begin
-  Cmp:=TFPCTargetConfigCache.Create(Self);
+  Cmp:=TPCTargetConfigCache.Create(Self);
   try
     Cmp.Compiler:=CompilerFilename;
     Cmp.CompilerOptions:=CompilerOptions;
@@ -9035,7 +9263,7 @@ begin
     Cmp.TargetCPU:=TargetCPU;
     Node:=fItems.Find(cmp);
     if Node<>nil then begin
-      Result:=TFPCTargetConfigCache(Node.Data);
+      Result:=TPCTargetConfigCache(Node.Data);
     end else if CreateIfNotExists then begin
       Result:=cmp;
       cmp:=nil;
@@ -9048,11 +9276,11 @@ begin
   end;
 end;
 
-procedure TFPCTargetConfigCaches.GetDefaultCompilerTarget(
+procedure TPCTargetConfigCaches.GetDefaultCompilerTarget(
   const CompilerFilename, CompilerOptions: string; out TargetOS,
   TargetCPU: string);
 var
-  Cfg: TFPCTargetConfigCache;
+  Cfg: TPCTargetConfigCache;
 begin
   Cfg:=Find(CompilerFilename,CompilerOptions,'','',true);
   if Cfg=nil then begin
@@ -9066,18 +9294,18 @@ begin
   end;
 end;
 
-function TFPCTargetConfigCaches.GetListing: string;
+function TPCTargetConfigCaches.GetListing: string;
 var
   Node: TAVLTreeNode;
-  CfgCache: TFPCTargetConfigCache;
+  CfgCache: TPCTargetConfigCache;
   i: Integer;
 begin
-  Result:='TFPCTargetConfigCaches.GetListing Count='+dbgs(fItems.Count)+LineEnding;
+  Result:='TPCTargetConfigCaches.GetListing Count='+dbgs(fItems.Count)+LineEnding;
   i:=0;
   Node:=fItems.FindLowest;
   while Node<>nil do begin
     inc(i);
-    CfgCache:=TFPCTargetConfigCache(Node.Data);
+    CfgCache:=TPCTargetConfigCache(Node.Data);
     Result+='  '+dbgs(i)+':'
            +' TargetOS="'+CfgCache.TargetOS+'"'
            +' TargetCPU="'+CfgCache.TargetCPU+'"'
@@ -9088,26 +9316,26 @@ begin
   end;
 end;
 
-{ TFPCConfigFileStateList }
+{ TPCConfigFileStateList }
 
-function TFPCConfigFileStateList.GetItems(Index: integer): TFPCConfigFileState;
+function TPCConfigFileStateList.GetItems(Index: integer): TPCConfigFileState;
 begin
-  Result:=TFPCConfigFileState(fItems[Index]);
+  Result:=TPCConfigFileState(fItems[Index]);
 end;
 
-constructor TFPCConfigFileStateList.Create;
+constructor TPCConfigFileStateList.Create;
 begin
   fItems:=TFPList.Create;
 end;
 
-destructor TFPCConfigFileStateList.Destroy;
+destructor TPCConfigFileStateList.Destroy;
 begin
   Clear;
   FreeAndNil(fItems);
   inherited Destroy;
 end;
 
-procedure TFPCConfigFileStateList.Clear;
+procedure TPCConfigFileStateList.Clear;
 var
   i: Integer;
 begin
@@ -9116,10 +9344,10 @@ begin
   fItems.Clear;
 end;
 
-procedure TFPCConfigFileStateList.Assign(List: TFPCConfigFileStateList);
+procedure TPCConfigFileStateList.Assign(List: TPCConfigFileStateList);
 var
   i: Integer;
-  Item: TFPCConfigFileState;
+  Item: TPCConfigFileState;
 begin
   Clear;
   for i:=0 to List.Count-1 do begin
@@ -9128,7 +9356,7 @@ begin
   end;
 end;
 
-function TFPCConfigFileStateList.Equals(List: TFPCConfigFileStateList;
+function TPCConfigFileStateList.Equals(List: TPCConfigFileStateList;
   CheckDates: boolean): boolean;
 var
   i: Integer;
@@ -9140,34 +9368,34 @@ begin
   Result:=true;
 end;
 
-function TFPCConfigFileStateList.Add(aFilename: string; aFileExists: boolean;
-  aFileDate: longint): TFPCConfigFileState;
+function TPCConfigFileStateList.Add(aFilename: string; aFileExists: boolean;
+  aFileDate: longint): TPCConfigFileState;
 begin
-  Result:=TFPCConfigFileState.Create(aFilename,aFileExists,aFileDate);
+  Result:=TPCConfigFileState.Create(aFilename,aFileExists,aFileDate);
   fItems.Add(Result);
 end;
 
-function TFPCConfigFileStateList.Count: integer;
+function TPCConfigFileStateList.Count: integer;
 begin
   Result:=fItems.Count;
 end;
 
-procedure TFPCConfigFileStateList.LoadFromXMLConfig(XMLConfig: TXMLConfig;
+procedure TPCConfigFileStateList.LoadFromXMLConfig(XMLConfig: TXMLConfig;
   const Path: string);
 var
   Cnt: integer;
-  Item: TFPCConfigFileState;
+  Item: TPCConfigFileState;
   i: Integer;
 begin
   Cnt:=XMLConfig.GetValue(Path+'Count',0);
   for i:=1 to Cnt do begin
-    Item:=TFPCConfigFileState.Create('',false,0);
+    Item:=TPCConfigFileState.Create('',false,0);
     Item.LoadFromXMLConfig(XMLConfig,Path+'Item'+IntToStr(i)+'/');
     fItems.Add(Item);
   end;
 end;
 
-procedure TFPCConfigFileStateList.SaveToXMLConfig(XMLConfig: TXMLConfig;
+procedure TPCConfigFileStateList.SaveToXMLConfig(XMLConfig: TXMLConfig;
   const Path: string);
 var
   i: Integer;
@@ -9177,9 +9405,9 @@ begin
   XMLConfig.SetDeleteValue(Path+'Count',Count,0);
 end;
 
-{ TFPCConfigFileState }
+{ TPCConfigFileState }
 
-constructor TFPCConfigFileState.Create(const aFilename: string;
+constructor TPCConfigFileState.Create(const aFilename: string;
   aFileExists: boolean; aFileDate: longint);
 begin
   Filename:=aFilename;
@@ -9187,7 +9415,7 @@ begin
   FileDate:=aFileDate;
 end;
 
-function TFPCConfigFileState.Equals(Other: TFPCConfigFileState;
+function TPCConfigFileState.Equals(Other: TPCConfigFileState;
   CheckDate: boolean): boolean;
 begin
   Result:=false;
@@ -9196,7 +9424,7 @@ begin
   Result:=true;
 end;
 
-procedure TFPCConfigFileState.LoadFromXMLConfig(XMLConfig: TXMLConfig;
+procedure TPCConfigFileState.LoadFromXMLConfig(XMLConfig: TXMLConfig;
   const Path: string);
 begin
   Filename:=XMLConfig.GetValue(Path+'Filename','');
@@ -9204,7 +9432,7 @@ begin
   FileDate:=XMLConfig.GetValue(Path+'Date',0);
 end;
 
-procedure TFPCConfigFileState.SaveToXMLConfig(XMLConfig: TXMLConfig;
+procedure TPCConfigFileState.SaveToXMLConfig(XMLConfig: TXMLConfig;
   const Path: string);
 begin
   XMLConfig.SetDeleteValue(Path+'Filename',Filename,'');
@@ -9522,38 +9750,38 @@ begin
   end;
 end;
 
-{ TFPCDefinesCache }
+{ TCompilerDefinesCache }
 
-procedure TFPCDefinesCache.SetConfigCaches(const AValue: TFPCTargetConfigCaches);
+procedure TCompilerDefinesCache.SetConfigCaches(const AValue: TPCTargetConfigCaches);
 begin
   if FConfigCaches=AValue then exit;
   FConfigCaches:=AValue;
   FConfigCachesSaveStamp:=Low(FConfigCachesSaveStamp);
 end;
 
-function TFPCDefinesCache.GetExtraOptions: string;
+function TCompilerDefinesCache.GetExtraOptions: string;
 begin
   Result:=ConfigCaches.ExtraOptions;
 end;
 
-function TFPCDefinesCache.GetTestFilename: string;
+function TCompilerDefinesCache.GetTestFilename: string;
 begin
   Result:=ConfigCaches.TestFilename;
 end;
 
-procedure TFPCDefinesCache.SetExtraOptions(AValue: string);
+procedure TCompilerDefinesCache.SetExtraOptions(AValue: string);
 begin
   ConfigCaches.ExtraOptions:=AValue;
 end;
 
-procedure TFPCDefinesCache.SetSourceCaches(const AValue: TFPCSourceCaches);
+procedure TCompilerDefinesCache.SetSourceCaches(const AValue: TFPCSourceCaches);
 begin
   if FSourceCaches=AValue then exit;
   FSourceCaches:=AValue;
   FSourceCachesSaveStamp:=low(FSourceCachesSaveStamp);
 end;
 
-procedure TFPCDefinesCache.ClearUnitToSrcCaches;
+procedure TCompilerDefinesCache.ClearUnitToSrcCaches;
 var
   i: Integer;
 begin
@@ -9562,20 +9790,20 @@ begin
   fUnitToSrcCaches.Clear;
 end;
 
-procedure TFPCDefinesCache.SetTestFilename(AValue: string);
+procedure TCompilerDefinesCache.SetTestFilename(AValue: string);
 begin
   ConfigCaches.TestFilename:=AValue;
 end;
 
-constructor TFPCDefinesCache.Create(AOwner: TComponent);
+constructor TCompilerDefinesCache.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  ConfigCaches:=TFPCTargetConfigCaches.Create(nil);
+  ConfigCaches:=TPCTargetConfigCaches.Create(nil);
   SourceCaches:=TFPCSourceCaches.Create(nil);
   fUnitToSrcCaches:=TFPList.Create;
 end;
 
-destructor TFPCDefinesCache.Destroy;
+destructor TCompilerDefinesCache.Destroy;
 begin
   ClearUnitToSrcCaches;
   FreeAndNil(FConfigCaches);
@@ -9584,14 +9812,14 @@ begin
   inherited Destroy;
 end;
 
-procedure TFPCDefinesCache.Clear;
+procedure TCompilerDefinesCache.Clear;
 begin
   ClearUnitToSrcCaches;
   if ConfigCaches<>nil then ConfigCaches.Clear;
   if SourceCaches<>nil then SourceCaches.Clear;
 end;
 
-procedure TFPCDefinesCache.LoadFromXMLConfig(XMLConfig: TXMLConfig;
+procedure TCompilerDefinesCache.LoadFromXMLConfig(XMLConfig: TXMLConfig;
   const Path: string);
 begin
   if ConfigCaches<>nil then begin
@@ -9604,10 +9832,10 @@ begin
   end;
 end;
 
-procedure TFPCDefinesCache.SaveToXMLConfig(XMLConfig: TXMLConfig;
+procedure TCompilerDefinesCache.SaveToXMLConfig(XMLConfig: TXMLConfig;
   const Path: string);
 begin
-  //debugln(['TFPCDefinesCache.SaveToXMLConfig ']);
+  //debugln(['TCompilerDefinesCache.SaveToXMLConfig ']);
   if ConfigCaches<>nil then begin
     ConfigCaches.SaveToXMLConfig(XMLConfig,Path+'FPCConfigs/');
     FConfigCachesSaveStamp:=ConfigCaches.ChangeStamp;
@@ -9618,7 +9846,7 @@ begin
   end;
 end;
 
-procedure TFPCDefinesCache.LoadFromFile(Filename: string);
+procedure TCompilerDefinesCache.LoadFromFile(Filename: string);
 var
   XMLConfig: TXMLConfig;
 begin
@@ -9630,7 +9858,7 @@ begin
   end;
 end;
 
-procedure TFPCDefinesCache.SaveToFile(Filename: string);
+procedure TCompilerDefinesCache.SaveToFile(Filename: string);
 var
   XMLConfig: TXMLConfig;
 begin
@@ -9642,7 +9870,7 @@ begin
   end;
 end;
 
-function TFPCDefinesCache.NeedsSave: boolean;
+function TCompilerDefinesCache.NeedsSave: boolean;
 begin
   Result:=true;
   if (ConfigCaches<>nil) and (ConfigCaches.ChangeStamp<>FConfigCachesSaveStamp)
@@ -9652,10 +9880,10 @@ begin
   Result:=false;
 end;
 
-function TFPCDefinesCache.GetFPCVersion(const CompilerFilename, TargetOS,
+function TCompilerDefinesCache.GetFPCVersion(const CompilerFilename, TargetOS,
   TargetCPU: string; UseCompiledVersionAsDefault: boolean): string;
 var
-  CfgCache: TFPCTargetConfigCache;
+  CfgCache: TPCTargetConfigCache;
   ErrorMsg: string;
 begin
   if UseCompiledVersionAsDefault then
@@ -9672,7 +9900,7 @@ begin
   Result:=CfgCache.FullVersion;
 end;
 
-function TFPCDefinesCache.FindUnitSet(const CompilerFilename, TargetOS,
+function TCompilerDefinesCache.FindUnitSet(const CompilerFilename, TargetOS,
   TargetCPU, Options, FPCSrcDir: string; CreateIfNotExists: boolean
   ): TFPCUnitSetCache;
 var
@@ -9700,7 +9928,7 @@ begin
     Result:=nil;
 end;
 
-function TFPCDefinesCache.FindUnitSetWithID(const UnitSetID: string; out
+function TCompilerDefinesCache.FindUnitSetWithID(const UnitSetID: string; out
   Changed: boolean; CreateIfNotExists: boolean): TFPCUnitSetCache;
 var
   CompilerFilename, TargetOS, TargetCPU, Options, FPCSrcDir: string;
@@ -9708,7 +9936,7 @@ var
 begin
   ParseUnitSetID(UnitSetID,CompilerFilename, TargetOS, TargetCPU,
                  Options, FPCSrcDir, ChangeStamp);
-  //debugln(['TFPCDefinesCache.FindUnitToSrcCache UnitSetID="',dbgstr(UnitSetID),'" CompilerFilename="',CompilerFilename,'" TargetOS="',TargetOS,'" TargetCPU="',TargetCPU,'" Options="',Options,'" FPCSrcDir="',FPCSrcDir,'" ChangeStamp=',ChangeStamp,' exists=',FindUnitToSrcCache(CompilerFilename, TargetOS, TargetCPU,Options, FPCSrcDir,false)<>nil]);
+  //debugln(['TCompilerDefinesCache.FindUnitToSrcCache UnitSetID="',dbgstr(UnitSetID),'" CompilerFilename="',CompilerFilename,'" TargetOS="',TargetOS,'" TargetCPU="',TargetCPU,'" Options="',Options,'" FPCSrcDir="',FPCSrcDir,'" ChangeStamp=',ChangeStamp,' exists=',FindUnitToSrcCache(CompilerFilename, TargetOS, TargetCPU,Options, FPCSrcDir,false)<>nil]);
   Result:=FindUnitSet(CompilerFilename, TargetOS, TargetCPU,
                              Options, FPCSrcDir, false);
   if Result<>nil then begin
@@ -9721,7 +9949,7 @@ begin
     Changed:=false;
 end;
 
-function TFPCDefinesCache.GetUnitSetID(CompilerFilename, TargetOS, TargetCPU,
+function TCompilerDefinesCache.GetUnitSetID(CompilerFilename, TargetOS, TargetCPU,
   Options, FPCSrcDir: string; ChangeStamp: integer): string;
 begin
   Result:='CompilerFilename='+CompilerFilename+LineEnding
@@ -9732,7 +9960,7 @@ begin
          +'Stamp='+IntToStr(ChangeStamp);
 end;
 
-procedure TFPCDefinesCache.ParseUnitSetID(const ID: string;
+procedure TCompilerDefinesCache.ParseUnitSetID(const ID: string;
   out CompilerFilename, TargetOS, TargetCPU, Options, FPCSrcDir: string;
   out ChangeStamp: integer);
 var
@@ -9773,7 +10001,7 @@ begin
     ValueEndPos:=ValueStartPos;
     while not (ValueEndPos^ in [#10,#13,#0]) do inc(ValueEndPos);
     Value:=copy(ID,ValueStartPos-PChar(ID)+1,ValueEndPos-ValueStartPos);
-    //debugln(['TFPCDefinesCache.ParseUnitSetID Name=',copy(ID,NameStartPos-PChar(ID)+1,ValueStartPos-NameStartPos-1),' Value="',Value,'"']);
+    //debugln(['TCompilerDefinesCache.ParseUnitSetID Name=',copy(ID,NameStartPos-PChar(ID)+1,ValueStartPos-NameStartPos-1),' Value="',Value,'"']);
     case NameStartPos^ of
     'c','C':
       if NameFits('CompilerFilename') then
@@ -9868,7 +10096,7 @@ constructor TFPCUnitSetCache.Create(TheOwner: TComponent);
 begin
   inherited Create(TheOwner);
   CTIncreaseChangeStamp(FChangeStamp); // set ot not 0
-  FCaches:=TheOwner as TFPCDefinesCache;
+  FCaches:=TheOwner as TCompilerDefinesCache;
   fUnitToSourceTree:=TStringToStringTree.Create(false);
   fSrcDuplicates:=TStringToStringTree.Create(false);
   fSourceRules:=TFPCSourceRules.Create;
@@ -9897,7 +10125,7 @@ begin
 end;
 
 function TFPCUnitSetCache.GetConfigCache(AutoUpdate: boolean
-  ): TFPCTargetConfigCache;
+  ): TPCTargetConfigCache;
 begin
   if CompilerFilename='' then
     raise Exception.Create('TFPCUnitToSrcCache.GetConfigCache missing CompilerFilename');
@@ -9929,7 +10157,7 @@ end;
 function TFPCUnitSetCache.GetSourceRules(AutoUpdate: boolean
   ): TFPCSourceRules;
 var
-  Cfg: TFPCTargetConfigCache;
+  Cfg: TPCTargetConfigCache;
   NewRules: TFPCSourceRules;
 begin
   Cfg:=GetConfigCache(AutoUpdate);
@@ -9956,7 +10184,7 @@ var
   SrcRules: TFPCSourceRules;
   NewUnitToSourceTree: TStringToStringTree;
   NewSrcDuplicates: TStringToStringTree;
-  ConfigCache: TFPCTargetConfigCache;
+  ConfigCache: TPCTargetConfigCache;
 begin
   Src:=GetSourceCache(AutoUpdate);
   SrcRules:=GetSourceRules(AutoUpdate);
@@ -10011,7 +10239,7 @@ function TFPCUnitSetCache.GetUnitSrcFile(const AnUnitName: string;
 }
 var
   Tree: TStringToStringTree;
-  ConfigCache: TFPCTargetConfigCache;
+  ConfigCache: TPCTargetConfigCache;
   UnitInFPCPath: String;
 begin
   Result:='';
@@ -10068,7 +10296,7 @@ end;
 
 function TFPCUnitSetCache.GetCompiledUnitFile(const AUnitName: string): string;
 var
-  ConfigCache: TFPCTargetConfigCache;
+  ConfigCache: TPCTargetConfigCache;
 begin
   Result:='';
   ConfigCache:=GetConfigCache(false);
@@ -10097,7 +10325,7 @@ end;
 
 function TFPCUnitSetCache.GetFirstFPCCfg: string;
 var
-  Cfg: TFPCTargetConfigCache;
+  Cfg: TPCTargetConfigCache;
   i: Integer;
 begin
   Result:='';

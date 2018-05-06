@@ -8,7 +8,7 @@ interface
 
 uses
   Types,
-  CocoaAll,
+  CGGeometry, CocoaAll, cocoa_extra,
   Classes, Controls, SysUtils,
   //
   WSControls, LCLType, LMessages, LCLProc, Graphics, Forms,
@@ -34,6 +34,7 @@ type
     procedure SetHasCaret(AValue: Boolean);
     function GetIsOpaque: Boolean;
     procedure SetIsOpaque(AValue: Boolean);
+    function GetShouldBeEnabled: Boolean;
   protected
     FTarget: TWinControl;
     class function CocoaModifiersToKeyState(AModifiers: NSUInteger): PtrInt; static;
@@ -42,6 +43,7 @@ type
     procedure ScreenMousePos(var Point: NSPoint);
   public
     Owner: NSObject;
+    Frame: NSObject;
     class constructor Create;
     constructor Create(AOwner: NSObject; ATarget: TWinControl); virtual;
     destructor Destroy; override;
@@ -55,19 +57,20 @@ type
     procedure MouseClick; virtual;
     function MouseMove(Event: NSEvent): Boolean; virtual;
     function scrollWheel(Event: NSEvent): Boolean; virtual;
-    procedure frameDidChange; virtual;
-    procedure boundsDidChange; virtual;
+    procedure frameDidChange(sender: id); virtual;
+    procedure boundsDidChange(sender: id); virtual;
     procedure BecomeFirstResponder; virtual;
     procedure ResignFirstResponder; virtual;
     procedure DidBecomeKeyNotification; virtual;
     procedure DidResignKeyNotification; virtual;
     procedure SendOnChange; virtual;
     procedure SendOnTextChanged; virtual; // text controls (like spin) respond to OnChange for this event, but not for SendOnChange
-
+    procedure scroll(isVert: Boolean; Pos: Integer); virtual;
     function DeliverMessage(var Msg): LRESULT; virtual; overload;
     function DeliverMessage(Msg: Cardinal; WParam: WParam; LParam: LParam): LResult; virtual; overload;
     procedure Draw(ControlContext: NSGraphicsContext; const bounds, dirty: NSRect); virtual;
     procedure DrawBackground(ctx: NSGraphicsContext; const bounds, dirtyRect: NSRect); virtual;
+    procedure DrawOverlay(ControlContext: NSGraphicsContext; const bounds, dirty: NSRect); virtual;
     function ResetCursorRects: Boolean; virtual;
 
     property HasCaret: Boolean read GetHasCaret write SetHasCaret;
@@ -79,6 +82,15 @@ type
 
   { TCocoaWSWinControl }
 
+  { TCocoaWSControl }
+
+  TCocoaWSControl = class(TWSControl)
+  published
+    class function GetCanvasScaleFactor(const AControl: TControl): Double; override;
+  end;
+
+  { TCocoaWSWinControl }
+
   TCocoaWSWinControl = class(TWSWinControl)
   private
     class procedure ArrangeTabOrder(const AWinControl: TWinControl);
@@ -86,6 +98,7 @@ type
     class function CreateHandle(const AWinControl: TWinControl;
       const AParams: TCreateParams): TLCLIntfHandle; override;
     class procedure DestroyHandle(const AWinControl: TWinControl); override;
+    class function GetCanvasScaleFactor(const AControl: TControl): Double; override;
     class procedure SetText(const AWinControl: TWinControl; const AText: String); override;
     class function GetText(const AWinControl: TWinControl; var AText: String): Boolean; override;
     class function GetTextLen(const AWinControl: TWinControl; var ALength: Integer): Boolean; override;
@@ -97,9 +110,9 @@ type
     class procedure SetCursor(const AWinControl: TWinControl; const ACursor: HCursor); override;
     class procedure SetFont(const AWinControl: TWinControl; const AFont: TFont); override;
     class procedure SetColor(const AWinControl: TWinControl); override;
+    class procedure SetChildZPosition(const AWinControl, AChild: TWinControl; const AOldPos, ANewPos: Integer; const AChildren: TFPList); override;
     class procedure ShowHide(const AWinControl: TWinControl); override;
     class procedure Invalidate(const AWinControl: TWinControl); override;
-    // class procedure ScrollBy(const AWinControl: TWinControl; DeltaX, DeltaY: integer); override;
   end;
 
 
@@ -121,7 +134,7 @@ type
 
 // Utility WS functions
 
-function EmbedInScrollView(AView: NSView): TCocoaScrollView;
+function EmbedInScrollView(AView: NSView; AReleaseView: Boolean = true): TCocoaScrollView;
 
 implementation
 
@@ -133,7 +146,7 @@ var
 
 {$I mackeycodes.inc}
 
-function EmbedInScrollView(AView: NSView): TCocoaScrollView;
+function EmbedInScrollView(AView: NSView; AReleaseView: Boolean): TCocoaScrollView;
 var
   r: TRect;
   p: NSView;
@@ -145,7 +158,29 @@ begin
   Result := TCocoaScrollView.alloc.initWithFrame(NSNullRect);
   if Assigned(p) then p.addSubView(Result);
   Result.lclSetFrame(r);
-  Result.setHidden(p.isHidden);
+  Result.setHidden(AView.isHidden);
+  Result.setDocumentView(AView);
+  if AReleaseView then AView.release;
+  AView.setHidden(false);
+  SetViewDefaults(Result);
+end;
+
+function EmbedInManualScrollView(AView: NSView): TCocoaManualScrollView;
+var
+  r: TRect;
+  p: NSView;
+begin
+  if not Assigned(AView) then
+  begin
+    Result:=nil;
+    Exit;
+  end;
+  r := AView.lclFrame;
+  p := AView.superview;
+  Result := TCocoaManualScrollView.alloc.initWithFrame(NSNullRect);
+  if Assigned(p) then p.addSubView(Result);
+  Result.lclSetFrame(r);
+  Result.setHidden(AView.isHidden);
   Result.setDocumentView(AView);
   AView.setHidden(false);
   SetViewDefaults(Result);
@@ -208,13 +243,18 @@ procedure TLCLCommonCallback.OffsetMousePos(var Point: NSPoint);
 var
   lView: NSView;
 begin
-  lView := GetNSObjectView(Owner);
   if Owner.isKindOfClass(NSWindow) then
     Point.y := NSWindow(Owner).contentView.bounds.size.height - Point.y
-  else if lView <> nil then
+  else
   begin
-    Point := lView.convertPoint_fromView(Point, nil);
-    Point.y := lView.bounds.size.height - Point.y;
+    lView := GetNSObjectView(Owner);
+    if lView <> nil then
+    begin
+      lView.lclOffsetMousePos(Point);
+      //Point := lView.convertPoint_fromView(Point, nil);
+      //if not lView.isFlipped then
+        //Point.y := lView.bounds.size.height - Point.y;
+    end;
   end;
 end;
 
@@ -223,7 +263,7 @@ var
   f: NSRect;
   lWindow: NSWindow;
 begin
-  lWindow := GetNSObjectWindow(Owner);
+  lWindow := NSWindow(GetNSObjectWindow(Owner));
   if lWindow <> nil then
   begin
     f := lWindow.frame;
@@ -241,6 +281,7 @@ constructor TLCLCommonCallback.Create(AOwner: NSObject; ATarget: TWinControl);
 begin
   inherited Create;
   Owner := AOwner;
+  Frame := AOwner;
   FTarget := ATarget;
   FContext := nil;
   FHasCaret := False;
@@ -292,6 +333,52 @@ begin
   if (obj <> Owner) and (lCaptureView <> Owner) and not FIsEventRouting then
   begin
     Result := lCaptureView.lclGetCallback;
+  end;
+end;
+
+function MacKeyToVK(KeyCode: Word): Word; // according to mackeycodes.inc this is risky
+begin
+  case KeyCode of
+    MK_QWERTY_Q: Result := VK_Q;
+    MK_QWERTY_W: Result := VK_W;
+    MK_QWERTY_E: Result := VK_E;
+    MK_QWERTY_R: Result := VK_R;
+    MK_QWERTY_T: Result := VK_T;
+    MK_QWERTY_Y: Result := VK_Y;
+    MK_QWERTY_U: Result := VK_U;
+    MK_QWERTY_I: Result := VK_I;
+    MK_QWERTY_O: Result := VK_O;
+    MK_QWERTY_P: Result := VK_P;
+    MK_QWERTY_A: Result := VK_A;
+    MK_QWERTY_S: Result := VK_S;
+    MK_QWERTY_D: Result := VK_D;
+    MK_QWERTY_F: Result := VK_F;
+    MK_QWERTY_G: Result := VK_G;
+    MK_QWERTY_H: Result := VK_H;
+    MK_QWERTY_J: Result := VK_J;
+    MK_QWERTY_K: Result := VK_K;
+    MK_QWERTY_L: Result := VK_L;
+    MK_QWERTY_Z: Result := VK_Z;
+    MK_QWERTY_X: Result := VK_X;
+    MK_QWERTY_C: Result := VK_C;
+    MK_QWERTY_V: Result := VK_V;
+    MK_QWERTY_B: Result := VK_B;
+    MK_QWERTY_N: Result := VK_N;
+    MK_QWERTY_M: Result := VK_M;
+    //MK_QWERTY_LEFTBR:  Result := VK_;
+    //MK_QWERTY_RIGHTBR: = 30;
+    MK_QWERTY_BACKSLASH: Result := VK_BACK;
+
+    //MK_QWERTY_SEMICOLON: Result := VK_s
+    //MK_QWERTY_QUOTE: = 39;
+    //MK_QWERTY_ENTER: = 36;
+
+    //MK_QWERTY_COMMA: := 43;
+    //MK_QWERTY_PERIOD: := 47;
+    //MK_QWERTY_FRWSLASH: := 44;
+
+  else
+    Result:=VK_UNKNOWN;
   end;
 end;
 
@@ -450,6 +537,8 @@ var
           MK_COMMA:  VKKeyCode := VK_OEM_COMMA;
           MK_PERIOD: VKKeyCode := VK_OEM_PERIOD;
           MK_SLASH:  VKKeyCode := VK_OEM_2;
+        else
+          VKKeyCode := MacKeyToVK(KeyCode); // according to mackeycodes.inc this is risky
         end;
       end;
 
@@ -525,6 +614,8 @@ var
       end;
     end;
 
+    if KeyMsg.CharCode = 0 then Exit;
+
     //We should send a character
     if SendChar then
     begin
@@ -555,6 +646,8 @@ var
         Exit;
       end;
 
+      if CharMsg.CharCode = 0 then Exit;
+
       if CharMsg.CharCode <> ord(KeyChar) then
         LCLCharToMacEvent(Char(CharMsg.CharCode));
 
@@ -565,11 +658,10 @@ var
         CharMsg.Msg := LM_CHAR;
 
       if DeliverMessage(CharMsg) <> 0 then
-      begin
-        // the LCL handled the key
+        // "LN_CHAR" should be delivivered only after Cocoa processed the key
+        // todo: in the current code, Cocoa has not processed the key yet
+        // it must be rewritten.
         NotifyApplicationUserInput(Target, CharMsg.Msg);
-        Exit;
-      end;
     end;
     Result := False;
   end;
@@ -638,6 +730,7 @@ var
       NSAlternateKeyMask : VKKeyCode := VK_MENU;    //option is alt
       NSCommandKeyMask   : VKKeyCode := VK_LWIN;    //meta... map to left Windows Key?
     end;
+    KeyData := CocoaModifiersToKeyState(CurMod);
 
     //diff is now equal to the mask of the bit that changed, so we can determine
     //if this change is a keydown (PrevKeyModifiers didn't have the bit set) or
@@ -659,13 +752,13 @@ begin
     NSKeyDown:
       begin
         if not TranslateMacKeyCode then
-          Exit(True);
+          Exit(False);
         Result := HandleKeyDown;
       end;
     NSKeyUp:
       begin
         if not TranslateMacKeyCode then
-          Exit(True);
+          Exit(False);
         Result := HandleKeyUp;
       end;
     NSFlagsChanged:
@@ -692,10 +785,16 @@ var
   //Str: string;
   lEventType: NSEventType;
 begin
-  Result := False; // allow cocoa to handle message
+  if Assigned(Owner) and not Owner.lclIsEnabled then
+  begin
+    Result := True; // Cocoa should not handle the message.
+    Exit;           // LCL should not get the notification either, as the control is disabled.
+  end;
 
-  if Assigned(Target) and (not (csDesigning in Target.ComponentState) and not Owner.lclIsEnabled) then
-    Exit;
+  // If LCL control is provided and it's in designing state.
+  // The default resolution: Notify LCL about event, but don't let Cocoa
+  // do anything with it. (Result=true)
+  Result := Assigned(Target) and (csDesigning in Target.ComponentState);
 
   lCaptureControlCallback := GetCaptureControlCallback();
   //Str := (Format('MouseUpDownEvent Target=%s Self=%x CaptureControlCallback=%x', [Target.name, PtrUInt(Self), PtrUInt(lCaptureControlCallback)]));
@@ -743,7 +842,6 @@ begin
 
       NotifyApplicationUserInput(Target, Msg.Msg);
       DeliverMessage(Msg);
-      Result := True;
 
       // TODO: Check if Cocoa has special context menu check event
       if (Event.type_ = NSRightMouseDown) and (GetTarget is TControl) then
@@ -756,7 +854,6 @@ begin
         MsgContext.XPos := Round(MousePos.X);
         MsgContext.YPos := Round(MousePos.Y);
         DeliverMessage(MsgContext);
-        Result := True;
       end;
     end;
     NSLeftMouseUp,
@@ -773,7 +870,6 @@ begin
 
       NotifyApplicationUserInput(Target, Msg.Msg);
       DeliverMessage(Msg);
-      Result := True;
     end;
   end;
 
@@ -792,10 +888,16 @@ var
   targetControl: TWinControl;
   childControl:TWinControl;
 begin
-  Result := False; // allow cocoa to handle message
+  if Assigned(Owner) and not Owner.lclIsEnabled then
+  begin
+    Result := True; // Cocoa should not handle the message.
+    Exit;           // LCL should get the notification either.
+  end;
 
-  if Assigned(Target) and (not (csDesigning in Target.ComponentState) and not Owner.lclIsEnabled) then
-    Exit;
+  // If LCL control is provided and it's in designing state.
+  // The default resolution: Notify LCL about event, but don't let Cocoa
+  // do anything with it. (Result=true)
+  Result := Assigned(Target) and (csDesigning in Target.ComponentState);
 
   MousePos := Event.locationInWindow;
   OffsetMousePos(MousePos);
@@ -815,15 +917,21 @@ begin
   end
   else
   begin
-    if assigned(Target.Parent) and not PtInRect(rect, mp) then
+    rect:=Target.BoundsRect;
+    OffsetRect(rect, -rect.left, -rect.Top);
+    if (event.type_ = NSMouseMoved) and (not Types.PtInRect(rect, mp)) then
+      // do not send negative coordinates (unless dragging mouse)
+      Exit;
+
+    if assigned(Target.Parent) and not Types.PtInRect(rect, mp) then
        targetControl:=Target.Parent // outside myself then route to parent
     else
-    for i:=Target.ComponentCount-1 downto 0  do // otherwise check, if over child and route to child
-      if Target.Components[i] is TWinControl then
+    for i:=Target.ControlCount-1 downto 0  do // otherwise check, if over child and route to child
+      if Target.Controls[i] is TWinControl then
       begin
-        childControl:=TWinControl(Target.Components[i]);
+        childControl:=TWinControl(Target.Controls[i]);
         rect:=childControl.BoundsRect;
-        if  PtInRect(rect, mp) then
+        if  Types.PtInRect(rect, mp) then
         begin
           targetControl:=childControl;
           break;
@@ -879,35 +987,47 @@ begin
 
   FillChar(Msg, SizeOf(Msg), #0);
 
-  Msg.Msg := LM_MOUSEWHEEL;
   Msg.Button := MButton;
   Msg.X := round(MousePos.X);
   Msg.Y := round(MousePos.Y);
   Msg.State :=  TShiftState(integer(CocoaModifiersToKeyState(Event.modifierFlags)));
+
   // Some info on event.deltaY can be found here:
   // https://developer.apple.com/library/mac/releasenotes/AppKit/RN-AppKitOlderNotes/
   // It says that deltaY=1 means 1 line, and in the LCL 1 line is 120
-  Msg.WheelDelta := round(event.deltaY * 120);
-  // Filter out empty events - See bug 28491
-  if Msg.WheelDelta = 0 then Exit;
+  if event.deltaY <> 0 then
+  begin
+    Msg.Msg := LM_MOUSEWHEEL;
+    Msg.WheelDelta := round(event.deltaY * 120);
+  end
+  else
+  if event.deltaX <> 0 then
+  begin
+    Msg.Msg := LM_MOUSEHWHEEL;
+    Msg.WheelDelta := round(event.deltaX * 120);
+  end
+  else
+    // Filter out empty events - See bug 28491
+    Exit;
 
   NotifyApplicationUserInput(Target, Msg.Msg);
   Result := DeliverMessage(Msg) <> 0;
 end;
 
-procedure TLCLCommonCallback.frameDidChange;
+procedure TLCLCommonCallback.frameDidChange(sender: id);
 begin
-  boundsDidChange;
+  boundsDidChange(sender);
 end;
 
-procedure TLCLCommonCallback.boundsDidChange;
+procedure TLCLCommonCallback.boundsDidChange(sender: id);
 var
   NewBounds, OldBounds: TRect;
   PosMsg: TLMWindowPosChanged;
   Resized, Moved, ClientResized: Boolean;
   SizeType: Integer;
 begin
-  NewBounds := Owner.lclFrame;
+  NewBounds := Frame.lclFrame;
+
   //debugln('Newbounds='+ dbgs(newbounds));
   // send window pos changed
   PosMsg.Msg := LM_WINDOWPOSCHANGED;
@@ -939,10 +1059,11 @@ begin
     (OldBounds.Left <> NewBounds.Left) or
     (OldBounds.Top <> NewBounds.Top);
 
-  ClientResized := False;
+  ClientResized := (sender <> Frame)
+    and not EqualRect(Target.ClientRect, Frame.lclClientFrame);
 
   // update client rect
-  if Resized or Target.ClientRectNeedsInterfaceUpdate  then
+  if ClientResized or Resized or Target.ClientRectNeedsInterfaceUpdate then
   begin
     Target.InvalidateClientRectCache(false);
     ClientResized := True;
@@ -1000,6 +1121,26 @@ end;
 procedure TLCLCommonCallback.SendOnTextChanged;
 begin
   SendSimpleMessage(Target, CM_TEXTCHANGED);
+end;
+
+procedure TLCLCommonCallback.scroll(isVert: Boolean; Pos: Integer);
+var
+  LMScroll: TLMScroll;
+  b: Boolean;
+begin
+  FillChar(LMScroll{%H-}, SizeOf(LMScroll), #0);
+  //todo: this should be a part of a parameter
+  //LMScroll.ScrollBar := Target.Handle;
+
+  if IsVert then
+    LMScroll.Msg := LM_VSCROLL
+  else
+    LMScroll.Msg := LM_HSCROLL;
+
+  LMScroll.Pos := Pos;
+  LMScroll.ScrollCode := SB_THUMBPOSITION; //SIF_POS;
+
+  LCLMessageGlue.DeliverMessage(Target, LMScroll);
 end;
 
 function TLCLCommonCallback.DeliverMessage(var Msg): LRESULT;
@@ -1074,10 +1215,40 @@ begin
   end;
 end;
 
+procedure TLCLCommonCallback.DrawOverlay(ControlContext: NSGraphicsContext;
+  const bounds, dirty: NSRect);
+var
+  PS  : TPaintStruct;
+  nsr : NSRect;
+begin
+  // todo: think more about draw call while previous draw still active
+  if Assigned(FContext) then
+    Exit;
+  FContext := TCocoaContext.Create(ControlContext);
+  FContext.isControlDC := True;
+  FContext.isDesignDC := True;
+  try
+    // debugln('Draw '+Target.name+' bounds='+Dbgs(NSRectToRect(bounds))+' dirty='+Dbgs(NSRectToRect(dirty)));
+    if FContext.InitDraw(Round(bounds.size.width), Round(bounds.size.height)) then
+    begin
+      nsr:=dirty;
+      nsr.origin.y:=bounds.size.height-dirty.origin.y-dirty.size.height;
+
+      FillChar(PS, SizeOf(TPaintStruct), 0);
+      PS.hdc := HDC(FContext);
+      PS.rcPaint := NSRectToRect(nsr);
+      LCLSendPaintMsg(Target, HDC(FContext), @PS);
+    end;
+  finally
+    FreeAndNil(FContext);
+  end;
+end;
+
 function TLCLCommonCallback.ResetCursorRects: Boolean;
 var
   ACursor: TCursor;
   View: NSView;
+  cr:TCocoaCursor;
 begin
   Result := False;
   View := CocoaUtils.GetNSObjectView(Owner);
@@ -1092,7 +1263,11 @@ begin
     end;
     Result := ACursor <> crDefault;
     if Result then
-      View.addCursorRect_cursor(View.visibleRect, TCocoaCursor(Screen.Cursors[ACursor]).Cursor);
+    begin
+      cr:=TCocoaCursor(Screen.Cursors[ACursor]);
+      if assigned(cr) then
+      View.addCursorRect_cursor(View.visibleRect, cr.Cursor);
+    end;
   end;
 end;
 
@@ -1104,6 +1279,22 @@ end;
 procedure TLCLCommonCallback.SetIsOpaque(AValue: Boolean);
 begin
   FIsOpaque:=AValue;
+end;
+
+function TLCLCommonCallback.GetShouldBeEnabled: Boolean;
+begin
+  Result := Assigned(FTarget) and FTarget.Enabled;
+end;
+
+{ TCocoaWSControl }
+
+class function TCocoaWSControl.GetCanvasScaleFactor(const AControl: TControl
+  ): Double;
+begin
+  if Assigned(AControl.Parent) then
+    Result := AControl.Parent.GetCanvasScaleFactor
+  else
+    Result := 1;
 end;
 
 { TCocoaWSWinControl }
@@ -1180,6 +1371,33 @@ begin
   obj.release;
 end;
 
+class function TCocoaWSWinControl.GetCanvasScaleFactor(const AControl: TControl
+  ): Double;
+var
+  obj: NSObject;
+  win: NSWindow;
+begin
+  win := nil;
+  Result := 1;
+
+  if TWinControl(AControl).HandleAllocated then
+  begin
+    obj := NSObject(TWinControl(AControl).Handle);
+    if obj.isKindOfClass_(NSView) then
+      win := NSView(obj).window
+    else if obj.isKindOfClass_(NSWindow) then
+      win := NSWindow(obj);
+  end;
+
+  if Assigned(win) then
+  begin
+    if win.respondsToSelector( ObjCSelector('backingScaleFactor')) then
+      Result := win.backingScaleFactor
+    else if win.respondsToSelector( ObjCSelector('userSpaceScaleFactor')) then // for older OSX
+      Result := win.userSpaceScaleFactor;
+  end;
+end;
+
 class procedure TCocoaWSWinControl.SetText(const AWinControl: TWinControl; const AText: String);
 var
   obj: NSObject;
@@ -1239,6 +1457,8 @@ begin
   Result:=(AWinControl.Handle<>0);
   if not Result then Exit;
   ARect:=NSObject(AWinControl.Handle).lclClientFrame;
+  if (ARect.Left<>0) or (ARect.Top<>0) then
+    OffsetRect(ARect, -ARect.Left, -ARect.Top);
 end;
 
 class procedure TCocoaWSWinControl.GetPreferredSize(
@@ -1250,6 +1470,9 @@ var
 begin
   if not AWinControl.HandleAllocated then Exit;
 
+  //todo: GetNSObjectView must be replaced with oop approach
+  //      note that client rect might be smaller than the bounds of TWinControl itself
+  //      thus extra size should be adapted
   lView := CocoaUtils.GetNSObjectView(NSObject(AWinControl.Handle));
   if lView = nil then Exit;
 
@@ -1268,6 +1491,9 @@ end;
 
 class procedure TCocoaWSWinControl.SetBounds(const AWinControl: TWinControl;
   const ALeft, ATop, AWidth, AHeight: Integer);
+var
+  cb : ICommonCallBack;
+  r  : TRect;
 begin
   if AWinControl.HandleAllocated then
   begin
@@ -1344,6 +1570,90 @@ begin
   invalidate(AWinControl);
 end;
 
+function indexInList(ctrl: id; l: TFPList): integer;
+var
+ i : integer;
+begin
+  for i:=0 to l.Count-1 do
+    if PtrUInt(TWinControl(l[i]).Handle)=PtrUInt(ctrl) then
+    begin
+      Result:=i;
+      exit;
+    end;
+  Result:=-1;
+end;
+
+function SortHandles(param1: id; param2: id; param3: Pointer): NSComparisonResult; cdecl;
+var
+  i1,i2: integer;
+begin
+  i1:=indexInList(param1, TFPList(param3));
+  i2:=indexInList(param2, TFPList(param3));
+  if i1<i2 then Result:=NSOrderedDescending
+  else if i1>i2 then Result:=NSOrderedAscending
+  else Result:=NSOrderedSame;
+end;
+
+class procedure TCocoaWSWinControl.SetChildZPosition(const AWinControl,
+  AChild: TWinControl; const AOldPos, ANewPos: Integer; const AChildren: TFPList
+  );
+var
+  pr : NSView;
+  ch : NSView;
+  ab : NSView;
+  c  : TObject;
+  i  : integer;
+begin
+  if (not AWinControl.HandleAllocated) or (not AChild.HandleAllocated) then Exit;
+
+  pr:=NSView(AWinControl.Handle);
+
+  //todo: sorting might be a better option than removing / adding a view
+  //      (whenever a focused (firstrepsonder view) is moved to front, focus is lost.
+  //      if that's not the case for sorting, then sorting *must* be used
+  //      current problem, is that during sorting a new order needs to be determined
+  //      (the desired order is given in AChildren list).
+  //      however, on every comparison, an index must be searched withing a list.
+  //      and that might be very slow! (if a lot of sibling controls is present)
+  //      instead of a search, it's beter to store the desired sorting order with a view
+  //      itself. However, that requires adding additional methods  lclSetNewOrder and lclGetNewOrder
+  //
+  //pr.sortSubviewsUsingFunction_context(@SortHandles, AChildren);
+  //
+  // if sorting is used, all code below is not needed
+
+  ch:=NSView(AChild.Handle);
+
+  // The way of changing the order in an array of views
+  // is to remove a view and then reinstert it at the new spot
+  ch.retain();
+  try
+    ch.removeFromSuperview();
+    if ANewPos=0 then
+    begin
+      pr.addSubview_positioned_relativeTo(ch, NSWindowBelow, nil)
+    end
+    else
+    begin
+      i:=AChildren.Count-ANewPos;
+      c:=TObject(AChildren[i]);
+      if c is TWinControl then
+      begin
+        c:=TObject(AChildren[i]);
+        ab:=NSView(TWinControl(c).Handle);
+      end
+      else
+        ab:=nil;
+      pr.addSubview_positioned_relativeTo(ch, NSWindowAbove, ab);
+    end;
+  finally
+    ch.release();
+  end;
+
+  //NSView(AChild.Handle).moveDown
+  //inherited SetChildZPosition(AWinControl, AChild, AOldPos, ANewPos, AChildren);
+end;
+
 class procedure TCocoaWSWinControl.ShowHide(const AWinControl: TWinControl);
 var
   pool: NSAutoreleasePool;   // called outside apploop on startup - therefore has to be enframed by pool
@@ -1376,11 +1686,19 @@ end;
 class function TCocoaWSCustomControl.CreateHandle(const AWinControl: TWinControl;
   const AParams: TCreateParams): TLCLIntfHandle;
 var
-  ctrl: TCocoaCustomControl;
+  ctrl : TCocoaCustomControl;
+  sl   : TCocoaManualScrollView;
+  lcl  : TLCLCustomControlCallback;
 begin
   ctrl := TCocoaCustomControl(TCocoaCustomControl.alloc.lclInitWithCreateParams(AParams));
-  ctrl.callback := TLCLCustomControlCallback.Create(ctrl, AWinControl);
-  Result := TLCLIntfHandle(ctrl);
+  lcl := TLCLCustomControlCallback.Create(ctrl, AWinControl);
+  ctrl.callback := lcl;
+
+  sl := EmbedInManualScrollView(ctrl);
+  sl.callback := ctrl.callback;
+  lcl.frame:=sl;
+
+  Result := TLCLIntfHandle(sl);
 end;
 
 end.

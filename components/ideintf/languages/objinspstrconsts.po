@@ -288,6 +288,10 @@ msgstr ""
 msgid "Unable to find parser for tool \"%s\""
 msgstr ""
 
+#: objinspstrconsts.lisunabletofindparserwithname
+msgid "Unable to find parser with name \"%s\""
+msgstr ""
+
 #: objinspstrconsts.nbcesaddpage
 msgctxt "objinspstrconsts.nbcesaddpage"
 msgid "Add Page"
@@ -401,10 +405,6 @@ msgstr ""
 
 #: objinspstrconsts.oisbtnproperties
 msgid "&Properties"
-msgstr ""
-
-#: objinspstrconsts.oiscadd
-msgid "&Add"
 msgstr ""
 
 #: objinspstrconsts.oiscancel
@@ -590,6 +590,10 @@ msgstr ""
 
 #: objinspstrconsts.oisinterface
 msgid "Interface"
+msgstr ""
+
+#: objinspstrconsts.oisinvalid
+msgid "(Invalid)"
 msgstr ""
 
 #: objinspstrconsts.oisinvalidpropertyvalue
@@ -828,6 +832,10 @@ msgstr ""
 
 #: objinspstrconsts.oissettodefaulthint
 msgid "Set property value to Default"
+msgstr ""
+
+#: objinspstrconsts.oisshowalloutputlines
+msgid "Show all output lines"
 msgstr ""
 
 #: objinspstrconsts.oisshowclasses
@@ -1294,6 +1302,14 @@ msgstr ""
 msgid "&Add ..."
 msgstr ""
 
+#: objinspstrconsts.sccsiledtaddmoreresolutions
+msgid "Add more resolutions ..."
+msgstr ""
+
+#: objinspstrconsts.sccsiledtaddnewresolution
+msgid "New resolution ..."
+msgstr ""
+
 #: objinspstrconsts.sccsiledtadjustment
 msgid "Adjustment"
 msgstr ""
@@ -1301,6 +1317,10 @@ msgstr ""
 #: objinspstrconsts.sccsiledtapply
 msgctxt "objinspstrconsts.sccsiledtapply"
 msgid "&Apply"
+msgstr ""
+
+#: objinspstrconsts.sccsiledtcannotdeleteresolution
+msgid "Cannot delete default resolution."
 msgstr ""
 
 #: objinspstrconsts.sccsiledtcaption
@@ -1325,12 +1345,24 @@ msgctxt "objinspstrconsts.sccsiledtdelete"
 msgid "&Delete"
 msgstr ""
 
+#: objinspstrconsts.sccsiledtdeleteresolution
+msgid "Delete resolution ..."
+msgstr ""
+
+#: objinspstrconsts.sccsiledtdeleteresolutionconfirmation
+msgid "Select the resolution to delete."
+msgstr ""
+
 #: objinspstrconsts.sccsiledtgrplcaption
 msgid "Images"
 msgstr ""
 
 #: objinspstrconsts.sccsiledtgrprcaption
 msgid "Selected Image"
+msgstr ""
+
+#: objinspstrconsts.sccsiledtimagewidthofnewresolution
+msgid "Image width of the new resolution:"
 msgstr ""
 
 #: objinspstrconsts.sccsiledtmovedown
@@ -1361,6 +1393,10 @@ msgstr ""
 
 #: objinspstrconsts.sccsiledtreplace
 msgid "&Replace ..."
+msgstr ""
+
+#: objinspstrconsts.sccsiledtreplaceallresolutions
+msgid "Replace all resolutions ..."
 msgstr ""
 
 #: objinspstrconsts.sccsiledtsave

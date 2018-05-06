@@ -28,17 +28,17 @@ unit opkman_packagedetailsfrm;
 interface
 
 uses
-  Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, StdCtrls,
-  ExtCtrls;
+  // LCL
+  Forms, StdCtrls, ExtCtrls, ButtonPanel, Classes, Graphics;
 
 type
 
   { TPackageDetailsFrm }
 
   TPackageDetailsFrm = class(TForm)
-    bOk: TButton;
+    ButtonPanel: TButtonPanel;
     mDetails: TMemo;
-    pnButtons: TPanel;
+    procedure FormCreate(Sender: TObject);
     procedure FormKeyPress(Sender: TObject; var Key: char);
   private
 
@@ -51,6 +51,8 @@ var
 
 implementation
 
+uses opkman_options;
+
 {$R *.lfm}
 
 { TPackageDetailsFrm }
@@ -59,6 +61,15 @@ procedure TPackageDetailsFrm.FormKeyPress(Sender: TObject; var Key: char);
 begin
   if Key = #27 then
     Close;
+end;
+
+procedure TPackageDetailsFrm.FormCreate(Sender: TObject);
+begin
+  if not Options.UseDefaultTheme then
+  begin
+    Self.Color := clBtnFace;
+    mDetails.Color := clBtnFace;
+  end;
 end;
 
 end.

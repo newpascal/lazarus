@@ -198,6 +198,8 @@ type
     // procedures for working with components and persistents
     function GetDesignControl(AControl: TControl): TControl;
     function DoDeleteSelectedPersistents: boolean;
+    procedure DoDeleteSelectedPersistentsAsync({%H-}Data: PtrInt);
+    procedure CutSelectionAsync({%H-}Data: PtrInt);
     procedure DoSelectAll;
     procedure DoDeletePersistent(APersistent: TPersistent; FreeIt: boolean);
     function GetSelectedComponentClass: TRegisteredComponent;
@@ -828,6 +830,7 @@ end;
 destructor TDesigner.Destroy;
 begin
   //debugln(['TDesigner.Destroy Self=',dbgs(Pointer(Self))]);
+  Application.RemoveAsyncCalls(Self);
   PopupMenuComponentEditor := nil;
   FreeAndNil(FDesignerPopupMenu);
   FreeAndNil(FHintWIndow);
@@ -1626,6 +1629,11 @@ begin
   Result := DoCopySelectionToClipboard and DoDeleteSelectedPersistents;
 end;
 
+procedure TDesigner.CutSelectionAsync(Data: PtrInt);
+begin
+  CutSelection;
+end;
+
 function TDesigner.CanCopy: Boolean;
 begin
   Result := (Selection.Count > 0) and
@@ -2136,7 +2144,6 @@ procedure TDesigner.MouseDownOnControl(Sender: TControl;
 var
   CompIndex:integer;
   SelectedCompClass: TRegisteredComponent;
-  NonVisualComp: TComponent;
   ParentForm: TCustomForm;
   Shift: TShiftState;
   DesignSender: TControl;
@@ -2157,10 +2164,7 @@ begin
   
   MouseDownPos := GetFormRelativeMousePosition(Form);
   LastMouseMovePos := MouseDownPos;
-
-  MouseDownComponent := nil;
   MouseDownSender := nil;
-
   MouseDownComponent := ComponentAtPos(MouseDownPos.X, MouseDownPos.Y, True, True);
   if (MouseDownComponent = nil) then exit;
 
@@ -2172,9 +2176,7 @@ begin
         MouseDownComponent := nil;
         Exit;
       end;
-
-    NonVisualComp := MouseDownComponent;
-    MoveNonVisualComponentIntoForm(NonVisualComp);
+    MoveNonVisualComponentIntoForm(MouseDownComponent);
   end;
 
   MouseDownSender := DesignSender;
@@ -2211,7 +2213,9 @@ begin
       TControlAccess(MouseDownComponent).MouseDown(Button, Shift, p.X, p.Y);
       Exit;
     end;
-  end;
+  end
+  else
+    p:=Point(0,0);
 
   if Mediator<>nil then begin
     Handled:=false;
@@ -2473,7 +2477,9 @@ begin
       TControlAccess(MouseDownComponent).MouseUp(Button, Shift, p.X, p.Y);
       Exit;
     end;
-  end;
+  end
+  else
+    p:=Point(0,0);
 
   if Mediator<>nil then
   begin
@@ -2947,10 +2953,16 @@ begin
       //debugln(['TDesigner.DoDeleteSelectedComponents A ',dbgsName(APersistent),' ',(APersistent is TComponent) and (TheFormEditor.FindComponent(TComponent(APersistent))<>nil)]);
       RemovePersistentAndChilds(APersistent);
     end;
+    MouseDownComponent := Nil;
   finally
     Modified;
   end;
   Result:=true;
+end;
+
+procedure TDesigner.DoDeleteSelectedPersistentsAsync(Data: PtrInt);
+begin
+  DoDeleteSelectedPersistents;
 end;
 
 procedure TDesigner.DoSelectAll;
@@ -2965,22 +2977,18 @@ end;
 procedure TDesigner.DoDeletePersistent(APersistent: TPersistent; FreeIt: boolean);
 var
   Hook: TPropertyEditorHook;
-  AComponent: TComponent;
-  AForm: TCustomForm;
 begin
   if APersistent=nil then exit;
   try
     //debugln(['TDesigner.DoDeletePersistent A ',dbgsName(APersistent),' FreeIt=',FreeIt]);
-    PopupMenuComponentEditor:=nil;
     // unselect component
     Selection.Remove(APersistent);
-    if (APersistent is TComponent) then begin
-      AComponent:=TComponent(APersistent);
-      if csDestroying in AComponent.ComponentState then
+    if APersistent is TComponent then begin
+      PopupMenuComponentEditor:=nil;
+      if csDestroying in TComponent(APersistent).ComponentState then
         FreeIt:=false;
     end;
-    AForm:=GetDesignerForm(APersistent);
-    if AForm=nil then begin
+    if GetDesignerForm(APersistent)=nil then begin
       // has no designer
       // -> do not call handlers and simply get rid of the rubbish
       if FreeIt then begin
@@ -3283,7 +3291,7 @@ end;
 
 procedure TDesigner.OnDeleteSelectionMenuClick(Sender: TObject);
 begin
-  DoDeleteSelectedPersistents;
+  Application.QueueAsyncCall(@DoDeleteSelectedPersistentsAsync, 0);
 end;
 
 procedure TDesigner.OnSelectAllMenuClick(Sender: TObject);
@@ -3345,7 +3353,7 @@ end;
 
 procedure TDesigner.OnCutMenuClick(Sender: TObject);
 begin
-  CutSelection;
+  Application.QueueAsyncCall(@CutSelectionAsync, 0);
 end;
 
 procedure TDesigner.OnPasteMenuClick(Sender: TObject);
@@ -3468,6 +3476,8 @@ begin
   if (AComponent is TControl)
   and (csNoDesignVisible in TControl(AComponent).ControlStyle) then
     exit;
+  if (csDestroying in AComponent.ComponentState) then
+    exit;
 
   // draw children
   if (AComponent.Owner=nil) then
@@ -3528,8 +3538,6 @@ begin
   IconRect := Rect(0, 0, NonVisualCompWidth, NonVisualCompWidth);
   FSurface.Canvas.Frame3D(IconRect, 1, bvRaised);
   FSurface.Canvas.FillRect(IconRect);
-  if NonVisualCompBorder > 1 then
-    InflateRect(IconRect, -NonVisualCompBorder + 1, -NonVisualCompBorder + 1);
 
   // draw component Name
   if ShowComponentCaptions
@@ -3564,10 +3572,9 @@ begin
     FOnGetNonVisualCompIcon(Self, AComponent, Icon);
     if Icon <> nil then
     begin
-      inc(IconRect.Left, (NonVisualCompIconWidth - Icon.Width) div 2);
-      inc(IconRect.Top, (NonVisualCompIconWidth - Icon.Height) div 2);
-      IconRect.Right := IconRect.Left + Icon.Width;
-      IconRect.Bottom := IconRect.Top + Icon.Height;
+      InflateRect(IconRect,
+        - (IconRect.Right-IconRect.Left-Icon.Width) div 2,
+        - (IconRect.Bottom-IconRect.Top-Icon.Height) div 2);
       FSurface.Canvas.StretchDraw(IconRect, Icon);
     end;
   end;
@@ -4079,9 +4086,10 @@ var
   AncestorComponent: TComponent;
 begin
   MsgResult:=IDEQuestionDialog(lisReset,
-    lisResetLeftTopWidthHeightOfSelectedComponentsToTheir,
-    mtConfirmation, [mrYes, lisSelected, mrYesToAll,
-      lisSelectedAndChildControls, mrCancel]);
+      lisResetLeftTopWidthHeightOfSelectedComponentsToTheir,
+      mtConfirmation, [mrYes, lisSelected,
+                       mrYesToAll, lisSelectedAndChildControls,
+                       mrCancel]);
   if not (MsgResult in [mrYes,mrYesToAll]) then exit;
   HasChanged:=false;
   Form.DisableAutoSizing{$IFDEF DebugDisableAutoSizing}('TDesigner.OnResetPopupMenuClick'){$ENDIF};
@@ -4173,15 +4181,14 @@ procedure TDesigner.HintTimer(Sender: TObject);
     Result := Format('%d x %d', [Selection.Width, Selection.Height]);
   end;
 
+  function ParentComponent(AComponent: TComponent): TComponent;
+  begin
+    Result := AComponent.GetParentComponent;
+    if (Result = nil) and ComponentIsIcon(AComponent) then
+      Result := AComponent.Owner;
+  end;
+
   function GetSelectionPosHintText: String;
-
-    function ParentComponent(AComponent: TComponent): TComponent;
-    begin
-      Result := AComponent.GetParentComponent;
-      if (Result = nil) and ComponentIsIcon(AComponent) then
-        Result := AComponent.Owner;
-    end;
-
   var
     BaseParent, TestParent: TComponent;
     BaseFound: Boolean;

@@ -18,9 +18,14 @@ unit EduMenu;
 interface
 
 uses
-  Classes, SysUtils, LCLProc, FileUtil, LResources, Forms, StdCtrls, ComCtrls,
-  AvgLvlTree, Controls, ExtCtrls,
-  LazConfigStorage, IDEOptionsIntf, MenuIntf, IDEImagesIntf, LazIDEIntf,
+  Classes, SysUtils, Laz_AVL_Tree,
+  // LCL
+  LCLProc, LResources, Forms, StdCtrls, ComCtrls, Controls, ExtCtrls,
+  // LazUtils
+  AvgLvlTree, LazConfigStorage,
+  // IdeIntf
+  IDEOptionsIntf, MenuIntf, IDEImagesIntf,
+  // Education
   EduOptions;
 
 type
@@ -183,9 +188,9 @@ begin
   MenusTreeView.Items.Clear;
   if MenusTreeView.StateImages=nil then
     MenusTreeView.StateImages:=IDEImages.Images_16;
-  ShowImgID:=IDEImages.LoadImage(16,'menu_run');
-  HalfHideImgID:=IDEImages.LoadImage(16,'menu_run_file');
-  HideImgID:=IDEImages.LoadImage(16,'menu_stop');
+  ShowImgID:=IDEImages.LoadImage('menu_run');
+  HalfHideImgID:=IDEImages.LoadImage('menu_run_file');
+  HideImgID:=IDEImages.LoadImage('menu_stop');
   Hidden:=false;
   for i:=0 to IDEMenuRoots.Count-1 do
     Add(nil,IDEMenuRoots[i],Hidden);
@@ -367,7 +372,7 @@ end;
 
 function TEduMenuOptions.Save(Config: TConfigStorage): TModalResult;
 var
-  Node: TAvgLvlTreeNode;
+  Node: TAvlTreeNode;
   Item: PStringToStringItem;
   Cnt: Integer;
 begin

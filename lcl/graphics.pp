@@ -37,19 +37,26 @@ interface
 {$DEFINE HasFPJoinStyle}
 {$ENDIF}
 
-
 uses
   // RTL + FCL
-  SysUtils, Math, Types, Classes, Contnrs,
+  SysUtils, Math, Types, Classes, Contnrs, Laz_AVL_Tree,
   FPImage, FPCanvas,
   FPWriteBMP,              // bmp support
   FPWritePNG, PNGComn,     // png support
+  {$IFNDEF DisableLCLPNM}
   FPReadPNM, FPWritePNM,   // PNM (Portable aNyMap) support
+  {$ENDIF}
+  {$IFNDEF DisableLCLJPEG}
   FPReadJpeg, FPWriteJpeg, // jpg support
+  {$ENDIF}
+  {$IFNDEF DisableLCLTIFF}
   FPReadTiff, FPTiffCmn,   // tiff support
+  {$ENDIF}
+  {$IFNDEF DisableLCLGIF}
   FPReadGif,
+  {$ENDIF}
   // LazUtils
-  FPCAdds, LazUTF8Classes, FileUtil, AvgLvlTree,
+  FPCAdds, LazUTF8Classes,
   // LCL
   LCLVersion, LCLStrConsts, LCLType, LCLProc, LMessages, LResources, LCLResCache,
   IntfGraphics, GraphType, IcnsTypes, GraphMath, WSReferences;
@@ -196,41 +203,7 @@ type
   TCanvasState = set of TCanvasStates;
   TCanvasOrientation = (csLefttoRight, coRighttoLeft);
 
-  { TProgressEvent is a generic progress notification event which may be
-        used by TGraphic classes with computationally intensive (slow)
-        operations, such as loading, storing, or transforming image data.
-    Event params:
-      Stage - Indicates whether this call to the OnProgress event is to
-        prepare for, process, or clean up after a graphic operation.  If
-        OnProgress is called at all, the first call for a graphic operation
-        will be with Stage = psStarting, to allow the OnProgress event handler
-        to allocate whatever resources it needs to process subsequent progress
-        notifications.  After Stage = psStarting, you are guaranteed that
-        OnProgress will be called again with Stage = psEnding to allow you
-        to free those resources, even if the graphic operation is aborted by
-        an exception.  Zero or more calls to OnProgress with Stage = psRunning
-        may occur between the psStarting and psEnding calls.
-      PercentDone - The ratio of work done to work remaining, on a scale of
-        0 to 100.  Values may repeat or even regress (get smaller) in
-        successive calls.  PercentDone is usually only a guess, and the
-        guess may be dramatically altered as new information is discovered
-        in decoding the image.
-      RedrawNow - Indicates whether the graphic can be/should be redrawn
-        immediately.  Useful for showing successive approximations of
-        an image as data is available instead of waiting for all the data
-        to arrive before drawing anything.  Since there is no message loop
-        activity during graphic operations, you should call Update to force
-        a control to be redrawn immediately in the OnProgress event handler.
-        Redrawing a graphic when RedrawNow = False could corrupt the image
-        and/or cause exceptions.
-      Rect - Area of image that has changed and needs to be redrawn.
-      Msg - Optional text describing in one or two words what the graphic
-        class is currently working on.  Ex:  "Loading" "Storing"
-        "Reducing colors".  The Msg string can also be empty.
-        Msg strings should be resourced for translation,  should not
-        contain trailing periods, and should be used only for
-        display purposes.  (do not: if Msg = 'Loading' then...)
-  }
+  { TProgressEvent }
   TProgressStage = TFPImgProgressStage;
   TProgressEvent = TFPImgProgressEvent;
 
@@ -451,9 +424,15 @@ type
   TPixmap = class;                  // xpm
   TIcon = class;                    // ico
   TPortableNetworkGraphic = class;  // png
+  {$IFNDEF DisableLCLPNM}
   TPortableAnyMapGraphic = class;   // pnm formats: pbm, pgm and ppm
+  {$ENDIF}
+  {$IFNDEF DisableLCLJPEG}
   TJpegImage = class;               // jpg
+  {$ENDIF}
+  {$IFNDEF DisableLCLGIF}
   TGIFImage = class;                // gif (read only)
+  {$ENDIF}
 
   { TGraphicsObject
     In Delphi VCL this is the ancestor of TFont, TPen and TBrush.
@@ -489,7 +468,7 @@ type
     procedure RemoveItem(Item: TResourceCacheItem); override;
   public
     constructor Create;
-    function CompareDescriptors(Tree: TAvgLvlTree; Desc1, Desc2: Pointer): integer; override;
+    function CompareDescriptors(Tree: TAvlTree; Desc1, Desc2: Pointer): integer; override;
     function FindFont(TheFont: TLCLHandle): TResourceCacheItem;
     function FindFontDesc(const LogFont: TLogFont;
                           const LongFontName: string): TFontHandleCacheDescriptor;
@@ -627,7 +606,7 @@ type
     procedure RemoveItem(Item: TResourceCacheItem); override;
   public
     constructor Create;
-    function CompareDescriptors(Tree: TAvgLvlTree; Desc1, Desc2: Pointer): integer; override;
+    function CompareDescriptors(Tree: TAvlTree; Desc1, Desc2: Pointer): integer; override;
     function FindPen(APen: TLCLHandle): TResourceCacheItem;
     function FindPenDesc(const AExtPen: TExtLogPen;
                          const APattern: TPenPattern): TPenHandleCacheDescriptor;
@@ -789,32 +768,8 @@ type
 
   { TGraphic }
 
-  { The TGraphic class is an abstract base class for dealing with graphic images
-    such as bitmaps, pixmaps, icons, and other image formats.
-      LoadFromFile - Read the graphic from the file system.  The old contents of
-        the graphic are lost.  If the file is not of the right format, an
-        exception will be generated.
-      SaveToFile - Writes the graphic to disk in the file provided.
-      LoadFromStream - Like LoadFromFile except source is a stream (e.g.
-        TBlobStream).
-      SaveToStream - stream analogue of SaveToFile.
-      LoadFromClipboardFormat - Replaces the current image with the data
-        provided.  If the TGraphic does not support that format it will generate
-        an exception.
-      SaveToClipboardFormats - Converts the image to a clipboard format.  If the
-        image does not support being translated into a clipboard format it
-        will generate an exception.
-      Height - The native, unstretched, height of the graphic.
-      Palette - Color palette of image.  Zero if graphic doesn't need/use palettes.
-      Transparent - Some parts of the image are not opaque. aka the background
-        can be seen through.
-      Width - The native, unstretched, width of the graphic.
-      OnChange - Called whenever the graphic changes
-      PaletteModified - Indicates in OnChange whether color palette has changed.
-        Stays true until whoever's responsible for realizing this new palette
-        (ex: TImage) sets it to False.
-      OnProgress - Generic progress indicator event. Propagates out to TPicture
-        and TImage OnProgress events.}
+  { TGraphic is an abstract base class for images like TRasterImage,
+    TCustomBitmap, TBitmap, etc. }
 
   TGraphic = class(TPersistent)
   private
@@ -890,54 +845,6 @@ type
 
   { TPicture }
 
-  { TPicture is a TGraphic container.  It is used in place of a TGraphic if the
-    graphic can be of any TGraphic class.  LoadFromFile and SaveToFile are
-    polymorphic. For example, if the TPicture is holding an Icon, you can
-    LoadFromFile a bitmap file, where if the class is TIcon you could only read
-    .ICO files.
-
-      LoadFromFile - Reads a picture from disk. The TGraphic class created
-        determined by the file extension of the file. If the file extension is
-        not recognized an exception is generated.
-      SaveToFile - Writes the picture to disk.
-      LoadFromClipboardFormat - ToDo: Reads the picture from the handle provided in
-        the given clipboard format.  If the format is not supported, an
-        exception is generated.
-      SaveToClipboardFormats - ToDo: Allocates a global handle and writes the picture
-        in its native clipboard format (CF_BITMAP for bitmaps, CF_METAFILE
-        for metafiles, etc.).  Formats will contain the formats written.
-        Returns the number of clipboard items written to the array pointed to
-        by Formats and Datas or would be written if either Formats or Datas are
-        nil.
-      SupportsClipboardFormat - Returns true if the given clipboard format
-        is supported by LoadFromClipboardFormat.
-      Assign - Copys the contents of the given TPicture.  Used most often in
-        the implementation of TPicture properties.
-      RegisterFileFormat - Register a new TGraphic class for use in
-        LoadFromFile.
-      RegisterClipboardFormat - Registers a new TGraphic class for use in
-        LoadFromClipboardFormat.
-      UnRegisterGraphicClass - Removes all references to the specified TGraphic
-        class and all its descendents from the file format and clipboard format
-        internal lists.
-      Height - The native, unstretched, height of the picture.
-      Width - The native, unstretched, width of the picture.
-      Graphic - The TGraphic object contained by the TPicture
-      Bitmap - Returns a bitmap.  If the contents is not already a bitmap, the
-        contents are thrown away and a blank bitmap is returned.
-      Pixmap - Returns a pixmap.  If the contents is not already a pixmap, the
-        contents are thrown away and a blank pixmap is returned.
-      PNG - Returns a png.  If the contents is not already a png, the
-        contents are thrown away and a blank png (TPortableNetworkGraphic) is
-        returned.
-      PNM - Returns a pnm.  If the contents is not already a pnm, the
-        contents are thrown away and a blank pnm (TPortableAnyMapGraphic) is
-        returned.
-      Jpeg - Returns a jpeg. If the contents is not already a jpeg, the
-        contents are thrown away and a blank jpeg (TJPegImage) is
-        returned.
-      }
-
   TPicture = class(TPersistent)
   private
     FGraphic: TGraphic;
@@ -947,18 +854,26 @@ type
     procedure ForceType(GraphicType: TGraphicClass);
     function GetBitmap: TBitmap;
     function GetIcon: TIcon;
+    {$IFNDEF DisableLCLJPEG}
     function GetJpeg: TJpegImage;
+    {$ENDIF}
     function GetPNG: TPortableNetworkGraphic;
+    {$IFNDEF DisableLCLPNM}
     function GetPNM: TPortableAnyMapGraphic;
+    {$ENDIF}
     function GetPixmap: TPixmap;
     function GetHeight: Integer;
     function GetWidth: Integer;
     procedure ReadData(Stream: TStream);
     procedure SetBitmap(Value: TBitmap);
     procedure SetIcon(Value: TIcon);
+    {$IFNDEF DisableLCLJPEG}
     procedure SetJpeg(Value: TJpegImage);
+    {$ENDIF}
     procedure SetPNG(const AValue: TPortableNetworkGraphic);
+    {$IFNDEF DisableLCLPNM}
     procedure SetPNM(const AValue: TPortableAnyMapGraphic);
+    {$ENDIF}
     procedure SetPixmap(Value: TPixmap);
     procedure SetGraphic(Value: TGraphic);
     procedure WriteData(Stream: TStream);
@@ -997,15 +912,19 @@ type
     class procedure RegisterClipboardFormat(FormatID: TClipboardFormat;
       AGraphicClass: TGraphicClass);
     class procedure UnregisterGraphicClass(AClass: TGraphicClass);
-    function FindGraphicClassWithFileExt(const Ext: string;
+    class function FindGraphicClassWithFileExt(const Ext: string;
       ExceptionOnNotFound: boolean = true): TGraphicClass;
   public
     property Bitmap: TBitmap read GetBitmap write SetBitmap;
     property Icon: TIcon read GetIcon write SetIcon;
+    {$IFNDEF DisableLCLJPEG}
     property Jpeg: TJpegImage read GetJpeg write SetJpeg;
+    {$ENDIF}
     property Pixmap: TPixmap read GetPixmap write SetPixmap;
     property PNG: TPortableNetworkGraphic read GetPNG write SetPNG;
+    {$IFNDEF DisableLCLPNM}
     property PNM: TPortableAnyMapGraphic read GetPNM write SetPNM;
+    {$ENDIF}
     property Graphic: TGraphic read FGraphic write SetGraphic;
     //property PictureAdapter: IChangeNotifier read FNotify write FNotify;
     property Height: Integer read GetHeight;
@@ -1564,6 +1483,7 @@ type
   end;
 
 
+  {$IFNDEF DisableLCLPNM}
   { TSharedPortableAnyMapGraphic }
 
   TSharedPortableAnyMapGraphic = class(TSharedCustomBitmap)
@@ -1580,6 +1500,7 @@ type
     class function IsStreamFormatSupported(Stream: TStream): Boolean; override;
     class function GetFileExtensions: string; override;
   end;
+  {$ENDIF}
 
   TIconImage = class;
   TIconImageClass = class of TIconImage;
@@ -1602,6 +1523,7 @@ type
     function GetIndex(AFormat: TPixelFormat; AHeight, AWidth: Word): Integer;
     class function GetImagesClass: TIconImageClass; virtual;
     procedure Add(AIconImage: TIconImage);
+    procedure Sort;
     function Count: Integer;
     property Images[AIndex: Integer]: TIconImage read GetImage;
   end;
@@ -1713,6 +1635,7 @@ type
     function MaskHandleAllocated: boolean; override;
     function PaletteAllocated: boolean; override;
     procedure SetHandles(ABitmap, AMask: HBITMAP); override;
+    procedure Sort;
     function GetBestIndexForSize(ASize: TSize): Integer;
 
     property Current: Integer read FCurrent write SetCurrent;
@@ -1823,6 +1746,7 @@ type
   end;
   
 
+  {$IFNDEF DisableLCLJPEG}
   { TSharedJpegImage }
 
   TSharedJpegImage = class(TSharedCustomBitmap)
@@ -1856,7 +1780,9 @@ type
     property ProgressiveEncoding: boolean read FProgressiveEncoding;
     property Performance: TJPEGPerformance read FPerformance write FPerformance;
   end;
+  {$ENDIF}
 
+  {$IFNDEF DisableLCLTIFF}
   { TSharedTiffImage }
 
   TSharedTiffImage = class(TSharedCustomBitmap)
@@ -1913,7 +1839,9 @@ type
     property XResolution: TTiffRational read FXResolution write FXResolution;
     property YResolution: TTiffRational read FYResolution write FYResolution;
   end;
+  {$ENDIF}
 
+  {$IFNDEF DisableLCLGIF}
   { TSharedGIFImage }
 
   TSharedGIFImage = class(TSharedCustomBitmap)
@@ -1940,6 +1868,7 @@ type
     property Interlaced: Boolean read FInterlaced;
     property BitsPerPixel: byte read FBitsPerPixel;
   end;
+  {$ENDIF}
 
 function GraphicFilter(GraphicClass: TGraphicClass): string;
 function GraphicExtension(GraphicClass: TGraphicClass): string;
@@ -2375,7 +2304,10 @@ end;
 procedure Register;
 begin
   RegisterClasses([TBitmap,TPixmap,TPortableNetworkGraphic,
-                   TPortableAnyMapGraphic,TJpegImage,TGIFImage,TPicture,
+                   {$IFNDEF DisableLCLPNM}TPortableAnyMapGraphic,{$ENDIF}
+                   {$IFNDEF DisableLCLJPEG}TJpegImage,{$ENDIF}
+                   {$IFNDEF DisableLCLGIF}TGIFImage,{$ENDIF}
+                   TPicture,
                    TFont,TPen,TBrush,TRegion]);
 end;
 
@@ -2761,15 +2693,23 @@ end;
 {$I canvas.inc}
 {$I pixmap.inc}
 {$I png.inc}
+{$IFNDEF DisableLCLPNM}
 {$I pnm.inc}
+{$ENDIF}
+{$IFNDEF DisableLCLJPEG}
 {$I jpegimage.inc}
+{$ENDIF}
 {$I icon.inc}
 {$I icnsicon.inc}
 {$I cursorimage.inc}
 {$I fpimagebitmap.inc}
 {$I bitmap.inc}
+{$IFNDEF DisableLCLTIFF}
 {$I tiffimage.inc}
+{$ENDIF}
+{$IFNDEF DisableLCLGIF}
 {$I gifimage.inc}
+{$ENDIF}
 {$I patternbitmap.inc}
 
 function CreateGraphicFromResourceName(Instance: THandle; const ResName: String): TGraphic;

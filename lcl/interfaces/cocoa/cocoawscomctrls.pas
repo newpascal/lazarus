@@ -17,7 +17,7 @@ uses
   // WS
   WSComCtrls,
   // Cocoa WS
-  CocoaPrivate, CocoaUtils, CocoaProc, CocoaWSCommon;
+  CocoaPrivate, CocoaUtils, CocoaWSCommon;
 
 type
 
@@ -51,6 +51,8 @@ type
     class procedure SetProperties(const ACustomPage: TCustomPage; ACocoaControl: NSTabViewItem);
     //
     class procedure SetBounds(const AWinControl: TWinControl; const ALeft, ATop, AWidth, AHeight: Integer); override;
+    class procedure SetText(const AWinControl: TWinControl; const AText: String); override;
+    class function GetText(const AWinControl: TWinControl; var AText: String): Boolean; override;
   end;
 
   { TCocoaWSCustomTabControl }
@@ -248,18 +250,20 @@ end;
 class procedure TCocoaWSStatusBar.PanelUpdate(const AStatusBar: TStatusBar;
   PanelIndex: integer);
 begin
-
+  // todo: can make more effecient
+  Update(AStatusBar);
 end;
 
 class procedure TCocoaWSStatusBar.SetPanelText(const AStatusBar: TStatusBar;
   PanelIndex: integer);
 begin
-
+  Update(AStatusBar);
 end;
 
 class procedure TCocoaWSStatusBar.Update(const AStatusBar: TStatusBar);
 begin
-
+  if not Assigned(AStatusBar) or not (AStatusBar.HandleAllocated) then Exit;
+  TCocoaStatusBar(AStatusBar.Handle).setNeedsDisplay_(true);
 end;
 
 class procedure TCocoaWSStatusBar.GetPreferredSize(const AWinControl: TWinControl;
@@ -332,10 +336,12 @@ end;
 class procedure TCocoaWSCustomPage.SetProperties(
   const ACustomPage: TCustomPage; ACocoaControl: NSTabViewItem);
 var
-  lHintStr: string;
+  lHintStr, lTitle: string;
 begin
   // title
-  ACocoaControl.setLabel(NSStringUTF8(ACustomPage.Caption));
+  lTitle := ACustomPage.Caption;
+  DeleteAmpersands(lTitle);
+  ACocoaControl.setLabel(NSStringUTF8(lTitle));
 
   // hint
   if ACustomPage.ShowHint then lHintStr := ACustomPage.Hint
@@ -349,6 +355,37 @@ begin
   // Pages should be fixed into their PageControl owner,
   // allowing the TCocoaWSWinControl.SetBounds function to operate here
   // was causing bug 28489
+end;
+
+class procedure TCocoaWSCustomPage.SetText(const AWinControl: TWinControl;
+  const AText: String);
+var
+  lTitle: String;
+  page  : TCocoaTabPage;
+begin
+  if not Assigned(AWinControl) or not AWinControl.HandleAllocated then Exit;
+
+  page := GetCocoaTabPageFromHandle(AWinControl.Handle);
+  if not Assigned(page) then Exit;
+  lTitle := AText;
+  DeleteAmpersands(lTitle);
+  page.setLabel(NSStringUTF8(lTitle));
+end;
+
+class function TCocoaWSCustomPage.GetText(const AWinControl: TWinControl;
+  var AText: String): Boolean;
+var
+  page  : TCocoaTabPage;
+begin
+  if not Assigned(AWinControl) or not AWinControl.HandleAllocated then
+  begin
+    Result := false;
+    Exit;
+  end;
+
+  page := GetCocoaTabPageFromHandle(AWinControl.Handle);
+  AText := NSStringToString( page.label_ );
+  Result := true;
 end;
 
 { TCocoaWSCustomTabControl }
@@ -416,7 +453,7 @@ begin
   AChild.HandleNeeded();
   if not Assigned(AChild) or not AChild.HandleAllocated then Exit;
   lTabPage := TCocoaWSCustomPage.GetCocoaTabPageFromHandle(AChild.Handle);
-  lTabPage.LCLParent := ATabControl;
+  lTabPage.LCLTabCtrl := ATabControl;
 
   lTabControl.insertTabViewItem_atIndex(lTabPage, AIndex);
   {$IFDEF COCOA_DEBUG_TABCONTROL}
@@ -461,7 +498,13 @@ begin
   if not Assigned(ATabControl) or not ATabControl.HandleAllocated then Exit;
   lTabControl := TCocoaTabControl(ATabControl.Handle);
 
-  lClientPos := LCLToNSPoint(AClientPos, lTabControl.frame.size.height);
+  if lTabControl.isFlipped then
+  begin
+    lClientPos.x := AClientPos.X;
+    lClientPos.y := AClientPos.Y;
+  end
+  else
+    lClientPos := LCLToNSPoint(AClientPos, lTabControl.frame.size.height);
   lTabPage := lTabControl.tabViewItemAtPoint(lClientPos);
   Result := lTabControl.indexOfTabViewItem(lTabPage);
 end;
@@ -628,6 +671,7 @@ begin
   {$IFDEF COCOA_DEBUG_LISTVIEW}
   WriteLn(Format('[TCocoaWSCustomListView.ColumnGetWidth] AIndex=%d', [AIndex]));
   {$ENDIF}
+  Result:=0;
   if not Assigned(ALV) or not ALV.HandleAllocated then Exit;
   lTableLV := TCocoaListView(ALV.Handle).TableListView;
   if (AIndex < 0) or (AIndex >= lTableLV.tableColumns.count()) then Exit;
@@ -797,7 +841,11 @@ var
   lTableLV: TCocoaTableListView;
   lRowRect, lColRect, lNSRect: NSRect;
 begin
-  if not CheckParams(lCocoaLV, lTableLV, ALV) then Exit;
+  if not CheckParams(lCocoaLV, lTableLV, ALV) then
+  begin
+    Result:=Bounds(0,0,0,0);
+    Exit;
+  end;
   lRowRect := lTableLV.rectOfRow(AIndex);
   lColRect := lTableLV.rectOfColumn(ASubItem);
   lNSRect := NSIntersectionRect(lRowRect, lColRect);
@@ -818,7 +866,11 @@ var
   lTableLV: TCocoaTableListView;
   lNSRect: NSRect;
 begin
-  if not CheckParams(lCocoaLV, lTableLV, ALV) then Exit;
+  if not CheckParams(lCocoaLV, lTableLV, ALV) then
+  begin
+    Result:=Point(0,0);
+    Exit;
+  end;
   lNSRect := lTableLV.rectOfRow(AIndex);
   Result.X := Round(lNSRect.origin.X);
   Result.Y := Round(lCocoaLV.frame.size.height - lNSRect.origin.Y);
@@ -891,7 +943,11 @@ var
   lCocoaLV: TCocoaListView;
   lTableLV: TCocoaTableListView;
 begin
-  if not CheckParams(lCocoaLV, lTableLV, ALV) then Exit;
+  if not CheckParams(lCocoaLV, lTableLV, ALV) then
+  begin
+    Result:=-1;
+    Exit;
+  end;
   Result := lTableLV.selectedRow;
   {$IFDEF COCOA_DEBUG_TABCONTROL}
   WriteLn(Format('[TCocoaWSCustomListView.GetFocused] Result=%d', [Result]));
@@ -905,7 +961,11 @@ var
   lTableLV: TCocoaTableListView;
   lNSPt: NSPoint;
 begin
-  if not CheckParams(lCocoaLV, lTableLV, ALV) then Exit;
+  if not CheckParams(lCocoaLV, lTableLV, ALV) then
+  begin
+    Result:=-1;
+    Exit;
+  end;
   lNSPt := LCLToNSPoint(Point(X, Y), lTableLV.superview.frame.size.height);
   Result := lTableLV.rowAtPoint(lNSPt);
 end;
@@ -915,7 +975,11 @@ var
   lCocoaLV: TCocoaListView;
   lTableLV: TCocoaTableListView;
 begin
-  if not CheckParams(lCocoaLV, lTableLV, ALV) then Exit;
+  if not CheckParams(lCocoaLV, lTableLV, ALV) then
+  begin
+    Result:=0;
+    Exit;
+  end;
   Result := lTableLV.selectedRowIndexes().count();
 end;
 
@@ -924,7 +988,11 @@ var
   lCocoaLV: TCocoaListView;
   lTableLV: TCocoaTableListView;
 begin
-  if not CheckParams(lCocoaLV, lTableLV, ALV) then Exit;
+  if not CheckParams(lCocoaLV, lTableLV, ALV) then
+  begin
+    Result:=-1;
+    Exit;
+  end;
   Result := lTableLV.selectedRow;
   {$IFDEF COCOA_DEBUG_TABCONTROL}
   WriteLn(Format('[TCocoaWSCustomListView.GetSelection] Result=%d', [Result]));
@@ -937,7 +1005,11 @@ var
   lTableLV: TCocoaTableListView;
   lVisibleRows: NSRange;
 begin
-  if not CheckParams(lCocoaLV, lTableLV, ALV) then Exit;
+  if not CheckParams(lCocoaLV, lTableLV, ALV) then
+  begin
+    Result:=-1;
+    Exit;
+  end;
   lVisibleRows := lTableLV.rowsInRect(lTableLV.visibleRect());
   Result := lVisibleRows.location;
 end;
@@ -949,7 +1021,11 @@ var
   lTableLV: TCocoaTableListView;
   lVisibleRows: NSRange;
 begin
-  if not CheckParams(lCocoaLV, lTableLV, ALV) then Exit;
+  if not CheckParams(lCocoaLV, lTableLV, ALV) then
+  begin
+    Result := 0;
+    Exit;
+  end;
   lVisibleRows := lTableLV.rowsInRect(lTableLV.visibleRect());
   Result := lVisibleRows.length;
 end;
@@ -1183,7 +1259,11 @@ class function TCocoaWSTrackBar.GetPosition(const ATrackBar: TCustomTrackBar
 var
   lSlider: TCocoaSlider;
 begin
-  if not Assigned(ATrackBar) or not ATrackBar.HandleAllocated then Exit;
+  if not Assigned(ATrackBar) or not ATrackBar.HandleAllocated then
+  begin
+    Result := 0;
+    Exit;
+  end;
   lSlider := TCocoaSlider(ATrackBar.Handle);
   Result := lSlider.intValue();
 end;

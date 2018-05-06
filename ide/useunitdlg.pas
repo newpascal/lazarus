@@ -185,7 +185,7 @@ end;
 procedure TUseUnitDialog.FormCreate(Sender: TObject);
 begin
   // Internationalization
-  IDEDialogLayoutList.ApplyLayout(Self, 500, 460, False);
+  IDEDialogLayoutList.ApplyLayout(Self, 500, 460);
   AllUnitsCheckBox.Caption := dlgShowAllUnits;
   SectionRadioGroup.Caption := dlgInsertSection;
   SectionRadioGroup.Items.Clear;
@@ -193,7 +193,8 @@ begin
   SectionRadioGroup.Items.Add(dlgInsertImplementation);
   ButtonPanel1.OKButton.Caption:=lisMenuOk;
   ButtonPanel1.CancelButton.Caption:=lisCancel;
-  UnitImgInd := IDEImages.LoadImage(16, 'item_unit');
+  UnitImgInd := IDEImages.LoadImage('item_unit');
+  TIDEImages.AssignImage(FilterEdit.Glyph, 'btnfiltercancel');
   FProjUnits:=TStringList.Create;
 end;
 
@@ -203,6 +204,11 @@ begin
   FProjUnits.Free;
   FImplUsedUnits.Free;
   FMainUsedUnits.Free;
+end;
+
+procedure TUseUnitDialog.FormClose(Sender: TObject; var CloseAction: TCloseAction);
+begin
+  IDEDialogLayoutList.SaveLayout(Self);
 end;
 
 procedure TUseUnitDialog.SectionRadioGroupClick(Sender: TObject);
@@ -238,12 +244,6 @@ begin
   if Visible then
     FilterEdit.SetFocus;
   FilterEdit.InvalidateFilter;
-end;
-
-procedure TUseUnitDialog.FormClose(Sender: TObject;
-  var CloseAction: TCloseAction);
-begin
-  IDEDialogLayoutList.SaveLayout(Self);
 end;
 
 procedure TUseUnitDialog.UnitsListBoxDblClick(Sender: TObject);
@@ -469,7 +469,7 @@ end;
 
 function TUseUnitDialog.InterfaceSelected: Boolean;
 begin
-  Result:=SectionRadioGroup.ItemIndex=0;
+  Result:=(not SectionRadioGroup.Enabled) or (SectionRadioGroup.ItemIndex=0);
 end;
 
 procedure TUseUnitDialog.DetermineUsesSection(ACode: TCodeBuffer);

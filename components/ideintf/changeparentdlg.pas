@@ -17,8 +17,13 @@ unit ChangeParentDlg;
 interface
 
 uses
-  Classes, SysUtils, strutils, FileUtil, ListFilterEdit, PropEditUtils, Forms,
-  Controls, Graphics, Dialogs, StdCtrls, ButtonPanel;
+  Classes, SysUtils, strutils,
+  // LCL
+  Forms, Controls, StdCtrls, ButtonPanel,
+  // LazControls
+  ListFilterEdit,
+  // IdeIntf
+  ObjInspStrConsts, PropEditUtils, IDEImagesIntf, IDEWindowIntf;
 
 type
 
@@ -64,8 +69,6 @@ function ShowChangeParentDlg(ASelection: TPersistentSelectionList;
 
 implementation
 
-uses LCLIntf, ObjInspStrConsts;
-
 {$R *.lfm}
 
 { TChangeParentDlg }
@@ -103,6 +106,8 @@ begin
 
   Caption := oisChangeParent;
   chShowClasses.Caption := oisShowClasses;
+
+  IDEDialogLayoutList.ApplyLayout(Self);
 end;
 
 {$HINTS OFF}
@@ -111,6 +116,7 @@ begin
   FSavedHeight := Height;
   FSavedWidth := Width;
   FSavedShowClasses := chShowClasses.Checked;
+  IDEDialogLayoutList.SaveLayout(Self);
 end;
 {$HINTS ON}
 

@@ -1,16 +1,16 @@
 msgid ""
 msgstr ""
-"Project-Id-Version: 0.9.27 beta\n"
+"Project-Id-Version: X-1.6\n"
 "POT-Creation-Date: \n"
-"PO-Revision-Date: 2009-04-24 19:20+0800\n"
-"Last-Translator: XY.Chen <chenxinyv@gmail.com>\n"
-"Language-Team: \n"
+"PO-Revision-Date: 2018-02-09 21:59+0800\n"
+"Last-Translator: 郑建平@夏宗萍 aka  robsean  <robsean@126.com>\n"
+"Language-Team: http://www.microsystem.studio\n"
 "MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=utf-8\n"
+"Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"X-Poedit-Language: Chinese\n"
-"X-Poedit-Country: CHINA\n"
-"X-Poedit-SourceCharset: utf-8\n"
+"X-Poedit-SourceCharset: UTF-8\n"
+"Language: zh_CN\n"
+"X-Generator: Poedit 1.8.7.1\n"
 
 #: ipconst.cacheadding
 msgid "Caching item (%s = %s)"
@@ -86,7 +86,7 @@ msgstr "下载: (%s), 大小发现异常 %s, 只得到 %s"
 
 #: ipconst.providerunknownformat
 msgid "Don't know how to handle %s"
-msgstr ""
+msgstr "不知道如何处理%s"
 
 #: ipconst.providerunknownpicture
 msgid "Invalid picture format"
@@ -168,7 +168,7 @@ msgstr "数据头CRC校验失败"
 
 #: ipconst.sbinhexcolonexpected
 msgid "\":\" expected"
-msgstr ""
+msgstr "\":\"被要求"
 
 #: ipconst.sbinhexlengtherr
 msgid "Invalid data length"
@@ -291,11 +291,9 @@ msgstr "字符堆栈溢出"
 
 #: ipconst.shtmldashexp
 msgid "- expected"
-msgstr ""
+msgstr "- 要求"
 
 #: ipconst.shtmldefbrowsecaption
-#, fuzzy
-#| msgid "Browse..."
 msgid "Browse ..."
 msgstr "浏览..."
 
@@ -313,7 +311,7 @@ msgstr " 编码不支持"
 
 #: ipconst.shtmlexp
 msgid " expected"
-msgstr ""
+msgstr "要求"
 
 #: ipconst.shtmlinternal
 msgid "Internal error"
@@ -769,7 +767,7 @@ msgstr ""
 
 #: ipconst.slogpop3class
 msgid "[POP3] "
-msgstr ""
+msgstr "[POP3] "
 
 #: ipconst.slogpop3message
 msgid "Generating OnMessage event"
@@ -864,10 +862,8 @@ msgid " (ssRcptTo)"
 msgstr ""
 
 #: ipconst.slogresponse
-#, fuzzy
-#| msgid "Generating OnTop event, Code = "
 msgid "Generating OnResponse event, Code = "
-msgstr "生成 OnTop 事件, Code = "
+msgstr "生成OnResponse事件, Code = "
 
 #: ipconst.slogrset
 msgid " (ssRSet)"
@@ -975,19 +971,19 @@ msgstr ""
 
 #: ipconst.snntpcmddate
 msgid "DATE"
-msgstr ""
+msgstr "日期"
 
 #: ipconst.snntpcmdgroup
 msgid "GROUP"
-msgstr ""
+msgstr "组"
 
 #: ipconst.snntpcmdhead
 msgid "HEAD"
-msgstr ""
+msgstr "头"
 
 #: ipconst.snntpcmdhelp
 msgid "HELP"
-msgstr ""
+msgstr "帮助"
 
 #: ipconst.snntpcmdlast
 msgid "LAST"
@@ -996,7 +992,7 @@ msgstr ""
 #: ipconst.snntpcmdlist
 msgctxt "ipconst.snntpcmdlist"
 msgid "LIST"
-msgstr ""
+msgstr "列表"
 
 #: ipconst.snntpcmdlistacttimes
 msgid "LIST ACTIVE.TIMES"
@@ -1036,7 +1032,7 @@ msgstr ""
 
 #: ipconst.snntpcmdnext
 msgid "NEXT"
-msgstr ""
+msgstr "下一个"
 
 #: ipconst.snntpcmdpat
 msgid "PAT"
@@ -1044,17 +1040,17 @@ msgstr ""
 
 #: ipconst.snntpcmdpost
 msgid "POST"
-msgstr ""
+msgstr "提交"
 
 #: ipconst.snntpcmdquit
 msgctxt "ipconst.snntpcmdquit"
 msgid "QUIT"
-msgstr ""
+msgstr "退出"
 
 #: ipconst.snntpcmdstat
 msgctxt "ipconst.snntpcmdstat"
 msgid "STAT"
-msgstr ""
+msgstr "开始"
 
 #: ipconst.snntpcmdxover
 msgid "XOVER"
@@ -1426,7 +1422,7 @@ msgstr ""
 #: ipconst.spop3cmdlist
 msgctxt "ipconst.spop3cmdlist"
 msgid "LIST"
-msgstr ""
+msgstr "列表"
 
 #: ipconst.spop3cmdnoop
 msgid "NOOP"
@@ -1434,12 +1430,12 @@ msgstr ""
 
 #: ipconst.spop3cmdpass
 msgid "PASS"
-msgstr ""
+msgstr "通过"
 
 #: ipconst.spop3cmdquit
 msgctxt "ipconst.spop3cmdquit"
 msgid "QUIT"
-msgstr ""
+msgstr "退出"
 
 #: ipconst.spop3cmdretr
 msgid "RETR"
@@ -1452,11 +1448,11 @@ msgstr ""
 #: ipconst.spop3cmdstat
 msgctxt "ipconst.spop3cmdstat"
 msgid "STAT"
-msgstr ""
+msgstr "开始"
 
 #: ipconst.spop3cmdtop
 msgid "TOP"
-msgstr ""
+msgstr "上部"
 
 #: ipconst.spop3cmduidl
 msgid "UIDL"
@@ -1464,7 +1460,7 @@ msgstr ""
 
 #: ipconst.spop3cmduser
 msgid "USER"
-msgstr ""
+msgstr "用户"
 
 #: ipconst.spop3errresp
 msgid "-ERR"
@@ -1510,7 +1506,7 @@ msgstr "没有操作"
 
 #: ipconst.spspass
 msgid "Logging on with Password"
-msgstr ""
+msgstr "用密码登录"
 
 #: ipconst.spsquit
 msgctxt "ipconst.spsquit"
@@ -1548,7 +1544,7 @@ msgstr "位置状态"
 
 #: ipconst.spsuser
 msgid "Logging on with User"
-msgstr ""
+msgstr "用户登录"
 
 #: ipconst.spterror
 #, fuzzy
@@ -1739,7 +1735,7 @@ msgstr ""
 
 #: ipconst.ssmtpresponse02
 msgid "Success, "
-msgstr ""
+msgstr "成功, "
 
 #: ipconst.ssmtpresponse04
 msgid "Transient, "
@@ -1976,15 +1972,15 @@ msgstr ""
 
 #: ipconst.sssexpand
 msgid "Expanding"
-msgstr ""
+msgstr "展开"
 
 #: ipconst.ssshelo
 msgid "Logging on with HELO"
-msgstr ""
+msgstr "用HELO登录"
 
 #: ipconst.ssshelp
 msgid "Help"
-msgstr ""
+msgstr "帮助"
 
 #: ipconst.ssslbadcertificate
 msgid "Bad certificate."
@@ -2004,11 +2000,11 @@ msgstr ""
 
 #: ipconst.ssslbadmac
 msgid "MAC did not match."
-msgstr ""
+msgstr "MAC不匹配"
 
 #: ipconst.ssslbadmd5hash
 msgid "MD5 hash did not match."
-msgstr ""
+msgstr "MD5 hash不匹配"
 
 #: ipconst.ssslbadpublicencoding
 msgid "Bad public encoding type."
@@ -2048,7 +2044,7 @@ msgstr "连接时不能改变SSL状态."
 
 #: ipconst.ssslencryptbuf2small
 msgid "Encrypt buffer to small."
-msgstr ""
+msgstr "加密缓冲区太小."
 
 #: ipconst.ssslencryptiontype
 msgid "Encryption type not defined."
@@ -2080,15 +2076,15 @@ msgstr "证书无效."
 
 #: ipconst.ssslnohashtype
 msgid "No hash type selected."
-msgstr ""
+msgstr "没有hash类型类型:"
 
 #: ipconst.ssslnomessageencslected
 msgid "No message encoding type selected."
-msgstr ""
+msgstr "没有消息编码类型选择."
 
 #: ipconst.ssslnoroom
 msgid "Not enough memory available to read SSL record."
-msgstr ""
+msgstr "没有足够可用农村来读取SSL记录"
 
 #: ipconst.ssslnotenoughkeymaterail
 msgid "Not enough key material."
@@ -2096,11 +2092,11 @@ msgstr ""
 
 #: ipconst.ssslpaddingerror
 msgid "Padding error."
-msgstr ""
+msgstr ".填充错误"
 
 #: ipconst.ssslparsererror
 msgid "Parsing error."
-msgstr ""
+msgstr "解析错误."
 
 #: ipconst.ssslpointernotassigned
 msgid "Pointer not assigned."
@@ -2119,16 +2115,12 @@ msgid "Revoked Certificate."
 msgstr "证书作废."
 
 #: ipconst.ssslservernohandshake
-#, fuzzy
-#| msgid "Server cid not return a handshake message."
 msgid "Server did not return a handshake message."
-msgstr "服务器 cid 没有返回握手信息."
+msgstr "服务器未曾返回握手消息"
 
 #: ipconst.ssslservernoserverhello
-#, fuzzy
-#| msgid "Server cid not return a server hello message."
 msgid "Server did not return a server hello message."
-msgstr "服务器 cid 没有返回服务器hello信息."
+msgstr "服务器未曾返回服务器hello握手消息."
 
 #: ipconst.ssslsessidtolong
 msgid "Session ID is longer than 32 bytes."
@@ -2136,7 +2128,7 @@ msgstr "会话ID长过32字节."
 
 #: ipconst.ssslshabuf2small
 msgid "SHA1 buffer to small."
-msgstr ""
+msgstr "SHA1缓冲区太小."
 
 #: ipconst.ssslunexpectedmessage
 msgid "Server received an unexpected message."
@@ -2148,7 +2140,7 @@ msgstr "未知证书."
 
 #: ipconst.ssslunprocesseddata
 msgid "SSL data processing error."
-msgstr ""
+msgstr "SSL数据处理cw."
 
 #: ipconst.ssslunsupportedcertificate
 msgid "Unsupported Certificate."
@@ -2156,7 +2148,7 @@ msgstr "不支持的证书."
 
 #: ipconst.ssslunsupportedchiper
 msgid "Unsupported cipher chosen."
-msgstr ""
+msgstr "不支持密码选择."
 
 #: ipconst.ssslunsupportedencoding
 msgid "Unsupported public encoding."
@@ -2222,7 +2214,7 @@ msgstr ""
 
 #: ipconst.sssverify
 msgid "Verifying"
-msgstr ""
+msgstr "确认"
 
 #: ipconst.ssterror
 #, fuzzy
@@ -2237,7 +2229,7 @@ msgstr "登陆"
 
 #: ipconst.sstnotask
 msgid "None"
-msgstr ""
+msgstr "无"
 
 #: ipconst.sstreamcreated
 msgid "Successfully created "
@@ -2257,7 +2249,7 @@ msgstr "编码方法不支持"
 
 #: ipconst.suuencodecounterr
 msgid "Count <> Len or Count > 63"
-msgstr ""
+msgstr "计数<>长度 或 计数>63"
 
 #: ipconst.swebimagecannotload
 msgid "Cannot load %s"
@@ -2273,15 +2265,15 @@ msgstr "不能从流中载入图片"
 
 #: ipconst.swinsockerr
 msgid "WinSock Error (%d): %s, on API '%s'"
-msgstr ""
+msgstr "WinSock错误(%d): %s,关于API '%s'"
 
 #: ipconst.swriteafterrename
 msgid "***Write after rename"
-msgstr ""
+msgstr "***重命名后写"
 
 #: ipconst.swrongstateerr
 msgid "Can not comply, wrong state"
-msgstr ""
+msgstr "不能应允,错误状态"
 
 #: ipconst.swsaeacces
 msgid "Permission denied"
@@ -2365,7 +2357,7 @@ msgstr ""
 
 #: ipconst.swsaeinvalidprovider
 msgid "Invalid service provider version number"
-msgstr ""
+msgstr "无效的服务器提供版本数"
 
 #: ipconst.swsaeisconn
 msgid "Socket is already connected"
@@ -2401,12 +2393,12 @@ msgstr "网络不能到达"
 
 #: ipconst.swsaenobufs
 msgid "No buffer space available"
-msgstr ""
+msgstr "没有缓冲空间未可用"
 
 #: ipconst.swsaenomore
 msgctxt "ipconst.swsaenomore"
 msgid "No more data available"
-msgstr ""
+msgstr "没有更多可以数据"
 
 #: ipconst.swsaenoprotoopt
 msgid "Bad protocol option"
@@ -2474,7 +2466,7 @@ msgstr "连接超时"
 
 #: ipconst.swsaetoomanyrefs
 msgid "Too many references; cannot splice"
-msgstr ""
+msgstr "过多应用;不能绞接"
 
 #: ipconst.swsaeusers
 msgid "Too many users"
@@ -2531,7 +2523,7 @@ msgstr "查找被取消"
 #: ipconst.swsa_e_no_more
 msgctxt "ipconst.swsa_e_no_more"
 msgid "No more data available"
-msgstr ""
+msgstr "没有更多可以数据"
 
 #: ipconst.swsa_qos_admission_failure
 msgid "Error due to lack of resources"
@@ -2547,7 +2539,7 @@ msgstr "未知或冲突的样式"
 
 #: ipconst.swsa_qos_generic_error
 msgid "General error"
-msgstr ""
+msgstr "一般性错误"
 
 #: ipconst.swsa_qos_no_receivers
 msgid "There are no receivers"

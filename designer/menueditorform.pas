@@ -27,11 +27,11 @@ interface
 
 uses
   // FCL + LCL
-  Classes, SysUtils, Types, typinfo,
+  Classes, SysUtils, Types, typinfo, math,
   Controls, StdCtrls, ExtCtrls, Forms, Graphics, Buttons, Menus, ButtonPanel,
   ImgList, Themes, LCLintf, LCLProc,
   // IdeIntf
-  FormEditingIntf, PropEdits, ObjectInspector,
+  FormEditingIntf, PropEdits, ObjectInspector, IDEImagesIntf,
   // IDE
   LazarusIDEStrConsts, MenuDesignerBase, MenuShortcuts;
 
@@ -59,7 +59,7 @@ type
     RadioGroupsLabel: TLabel;
     ShortcutItemsCountLabel: TLabel;
     StatisticsGroupBox: TGroupBox;
-    SubmenuGroupBox: TGroupBox;
+    RadioItemGroupBox: TGroupBox;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure FormHide(Sender: TObject);
@@ -100,7 +100,7 @@ type
     procedure EndUpdate;
     function IsUpdate: Boolean;
     procedure UpdateStatistics;
-    procedure UpdateSubmenuGroupBox(selMI: TMenuItem; selBox: TShadowBoxBase; boxIsRoot:boolean);
+    procedure UpdateSubmenuGroupBox(selMI: TMenuItem; selBox: TShadowBoxBase);
     procedure UpdateItemInfo(aMenu: TMenu; aMenuItem: TMenuItem;
       aShadowBox: TShadowBoxBase; aPropEditHook: TPropertyEditorHook);
     //property EditedMenu: TMenu read FEditedMenu;
@@ -142,7 +142,6 @@ type
     FOnSelectItem: TNotifyEvent;
     FRIArray: array of TRadioIcon;
     procedure CreateRadioItems;
-    procedure ApplyLayout;
     procedure RIOnChange(Sender: TObject);
     procedure DoSelectItem;
   protected
@@ -156,6 +155,7 @@ type
     procedure SetParent(NewParent: TWinControl); override;
   public
     constructor CreateWithImageList(AOwner: TComponent; anImgList: TCustomImageList);
+    procedure RefreshLayout;
     property ItemIndex: integer read FItemIndex;
     property OnSelectItem: TNotifyEvent read FOnSelectItem write FOnSelectItem;
   end;
@@ -166,6 +166,7 @@ type
   private
     FButtonPanel: TButtonPanel;
     FRadioIconGroup: TRadioIconGroup;
+    procedure dlgChooseIconResize(Sender: TObject);
     function GetImageIndex: integer;
     procedure RIGClick(Sender: TObject);
   public
@@ -242,6 +243,7 @@ begin
   Name:='MenuDesignerWindow';
   Caption:=lisMenuEditorMenuEditor;
   ButtonsGroupBox.Caption:=lisMenuEditorMenuItemActions;
+  RadioItemGroupBox.Caption:=lisMenuEditorRadioItem;
   FGUIEnabled:=False;
   LoadFixedButtonGlyphs;
   LoadVariableButtonGlyphs(True);
@@ -284,7 +286,10 @@ begin
   if FUpdateCount > 0 then
     Exit; // This event will be executed after all updates, look at EndUpdate
 
+  //debugln(['TMenuDesignerForm.OnDesignerSetSelection: ']);
+  //ASelection.WriteDebugReport;
   persist:=GetSelectedMenuComponent(ASelection, isTMenu, isTMenuItem);
+  //debugln(['TMenuDesignerForm.OnDesignerSetSelection isTMenu=',isTMenu,' isTMenuItem=',isTMenuItem,' persist=',DbgSName(persist)]);
   if (persist <> nil) then
   begin
     if isTMenu then
@@ -395,6 +400,7 @@ var
 var
   i: integer;
 begin
+  Result:=0;
   if (FEditedMenu = nil) then
     Exit;
   aCaptionedItemCount:=0;
@@ -405,7 +411,6 @@ begin
     imgCount:=FEditedMenu.Images.Count
   else
     imgCount:=0;
-  Result:=0;
   for i:=0 to FEditedMenu.Items.Count-1 do
     ProcessItems(FEditedMenu.Items[i]);
 end;
@@ -470,28 +475,28 @@ procedure TMenuDesignerForm.LoadVariableButtonGlyphs(isInMenubar: boolean);
 begin
   if isInMenubar then
   begin
-    MoveItemUpButton.LoadGlyphFromResourceName(HINSTANCE,'arrow_left');
-    MoveItemDownButton.LoadGlyphFromResourceName(HINSTANCE,'arrow_right');
-    AddItemAboveButton.LoadGlyphFromResourceName(HINSTANCE,'add_item_left');
-    AddItemBelowButton.LoadGlyphFromResourceName(HINSTANCE,'add_item_right');
-    AddSubMenuButton.LoadGlyphFromResourceName(HINSTANCE,'add_submenu_below');
+    TIDEImages.AssignImage(MoveItemUpButton.Glyph, 'arrow_left');
+    TIDEImages.AssignImage(MoveItemDownButton.Glyph, 'arrow_right');
+    TIDEImages.AssignImage(AddItemAboveButton.Glyph, 'add_item_left', 24);
+    TIDEImages.AssignImage(AddItemBelowButton.Glyph, 'add_item_right', 24);
+    TIDEImages.AssignImage(AddSubMenuButton.Glyph, 'add_submenu_below', 24);
   end else
   begin
-    MoveItemUpButton.LoadGlyphFromResourceName(HINSTANCE,'arrow_up');
-    MoveItemDownButton.LoadGlyphFromResourceName(HINSTANCE,'arrow_down');
-    AddItemAboveButton.LoadGlyphFromResourceName(HINSTANCE,'add_item_above');
-    AddItemBelowButton.LoadGlyphFromResourceName(HINSTANCE,'add_item_below');
-    AddSubMenuButton.LoadGlyphFromResourceName(HINSTANCE,'add_submenu_right');
+    TIDEImages.AssignImage(MoveItemUpButton.Glyph, 'arrow_up');
+    TIDEImages.AssignImage(MoveItemDownButton.Glyph, 'arrow_down');
+    TIDEImages.AssignImage(AddItemAboveButton.Glyph, 'add_item_above', 24);
+    TIDEImages.AssignImage(AddItemBelowButton.Glyph, 'add_item_below', 24);
+    TIDEImages.AssignImage(AddSubMenuButton.Glyph, 'add_submenu_right', 24);
   end;
-  UpdateSubmenuGroupBox(nil, nil, False);
+  UpdateSubmenuGroupBox(nil, nil);
   FDesigner.VariableGlyphsInMenuBar:=isInMenubar;
 end;
 
 procedure TMenuDesignerForm.LoadFixedButtonGlyphs;
 begin
-  DeleteItemButton.LoadGlyphFromResourceName(HINSTANCE,'laz_delete');
-  AddSeparatorAboveButton.LoadGlyphFromResourceName(HINSTANCE,'add_sep_above');
-  AddSeparatorBelowButton.LoadGlyphFromResourceName(HINSTANCE,'add_sep_below');
+  TIDEImages.AssignImage(DeleteItemButton.Glyph, 'laz_delete');
+  TIDEImages.AssignImage(AddSeparatorAboveButton.Glyph, 'add_sep_above', 24);
+  TIDEImages.AssignImage(AddSeparatorBelowButton.Glyph, 'add_sep_below', 24);
   HelpButton.Hint:=lisMenuEditorGetHelpToUseThisEditor;
 end;
 
@@ -500,21 +505,21 @@ var
   isPopupMenu: boolean;
 begin
   if not FGUIEnabled then
-    begin
-      StatisticsGroupBox.Font.Style:=[fsBold];
-      StatisticsGroupBox.Caption:=FEditedMenu.Name;
-      StatisticsGroupBox.Enabled:=True;
-      ButtonsGroupBox.Enabled:=not selectedIsNil;
-      if selectedIsNil then
-        Caption:=Format(lisMenuEditorEditingSSNoMenuItemSelected,
-          [TComponent(GlobalDesignHook.LookupRoot).Name, FEditedMenu.Name]);
-      isPopupMenu:=(FEditedMenu is TPopupMenu);
-      LoadVariableButtonGlyphs(not isPopupMenu);
-      if isPopupMenu then
-        ShowPopupAssignmentsInfo
-      else HidePopupAssignmentsInfo;
-      FGUIEnabled:=True;
-    end;
+  begin
+    StatisticsGroupBox.Font.Style:=[fsBold];
+    StatisticsGroupBox.Caption:=FEditedMenu.Name;
+    StatisticsGroupBox.Enabled:=True;
+    ButtonsGroupBox.Enabled:=not selectedIsNil;
+    if selectedIsNil then
+      Caption:=Format(lisMenuEditorEditingSSNoMenuItemSelected,
+        [TComponent(GlobalDesignHook.LookupRoot).Name, FEditedMenu.Name]);
+    isPopupMenu:=(FEditedMenu is TPopupMenu);
+    LoadVariableButtonGlyphs(not isPopupMenu);
+    if isPopupMenu then
+      ShowPopupAssignmentsInfo
+    else HidePopupAssignmentsInfo;
+    FGUIEnabled:=True;
+  end;
 end;
 
 procedure TMenuDesignerForm.InitializeStatisticVars;
@@ -527,7 +532,8 @@ end;
 
 procedure TMenuDesignerForm.DisableGUI;
 begin
-  if FGUIEnabled then begin
+  if FGUIEnabled then
+  begin
     StatisticsGroupBox.Font.Style:=[];
     StatisticsGroupBox.Caption:=lisMenuEditorNoMenuSelected;
     CaptionedItemsCountLabel.Caption:=Format(lisMenuEditorCaptionedItemsS,[lisMenuEditorNA]);
@@ -536,7 +542,7 @@ begin
     DeepestNestingLevelLabel.Caption:=Format(lisMenuEditorDeepestNestedMenuLevelS, [lisMenuEditorNA]);
     PopupAssignmentsCountLabel.Caption:=Format(lisMenuEditorPopupAssignmentsS,[lisMenuEditorNA]);
     StatisticsGroupBox.Enabled:=False;
-    UpdateSubmenuGroupBox(nil, nil, False);
+    UpdateSubmenuGroupBox(nil, nil);
     ButtonsGroupBox.Enabled:=False;
     FPopupAssignmentsListBox.Visible:=False;
     FGUIEnabled:=False;
@@ -559,20 +565,17 @@ begin
     if (aMenu = FEditedMenu) and (FDesigner.ShadowMenu <> nil) then
       FDesigner.ShadowMenu.SetSelectedMenuItem(aMenuItem, True, False)
     else begin
-      if (aMenu = FEditedMenu) and (FDesigner.ShadowMenu = nil) then
+      selection := nil;
+      if aMenu = FEditedMenu then
       begin
-        if (FEditedMenu.Items.Count > 0) then
-          selection := FEditedMenu.Items[0]
-        else
-          selection := nil;
+        if (FDesigner.ShadowMenu = nil) and (FEditedMenu.Items.Count > 0) then
+          selection := FEditedMenu.Items[0];
       end
-      else if (aMenu <> FEditedMenu) then
-      begin
+      else begin
         FDesigner.FreeShadowMenu;
         FEditedMenu := aMenu;
         selection := aMenuItem;
       end;
-
       FGUIEnabled := False;
       EnableGUI(selection = nil);
       UpdateStatistics;
@@ -639,44 +642,34 @@ begin
   StatisticsGroupBox.Invalidate;
 end;
 
-procedure TMenuDesignerForm.UpdateSubmenuGroupBox(selMI: TMenuItem;
-  selBox: TShadowBoxBase; boxIsRoot: boolean);
+function JoinToString(aGroups: TByteArray): String;
+var
+  i: Integer;
 begin
-  if SubmenuGroupBox = nil then
-    Exit;
+  Result:='';
+  for i:=0 to Length(aGroups)-1 do
+  begin
+    if i>0 then
+      Result:=Result+', ';
+    Result:=Result+IntToStr(aGroups[i]);
+  end;
+end;
 
-  if (selMI = nil) then begin
-    SubmenuGroupBox.Caption:=lisMenuEditorNoMenuSelected;
-    RadioGroupsLabel.Caption:='';
-    GroupIndexLabel.Caption:='';
-  end
-  else begin
+procedure TMenuDesignerForm.UpdateSubmenuGroupBox(selMI: TMenuItem; selBox: TShadowBoxBase);
+var
+  Groups: TByteArray;
+begin
+  if Assigned(selMI) then
     selBox.LastRIValue:=selMI.RadioItem;
-    if boxIsRoot then
-      SubmenuGroupBox.Caption:=lisMenuEditorRootMenu
-    else SubmenuGroupBox.Caption:=Format(lisMenuEditorSSubmenu,[selBox.ParentMenuItem.Name]);
-
-    if selMI.RadioItem then begin
-      GroupIndexLabel.Caption:=Format(lisMenuEditorSGroupIndexD,
-                                      [selMI.Name, selMI.GroupIndex]);
-      GroupIndexLabel.Enabled:=True;
-    end
-    else begin
-      GroupIndexLabel.Caption:=Format(lisMenuEditorSIsNotARadioitem,
-                                      [selMI.Name]);
-      GroupIndexLabel.Enabled:=False;
-    end;
-
-    if selBox.HasRadioItems then begin
-      RadioGroupsLabel.Caption:=Format(lisMenuEditorGroupIndexValueSS,
-                                       [selBox.RadioGroupsString]);
-      RadioGroupsLabel.Enabled:=True;
-    end
-    else begin
-      RadioGroupsLabel.Caption:=lisMenuEditorNoRadioitemsInThisMenu;
-      RadioGroupsLabel.Enabled:=False;
-      RadioGroupsLabel.Invalidate; //for some reason this seems necessary
-    end;
+  RadioItemGroupBox.Visible:=Assigned(selMI) and selMI.RadioItem;
+  if RadioItemGroupBox.Visible then
+  begin
+    GroupIndexLabel.Caption:=Format(lisMenuEditorGroupIndexD, [selMI.GroupIndex]);
+    Groups:=selBox.RadioGroupValues;
+    RadioGroupsLabel.Visible:=Length(Groups)>1;
+    if RadioGroupsLabel.Visible then
+      RadioGroupsLabel.Caption:=Format(lisMenuEditorGroupIndexValuesS, [JoinToString(Groups)]);
+    RadioItemGroupBox.Visible:=True;
   end;
 end;
 
@@ -691,7 +684,7 @@ begin
     Caption:=Format(lisMenuEditorEditingSSNoMenuitemSelected,
                     [aMenu.Owner.Name, aMenu.Name]);
     ButtonsGroupBox.Enabled:=False;
-    UpdateSubmenuGroupBox(nil, nil, False);
+    UpdateSubmenuGroupBox(nil, nil);
   end
   else begin
     method:=GetMethodProp(aMenuItem, 'OnClick');
@@ -701,7 +694,7 @@ begin
     Caption:=Format(lisMenuEditorSSSOnClickS,
                     [aMenu.Owner.Name, aMenu.Name, aMenuItem.Name, s]);
     ButtonsGroupBox.Enabled:=True;
-    UpdateSubmenuGroupBox(aMenuItem, aShadowBox, aShadowBox.Level=0);
+    UpdateSubmenuGroupBox(aMenuItem, aShadowBox);
   end;
 end;
 
@@ -804,7 +797,7 @@ begin
     risCheckedHot:   ted:=FRIGroup.FedCheckedHot;
   end;
   ThemeServices.DrawElement(Canvas.Handle, ted, FRIGroup.FRadioRect);
-  FBGlyph.Draw(Canvas, ClientRect, FRIGroup.FGlyphPt, bsUp, False, 0);
+  FBGlyph.Draw(Canvas, ClientRect, FRIGroup.FGlyphPt, bsUp, False, 0, Font.PixelsPerInch, GetCanvasScaleFactor);
 
   inherited Paint;
 end;
@@ -827,16 +820,32 @@ begin
   FedUncheckedHot:=ThemeServices.GetElementDetails(tbRadioButtonUncheckedHot);
   FedCheckedHot:=ThemeServices.GetElementDetails(tbRadioButtonCheckedHot);
   FedSize:=ThemeServices.GetDetailSize(FedUnChecked);
-  FRadioHeight:=FedSize.cy;
-  if (anImgList.Height > FRadioHeight) then
-    FRadioHeight:=anImgList.Height;
+  FRadioHeight:=Max(FedSize.cy, anImgList.Height);
   topOffset:=(FRadioHeight - FedSize.cy) div 2;
   FRadioRect:=Rect(0, topOffset, FedSize.cx, topOffset+FedSize.cy);
   FSpacing:=5;
   FRadioWidth:=FedSize.cx + FSpacing + anImgList.Width;
   FGlyphPt:=Point(FedSize.cx+FSpacing, 0);
   FItemIndex:= -1;
+  HorzScrollBar.Visible := False;
   CreateRadioItems;
+end;
+
+procedure TRadioIconGroup.RefreshLayout;
+var
+  i: Integer;
+  ColCount: Integer;
+  RadioIconWidth: Integer;
+  RadioIconHeight: Integer;
+begin
+  RadioIconWidth := FRIArray[0].Width + ScaleX(20, 96);
+  RadioIconHeight := FRIArray[0].Height + ScaleX(20, 96);
+  ColCount := Max(ClientWidth div RadioIconWidth, 1);
+  for i := 0 to High(FRIArray) do
+  begin
+    FRIArray[i].Left := ScaleX(10, 96) + (i mod ColCount) * RadioIconWidth;
+    FRIArray[i].Top := ScaleY(10, 96) + (i div ColCount) * RadioIconHeight;
+  end;
 end;
 
 procedure TRadioIconGroup.CreateRadioItems;
@@ -849,93 +858,6 @@ begin
       FRIArray[i]:=TRadioIcon.CreateWithGlyph(Self, i);
       FRIArray[i].OnChange:=@RIOnChange;
     end;
-end;
-
-procedure TRadioIconGroup.ApplyLayout;
-var
-  unitArea, hSpace, sepn, count, cols, rows, lastRowCount, space, h, num, denom: integer;
-
-  procedure CalcSepn;
-  begin
-    rows:=count div cols;
-    if (cols*rows < count) or (rows < 2) then
-      Inc(rows);
-    lastRowCount:=count mod cols;
-    if (lastRowCount = 0) then
-      lastRowCount:=cols;
-    num:=space + hSpace*FRIArray[0].Height - lastRowCount*unitArea;
-    denom:=Pred(rows)*hSpace + FRIArray[0].Height*Pred(cols)*Pred(rows);
-    Assert(denom > 0,'TRadioIconGroup.ApplyLayout: divisor is zero');
-    sepn:=trunc(num/denom);
-    repeat
-      Dec(sepn);
-      h:=cols*FRIArray[0].Width + Pred(cols)*sepn;
-    until (h < hSpace) or (sepn <= Margin);
-  end;
-
-const
-  BPanelVertDim = 46;
-var
-  areaToFill, hBorderAndMargins, vSpace, vSepn, oldCols,
-    i, v, gap, hInc, vInc, maxIdx, vBorderAndMargins: integer;
-  lft: integer = Margin;
-  tp: integer = Margin;
-  r: integer = 1;
-  c: integer = 1;
-begin
-  hBorderAndMargins:=integer(BorderSpacing.Left)+integer(BorderSpacing.Right)+integer(BorderSpacing.Around*2) + Double_Margin;
-  hSpace:=Parent.ClientWidth - hBorderAndMargins;
-  vBorderAndMargins:=integer(BorderSpacing.Top)+integer(BorderSpacing.Bottom)+integer(BorderSpacing.Around*2) + Double_Margin;
-  vSpace:=Parent.ClientHeight - vBorderAndMargins - BPanelVertDim;
-  areaToFill:=hSpace*vSpace;
-  unitArea:=FRIArray[0].Width*FRIArray[0].Height;
-  count:=Length(FRIArray);
-  space:=areaToFill - count*unitArea;
-
-  cols:=trunc(sqrt(count)); // assume area is roughly square
-  if (cols = 0) then
-    Inc(cols);
-  oldCols:=cols;
-  CalcSepn;
-
-  gap:=hSpace - h;
-  if (gap > 0) and (gap > FRIArray[0].Width) then
-  begin
-    Inc(cols);
-    CalcSepn;
-  end;
-  if (sepn <= Margin) then
-  begin
-    cols:=oldcols;
-    CalcSepn;
-  end;
-
-  vSepn:=sepn;
-  v:=rows*FRIArray[0].Height + Pred(rows)*vSepn;
-  if (v > vSpace) then
-  repeat
-    Dec(vSepn);
-    v:=rows*FRIArray[0].Height + Pred(rows)*vSepn;
-  until (v < vSpace) or (vSepn <= Margin);
-
-  hInc:=FRIArray[0].Width + sepn;
-  vInc:=FRIArray[0].Height + vSepn;
-  maxIdx:=High(FRIArray);
-  for i:=Low(FRIArray) to maxIdx do
-  begin
-    FRIArray[i].Left:=lft;
-    FRIArray[i].Top:=tp;
-    Inc(c);
-    Inc(lft, hInc);
-    if (c > cols) and (i < maxIdx) then
-    begin
-      c:=1;
-      lft:=Margin;
-      Inc(r);
-      Inc(tp, vInc);
-    end;
-  end;
-  Assert(r <= rows,'TRadioIconGroup.ApplyLayout: error in calculation of space needed');
 end;
 
 procedure TRadioIconGroup.RIOnChange(Sender: TObject);
@@ -969,7 +891,7 @@ begin
   inherited SetParent(NewParent);
   if (NewParent <> nil) then
   begin
-    ApplyLayout;
+    RefreshLayout;
     for i:=Low(FRIArray) to High(FRIArray) do
       FRIArray[i].SetParent(Self);
   end;
@@ -981,7 +903,7 @@ constructor TdlgChooseIcon.Create(TheOwner: TComponent);
 begin
   inherited CreateNew(TheOwner);
   Position:=poScreenCenter;
-  BorderStyle:=bsDialog;
+  BorderStyle:=bsSizeable;
   Width:=250;
   Height:=250;
   FButtonPanel:=TButtonPanel.Create(Self);
@@ -992,11 +914,18 @@ begin
   FButtonPanel.CancelButton.Name:='CancelButton';
   FButtonPanel.CancelButton.DefaultCaption:=True;
   FButtonPanel.Parent:=Self;
+  OnResize := @dlgChooseIconResize;
 end;
 
 function TdlgChooseIcon.GetImageIndex: integer;
 begin
   Result:=FRadioIconGroup.ItemIndex;
+end;
+
+procedure TdlgChooseIcon.dlgChooseIconResize(Sender: TObject);
+begin
+  if Assigned(FRadioIconGroup) then
+    FRadioIconGroup.RefreshLayout;
 end;
 
 procedure TdlgChooseIcon.RIGClick(Sender: TObject);

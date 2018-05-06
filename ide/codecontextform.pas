@@ -41,7 +41,8 @@ uses
   Graphics, Dialogs, LCLType, LCLIntf, Themes, Buttons, SynEdit, SynEditKeyCmds,
   BasicCodeTools, KeywordFuncLists, LinkScanner, CodeCache, FindDeclarationTool,
   IdentCompletionTool, CodeTree, CodeAtom, PascalParserTool, CodeToolManager,
-  SrcEditorIntf, LazIDEIntf, IDEProcs, LazarusIDEStrConsts, LMessages;
+  SrcEditorIntf, LazIDEIntf, IDEProcs, LazarusIDEStrConsts, IDEImagesIntf,
+  LMessages;
 
 type
 
@@ -338,8 +339,18 @@ begin
         end;
       ')',']':
         begin
+          if BracketLevel=1 then begin
+            if Code[TokenStart]=']' then begin
+              ReadRawNextPascalAtom(Code,TokenEnd,TokenStart);
+              if TokenEnd=TokenStart then exit;
+              if Code[TokenStart]='[' then begin
+                inc(NewParameterIndex);
+                continue; // [][] is full version of [,]
+              end
+            end else
+              exit;// cursor behind procedure call
+          end;
           dec(BracketLevel);
-          if BracketLevel=0 then exit;// cursor behind procedure call
         end;
       ',':
         if BracketLevel=1 then inc(NewParameterIndex);
@@ -388,10 +399,13 @@ procedure TCodeContextFrm.CreateHints(const CodeContexts: TCodeContextInfo);
     try
       try
         Expr:=Tool.ConvertNodeToExpressionType(Node,Params);
-        //debugln(['FindBaseType ',s,' ',ExprTypeToString(Expr)]);
         if (Expr.Desc=xtContext) and (Expr.Context.Node<>nil) then begin
           ExprTool:=Expr.Context.Tool;
           ExprNode:=Expr.Context.Node;
+          if ExprNode.Desc=ctnReferenceTo then begin
+            ExprNode:=ExprNode.FirstChild;
+            if ExprNode=nil then exit;
+          end;
           case ExprNode.Desc of
           ctnProcedureType:
             begin
@@ -400,14 +414,9 @@ procedure TCodeContextFrm.CreateHints(const CodeContexts: TCodeContextInfo);
                  phpWithResultType]);
               Result:=true;
             end;
-          ctnOpenArrayType:
+          ctnOpenArrayType,ctnRangedArrayType:
             begin
-              s:=s+'[Index: PtrUInt]';
-              Result:=true;
-            end;
-          ctnRangedArrayType:
-            begin
-              s:=s+ExprTool.ExtractArrayRange(ExprNode,[]);
+              s:=s+ExprTool.ExtractArrayRanges(ExprNode,[]);
               Result:=true;
             end;
           end;
@@ -509,7 +518,7 @@ begin
       Btn.Name:='CopyAllSpeedButton'+IntToStr(i+1);
       Btn.OnClick:=@CopyAllBtnClick;
       Btn.Visible:=false;
-      Btn.LoadGlyphFromResourceName(HInstance, 'laz_copy');
+      TIDEImages.AssignImage(Btn.Glyph, 'laz_copy');
       Btn.Flat:=true;
       Btn.Parent:=Self;
       FHints.Add(Item);
@@ -630,10 +639,10 @@ procedure TCodeContextFrm.MarkCurrentParameterInHints(ParameterIndex: integer);
         repeat
           inc(p);
         until (p>=length(Result)) or (Result[p]='''');
-      'a'..'z','A'..'Z','_':
+      'a'..'z','A'..'Z','_','0'..'9':
         if (BracketLevel=1) and (not ReadingType) then begin
           WordStart:=p;
-          while (p<=length(Result)) and (IsIdentChar[Result[p]]) do
+          while (p<=length(Result)) and IsDottedIdentChar[Result[p]] do
             inc(p);
           WordEnd:=p;
           //DebugLn('MarkCurrentParameterInHint Word=',copy(Result,WordStart,WordEnd-WordStart));
@@ -955,7 +964,8 @@ procedure TCodeContextFrm.CompleteParameters(DeclCode: string);
     Result:='';
   end;
 
-  procedure AddParameters(ASynEdit: TSynEdit; Y, X: integer; AddComma: boolean;
+  procedure AddParameters(ASynEdit: TSynEdit; Y, X: integer;
+    AddComma, AddCLoseBracket: boolean;
     StartIndex: integer);
   var
     NewCode: String;
@@ -1012,13 +1022,15 @@ procedure TCodeContextFrm.CompleteParameters(DeclCode: string);
       LastToken:=copy(DeclCode,TokenStart,TokenEnd-TokenStart);
     until false;
     if NewCode='' then exit;
+    if AddCLoseBracket then
+      NewCode+=')';
     // format insertion
     Indent:=GetLineIndentWithTabs(ASynEdit.Lines[Y-1],X,ASynEdit.TabWidth);
     if Y<>FParamListBracketOpenCodeXYPos.Y then
       dec(Indent,CodeToolBoss.SourceChangeCache.BeautifyCodeOptions.Indent);
     NewCode:=CodeToolBoss.SourceChangeCache.BeautifyCodeOptions.BeautifyStatement(
       NewCode,Indent,[],X);
-    NewCode:=copy(NewCode,Indent+1,length(NewCode));
+    delete(NewCode,1,Indent);
     if NewCode='' then begin
       ShowMessage(lisAllParametersOfThisFunctionAreAlreadySetAtThisCall);
       exit;
@@ -1089,14 +1101,7 @@ begin
     ')',']':
       begin
         dec(BracketLevel);
-        if BracketLevel=0 then begin
-          // closing bracket found
-          NeedComma:=(LastToken<>',') and (LastToken<>'(') and (LastToken<>'[');
-          if NeedComma then inc(ParameterIndex);
-          //debugln(['TCodeContextFrm.CompleteParameters y=',LastTokenLine,' x=',LastTokenEnd,' ParameterIndex=',ParameterIndex]);
-          AddParameters(ASynEdit,LastTokenLine,LastTokenEnd,NeedComma,ParameterIndex);
-          break;
-        end;
+        if BracketLevel=0 then break;
       end;
     ',':
       if BracketLevel=1 then inc(ParameterIndex);
@@ -1109,7 +1114,17 @@ begin
       end;
     end;
   until false;
-
+  NeedComma:=(LastToken<>',') and (LastToken<>'(') and (LastToken<>'[');
+  if NeedComma then inc(ParameterIndex);
+  //debugln(['TCodeContextFrm.CompleteParameters BracketLevel=',BracketLevel,' NeedComma=',NeedComma,' ParameterIndex=',ParameterIndex]);
+  if BracketLevel=0 then begin
+    // closing bracket found
+    //debugln(['TCodeContextFrm.CompleteParameters y=',LastTokenLine,' x=',LastTokenEnd,' ParameterIndex=',ParameterIndex]);
+    AddParameters(ASynEdit,LastTokenLine,LastTokenEnd,NeedComma,false,ParameterIndex);
+  end else if BracketLevel=1 then begin
+    // missing closing bracket
+    AddParameters(ASynEdit,LastTokenLine,LastTokenEnd,NeedComma,true,ParameterIndex);
+  end;
 end;
 
 procedure TCodeContextFrm.ClearHints;

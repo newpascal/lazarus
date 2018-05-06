@@ -239,7 +239,10 @@ begin
   {$IFDEF QtUseNativeEventLoop}
   FMainTimerID := -1;
   ATimer := QTimer_Create(QCoreApplication_instance());
-  QTimer_setInterval(ATimer, 0);
+  if (StyleName = 'gtk') or (StyleName = 'gtk+') then
+    QTimer_setInterval(ATimer, 1) {issue #31191}
+  else
+    QTimer_setInterval(ATimer, {$IFDEF QtCocoa}1{$ELSE} 0 {$ENDIF});
   QTimer_start(ATimer);
   FMainTimerID := QTimer_timerId(ATimer);
   QApplication_exec();
@@ -264,7 +267,10 @@ begin
   {we cannot call directly processEvents() with this flag
    since it produces AV's sometimes, so better check is there
    any pending event.}
-  QCoreApplication_processEvents(QEventLoopWaitForMoreEvents);
+  {$IF DEFINED(QtUseNativeEventLoop) AND DEFINED(QtCocoa)}
+  if not QCoreApplication_hasPendingEvents() then
+  {$ENDIF}
+    QCoreApplication_processEvents(QEventLoopWaitForMoreEvents);
 end;
 
 {------------------------------------------------------------------------------
@@ -568,7 +574,7 @@ end;
 function TQtWidgetSet.EventFilter(Sender: QObjectH; Event: QEventH): Boolean; cdecl;
 var
   AObject: TQtObject;
-  W: TQtMainWindow;
+  W: TQtWidget;
   LCLEvent: QLCLMessageEventH;
   ASequence: QKeySequenceH;
   AKey: WideString;
@@ -758,7 +764,7 @@ begin
         // eat next appdeactivate & appactivate since we are changing form
         // flags !
         if (StayOnTopList <> nil) then
-          W := TQtMainWindow(HWNDFromWidgetH(QApplication_activeWindow()))
+          W := TQtWidget(GetActiveWindow)
         else
           W := nil;
         Application.IntfAppActivate;
@@ -1202,11 +1208,11 @@ begin
     lcEmulatedMDI,
     lcCanDrawOutsideOnPaint: Result := LCL_CAPABILITY_NO;
     lcDragDockStartOnTitleClick: Result :=
-     {$ifdef MSWINDOWS} LCL_CAPABILITY_YES {$else} LCL_CAPABILITY_NO {$endif};
-     lcNeedMininimizeAppWithMainForm: Result :=
-     {$ifdef HASX11} LCL_CAPABILITY_YES {$else} LCL_CAPABILITY_NO {$endif};
-     {when issue #20475 is fixed, then set this to LCL_CAPABILITY_YES}
-     lcReceivesLMClearCutCopyPasteReliably: Result := LCL_CAPABILITY_NO;
+      {$ifdef MSWINDOWS} LCL_CAPABILITY_YES {$else} LCL_CAPABILITY_NO {$endif};
+    lcNeedMininimizeAppWithMainForm: Result :=
+      {$ifdef HASX11} LCL_CAPABILITY_YES {$else} LCL_CAPABILITY_NO {$endif};
+    {when issue #20475 is fixed, then set this to LCL_CAPABILITY_YES}
+    lcReceivesLMClearCutCopyPasteReliably: Result := LCL_CAPABILITY_NO;
     lcRadialGradientBrush: Result := LCL_CAPABILITY_YES;
     lcTransparentWindow: Result := LCL_CAPABILITY_YES;
   else

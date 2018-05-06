@@ -28,7 +28,6 @@ type
     procedure SetPen(APen: TFPCustomPen);
   strict protected
     FCanvas: TAggLCLCanvas;
-    function GetFontAngle: Double; override;
     function SimpleTextExtent(const AText: String): TPoint; override;
     procedure SimpleTextOut(AX, AY: Integer; const AText: String); override;
   public
@@ -41,6 +40,11 @@ type
     procedure Ellipse(AX1, AY1, AX2, AY2: Integer);
     procedure FillRect(AX1, AY1, AX2, AY2: Integer);
     function GetBrushColor: TChartColor;
+    function GetFontAngle: Double; override;
+    function GetFontColor: TFPColor; override;
+    function GetFontName: String; override;
+    function GetFontSize: Integer; override;
+    function GetFontStyle: TChartFontStyles; override;
     procedure Line(AX1, AY1, AX2, AY2: Integer);
     procedure Line(const AP1, AP2: TPoint);
     procedure LineTo(AX, AY: Integer); override;
@@ -121,6 +125,34 @@ end;
 function TAggPasDrawer.GetFontAngle: Double;
 begin
   Result := FCanvas.Font.AggAngle;
+end;
+
+function TAggPasDrawer.GetFontColor: TFPColor;
+begin
+  Result.Red := FCanvas.Font.AggColor.r shl 8;
+  Result.Green := FCanvas.Font.AggColor.g shl 8;
+  Result.Blue := FCanvas.Font.AggColor.b shl 8;
+end;
+
+function TAggPasDrawer.GetFontName: String;
+begin
+  Result := FCanvas.Font.Name;
+end;
+
+function TAggPasDrawer.GetFontSize: Integer;
+begin
+  if FCanvas.Font.AggHeight = 0 then
+    Result := DEFAULT_FONT_SIZE else
+    Result := round(FCanvas.Font.AggHeight * 72 / 96);
+end;
+
+function TAggPasDrawer.GetFontStyle: TChartFontStyles;
+begin
+  Result := [];
+  if FCanvas.Font.Bold then Include(Result, cfsBold);
+  if FCanvas.Font.Italic then Include(Result, cfsItalic);
+  if FCanvas.Font.Underline then Include(Result, cfsUnderline);
+  if FCanvas.Font.StrikeThrough then Include(Result, cfsStrikeout);
 end;
 
 procedure TAggPasDrawer.Line(AX1, AY1, AX2, AY2: Integer);
@@ -236,7 +268,7 @@ begin
   f.LoadFromFile(
     AFont.Name, f.SizeToAggHeight(fontSize), AFont.Bold, AFont.Italic);
   f.FPColor := ApplyTransparency(FPColorOrMono(AFont.FPColor));
-  f.AggAngle := OrientToRad(-FGetFontOrientationFunc(AFont));
+  f.AggAngle := -OrientToRad(FGetFontOrientationFunc(AFont));
 end;
 
 type
@@ -261,8 +293,15 @@ begin
 end;
 
 procedure TAggPasDrawer.SimpleTextOut(AX, AY: Integer; const AText: String);
+var
+  h: Integer;
+  p: TPoint;
 begin
-  FCanvas.TextOut(AX, AY, AText);
+  h := SimpleTextExtent('Tg').y;
+  p := RotatePoint(Point(0, h * 9 div 10), FCanvas.Font.AggAngle);
+    // * 9/10 fits to fit the text into bounding box
+  FCanvas.TextOut(AX + p.X, AY + p.Y - h, AText);
+    // -h to avoid rotated text drifting away
 end;
 
 initialization

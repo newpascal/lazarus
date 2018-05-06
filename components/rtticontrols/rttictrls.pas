@@ -2158,7 +2158,7 @@ end;
 
 function TPropertyNamePropertyEditor.GetAttributes: TPropertyAttributes;
 begin
-  Result:=[paMultiSelect,paValueList,paSortList,paRevertable,paHasDefaultValue];
+  Result:=[paMultiSelect,paValueList,paSortList,paRevertable];
 end;
 
 function TPropertyNamePropertyEditor.GetEditLimit: Integer;
@@ -2374,7 +2374,6 @@ begin
       ItemValue:=Text;
 
     AState:=[];
-    if odPainted in State then Include(AState,pedsPainted);
     if odSelected in State then Include(AState,pedsSelected);
     if odFocused in State then Include(AState,pedsFocused);
     if odComboBoxEdit in State then
@@ -3586,7 +3585,6 @@ begin
       ItemValue:=Text;
 
     AState:=[];
-    if odPainted in State then Include(AState,pedsPainted);
     if odSelected in State then Include(AState,pedsSelected);
     if odFocused in State then Include(AState,pedsFocused);
     Include(AState,pedsInEdit);
@@ -3861,7 +3859,7 @@ end;
 
 function TTIElementNamePropertyEditor.GetAttributes: TPropertyAttributes;
 begin
-  Result:=[paMultiSelect,paValueList,paSortList,paRevertable,paHasDefaultValue];
+  Result:=[paMultiSelect,paValueList,paSortList,paRevertable];
 end;
 
 function TTIElementNamePropertyEditor.GetEditLimit: Integer;

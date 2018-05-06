@@ -47,6 +47,7 @@ const
   flBandOnLastPage         = $20;
   flBandRepeatHeader       = $40;
   flBandPrintChildIfNotVisible = $100;
+  flBandKeepChild          = $200;
 
   flPictCenter             = 2;
   flPictRatio              = 4;
@@ -90,11 +91,14 @@ type
   TfrFrameBorders = set of TfrFrameBorder;
   TfrFrameStyle = (frsSolid,frsDash, frsDot, frsDashDot, frsDashDotDot,frsDouble);
   TfrPageType = (ptReport, ptDialog);   //todo: - remove this
+
   TfrReportOption = (roIgnoreFieldNotFound, roIgnoreSymbolNotFound, roHideDefaultFilter,
                      roDontUpgradePreparedReport,   // on saving an old prepared report don't update to current version
                      roSaveAndRestoreBookmarks,     // try to save and later restore dataset bookmarks on building report
-                     roPageHeaderBeforeReportTitle  // PageHeader band is printed before ReportTitle band
+                     roPageHeaderBeforeReportTitle, // PageHeader band is printed before ReportTitle band
+                     roDisableCancelBuild           // Disable cancel button in build progress form
                      );
+
   TfrReportOptions = set of TfrReportOption;
   TfrObjectType = (otlReportView, otlUIControl);
 
@@ -300,8 +304,8 @@ type
     procedure BeginDraw(ACanvas: TCanvas);
     procedure GetBlob(b: TfrTField); virtual;
     procedure OnHook(View: TfrView); virtual;
-    procedure BeforeChange;
-    procedure AfterChange;
+    procedure BeforeChange; virtual;
+    procedure AfterChange; virtual;
     procedure ResetLastValue; virtual;
     function GetFrames: TfrFrameBorders; virtual;
     procedure ModifyFlag(aFlag: Word; aValue:Boolean);
@@ -578,6 +582,7 @@ type
     procedure P5Click(Sender: TObject);
     procedure P6Click(Sender: TObject);
     procedure P7Click(Sender: TObject);
+    procedure P8Click(Sender: TObject);
     function  GetTitleRect: TRect;
     function  TitleSize: Integer;
     procedure CalcTitleSize;
@@ -1203,6 +1208,7 @@ type
     procedure DoPrintReport(const PageNumbers: String; Copies: Integer);
     procedure SetComments(const AValue: TStringList);
     procedure SetPrinterTo(const PrnName: String);
+    procedure SetReportOptions(AValue: TfrReportOptions);
     procedure SetScript(AValue: TfrScriptStrings);
     procedure SetVars(Value: TStrings);
     procedure ClearAttribs;
@@ -1319,7 +1325,7 @@ type
     property InitialZoom: TfrPreviewZoom read FInitialZoom write FInitialZoom;
     property ModalPreview: Boolean read FModalPreview write FModalPreview default True;
     property ModifyPrepared: Boolean read FModifyPrepared write FModifyPrepared default True;
-    property Options: TfrReportOptions read FReportOptions write FReportOptions;
+    property Options: TfrReportOptions read FReportOptions write SetReportOptions;
     property Preview: TfrPreview read FPreview write FPreview;
     property PreviewButtons: TfrPreviewButtons read FPreviewButtons write FPreviewButtons;
     property RebuildPrinter: boolean read FRebuildPrinter write FRebuildPrinter default False;
@@ -1670,9 +1676,17 @@ begin
   WriteStr(Result, typ);
 end;
 
+function DbgDset(ds: TfrDataset): string;
+begin
+  if ds=nil then
+    result := 'nil'
+  else
+    result := dbgsName(ds);
+end;
+
 function BandInfo(Band: TfrBand): string;
 begin
-  result := format('"%s":%s typ=%s',[Band.Name, dbgsname(band), BandTyp2str(Band.typ)]);
+  result := format('"%s":%s typ=%s ds=%s',[Band.Name, dbgsname(band), BandTyp2str(Band.typ), dbgDset(Band.DataSet)]);
 end;
 
 function ViewInfo(View: TfrView): string;
@@ -2033,7 +2047,7 @@ var
   FRDataset: TfrDataset;
 begin
   Result := nil;
-  if Assigned(CurPage) and (CurPage is TfrPageReport) then
+  if CurPage is TfrPageReport then
   begin
     FRDataset := nil;
     if CurBand <> nil then
@@ -2456,7 +2470,11 @@ end;
 constructor TlrDetailReport.Create;
 begin
   inherited Create;
+  {$IF FPC_FULLVERSION >= 30101}
+  FReportBody:=TStringStream.CreateRaw('');
+  {$ELSE}
   FReportBody:=TStringStream.Create('');
+  {$ENDIF}
 end;
 
 destructor TlrDetailReport.Destroy;
@@ -2522,7 +2540,7 @@ end;
 
 function TfrControl.OwnerForm: TWinControl;
 begin
-  if Assigned(OwnerPage) and (OwnerPage is TfrPageDialog) then
+  if OwnerPage is TfrPageDialog then
     Result:=TfrPageDialog(OwnerPage).Form
   else
     Result:=nil;
@@ -4150,7 +4168,7 @@ var
       Ts: TTextStyle;
     begin
       SetLength(str, Length(str) - 2);
-      if str[Length(str)] = #1 then
+      if (str<>'') and (str[Length(str)] = #1) then
         SetLength(str, Length(str) - 1);
       cury := 0;
 
@@ -4305,7 +4323,7 @@ begin
   BeginDraw(aCanvas);
   {$IFDEF DebugLR}
     DebugLn('');
-    DebuglnEnter('TfrMemoView.Draw: Name=%s Printing=%s Canvas.Font.PPI=%d',
+    DebuglnEnter('TfrMemoView.Draw: INIT Name=%s Printing=%s Canvas.Font.PPI=%d',
       [Name,dbgs(IsPrinting),Canvas.Font.PixelsPerInch]);
   NewDx := 0;
   {$ENDIF}
@@ -4523,7 +4541,7 @@ begin
     WrapMemo;
     Result := VHeight;
     {$IFDEF DebugLR}
-    DebugLn('Memo1.Count<>0: VHeight=%d',[VHeight]);
+    DebugLn('Memo1.Count!=0: VHeight=%d',[VHeight]);
     {$ENDIF}
   end;
   Font.Assign(OldFont);
@@ -5379,6 +5397,15 @@ begin
     m.Checked := (Flags and flBandPrintChildIfNotVisible) <> 0;
     Popup.Items.Add(m);
   end;
+
+  if not (BandType in [btChild, btPageFooter]) then
+  begin
+    m := TMenuItem.Create(Popup);
+    m.Caption := sKeepChild;
+    m.OnClick := @P8Click;
+    m.Checked := (Flags and flBandKeepChild) <> 0;
+    Popup.Items.Add(m);
+  end;
 end;
 
 procedure TfrBandView.P1Click(Sender: TObject);
@@ -5474,6 +5501,16 @@ begin
   begin
     Checked := not Checked;
     Flags := (Flags and not flBandPrintChildIfNotVisible) + Word(Checked) * flBandPrintChildIfNotVisible;
+  end;
+end;
+
+procedure TfrBandView.P8Click(Sender: TObject);
+begin
+  frDesigner.BeforeChange;
+  with Sender as TMenuItem do
+  begin
+    Checked := not Checked;
+    Flags := (Flags and not flBandKeepChild) + Word(Checked) * flBandKeepChild;
   end;
 end;
 
@@ -7152,6 +7189,15 @@ begin
     CalculatedHeight := dy;
     if Stretched then Result := CalcHeight;
   end;
+  if (Flags and flBandKeepChild) <> 0 then
+  begin
+    b := Self.ChildBand;
+    while Assigned(b) do
+    begin
+      Result := Result + b.CalcHeight;
+      b := b.ChildBand;
+    end;
+  end;
 end;
 
 function TfrBand.Draw: Boolean;
@@ -7406,7 +7452,8 @@ begin
   RTObjects.Free;
   List.Free;
   fMargins.Free;
-  
+  if Assigned(frDesigner) and (frDesigner.Page = Self) then
+    frDesigner.Page:=nil;
   inherited Destroy;
 end;
 
@@ -7600,6 +7647,9 @@ var
   BArr: Array[0..lrMaxBandsInReport - 1] of TfrBand;
   s: String;
 begin
+  {$IFDEF DebugLR}
+  DebugLnEnter('TfrPage.TossObjects INIT ', []);
+  {$ENDIF}
   for i := 0 to Objects.Count - 1 do
   begin
     bt :=TfrView(Objects[i]);
@@ -7658,6 +7708,9 @@ begin
            t.x := t.x - Bnd.x;
            t.Parent := Bnd;
            Bnd.Objects.Add(t);
+           {$IFDEF DebugLR}
+           DebugLn('A - Placed %s over %s',[ViewInfo(t), BandInfo(Bnd)]);
+           {$ENDIF}
          end;
       end;
     end;
@@ -7721,6 +7774,9 @@ begin
               t.y := t.y - Bnd.y;
               t.Selected := False;
               Bnd.Objects.Add(t);
+              {$IFDEF DebugLR}
+              DebugLn('B - Placed %s over %s',[ViewInfo(t), BandInfo(Bnd)]);
+              {$ENDIF}
             end;
         end;
         for j := 0 to RTObjects.Count - 1 do // placing ColumnXXX objects over band
@@ -7733,6 +7789,9 @@ begin
               t.y := t.y - Bnd.y;
               t.Selected := False;
               Bnd.Objects.Add(t);
+              {$IFDEF DebugLR}
+              DebugLn('C - Placed %s over %s',[ViewInfo(t), BandInfo(Bnd)]);
+              {$ENDIF}
             end;
         end;
         for j := 0 to RTObjects.Count - 1 do // placing subreports over band
@@ -7746,6 +7805,9 @@ begin
               t.y := t.y - Bnd.y;
               t.Selected := False;
               Bnd.Objects.Add(t);
+              {$IFDEF DebugLR}
+              DebugLn('D - Placed %s over %s',[ViewInfo(t), BandInfo(Bnd)]);
+              {$ENDIF}
             end;
         end;
       end;
@@ -7781,6 +7843,9 @@ begin
       t.Parent := Bands[btNone];
       Bands[btNone].y := 0;
       Bands[btNone].Objects.Add(t);
+      {$IFDEF DebugLR}
+      DebugLn('E - Placed %s over %s',[ViewInfo(t), BandInfo(Bands[btNone])]);
+      {$ENDIF}
     end;
   end;
 
@@ -7878,6 +7943,9 @@ begin
 
   if ColCount = 0 then ColCount := 1;
   ColWidth := (RightMargin - LeftMargin - (ColCount-1)*ColGap) div ColCount;
+  {$IFDEF DebugLR}
+  DebugLnExit('TfrPage.TossObjects DONE ', []);
+  {$ENDIF}
 end;
 
 procedure TfrPage.PrepareObjects;
@@ -8086,7 +8154,7 @@ begin
     end;
   PageNo := MasterReport.EMFPages.Count;
   {$IFDEF DebugLR}
-  DebugLn('TFrPage.DrawPageFootersPage FIN PageNo=%d XAdjust=%d CurColumn=%d',
+  DebugLn('TFrPage.DrawPageFootersPage END PageNo=%d XAdjust=%d CurColumn=%d',
     [PageNo, XAdjust, CurColumn]);
   {$ENDIF}
 end;
@@ -8108,6 +8176,7 @@ begin
   {$IFDEF DebugLR}
   DebugLn('---- Start of new page ----');
   {$ENDIF}
+  ColPos := 1;
   ShowBand(Bands[btOverlay]);
   CurY := TopMargin;
   ShowBand(Bands[btPageHeader]);
@@ -8132,6 +8201,7 @@ begin
     ShowBand(Bands[btColumnFooter]);
     Inc(CurColumn);
     Inc(XAdjust, ColWidth + ColGap);
+    Inc(ColPos);
     CurY := LastStaticColumnY;
     ShowBand(Bands[btColumnHeader]);
   end
@@ -8260,6 +8330,9 @@ var
     if b <> nil then
     begin
       Inc(BndStackTop);
+      {$IFDEF DebugLR}
+      DebugLn('AddToStack b=%s',[BandInfo(b)]);
+      {$ENDIF}
       BndStack[BndStackTop] := b;
     end;
   end;
@@ -8328,7 +8401,7 @@ var
     i: Integer;
   begin
     {$IFDEF DebugLR}
-    DebugLnEnter('ShowStack INI');
+    DebugLnEnter('ShowStack INI BndStackTop=%d',[BndStackTop]);
     {$ENDIF}
     for i := 1 to BndStackTop do
       if BandExists(BndStack[i]) then
@@ -10027,7 +10100,11 @@ procedure TfrReport.WriteReportXML(Writer: TWriter);
 var
   st: TStringStream;
 begin
+  {$IF FPC_FULLVERSION >= 30101}
+  st := TStringStream.CreateRaw('');
+  {$ELSE}
   st := TStringStream.Create('');
+  {$ENDIF}
   SaveToXMLStream(st);
   Writer.WriteString(st.DataString);
   st.free;
@@ -10941,7 +11018,7 @@ begin
   if DoublePass then
   begin
     {$IFDEF DebugLR}
-    DebugLnEnter('DoPrepareReport FirstPass Begin');
+    DebugLnEnter('DoPrepareReport FirstPass INIT');
     {$ENDIF}
 
     DisableDrawing := True;
@@ -10960,14 +11037,13 @@ begin
         OnBeforeModal := @BuildBeforeModal;
         Show_Modal(Self);
       end;
-      
-      {$IFDEF DebugLR}
-      DebugLnExit('DoPrepareReport FirstPass End');
-      {$ENDIF}
     end
     else BuildBeforeModal(nil);
     {$IFDEF DebugLR}
-    DebugLnExit('DoPrepareReport DONE');
+    DebugLnExit('DoPrepareReport FirstPass DONE');
+    {$ENDIF}
+    {$IFDEF DebugLR}
+    DebugLnExit('DoPrepareReport EXIT: FirstPass');
     {$ENDIF}
     Exit;
   end;
@@ -10975,7 +11051,7 @@ begin
   if not Assigned(FOnProgress) and FShowProgress then
   begin
     {$IFDEF DebugLR}
-    DebugLnEnter('DoPrepareReport SecondPass begin');
+    DebugLnEnter('DoPrepareReport SecondPass INIT');
     {$ENDIF}
 
     with frProgressForm do
@@ -11020,7 +11096,7 @@ begin
       end;
       
       {$IFDEF DebugLR}
-      DebugLnExit('DoPrepareReport SecondPass End');
+      DebugLnExit('DoPrepareReport SecondPass DONE');
       {$ENDIF}
     end;
   end
@@ -11591,6 +11667,15 @@ begin
   {$endif}
 end;
 
+procedure TfrReport.SetReportOptions(AValue: TfrReportOptions);
+begin
+  if FReportOptions=AValue then Exit;
+  FReportOptions:=AValue;
+
+  if Assigned(frProgressForm) then
+    frProgressForm.Button1.Enabled:=not (roDisableCancelBuild in FReportOptions);
+end;
+
 procedure TfrReport.SetScript(AValue: TfrScriptStrings);
 begin
   fScript.Assign(AValue);
@@ -11766,7 +11851,7 @@ end;
 function TfrReport.DoObjectClick(AObj: TfrView): boolean;
 begin
   Result:=false;
-  if Assigned(AObj) and (AObj is TfrMemoView) then
+  if AObj is TfrMemoView then
     TfrMemoView(AObj).DoOnClick;
 
   Result:=Assigned(OnObjectClick);
@@ -11848,7 +11933,11 @@ begin
   inherited Loaded;
   if FXMLReport<>'' then
   begin
+    {$IF FPC_FULLVERSION >= 30101}
+    st := TStringStream.CreateRaw(FXMLReport);
+    {$ELSE}
     st := TStringStream.Create(FXMLReport);
+    {$ENDIF}
     LoadFromXMLStream(st);
     st.free;
     FXMLReport := '';
@@ -12422,6 +12511,7 @@ begin
   Add('SHOWBAND', true);
   Add('INC', true);
   Add('DEC', true);
+  Add('IF', true);
 end;
 
 procedure TfrStdFunctionLibrary.UpdateDescriptions;
@@ -12452,6 +12542,7 @@ begin
 
   AddFunctionDesc('INPUT', SOtherCategory, SDescriptionINPUT);
   AddFunctionDesc('MESSAGEBOX', SOtherCategory, SDescriptionMESSAGEBOX);
+  AddFunctionDesc('IF', SOtherCategory, SDescriptionIF);
 
   AddFunctionDesc('MAXNUM', SMathCategory, SDescriptionMAXNUM);
   AddFunctionDesc('MINNUM', SMathCategory, SDescriptionMINNUM);
@@ -12489,7 +12580,7 @@ var
   {$ENDIF}
 begin
   {$IFDEF DebugLR}
-  DebugLnEnter('TfrStdFunctionLibrary.DoFunction FNo=%d (%s) p1=%s p2=%s p3=%s val=%s',[FNo,FNoStr,p1,p2,p3,val]);
+  DebugLnEnter('TfrStdFunctionLibrary.DoFunction INIT FNo=%d (%s) p1=%s p2=%s p3=%s val=%s',[FNo,FNoStr,p1,p2,p3,val]);
   {$ENDIF}
   dk := dkNone;
   val := '0';
@@ -12504,8 +12595,8 @@ begin
         s1 := InputBox('', frParser.Calc(p1), frParser.Calc(p2));
         val := s1;
       end;
-    7:val := UTF8Length(frParser.Calc(p1));                       //Add('LENGTH');            {7}
-    8: val := UTF8LowerCase(frParser.Calc(p1)); //Add('LOWERCASE');         {8}
+    7:val := UTF8Length(frParser.Calc(p1));                   //Add('LENGTH');            {7}
+    8: val := UTF8LowerCase(frParser.Calc(p1));               //Add('LOWERCASE');         {8}
     9: dk := dkMax;                                           //Add('MAX');               {9}
    10:begin                                                   //Add('MAXNUM');            {10}
         v2 := frParser.Calc(p1);
@@ -12544,7 +12635,7 @@ begin
          S1:=frParser.Calc(p1);
          val := Trim(S1);
        end;
-   21: val := LazUTF8.UTF8UpperCase(frParser.Calc(p1)); //Add('UPPERCASE');         {21}
+   21: val := UTF8UpperCase(frParser.Calc(p1));               //Add('UPPERCASE');         {21}
    22: val := YearOf(frParser.Calc(p1));                      //Add('YEAROF');            {22}
   end;
   
@@ -13415,8 +13506,7 @@ begin
   inherited SetValue(UTF8Decode(APath), UTF8Decode(AValue));
 end;
 
-function TLrXMLConfig.GetValue(const APath: string; const ADefault: string
-  ): string;
+function TLrXMLConfig.GetValue(const APath: string; const ADefault: string): string;
 {var
   wValue: widestring;}
 begin
@@ -13424,7 +13514,7 @@ begin
     result := {%H-}inherited GetValue(APath, ADefault{%H-})
   else
   begin
-    result := LazUTF8.UTF16ToUTF8(inherited GetValue(APath, ADefault));
+    result := UTF16ToUTF8(inherited GetValue(APath, ADefault));
 {    WValue := inherited GetValue(UTF8Decode(APath), UTF8Decode(ADefault));
     Result := UTF8Encode(WValue);}
   end;

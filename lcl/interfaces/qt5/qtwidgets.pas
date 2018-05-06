@@ -713,6 +713,7 @@ type
   public
     procedure InitializeWidget; override;
     procedure DeInitializeWidget; override;
+    function CanPaintBackground: Boolean; override;
     procedure SetDefaultColorRoles; override;
     procedure setVisible(AVisible: Boolean); override;
     property NeedRestoreVisible: Boolean read FNeedRestoreVisible write FNeedRestoreVisible;
@@ -1013,6 +1014,7 @@ type
 
   TQtComboBox = class(TQtWidget, IQtEdit)
   private
+    FKeyEnterFix: boolean; {issue #31574}
     FMouseFixPos: TQtPoint;
     // hooks
     FChangeHook: QComboBox_hookH;
@@ -1522,6 +1524,7 @@ type
     procedure setHeaderVisible(AVisible: Boolean);
     procedure setItemSelected(AItem: QTreeWidgetItemH; ASelect: Boolean);
     procedure setStretchLastSection(AValue: Boolean);
+    procedure scrollToItem(Item: QTreeWidgetItemH; hint: QAbstractItemViewScrollHint);
     {$IFDEF TEST_QT_SORTING}
     // direct Qt sorting via QtUserData ptr = our TListItem, crashes sometimes - qt bug.
     procedure sortItems(Acolumn: Integer; AOrder: QtSortOrder);
@@ -2087,7 +2090,7 @@ begin
   // Sets it's initial properties
 
   // set focus policy
-  if (LCLObject <> nil) then
+  if Assigned(LCLObject) then
   begin
     if (Self is TQtMainWindow) and
       (
@@ -2124,25 +2127,27 @@ begin
       else
         setFocusPolicy(QtClickFocus);
     end;
+
     if LCLObject.Perform(LM_NCHITTEST, 0, 0)=HTTRANSPARENT then
     begin
       setAttribute(QtWA_TransparentForMouseEvents);
       setWindowFlags(windowFlags or QtWindowTransparentForInput);
     end;
+
+    if (csDesigning in LCLObject.ComponentState) and not
+       (Self is TQtMainWindow) and
+       HasPaint and
+       getAutoFillBackground or
+       ((csDesigning in LCLObject.ComponentState) and
+        (ClassType = TQtTabWidget)) then
+      setAutoFillBackground(False);
   end;
 
-  if (csDesigning in LCLObject.ComponentState) and not
-     (Self is TQtMainWindow) and
-     HasPaint and
-     getAutoFillBackground or
-     ((csDesigning in LCLObject.ComponentState) and
-      (ClassType = TQtTabWidget)) then
-    setAutoFillBackground(False);
 
   // Set mouse move messages policy
   QWidget_setMouseTracking(Widget, True);
 
-  if FWidgetNeedFontColorInitialization then
+  if Assigned(LCLObject) and FWidgetNeedFontColorInitialization then
     setInitialFontColor(LCLObject);
   if (FParams.Style and WS_VISIBLE) = 0 then
     QWidget_hide(Widget)
@@ -3501,7 +3506,7 @@ begin
   {$endif}
   InputEvent := QInputMethodEventH(Event);
   QInputMethodEvent_commitString(InputEvent, @WStr);
-  UnicodeChar := UTF8CharacterToUnicode(PChar(WStr), UnicodeOutLen);
+  UnicodeChar := UTF8CodepointToUnicode(PChar(WStr), UnicodeOutLen);
   {$IFDEF VerboseQtKeys}
   writeln('> TQtWidget.SlotInputMethod ',dbgsname(LCLObject),' event=QEventInputMethod:');
   writeln('   commmitString ',WStr,' len ',length(WStr),' UnicodeChar ',UnicodeChar,
@@ -3889,13 +3894,18 @@ begin
   LastMouse.WinControl := LCLObject;
   LastMouse.WinHandle := TLCLIntfHandle(Self);
   LastMouse.MousePos := Point(MousePos.X, MousePos.Y);
-  
-  Msg.Msg := LM_MOUSEWHEEL;
 
   Msg.X := SmallInt(MousePos.X);
   Msg.Y := SmallInt(MousePos.Y);
 
   Msg.WheelDelta := SmallInt(QWheelEvent_delta(QWheelEventH(Event)));
+
+  Msg.Msg := LM_MOUSEWHEEL;
+  if QWheelEvent_orientation(QWheelEventH(Event)) = QtHorizontal then
+  begin
+    Msg.Msg := LM_MOUSEHWHEEL;
+    Msg.WheelDelta := -Msg.WheelDelta;
+  end;
 
   {$IFDEF DARWIN}
   // LCL expects delta +-120, we must fix it. issue #20888
@@ -6729,7 +6739,7 @@ begin
                                {must be added, see issue #29159}
                                QEventMouseMove]) then
     begin
-      if Assigned(FOwner) and (FOwner is TQtMainWindow) and not TQtMainWindow(FOwner).IsFrameWindow and
+      if (FOwner is TQtMainWindow) and not TQtMainWindow(FOwner).IsFrameWindow and
         (TCustomForm(LCLObject).FormStyle = fsMDIForm) and
         (TQtMainWindow(FOwner).MDIAreaHandle <> nil) then
         // paint via MDIAreaHandle viewport hook
@@ -8468,10 +8478,6 @@ function TQtGroupBox.EventFilter(Sender: QObjectH; Event: QEventH): Boolean;
 var
   ResizeEvent: QResizeEventH;
   NewSize, OldSize: TSize;
-  R: TRect;
-  APos, AGlobalPos: TQtPoint;
-  APosF, AGlobalPosF: TQtPointF;
-  ANewMouseEvent: QMouseEventH;
 begin
   Result := False;
   QEvent_accept(Event);
@@ -8485,72 +8491,8 @@ begin
     end;
     exit;
   end;
-  {about issue #29572: we must use main widget for mouse
-   events, since using it in FCentralWidget above freezes
-   application for some reason. Offsetting pos fixes problem.}
+  {For possible problems with Mouse events check issue #29572 and #32186}
   case QEvent_type(Event) of
-    QEventWheel: // issue #29572
-    begin
-      QMouseEvent_pos(QMouseEventH(Event), @APos);
-      QMouseEvent_globalPos(QMouseEventH(Event), @AGlobalPos);
-      QWidget_geometry(FCentralWidget, @R);
-      inc(APos.X, -R.Left);
-      inc(APos.Y, -R.Top);
-      APosF.X := APos.X;
-      APosF.Y := APos.Y;
-      AGlobalPosF.X := AGlobalPos.X;
-      AGlobalPosF.y := AGlobalPos.Y;
-      ANewMouseEvent := QMouseEvent_create(QEvent_type(Event), @APosF, @AGlobalPosF, QMouseEvent_button(QMouseEventH(Event)),
-        QMouseEvent_buttons(QMouseEventH(Event)), QInputEvent_modifiers(QInputEventH(Event)));
-      try
-        Result := SlotMouseWheel(Sender, ANewMouseEvent);
-      finally
-        QMouseEvent_destroy(ANewMouseEvent);
-      end;
-    end;
-    QEventMouseMove: // issue #29572
-    begin
-      // APos :=
-      QMouseEvent_pos(QMouseEventH(Event), @APos);
-      // AGlobalPos :=
-      QMouseEvent_globalPos(QMouseEventH(Event), @AGlobalPos);
-      QWidget_geometry(FCentralWidget, @R);
-      inc(APos.X, -R.Left);
-      inc(APos.Y, -R.Top);
-      APosF.X := APos.X;
-      APosF.Y := APos.Y;
-      AGlobalPosF.X := AGlobalPos.X;
-      AGLobalPosF.y := AGlobalPos.Y;
-      ANewMouseEvent := QMouseEvent_create(QEvent_type(Event), @APosF, @AGlobalPosF, QMouseEvent_button(QMouseEventH(Event)),
-        QMouseEvent_buttons(QMouseEventH(Event)), QInputEvent_modifiers(QInputEventH(Event)));
-      try
-        Result := SlotMouseMove(Sender, ANewMouseEvent);
-      finally
-        QMouseEvent_destroy(ANewMouseEvent);
-      end;
-    end;
-    QEventMouseButtonPress,
-    QEventMouseButtonRelease,
-    QEventMouseButtonDblClick: // issue #29572
-    begin
-      // APos :=
-      QMouseEvent_pos(QMouseEventH(Event), @APos);
-      QMouseEvent_globalPos(QMouseEventH(Event), @AGlobalPos);
-      QWidget_geometry(FCentralWidget, @R);
-      inc(APos.X, -R.Left);
-      inc(APos.Y, -R.Top);
-      APosF.X := APos.X;
-      APosF.Y := APos.Y;
-      AGlobalPosF.X := AGlobalPos.X;
-      AGLobalPosF.y := AGlobalPos.Y;
-      ANewMouseEvent := QMouseEvent_create(QEvent_type(Event), @APosF, @AGlobalPosF, QMouseEvent_button(QMouseEventH(Event)),
-        QMouseEvent_buttons(QMouseEventH(Event)), QInputEvent_modifiers(QInputEventH(Event)));
-      try
-        Result := SlotMouse(Sender, ANewMouseEvent);
-      finally
-        QMouseEvent_destroy(ANewMouseEvent);
-      end;
-    end;
     QEventPaint:
       begin
         Result := False;
@@ -9594,6 +9536,7 @@ end;
 
 function TQtLineEdit.getSelectedText: WideString;
 begin
+  Result := '';
   QLineEdit_selectedText(QLineEditH(Widget), @Result);
 end;
 
@@ -9617,7 +9560,7 @@ begin
   if hasSelectedText then
   begin
     W := getSelectedText;
-    Result := UTF8Length(W);
+    Result := UTF16Length(W);
   end else
   begin
     if (CachedSelectionStart <> -1) and (CachedSelectionLen <> -1) then
@@ -9629,6 +9572,7 @@ end;
 
 function TQtLineEdit.getText: WideString;
 begin
+  Result := '';
   QLineEdit_text(QLineEditH(Widget), @Result);
 end;
 
@@ -9636,8 +9580,7 @@ function TQtLineEdit.getTextMargins: TRect;
 var
   L, T, R, B: Integer;
 begin
-  QLineEdit_getTextMargins(QLineEditH(Widget),
-    @L, @T, @R, @B);
+  QLineEdit_getTextMargins(QLineEditH(Widget), @L, @T, @R, @B);
   Result := Rect(L, T, R, B);
 end;
 
@@ -9717,7 +9660,7 @@ begin
   if (QEvent_type(Event) = QEventFocusOut) then
   begin
     CachedSelectionStart := QLineEdit_selectionStart(QLineEditH(Widget));
-    CachedSelectionLen := UTF8Length(getSelectedText);
+    CachedSelectionLen := UTF16Length(getSelectedText);
   end else
   if (QEvent_type(Event) = QEventFocusIn) then
   begin
@@ -9929,6 +9872,7 @@ end;
 
 function TQtTextEdit.getText: WideString;
 begin
+  Result := '';
   QTextEdit_toPlainText(QTextEditH(Widget), @Result);
 end;
 
@@ -11060,6 +11004,7 @@ begin
   {$ifdef VerboseQt}
     WriteLn('TQtComboBox.Create');
   {$endif}
+  FKeyEnterFix := False; {issue #31574}
   FMouseFixPos := QtPoint(-1, -1);
   FDropListVisibleInternal := False;
   if AParams.WndParent <> 0 then
@@ -11246,6 +11191,7 @@ end;
 
 function TQtComboBox.getText: WideString;
 begin
+  Result := '';
   QComboBox_currentText(QComboBoxH(Widget), @Result);
   if FOwnerDrawn and (FLineEdit = nil) and
     (Result = '') and (Result <> FText) then
@@ -11549,20 +11495,27 @@ begin
   if (FDropList <> nil) and (Sender = FDropList.Widget) then
   begin
     if (Byte(QEvent_type(Event)) in [QEventKeyPress, QEventKeyRelease,QEventFontChange]) then
+    begin
       Result := inherited EventFilter(Sender, Event);
+      if Result and (QEvent_type(Event) = QEventKeyPress) then
+        FKeyEnterFix := True; {issue #31574}
+    end;
     QEvent_ignore(Event);
     exit;
   end;
 
   BeginEventProcessing;
   try
+    if FKeyEnterFix and (Byte(QEvent_type(Event)) in [QEventMouseButtonPress, QEventMouseButtonDblClick,
+      QEventMouseButtonRelease, QEventKeyPress, QEventHide, QEventShow]) then
+        FKeyEnterFix := False; {issue #31574}
     case QEvent_type(Event) of
       QEventFocusOut:
       begin
         if Assigned(FLineEdit) and FLineEdit.getVisible then
         begin
           FLineEdit.CachedSelectionStart := QLineEdit_selectionStart(QLineEditH(FLineEdit.Widget));
-          FLineEdit.CachedSelectionLen := UTF8Length(FLineEdit.getSelectedText);
+          FLineEdit.CachedSelectionLen := UTF16Length(FLineEdit.getSelectedText);
         end;
         Result := inherited EventFilter(Sender, Event);
       end;
@@ -11656,6 +11609,13 @@ begin
             Result := inherited EventFilter(Sender, Event);
         end else
           Result := inherited EventFilter(Sender, Event);
+      end;
+      QEventKeyRelease:
+      begin
+        {issue #31574}
+        if not FKeyEnterFix then
+          Result := inherited EventFilter(Sender, Event);
+        FKeyEnterFix := False;
       end;
       else
         Result := inherited EventFilter(Sender, Event);
@@ -11806,7 +11766,9 @@ end;
 function TQtAbstractSpinBox.getMaxLength: Integer;
 begin
   if LineEdit <> nil then
-    Result := QLineEdit_maxLength(LineEdit);
+    Result := QLineEdit_maxLength(LineEdit)
+  else
+    Result := 0;
 end;
 
 function TQtAbstractSpinBox.getSelectionStart: Integer;
@@ -11829,7 +11791,7 @@ begin
   if (LineEdit <> nil) and QLineEdit_hasSelectedText(LineEdit) then
   begin
     QLineEdit_selectedText(LineEdit, @W);
-    Result := UTF8Length(W);
+    Result := UTF16Length(W);
   end
   else
     Result := 0;
@@ -12465,6 +12427,7 @@ var
   AIcon: QIconH;
   AOk: Boolean;
   ASize: TSize;
+  ImgListRes: TScaledImageListResolution;
 begin
 
   {do not set items during design time}
@@ -12503,20 +12466,24 @@ begin
         ImgList := TCustomListViewHack(LCLObject).SmallImages;
         if Assigned(ImgList) then
         begin
+          ImgListRes := ImgList.ResolutionForPPI[
+            TCustomListViewHack(LCLObject).SmallImagesWidth,
+            TCustomListViewHack(LCLObject).Font.PixelsPerInch,
+            TCustomListViewHack(LCLObject).GetCanvasScaleFactor];
           QListWidgetItem_sizeHint(item, @ASize);
-          if (ASize.cx <> ImgList.Width) or (ASize.cx <> ImgList.Height) then
+          if (ASize.cx <> ImgListRes.Width) or (ASize.cx <> ImgListRes.Height) then
           begin
-            ASize.cx := ImgList.Width;
-            ASize.cy := ImgList.Height;
+            ASize.cx := ImgListRes.Width;
+            ASize.cy := ImgListRes.Height;
             QListWidgetItem_setSizeHint(item, @ASize);
           end;
           AImageIndex := TCustomListViewHack(LCLObject).Items[TopItem].ImageIndex;
-          if (ImgList.Count > 0) and
-            ((AImageIndex >= 0) and (AImageIndex < ImgList.Count)) then
+          if (ImgListRes.Count > 0) and
+            ((AImageIndex >= 0) and (AImageIndex < ImgListRes.Count)) then
           begin
             Bmp := TBitmap.Create;
             try
-              ImgList.GetBitmap(AImageIndex, Bmp);
+              ImgListRes.GetBitmap(AImageIndex, Bmp);
               v2 := QVariant_create;
               QListWidgetItem_data(item, v2, QtListViewOwnerDataRole);
               if not QVariant_isNull(v2) then
@@ -12775,8 +12742,9 @@ begin
         else
           SetItemLastCheckStateInternal(AItem, QtUnChecked);
 
-        SendMessage(AItem);
+        // if AItem is deleted in mouse event FDelayedCheckItem becomes nil and that's fine. issue #32869
         FDelayedCheckItem := AItem;
+        SendMessage(AItem);
       end;
     end;
   end else
@@ -12854,7 +12822,7 @@ begin
           DC.Free;
         end;
       end else
-      if QEvent_type(Event) = LCLQt_ItemViewAfterMouseRelease then
+      if getEnabled and (QEvent_type(Event) = LCLQt_ItemViewAfterMouseRelease) then
       begin
         ALCLEvent := QLCLMessageEventH(Event);
         Item := QListWidgetItemH(QLCLMessageEvent_getLParam(ALCLEvent));
@@ -12867,7 +12835,7 @@ begin
           HandleCheckChangedEvent(MousePos, Item, Event);
         end;
       end else
-      if QEvent_type(Event) = QEventMouseButtonRelease then
+      if getEnabled and (QEvent_type(Event) = QEventMouseButtonRelease) then
       begin
         if OwnerDrawn and Checkable then
         begin
@@ -12906,7 +12874,7 @@ begin
         end;
       end else
       begin
-        if (QEvent_type(Event) = QEventMouseButtonPress) then
+        if getEnabled and (QEvent_type(Event) = QEventMouseButtonPress) then
         begin
           // MousePos :=
           QMouseEvent_pos(QMouseEventH(Event), @MousePos);
@@ -13015,7 +12983,7 @@ begin
               SlotMouse(Sender, Event);
               HandleCheckChangedEvent(MousePos, Item, Event);
               if not QListWidgetItem_isSelected(Item) then
-                QListWidget_setCurrentItem(QListWidgetH(Widget), Item, QItemSelectionModelSelect);
+                QListWidget_setCurrentItem(QListWidgetH(Widget), Item, QItemSelectionModelClearAndSelect);
               QEvent_ignore(Event);
               Result := True;
               exit;
@@ -13023,7 +12991,7 @@ begin
           end;
         end;
 
-        if Checkable and (QEvent_type(Event) = QEventMouseButtonDblClick) then
+        if getEnabled and Checkable and (QEvent_type(Event) = QEventMouseButtonDblClick) then
         begin
           // MousePos :=
           QMouseEvent_pos(QMouseEventH(Event), @MousePos);
@@ -13040,7 +13008,7 @@ begin
       QEventMouseButtonRelease,
       QEventMouseButtonDblClick:
       begin
-        if (Checkable) and
+        if getEnabled and Checkable and
           (QEvent_type(Event) <> QEventMouseButtonDblClick) and
           (QMouseEvent_button(QMouseEventH(Event)) = QtLeftButton) then
         begin
@@ -13397,8 +13365,7 @@ begin
 
       odGrayed, odChecked,
       odDefault, odInactive, odNoAccel,
-      odNoFocusRect, odReserved1, odReserved2, odComboBoxEdit,
-      odPainted
+      odNoFocusRect, odReserved1, odReserved2, odComboBoxEdit
     }
     Msg.Msg := LM_DRAWLISTITEM;
     Msg.DrawListItemStruct := @DrawStruct;
@@ -13709,6 +13676,8 @@ begin
     if (getSelectionMode = QAbstractItemViewSingleSelection) then
       setCurrentRow(-1);
   Item := QListWidget_takeitem(QListWidgetH(Widget), AIndex);
+  if FDelayedCheckItem = Item then
+    FDelayedCheckItem := nil;
   QListWidgetItem_destroy(Item);
 end;
 
@@ -13824,6 +13793,22 @@ function TQtCheckListBox.EventFilter(Sender: QObjectH; Event: QEventH
   ): Boolean; cdecl;
 begin
   Result := False;
+  if (QEvent_type(Event) = QEventKeyPress) and
+     ((QKeyEvent_key(QKeyEventH(Event)) = QtKey_Up) or
+     (QKeyEvent_key(QKeyEventH(Event)) = QtKey_Down)) then
+  begin
+    {issue #31697}
+    Result:=inherited EventFilter(Sender, Event);
+    if ItemCount > 0 then
+    begin
+      if (getSelCount = 0) then
+      begin
+        Selected[0] := True;
+        Result := True;
+      end;
+      inherited signalSelectionChanged();
+    end;
+  end else
   if (QEvent_type(Event) = QEventMouseButtonDblClick) then
     // issue #25089
   else
@@ -13879,10 +13864,13 @@ begin
           if (QEvent_Type(Event) = QEventMouseButtonPress) then
           begin
             // change current row , this works fine with qt < 4.8
-            if Assigned(Item) and (currentItem <> Item) then
+            if Assigned(Item) and
+              ((currentItem <> Item) or not QListWidgetItem_isSelected(Item)) then
             begin
               // DebugLn('TQtCheckListBox forced item change');
-              Self.setCurrentItem(Item, True);
+              {issue #31697}
+              QListWidget_setCurrentItem(QListWidgetH(Widget), Item, QItemSelectionModelSelectCurrent);
+              inherited signalSelectionChanged();
             end;
           end;
         end;
@@ -14403,8 +14391,9 @@ begin
         else
           SetItemLastCheckStateInternal(AItem, QtUnChecked);
 
-        SendMessage(AItem);
+        // if AItem is deleted in mouse event FDelayedCheckItem becomes nil and that's fine. issue #32869
         FDelayedCheckItem := AItem;
+        SendMessage(AItem);
       end;
     end;
   end else
@@ -14481,7 +14470,7 @@ begin
         DC.Free;
       end;
     end else
-    if (ViewStyle = Ord(vsReport)) and Checkable then
+    if (ViewStyle = Ord(vsReport)) and Checkable and getEnabled then
     begin
       if QEvent_type(Event) = LCLQt_ItemViewAfterMouseRelease then
       begin
@@ -14591,6 +14580,7 @@ var
   AOk: Boolean;
   AIcon: QIconH;
   ASize: TSize;
+  ImgListRes: TScaledImageListResolution;
 begin
   {do not set items during design time}
   if csDesigning in LCLObject.ComponentState then
@@ -14646,20 +14636,24 @@ begin
           ImgList := TCustomListViewHack(LCLObject).SmallImages;
           if Assigned(ImgList) then
           begin
+            ImgListRes := ImgList.ResolutionForPPI[
+              TCustomListViewHack(LCLObject).SmallImagesWidth,
+              TCustomListViewHack(LCLObject).Font.PixelsPerInch,
+              TCustomListViewHack(LCLObject).GetCanvasScaleFactor];
             QTreeWidgetItem_sizeHint(item, @ASize, 0);
-            if (ASize.cx <> ImgList.Width) or (ASize.cx <> ImgList.Height) then
+            if (ASize.cx <> ImgListRes.Width) or (ASize.cx <> ImgListRes.Height) then
             begin
-              ASize.cx := ImgList.Width;
-              ASize.cy := ImgList.Height;
+              ASize.cx := ImgListRes.Width;
+              ASize.cy := ImgListRes.Height;
               QTreeWidgetItem_setSizeHint(item, 0, @ASize);
             end;
             AImageIndex := TCustomListViewHack(LCLObject).Items[TopItem].ImageIndex;
-            if (ImgList.Count > 0) and
-              ((AImageIndex >= 0) and (AImageIndex < ImgList.Count)) then
+            if (ImgListRes.Count > 0) and
+              ((AImageIndex >= 0) and (AImageIndex < ImgListRes.Count)) then
             begin
               Bmp := TBitmap.Create;
               try
-                ImgList.GetBitmap(AImageIndex, Bmp);
+                ImgListRes.GetBitmap(AImageIndex, Bmp);
                 v2 := QVariant_create;
                 QTreeWidgetItem_data(item, v2, 0, QtListViewOwnerDataRole);
                 if not QVariant_isNull(v2) then
@@ -14838,8 +14832,7 @@ begin
 
       odGrayed, odChecked,
       odDefault, odInactive, odNoAccel,
-      odNoFocusRect, odReserved1, odReserved2, odComboBoxEdit,
-      odPainted
+      odNoFocusRect, odReserved1, odReserved2, odComboBoxEdit
     }
     Msg.Msg := CN_DRAWITEM;
     Msg.DrawListItemStruct := @DrawStruct;
@@ -14942,6 +14935,8 @@ begin
     Index := -1;
   if Index <> -1 then
     FSelection.Remove(Item);
+  if FDelayedCheckItem = Item then
+    FDelayedCheckItem := nil;
   Item := takeTopLevelItem(AIndex);
   if Item <> nil then
     QTreeWidgetItem_destroy(Item);
@@ -15333,6 +15328,12 @@ begin
       AValue)
   else
     Header.setStretchLastSection(AValue);
+end;
+
+procedure TQtTreeWidget.scrollToItem(Item: QTreeWidgetItemH;
+  hint: QAbstractItemViewScrollHint);
+begin
+  QTreeWidget_scrollToItem(QTreeWidgetH(Widget), Item, hint);
 end;
 
 {$IFDEF TEST_QT_SORTING}
@@ -16826,6 +16827,8 @@ begin
   FHasPaint := False;
   FDialog := ADialog;
   Widget := CreateWidget(parent, f);
+  setProperty(Widget, 'lclwidget', Int64(PtrUInt(Self)));
+  QtWidgetSet.AddHandle(Self);
 end;
 
 procedure TQtDialog.AttachEvents;
@@ -18148,6 +18151,12 @@ begin
   QtWidgetSet.RemoveHintHandle(Self);
   {$ENDIF}
   inherited DeInitializeWidget;
+end;
+
+function TQtHintWindow.CanPaintBackground: Boolean;
+begin
+  Result := CanSendLCLMessage and getEnabled and
+    (LCLObject.Color <> clDefault);
 end;
 
 procedure TQtHintWindow.SetDefaultColorRoles;
@@ -19515,7 +19524,7 @@ begin
         pt := Point(p.x, p.y);
         Control := LCLObject.ControlAtPos(pt, [capfRecursive, capfAllowWinControls]);
 
-        if Assigned(Control) and (Control is TWinControl) then
+        if Control is TWinControl then
         begin
           AWidget := TQtWidget(TWinControl(Control).Handle);
           if (Control is TCustomTabControl) and
@@ -19726,6 +19735,8 @@ begin
     AParent := QApplication_activeWindow;
   {$ENDIF}
   Widget := CreateWidget(AParent);
+  setProperty(Widget, 'lclwidget', Int64(PtrUInt(Self)));
+  QtWidgetSet.AddHandle(Self);
 end;
 
 procedure TQtMessageBox.AttachEvents;

@@ -50,6 +50,8 @@ type
   { TWin32WSCustomTabControl }
 
   TWin32WSCustomTabControl = class(TWSCustomTabControl)
+  public
+    class procedure DeletePage(const ATabControl: TCustomTabControl; const AIndex: integer);
   published
     class function CreateHandle(const AWinControl: TWinControl;
           const AParams: TCreateParams): HWND; override;
@@ -63,14 +65,15 @@ type
     class procedure RemovePage(const ATabControl: TCustomTabControl;
       const AIndex: integer); override;
 
+    class function GetDoubleBuffered(const AWinControl: TWinControl): Boolean; override;
     class function GetNotebookMinTabHeight(const AWinControl: TWinControl): integer; override;
     class function GetNotebookMinTabWidth(const AWinControl: TWinControl): integer; override;
     class function GetTabIndexAtPos(const ATabControl: TCustomTabControl; const AClientPos: TPoint): integer; override;
     class function GetTabRect(const ATabControl: TCustomTabControl; const AIndex: Integer): TRect; override;
-    class function GetCapabilities: TCTabControlCapabilities;override;
+    class function GetCapabilities: TCTabControlCapabilities; override;
     class function GetDesignInteractive(const AWinControl: TWinControl; AClientPos: TPoint): Boolean; override;
     class procedure SetTabSize(const ATabControl: TCustomTabControl; const ATabWidth, ATabHeight: integer); override;
-    class procedure SetImageList(const ATabControl: TCustomTabControl; const AImageList: TCustomImageList); override;
+    class procedure SetImageList(const ATabControl: TCustomTabControl; const AImageList: TCustomImageListResolution); override;
     class procedure SetPageIndex(const ATabControl: TCustomTabControl; const AIndex: integer); override;
     class procedure SetTabPosition(const ATabControl: TCustomTabControl; const ATabPosition: TTabPosition); override;
     class procedure ShowTabs(const ATabControl: TCustomTabControl; AShowTabs: boolean); override;
@@ -94,6 +97,7 @@ type
     class procedure SetPanelText(const AStatusBar: TStatusBar; PanelIndex: integer); override;
     class procedure SetSizeGrip(const AStatusBar: TStatusBar; SizeGrip: Boolean); override;
     class procedure SetText(const AWinControl: TWinControl; const AText: string); override;
+    class function GetDoubleBuffered(const AWinControl: TWinControl): Boolean; override;
     class procedure GetPreferredSize(const AWinControl: TWinControl;
                         var PreferredWidth, PreferredHeight: integer;
                         WithThemeSpace: Boolean); override;
@@ -180,7 +184,7 @@ type
     class procedure SetHotTrackStyles(const ALV: TCustomListView; const AValue: TListHotTrackStyles); override;
     class procedure SetHoverTime(const ALV: TCustomListView; const AValue: Integer); override;
     class procedure SetIconArrangement(const ALV: TCustomListView; const AValue: TIconArrangement); override;
-    class procedure SetImageList(const ALV: TCustomListView; const AList: TListViewImageList; const AValue: TCustomImageList); override;
+    class procedure SetImageList(const ALV: TCustomListView; const AList: TListViewImageList; const AValue: TCustomImageListResolution); override;
     class procedure SetItemsCount(const ALV: TCustomListView; const AValue: Integer); override;
     class procedure SetOwnerData(const ALV: TCustomListView; const AValue: Boolean); override;
     class procedure SetProperty(const ALV: TCustomListView; const AProp: TListViewProperty; const AIsSet: Boolean); override;
@@ -238,7 +242,8 @@ type
     class function  GetButtonCount(const AToolBar: TToolBar): integer; override;
     class procedure InsertToolButton(const AToolBar: TToolbar; const AControl: TControl); override;
     class procedure DeleteToolButton(const AToolBar: TToolbar; const AControl: TControl); override;
-{$endif}    
+{$endif}
+    class function GetDoubleBuffered(const AWinControl: TWinControl): Boolean; override;
   end;
 
   { TWin32WSTrackBar }
@@ -259,6 +264,7 @@ type
 
   TWin32WSCustomTreeView = class(TWSCustomTreeView)
   published
+    class function GetDoubleBuffered(const AWinControl: TWinControl): Boolean; override;
   end;
 
   { TWin32WSTreeView }
@@ -276,6 +282,7 @@ const
   DefMarqueeTime = 50; // ms
 
 {$I win32pagecontrol.inc}
+{$I win32treeview.inc}
 
 type
   TStatusPanelAccess = class(TStatusPanel);
@@ -423,7 +430,7 @@ begin
     Result := WindowProc(Window, Msg, WParam, LParam);
   end
   else
-  if ThemeServices.ThemesEnabled then
+  if Assigned(ThemeServices) and ThemeServices.ThemesEnabled then
   begin
     // Paul: next is a slightly modified code of TThemeManager.StatusBarWindowProc
     // of Mike Lischke Theme manager library (Mike granted us permition to use his code)
@@ -481,6 +488,12 @@ begin
         UpdateStatusBarPanel(AStatusBar.Panels[PanelIndex]);
       end;
   end;
+end;
+
+class function TWin32WSStatusBar.GetDoubleBuffered(
+  const AWinControl: TWinControl): Boolean;
+begin
+  Result := GetWin32ThemedDoubleBuffered(AWinControl);
 end;
 
 class function TWin32WSStatusBar.CreateHandle(const AWinControl: TWinControl;
@@ -734,9 +747,9 @@ begin
     MaxWidth := 0;
     MaxHeight := 0;
 
-    // The ProgressBar needs a minimum Height of 10 when themed,
+    // The ProgressBar needs a minimum Height of 10 on Windows XP when themed,
     // as required by Windows, otherwise it's image is corrupted
-    if ThemeServices.ThemesEnabled then
+    if (Win32MajorVersion < 6) and ThemeServices.ThemesEnabled then
       MinHeight := 10;
 
     SizeConstraints.SetInterfaceConstraints(MinWidth, MinHeight, MaxWidth, MaxHeight);
@@ -816,6 +829,12 @@ begin
 end;
 
 {$endif}
+
+class function TWin32WSToolBar.GetDoubleBuffered(
+  const AWinControl: TWinControl): Boolean;
+begin
+  Result := GetWin32ThemedDoubleBuffered(AWinControl);
+end;
 
 function TrackBarParentMsgHandler(const AWinControl: TWinControl; Window: HWnd;
       Msg: UInt; WParam: Windows.WParam; LParam: Windows.LParam;

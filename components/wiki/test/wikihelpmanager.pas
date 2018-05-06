@@ -27,8 +27,14 @@ unit WikiHelpManager;
 interface
 
 uses
-  Classes, SysUtils, math, LazFileUtils, LazLogger, LazDbgLog, LazUTF8,
-  laz2_DOM, CodeToolsStructs, BasicCodeTools, KeywordFuncLists, MTProcs,
+  Classes, SysUtils, math,
+  // LazUtils
+  LazFileUtils, LazLogger, LazDbgLog, LazUTF8, laz2_DOM, AvgLvlTree,
+  // CodeTools
+  BasicCodeTools, KeywordFuncLists,
+  //
+  MTProcs,
+  // Wiki
   Wiki2HTMLConvert, Wiki2XHTMLConvert, WikiFormat, WikiParser;
 
 type
@@ -341,7 +347,7 @@ begin
             //debugln(['TextToHTMLSnipped phrase "',Phrase,'" found at ',LoTxtP-PChar(LoTxt)]);
             CurPhraseP:=PChar(Phrase);
             while (CurPhraseP^<>#0) do begin
-              l:=UTF8CharacterLength(CurPhraseP);
+              l:=UTF8CodepointSize(CurPhraseP);
               inc(LoTxtP,l);
               inc(CurPhraseP,l);
               BoldP^+=1;
@@ -350,7 +356,7 @@ begin
             continue;
           end;
         end;
-        inc(LoTxtP,UTF8CharacterLength(LoTxtP));
+        inc(LoTxtP,UTF8CodepointSize(LoTxtP));
         inc(BoldP);
       end;
     end;
@@ -361,7 +367,7 @@ begin
     BoldP:=Bold;
     while LoTxtP^<>#0 do begin
       dbgout([' ',dbgstr(LoTxtP^),':',BoldP^]);
-      inc(LoTxtP,UTF8CharacterLength(LoTxtP));
+      inc(LoTxtP,UTF8CodepointSize(LoTxtP));
       inc(BoldP);
     end;
     debugln;
@@ -441,7 +447,7 @@ begin
         ReplaceSubstring(Result,i,1,'&gt;');
         inc(i,length('&gt;'));
       end else
-        inc(i,UTF8CharacterLength(@Result[i]));
+        inc(i,UTF8CodepointSize(@Result[i]));
       inc(BoldP);
     end;
     if IsBold then

@@ -85,6 +85,27 @@ implementation
 
 uses strutils;
 
+type
+  TMenuItemHelper = class helper for TMenuItem
+  public
+    function MeasureItem(ACanvas: TCanvas; var AWidth, AHeight: Integer): Boolean;
+    function DrawItem(ACanvas: TCanvas; ARect: TRect; AState: LCLType.TOwnerDrawState): Boolean;
+  end;
+
+{ TMenuItemHelper }
+
+function TMenuItemHelper.DrawItem(ACanvas: TCanvas; ARect: TRect;
+  AState: LCLType.TOwnerDrawState): Boolean;
+begin
+  Result := DoDrawItem(ACanvas, ARect, AState);
+end;
+
+function TMenuItemHelper.MeasureItem(ACanvas: TCanvas; var AWidth,
+  AHeight: Integer): Boolean;
+begin
+  Result := DoMeasureItem(ACanvas, AWidth, AHeight);
+end;
+
 { helper routines }
 
 const
@@ -264,7 +285,7 @@ begin
     Result.cx := (sz.cx div 26 + 1) div 2;
 end;
 
-function MenuIconWidth(const AMenuItem: TMenuItem): integer;
+function MenuIconWidth(const AMenuItem: TMenuItem; DC: HDC): integer;
 var
   SiblingMenuItem : TMenuItem;
   i, RequiredWidth: integer;
@@ -273,7 +294,7 @@ begin
 
   if AMenuItem.IsInMenuBar then
   begin
-    Result := AMenuItem.GetIconSize.x;
+    Result := AMenuItem.GetIconSize(DC).x;
   end
   else
   begin
@@ -282,7 +303,7 @@ begin
       SiblingMenuItem := AMenuItem.Parent.Items[i];
       if SiblingMenuItem.HasIcon then
       begin
-        RequiredWidth := SiblingMenuItem.GetIconSize.x;
+        RequiredWidth := SiblingMenuItem.GetIconSize(DC).x;
         if RequiredWidth > Result then
           Result := RequiredWidth;
       end;
@@ -290,7 +311,7 @@ begin
   end;
 end;
 
-procedure GetNonTextSpace(const AMenuItem: TMenuItem;
+procedure GetNonTextSpace(const AMenuItem: TMenuItem; DC: HDC;
                           AvgCharWidth: Integer;
                           out LeftSpace, RightSpace: Integer);
 var
@@ -302,7 +323,7 @@ begin
   // Items not in menu bar always have enough space for a check mark.
 
   CheckMarkWidth := GetSystemMetrics(SM_CXMENUCHECK);
-  LeftSpace := MenuIconWidth(AMenuItem);
+  LeftSpace := MenuIconWidth(AMenuItem, DC);
 
   if LeftSpace > 0 then
   begin
@@ -451,7 +472,7 @@ begin
   Result.cx := 0; //Metrics.ItemMargins.cxLeftWidth + Metrics.ItemMargins.cxRightWidth;
   Result.cy := 0; //Metrics.ItemMargins.cyTopHeight + Metrics.ItemMargins.cyBottomHeight;
   // + text size / icon size
-  IconSize := AMenuItem.GetIconSize;
+  IconSize := AMenuItem.GetIconSize(ADC);
   Result.cx := Result.cx + Metrics.TextSize.cx + IconSize.x;
   if IconSize.x > 0 then
     inc(Result.cx, Metrics.ItemMargins.cxLeftWidth);
@@ -474,14 +495,14 @@ begin
   end
   else
   begin
-    Result.cy := Metrics.CheckSize.cy + Metrics.CheckMargins.cyTopHeight + Metrics.CheckMargins.cyBottomHeight;
+    Result.cy := Max(Metrics.TextSize.cy + 1, Metrics.CheckSize.cy + Metrics.CheckMargins.cyTopHeight + Metrics.CheckMargins.cyBottomHeight);
     if AMenuItem.HasIcon then
     begin
-      IconSize := AMenuItem.GetIconSize;
+      IconSize := AMenuItem.GetIconSize(ADC);
       Result.cy := Max(Result.cy, IconSize.y);
       Result.cx := Max(Result.cx, IconSize.x);
     end;
-    IconWidth := MenuIconWidth(AMenuItem);
+    IconWidth := MenuIconWidth(AMenuItem, ADC);
     Result.cx := Max(Result.cx, IconWidth);
     Result.cy := Max(Result.cy, IconWidth);
   end;
@@ -513,7 +534,7 @@ begin
   if AMenuItem.ShortCut <> scNone then
     inc(Result.cx, AvgCharSize.cx);
 
-  GetNonTextSpace(AMenuItem, AvgCharSize.cx, LeftSpace, RightSpace);
+  GetNonTextSpace(AMenuItem, ADC, AvgCharSize.cx, LeftSpace, RightSpace);
   inc(Result.cx, LeftSpace + RightSpace);
 
   // Windows adds additional space to value returned from WM_MEASUREITEM
@@ -531,13 +552,13 @@ begin
     begin
       Result.cy := Max(Result.cy, GetSystemMetrics(SM_CYMENUSIZE));
       if AMenuItem.hasIcon then
-        Result.cy := Max(Result.cy, aMenuItem.GetIconSize.y);
+        Result.cy := Max(Result.cy, aMenuItem.GetIconSize(ADC).y);
     end
     else
     begin
       Result.cy := Max(Result.cy + 2, AvgCharSize.cy + 4);
       if AMenuItem.hasIcon then
-        Result.cy := Max(Result.cy, aMenuItem.GetIconSize.y + 2);
+        Result.cy := Max(Result.cy, aMenuItem.GetIconSize(ADC).y + 2);
     end;
   end;
 
@@ -663,7 +684,7 @@ begin
   // draw check/image
   if AMenuItem.HasIcon then
   begin
-    IconSize := AMenuItem.GetIconSize;
+    IconSize := AMenuItem.GetIconSize(AHDC);
     if IsRightToLeft then
       ImageRect.Left := TextRect.Right - IconSize.x
     else
@@ -724,14 +745,15 @@ begin
   CheckRect.Bottom := CheckRect.Top + Metrics.CheckSize.cy + Metrics.CheckMargins.cyTopHeight + Metrics.CheckMargins.cyBottomHeight;
   if AMenuItem.HasIcon then
   begin
-    IconSize := AMenuItem.GetIconSize;
+    IconSize := AMenuItem.GetIconSize(AHDC);
     CheckRect.Bottom := Max(CheckRect.Bottom, CheckRect.Top+IconSize.y);
   end;
-  IconWidth := MenuIconWidth(AMenuItem);
+  IconWidth := MenuIconWidth(AMenuItem, AHDC);
   CheckRect.Right := Max(CheckRect.Right, CheckRect.Left+IconWidth);
   CheckRect.Bottom := Max(CheckRect.Bottom, CheckRect.Top+IconWidth);
+  OffsetRect(CheckRect, 0, (ARect.Bottom-ARect.Top-CheckRect.Bottom+CheckRect.Top) div 2);
   // draw gutter
-  GutterRect := CheckRect;
+  GutterRect := Rect(0, ARect.Top, CheckRect.Right, ARect.Bottom);
   GutterRect.Left := GutterRect.Right + Metrics.CheckBgMargins.cxRightWidth - Metrics.CheckMargins.cxRightWidth;
   GutterRect.Right := GutterRect.Left + Metrics.GutterSize.cx;
   Tmp := ThemeServices.GetElementDetails(tmPopupGutter);
@@ -859,33 +881,27 @@ var
   CC: TControlCanvas;
   ParentMenu: TMenu;
 begin
-  ParentMenu := AMenuItem.GetParentMenu;
-  if (ParentMenu<>nil) and ParentMenu.OwnerDraw
-  and (Assigned(ParentMenu.OnMeasureItem) or Assigned(AMenuItem.OnMeasureItem)) then
-  begin
-    CC := TControlCanvas.Create;
-    try
-      CC.Handle := AHDC;
-      Result.cx := 0;
-      Result.cy := 0;
-      if Assigned(AMenuItem.OnMeasureItem) then
-        AMenuItem.OnMeasureItem(AMenuItem, CC, Result.cx, Result.cy)
-      else if Assigned(ParentMenu.OnMeasureItem) then
-        ParentMenu.OnMeasureItem(AMenuItem, CC, Result.cx, Result.cy);
-    finally
-      CC.Free;
+  CC := TControlCanvas.Create;
+  try
+    CC.Handle := AHDC;
+    Result.cx := 0;
+    Result.cy := 0;
+
+    if not AMenuItem.MeasureItem(CC, Result.cx, Result.cy) then
+    begin
+      if IsVistaMenu then
+      begin
+        if AMenuItem.IsInMenuBar then
+          Result := VistaBarMenuItemSize(AMenuItem, AHDC)
+        else
+          Result := VistaPopupMenuItemSize(AMenuItem, AHDC);
+      end
+      else
+        Result := ClassicMenuItemSize(AMenuItem, AHDC);
     end;
-  end
-  else
-  if IsVistaMenu then
-  begin
-    if AMenuItem.IsInMenuBar then
-      Result := VistaBarMenuItemSize(AMenuItem, AHDC)
-    else
-      Result := VistaPopupMenuItemSize(AMenuItem, AHDC);
-  end
-  else
-    Result := ClassicMenuItemSize(AMenuItem, AHDC);
+  finally
+    CC.Free;
+  end;
 end;
 
 function IsFlatMenus: Boolean; inline;
@@ -1049,7 +1065,7 @@ begin
       DrawEdge(AHDC, ARect, BDR_RAISEDINNER, BF_RECT);
   end;
 
-  GetNonTextSpace(AMenuItem, AvgCharWidth, LeftSpace, RightSpace);
+  GetNonTextSpace(AMenuItem, AHDC, AvgCharWidth, LeftSpace, RightSpace);
 
   if IsRightToLeft then
   begin
@@ -1095,15 +1111,19 @@ var
   AEffect: TGraphicsDrawEffect;
   AImageList: TCustomImageList;
   FreeImageList: Boolean;
-  AImageIndex: Integer;
+  AImageIndex, AImagesWidth: Integer;
+  APPI: longint;
 begin
-  AImageList := AMenuItem.GetImageList;
+  AMenuItem.GetImageList(AImageList, AImagesWidth);
   if (AImageList = nil) or (AMenuItem.ImageIndex < 0) then // using icon from Bitmap
   begin
     AImageList := TImageList.Create(nil);
     AImageList.Width := AMenuItem.Bitmap.Width; // maybe height to prevent too wide bitmaps?
     AImageList.Height := AMenuItem.Bitmap.Height;
-    AImageIndex := AImageList.Add(AMenuItem.Bitmap, nil);
+    if not AMenuItem.Bitmap.Transparent then
+      AImageIndex := AImageList.AddMasked(AMenuItem.Bitmap, AMenuItem.Bitmap.Canvas.Pixels[0, AImageList.Height-1])
+    else
+      AImageIndex := AImageList.Add(AMenuItem.Bitmap, nil);
     FreeImageList := True;
   end
   else  // using icon from ImageList
@@ -1121,9 +1141,13 @@ begin
     AEffect := gdeNormal;
 
   if AImageIndex < AImageList.Count then
-    TWin32WSCustomImageList.DrawToDC(AImageList, AImageIndex, AHDC,
-      ImageRect, AImageList.BkColor, AImageList.BlendColor,
+  begin
+    APPI := GetDeviceCaps(AHDC, LOGPIXELSX);
+    TWin32WSCustomImageListResolution.DrawToDC(AImageList.ResolutionForPPI[AImagesWidth, APPI, 1].Resolution,
+      AImageIndex, AHDC, ImageRect,
+      AImageList.BkColor, AImageList.BlendColor,
       AEffect, AImageList.DrawingStyle, AImageList.ImageType);
+  end;
   if FreeImageList then
     AImageList.Free;
 end;
@@ -1164,7 +1188,7 @@ var
   IconSize: TPoint;
   checkMarkWidth: integer;
 begin
-  IconSize := AMenuItem.GetIconSize;
+  IconSize := AMenuItem.GetIconSize(AHDC);
   checkMarkWidth := GetSystemMetrics(SM_CXMENUCHECK);
   if not AMenuItem.IsInMenuBar then
   begin
@@ -1232,7 +1256,6 @@ procedure DrawMenuItem(const AMenuItem: TMenuItem; const AHDC: HDC; const ARect:
 var
   ASelected, ANoAccel: Boolean;
   B: Bool;
-  ParentMenu: TMenu;
   CC: TControlCanvas;
   ItemDrawState: LCLType.TOwnerDrawState;
 begin
@@ -1245,32 +1268,25 @@ begin
   else
     ANoAccel := False;
 
-  ParentMenu := AMenuItem.GetParentMenu;
-  if (ParentMenu<>nil) and ParentMenu.OwnerDraw
-  and (Assigned(ParentMenu.OnDrawItem) or Assigned(AMenuItem.OnDrawItem)) then
-  begin
-    CC := TControlCanvas.Create;
-    try
-      CC.Handle := AHDC;
-      ItemDrawState := ItemStateToDrawState(ItemState);
-      if Assigned(AMenuItem.OnDrawItem) then
-        AMenuItem.OnDrawItem(AMenuItem, CC, ARect, ItemDrawState)
-      else if Assigned(ParentMenu.OnDrawItem) then
-        ParentMenu.OnDrawItem(AMenuItem, CC, ARect, ItemDrawState);
-    finally
-      CC.Free;
+  CC := TControlCanvas.Create;
+  try
+    CC.Handle := AHDC;
+    ItemDrawState := ItemStateToDrawState(ItemState);
+    if not AMenuItem.DrawItem(CC, ARect, ItemDrawState) then
+    begin
+      if IsVistaMenu then
+      begin
+        if AMenuItem.IsInMenuBar then
+          DrawVistaMenuBar(AMenuItem, AHDC, ARect, ASelected, ANoAccel, ItemAction, ItemState)
+        else
+          DrawVistaPopupMenu(AMenuItem, AHDC, ARect, ASelected, ANoAccel);
+      end
+      else
+        DrawClassicMenuItem(AMenuItem, AHDC, ARect, ASelected, ANoAccel, ItemState);
     end;
-  end
-  else
-  if IsVistaMenu then
-  begin
-    if AMenuItem.IsInMenuBar then
-      DrawVistaMenuBar(AMenuItem, AHDC, ARect, ASelected, ANoAccel, ItemAction, ItemState)
-    else
-      DrawVistaPopupMenu(AMenuItem, AHDC, ARect, ASelected, ANoAccel);
-  end
-  else
-    DrawClassicMenuItem(AMenuItem, AHDC, ARect, ASelected, ANoAccel, ItemState);
+  finally
+    CC.Free;
+  end;
 end;
 
 procedure TriggerFormUpdate(const AMenuItem: TMenuItem);

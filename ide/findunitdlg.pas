@@ -39,7 +39,7 @@ uses
   // codetools
   CodeToolsStrConsts, CodeCache, CodeToolManager,
   // IDEIntf
-  LazIDEIntf, IDEMsgIntf, PackageIntf, IDEExternToolIntf,
+  LazIDEIntf, IDEMsgIntf, PackageLinkIntf, PackageIntf, IDEExternToolIntf,
   // IDE
   DialogProcs, PackageDefs, Project, IDEProcs, LazarusIDEStrConsts,
   etFPCMsgParser, PackageLinks, PackageSystem, BasePkgManager;
@@ -337,7 +337,7 @@ begin
   //DebugLn(['TFindUnitDialog.InitSearchPackages ',FSearchPackages.Text]);
 
   // add user package links
-  PkgLinks.IteratePackages(false,@OnIteratePkgLinks,[ploUser,ploGlobal]);
+  LazPackageLinks.IteratePackages(false,@OnIteratePkgLinks,[ploUser,ploGlobal]);
 
   if FSearchPackages.Count>0 then begin
     ProgressBar1.Max:=FSearchPackages.Count;
@@ -348,10 +348,10 @@ end;
 
 procedure TFindUnitDialog.OnIteratePkgLinks(APackage: TLazPackageID);
 var
-  Link: TPackageLink;
+  Link: TLazPackageLink;
 begin
-  if APackage is TPackageLink then begin
-    Link:=TPackageLink(APackage);
+  if APackage is TLazPackageLink then begin
+    Link:=TLazPackageLink(APackage);
     FSearchPackages.Add(TrimFilename(Link.GetEffectiveFilename));
   end;
 end;
@@ -365,8 +365,7 @@ begin
   OkButton.Enabled:=true;
 end;
 
-procedure TFindUnitDialog.AddRequirement(
-  Item: TMissingUnit_QuickFix_AddRequirement);
+procedure TFindUnitDialog.AddRequirement(Item: TMissingUnit_QuickFix_AddRequirement);
 var
   AProject: TProject;
   APackage: TLazPackage;

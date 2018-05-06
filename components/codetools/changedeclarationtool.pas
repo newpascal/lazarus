@@ -31,8 +31,9 @@ unit ChangeDeclarationTool;
 interface
 
 uses
-  Classes, SysUtils, AVL_Tree, contnrs, CodeAtom, CodeCache,
-  FileProcs, CodeTree, ExtractProcTool, FindDeclarationTool,
+  Classes, SysUtils, Laz_AVL_Tree, contnrs,
+  // Codetools
+  CodeAtom, CodeCache, FileProcs, CodeTree, ExtractProcTool, FindDeclarationTool,
   BasicCodeTools, KeywordFuncLists, LinkScanner, SourceChanger;
 
 type
@@ -330,7 +331,7 @@ begin
     MoveCursorBehindPropName(ParentNode)
   else
     raise EInvalidOperation.Create('TChangeDeclarationTool.ChangeParamListDeclaration kind not supported: '+ParentNode.DescAsString);
-  t.BehindNamePos:=LastAtoms.GetValueAt(0).EndPos;
+  t.BehindNamePos:=LastAtoms.GetPriorAtom.EndPos;
   // read bracket
   if CurPos.Flag=cafRoundBracketOpen then
     CloseBracket:=')'
@@ -352,7 +353,7 @@ begin
       // parse end of parameter list
       if (CurPos.StartPos>SrcLen)
       or (Src[CurPos.StartPos]<>CloseBracket) then
-        RaiseCharExpectedButAtomFound(CloseBracket);
+        RaiseCharExpectedButAtomFound(20170421201949,CloseBracket);
       break;
     end else begin
       ReadPrefixModifier;
@@ -381,13 +382,13 @@ begin
         ReadNextAtom;
         CurParam.Typ:=CurPos;
         if not ReadParamType(true,false,[]) then exit;
-        CurParam.Typ.EndPos:=LastAtoms.GetValueAt(0).EndPos;
+        CurParam.Typ.EndPos:=LastAtoms.GetPriorAtom.EndPos;
         if CurPos.Flag=cafEqual then begin
           // read default value
           ReadNextAtom;
           CurParam.DefaultValue:=CurPos;
           ReadConstant(true,false,[]);
-          CurParam.DefaultValue.EndPos:=LastAtoms.GetValueAt(0).EndPos;
+          CurParam.DefaultValue.EndPos:=LastAtoms.GetPriorAtom.EndPos;
         end;
       end;
       // close bracket or semicolon
@@ -396,7 +397,7 @@ begin
         break;
       end;
       if CurPos.Flag<>cafSemicolon then
-        RaiseCharExpectedButAtomFound(CloseBracket);
+        RaiseCharExpectedButAtomFound(20170421201951,CloseBracket);
       CurParam.Separator:=CurPos.StartPos;
       inc(ParamIndex);
     end;

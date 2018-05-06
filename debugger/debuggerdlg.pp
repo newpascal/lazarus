@@ -125,7 +125,7 @@ implementation
 var
   DBG_LOCATION_INFO: PLazLoggerLogGroup;
   BrkImgIdxInitialized: Boolean;
-  ImgBreakPoints: Array [0..8] of Integer;
+  ImgBreakPoints: Array [0..10] of Integer;
 
 procedure CreateDebugDialog(Sender: TObject; aFormName: string; var AForm: TCustomForm;
   DoDisableAutoSizing: boolean);
@@ -351,6 +351,9 @@ begin
 end;
 
 procedure TDebuggerDlg.JumpToUnitSource(AnUnitInfo: TDebuggerUnitInfo; ALine: Integer);
+const
+  JmpFlags: TJumpToCodePosFlags =
+    [jfAddJumpPoint, jfFocusEditor, jfMarkLine, jfMapLineFromDebug, jfSearchVirtualFullPath];
 var
   Filename: String;
   ok: Boolean;
@@ -363,18 +366,16 @@ begin
   (* Maybe trim the filename here and use jfDoNotExpandFilename
      ExpandFilename works with the current IDE path, and may be wrong
   *)
-  // TODO: better detcion of unsaved project files
-    if DebugBoss.GetFullFilename(AnUnitInfo, Filename, False) then begin
-      debugln(DBG_LOCATION_INFO, ['JumpToUnitSource Filename=', Filename]);
+  // TODO: better detection of unsaved project files
+    if DebugBoss.GetFullFilename(AnUnitInfo, Filename, False) then
+    begin
       ok := false;
-      if ALine <= 0 then ALine := AnUnitInfo.SrcLine;
+      if ALine <= 0 then
+        ALine := AnUnitInfo.SrcLine;
       if FilenameIsAbsolute(Filename) then
-        ok := MainIDEInterface.DoJumpToSourcePosition(Filename, 0, ALine, 0,
-                                             [jfAddJumpPoint, jfFocusEditor, jfMarkLine, jfMapLineFromDebug, jfSearchVirtualFullPath]
-                                            ) = mrOK;
+        ok := MainIDEInterface.DoJumpToSourcePosition(Filename, 0, ALine, 0, JmpFlags) = mrOK;
       if not ok then
-        MainIDEInterface.DoJumpToSourcePosition(Filename, 0, ALine, 0,
-                                       [jfDoNotExpandFilename, jfAddJumpPoint, jfFocusEditor, jfMarkLine, jfMapLineFromDebug, jfSearchVirtualFullPath]);
+        MainIDEInterface.DoJumpToSourcePosition(Filename, 0, ALine, 0, JmpFlags+[jfDoNotExpandFilename]);
     end;
   finally
     DebugBoss.UnLockCommandProcessing;
@@ -404,17 +405,20 @@ begin
   Result := -1;
 
   if not BrkImgIdxInitialized then begin
-    ImgBreakPoints[0] := IDEImages.LoadImage(16, 'ActiveBreakPoint');  // red dot
-    ImgBreakPoints[1] := IDEImages.LoadImage(16, 'InvalidBreakPoint'); // red dot "X"
-    ImgBreakPoints[2] := IDEImages.LoadImage(16, 'UnknownBreakPoint'); // red dot "?"
+    ImgBreakPoints[0] := IDEImages.LoadImage('ActiveBreakPoint');  // red dot
+    ImgBreakPoints[1] := IDEImages.LoadImage('InvalidBreakPoint'); // red dot "X"
+    ImgBreakPoints[2] := IDEImages.LoadImage('UnknownBreakPoint'); // red dot "?"
+    ImgBreakPoints[3] := IDEImages.LoadImage('PendingBreakPoint'); // red dot "||"
 
-    ImgBreakPoints[3] := IDEImages.LoadImage(16, 'InactiveBreakPoint');// green dot
-    ImgBreakPoints[4] := IDEImages.LoadImage(16, 'InvalidDisabledBreakPoint');// green dot "X"
-    ImgBreakPoints[5] := IDEImages.LoadImage(16, 'UnknownDisabledBreakPoint');// green dot "?"
 
-    ImgBreakPoints[6] := IDEImages.LoadImage(16, 'debugger_current_line');
-    ImgBreakPoints[7] := IDEImages.LoadImage(16, 'debugger_current_line_breakpoint');
-    ImgBreakPoints[8] := IDEImages.LoadImage(16, 'debugger_current_line_disabled_breakpoint');
+    ImgBreakPoints[4] := IDEImages.LoadImage('InactiveBreakPoint');// green dot
+    ImgBreakPoints[5] := IDEImages.LoadImage('InvalidDisabledBreakPoint');// green dot "X"
+    ImgBreakPoints[6] := IDEImages.LoadImage('UnknownDisabledBreakPoint');// green dot "?"
+    ImgBreakPoints[7] := IDEImages.LoadImage('InactiveBreakPoint');// green dot
+
+    ImgBreakPoints[8] := IDEImages.LoadImage('debugger_current_line');
+    ImgBreakPoints[9] := IDEImages.LoadImage('debugger_current_line_breakpoint');
+    ImgBreakPoints[10] := IDEImages.LoadImage('debugger_current_line_disabled_breakpoint');
 
     BrkImgIdxInitialized := True;
   end;
@@ -422,21 +426,22 @@ begin
   if AIsCurLine
   then begin
     if ABreakPoint = nil
-    then Result := ImgBreakPoints[6]
+    then Result := ImgBreakPoints[8]
     else if ABreakPoint.Enabled
-    then Result := ImgBreakPoints[7]
-    else Result := ImgBreakPoints[8];
+    then Result := ImgBreakPoints[9]
+    else Result := ImgBreakPoints[10];
   end
   else
   if (ABreakPoint <> nil)
   then begin
     if ABreakPoint.Enabled
     then i := 0
-    else i := 3;
+    else i := 4;
     case ABreakPoint.Valid of
       vsValid:   i := i + 0;
       vsInvalid: i := i + 1;
       vsUnknown: i := i + 2;
+      vsPending: i := i + 3; // TODO
     end;
     Result := ImgBreakPoints[i];
   end;

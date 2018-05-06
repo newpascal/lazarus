@@ -28,7 +28,7 @@ uses
 // To get as little as posible circles,
 // uncomment only when needed for registration
 ////////////////////////////////////////////////////
-  CommCtrl, Windows, Win32Extra,
+  CommCtrl, Windows, Win32Extra, LCLMessageGlue,
   Spin, Controls, StdCtrls, LCLType, LMessages, Themes, Graphics, LazUTF8,
 ////////////////////////////////////////////////////
   WSSpin, WSLCLClasses, WSProc,
@@ -108,6 +108,27 @@ end;
 
 function SpinUpDownWndProc(Window: HWnd; Msg: UInt; WParam: Windows.WParam;
     LParam: Windows.LParam): LResult; stdcall;
+
+  function SendWheelToSpin(var LRes: LResult): Boolean;
+  var
+    lWindowInfo: PWin32WindowInfo;
+    LMessage: TLMessage;
+  begin
+    lWindowInfo := GetWin32WindowInfo(Window);
+    Result := (lWindowInfo<>nil) and (lWindowInfo^.AWinControl<>nil);
+    if Result then
+    begin
+      FillChar(LMessage, SizeOf(LMessage), 0);
+      LMessage.msg := Msg;
+      LMessage.wParam := WParam;
+      LMessage.lParam := LParam;
+      DeliverMessage(lWindowInfo^.AWinControl, LMessage);
+      LRes := LMessage.Result;
+      if LRes=0 then
+        LRes := CallDefaultWindowProc(lWindowInfo^.AWinControl.Handle, Msg, WParam, LParam);
+    end;
+  end;
+
 var
   DC: HDC;
   SRect: TRect;
@@ -137,6 +158,11 @@ begin
         end;
         Result := 1;
         Exit;
+      end;
+    WM_MOUSEWHEEL:
+      begin
+        if SendWheelToSpin(Result) then
+          Exit;
       end;
   end;
   Result := WindowProc(Window, Msg, WParam, LParam);
@@ -294,13 +320,6 @@ begin
   WinHandle := AWinControl.Handle;
   UpDown := GetWin32WindowInfo(WinHandle)^.UpDown;
 
-{
-  // detach from buddy first
-  Windows.SendMessage(UpDown, UDM_SETBUDDY, 0, 0);
-  MoveWindow(WinHandle, Left, Top, Width, Height, True);
-  // reattach
-  Windows.SendMessage(UpDown, UDM_SETBUDDY, WParam(WinHandle), 0);
-}
   UpDownWidth := GetUpDownWidth(AWinControl);
   if (AWinControl as TCustomFloatSpinEdit).BorderStyle = bsNone then
     BorderWidth := 0
@@ -310,8 +329,9 @@ begin
     BorderWidth := GetSystemMetrics(SM_CXEDGE);
 
   DWP := BeginDeferWindowPos(2);
+  DeferWindowPos(DWP, UpDown, WinHandle, Left + Width - UpDownWidth - BorderWidth,
+                 Top+BorderWidth, UpDownWidth, Height - BorderWidth * 2, SWP_NOACTIVATE);
   DeferWindowPos(DWP, WinHandle, UpDown, Left, Top, Width, Height, SWP_NOACTIVATE);
-  DeferWindowPos(DWP, UpDown, 0, Left + Width - UpDownWidth-BorderWidth, Top+BorderWidth, UpDownWidth, Height-BorderWidth*2, SWP_NOZORDER or SWP_NOACTIVATE);
   EndDeferWindowPos(DWP);
 
   SuppressMove := True;

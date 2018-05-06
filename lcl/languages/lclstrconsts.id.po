@@ -67,9 +67,10 @@ msgid "Backspace"
 msgstr "Backspace"
 
 #: lclstrconsts.ifsvk_cancel
+#, fuzzy
 msgctxt "lclstrconsts.ifsvk_cancel"
 msgid "Cancel"
-msgstr ""
+msgstr "Batal"
 
 #: lclstrconsts.ifsvk_capital
 msgid "Capital"
@@ -92,9 +93,10 @@ msgid "Convert"
 msgstr "Konversi"
 
 #: lclstrconsts.ifsvk_delete
+#, fuzzy
 msgctxt "lclstrconsts.ifsvk_delete"
 msgid "Delete"
-msgstr ""
+msgstr "Delete"
 
 #: lclstrconsts.ifsvk_down
 msgctxt "lclstrconsts.ifsvk_down"
@@ -132,9 +134,10 @@ msgid "Home"
 msgstr "Home"
 
 #: lclstrconsts.ifsvk_insert
+#, fuzzy
 msgctxt "lclstrconsts.ifsvk_insert"
 msgid "Insert"
-msgstr ""
+msgstr "Insert"
 
 #: lclstrconsts.ifsvk_junja
 msgid "Junja"
@@ -175,9 +178,10 @@ msgid "Mode Change"
 msgstr "Ubah  Mode"
 
 #: lclstrconsts.ifsvk_next
+#, fuzzy
 msgctxt "lclstrconsts.ifsvk_next"
 msgid "Next"
-msgstr ""
+msgstr "Berikutnya"
 
 #: lclstrconsts.ifsvk_nonconvert
 msgid "Nonconvert"
@@ -200,9 +204,10 @@ msgid "Print"
 msgstr "Cetak"
 
 #: lclstrconsts.ifsvk_prior
+#, fuzzy
 msgctxt "lclstrconsts.ifsvk_prior"
 msgid "Prior"
-msgstr ""
+msgstr "Sebelumnya"
 
 #: lclstrconsts.ifsvk_rbutton
 msgid "Mouse Button Right"
@@ -347,9 +352,10 @@ msgid "Calculator"
 msgstr "Kalkulator"
 
 #: lclstrconsts.rscancelrecordhint
+#, fuzzy
 msgctxt "lclstrconsts.rscancelrecordhint"
 msgid "Cancel"
-msgstr ""
+msgstr "Batal"
 
 #: lclstrconsts.rscannotfocus
 msgid "Can not focus"
@@ -449,9 +455,10 @@ msgid "Search entire file"
 msgstr ""
 
 #: lclstrconsts.rserror
+#, fuzzy
 msgctxt "lclstrconsts.rserror"
 msgid "Error"
-msgstr ""
+msgstr "Salah"
 
 #: lclstrconsts.rserrorcreatingdevicecontext
 msgid "Error creating device context for %s.%s"
@@ -1268,6 +1275,10 @@ msgstr ""
 #: lclstrconsts.rstext
 msgid "Text"
 msgstr "Teks"
+
+#: lclstrconsts.rsthebuiltinurlisreadonlychangethebaseurlinstead
+msgid "The built-in URL is read only. Change the BaseURL instead."
+msgstr ""
 
 #: lclstrconsts.rstiff
 msgid "Tagged Image File Format"

@@ -26,7 +26,7 @@ uses
   {$ENDIF}
   SysUtils, Classes, types,
   // LazUtils
-  LazUTF8, Translations,
+  LazUTF8, Translations, IntegerList,
   // LCL
   LCLPlatformDef, InterfaceBase, LCLProc, LCLStrConsts, LCLType, LMessages,
   Controls, Forms, FPImage, Graphics, GraphUtil, GraphType, IntfGraphics,
@@ -80,6 +80,8 @@ type
     FStockDefaultDC: HDC;
     FSysColorBrushes: array[0..MAX_SYS_COLORS] of HBRUSH;
     FGlobalCursor: HCursor;
+    FThemeName: string;
+    FCSSTheme: TStringList;
   public
     function CreateDCForWidget(AWidget: PGtkWidget; AWindow: PGdkWindow; cr: Pcairo_t): HDC;
     procedure AddWindow(AWindow: PGtkWindow);
@@ -88,7 +90,10 @@ type
     procedure ProcessChildSignal;
     procedure PrepareSynchronize({%H-}AObject: TObject);
     {$ENDIF}
-
+    procedure LoadCSSTheme;
+    procedure ClearCSSTheme;
+    function GetCSSTheme(AList: TStrings): boolean;
+    function GetThemeName: string;
     procedure InitStockItems;
     procedure FreeStockItems;
     function CreateDefaultFont: HFONT;

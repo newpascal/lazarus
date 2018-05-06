@@ -297,15 +297,12 @@ begin
     if WinControl.Controls[i] is TWinControl then
     begin
       ChildControl := TWinControl(WinControl.Controls[i]);
-      if Enable then
-      begin
-        if ChildControl.Enabled then
-          EnableWindow(ChildControl.Handle, true);
-      end
-      else
-        EnableWindow(ChildControl.Handle, false);
 
-      EnableChildWindows(ChildControl, Enable);   // Recursive call
+      if not Enable or ChildControl.Enabled then
+      begin
+        EnableWindow(ChildControl.Handle, Enable and ChildControl.Enabled);
+        EnableChildWindows(ChildControl, Enable and ChildControl.Enabled);  // Recursive call
+      end;
     end;
   end;
 end;
@@ -364,7 +361,7 @@ type
     procedure DoMsgMouseMove;
     procedure DoMsgMouseDownUpClick(aButton: Byte; aIsDblClick: Boolean; aMouseDown: Boolean);
     procedure DoMsgContextMenu;
-    function DoMsgMouseWheel(var WinResult: LResult): Boolean;
+    function DoMsgMouseWheel(var WinResult: LResult; AHorz: Boolean): Boolean;
     function DoMsgMove: Boolean;
     procedure DoMsgNCLButtonDown;
     function DoMsgNotify(var WinResult: LResult): Boolean;
@@ -387,7 +384,7 @@ type
     function IsComboEditSelection: boolean;
     procedure HandleBitBtnCustomDraw(ABitBtn: TCustomBitBtn);
     procedure HandleDropFiles;
-    function HandleUnicodeChar(var AChar: Word): boolean;
+    function HandleUnicodeChar(var AChar: WideChar): boolean;
     procedure UpdateDrawItems;
     procedure UpdateDrawListItem(aMsg: UInt);
     procedure UpdateLMMovePos(X, Y: Smallint);
@@ -441,6 +438,7 @@ function TWindowProcHelper.GetMenuItemObject(ByPosition: Boolean): TObject;
 var
   MenuInfo: MENUITEMINFO;
   PopupMenu: TPopupMenu;
+  Menu: HMENU;
 begin
   // first we have to decide if the command is from a popup menu
   // or from the window main menu
@@ -459,7 +457,11 @@ begin
   MenuInfo.cbSize := MMenuItemInfoSize;
   MenuInfo.fMask := MIIM_DATA;
 
-  if GetMenuItemInfo(GetMenu(Window), LOWORD(Integer(WParam)), ByPosition, @MenuInfo) then
+  if ByPosition then
+    Menu := HMENU(LParam)
+  else
+    Menu := GetMenu(Window);
+  if GetMenuItemInfo(Menu, LOWORD(Integer(WParam)), ByPosition, @MenuInfo) then
     Result := TObject(MenuInfo.dwItemData)
   else
     Result := nil;
@@ -599,7 +601,7 @@ begin
     PushEraseBkgndCommand(ecDiscard);
 
   // check if double buffering is requested
-  useDoubleBuffer := (ControlDC = 0) and (lWinControl.DoubleBuffered or ThemeServices.ThemesEnabled);
+  useDoubleBuffer := (ControlDC = 0) and TWSWinControlClass(TWinControl(lWinControl).WidgetSetClass).GetDoubleBuffered(lWinControl);
   if useDoubleBuffer then
     BufferWasSaved := PrepareDoubleBuffer(DoubleBufferBitmapOld)
   else
@@ -625,13 +627,13 @@ begin
       if useDoubleBuffer then
       begin
         RTLLayout := (GetWindowLong(Window, GWL_EXSTYLE) and WS_EX_LAYOUTRTL) = WS_EX_LAYOUTRTL;
-{$ifdef DEBUG_DOUBLEBUFFER}
+
         ORect.Left := 0;
         ORect.Top := 0;
         ORect.Right := CurDoubleBuffer.BitmapWidth;
         ORect.Bottom := CurDoubleBuffer.BitmapHeight;
-        Windows.FillRect(CurDoubleBuffer.DC, ORect, GetSysColorBrush(COLOR_DESKTOP));
-{$endif}
+        Windows.FillRect(CurDoubleBuffer.DC, ORect, GetSysColorBrush(COLOR_BTNFACE));
+
         PaintRegion := CreateRectRgn(0, 0, 1, 1);
         if GetRandomRgn(DC, PaintRegion, SYSRGN) = 1 then
           CalcClipRgn(PaintRegion);
@@ -825,7 +827,7 @@ begin
   then LMScroll.SmallPos := LMScroll.Pos
   else LMScroll.SmallPos := High(LMScroll.SmallPos);
 
-  if Assigned(lWinControl) and (lWinControl is TCustomListbox) and (LMsg = LM_VSCROLL) then
+  if (lWinControl is TCustomListbox) and (LMsg = LM_VSCROLL) then
   begin
     // WM_VSCROLL message carries only 16 bits of scroll box position data.
     // This workaround is needed, to scroll higher than a position value of 65536.
@@ -1117,13 +1119,13 @@ begin
 end;
 
 // returns false if the UnicodeChar is not handled
-function TWindowProcHelper.HandleUnicodeChar(var AChar: Word): boolean;
+function TWindowProcHelper.HandleUnicodeChar(var AChar: WideChar): boolean;
 var
   OldUTF8Char, UTF8Char: TUTF8Char;
   WS: WideString;
 begin
   Result := False;
-  UTF8Char := UTF16ToUTF8(WideString(WideChar(AChar)));
+  UTF8Char := UTF16ToUTF8(WideString(AChar));
   OldUTF8Char := UTF8Char;
   if Assigned(lWinControl) then
   begin
@@ -1135,9 +1137,9 @@ begin
     begin
       WS := UTF8ToUTF16(UTF8Char);
       if Length(WS) > 0 then
-        AChar := Word(WS[1])
+        AChar := WS[1]
       else
-        AChar := 0;
+        AChar := #0;
     end;
   end;
 end;
@@ -1235,10 +1237,17 @@ end;
 
 procedure TWindowProcHelper.DoMsgChar(var WinResult: LResult);
 begin
+  OrgCharCode := Word(WParam);
+  // Process surrogate pairs later
+  {$IF FPC_FULLVERSION>=30000}
+  if TCharacter.IsSurrogate(WideChar(OrgCharCode)) then
+  {$ELSE}
+  if False then
+  {$ENDIF}
+    WinProcess := True
   // first send a IntfUTF8KeyPress to the LCL
   // if the key was not handled send a CN_CHAR for AnsiChar<=#127
-  OrgCharCode := Word(WParam);
-  if not HandleUnicodeChar(OrgCharCode) then
+  else if not HandleUnicodeChar(WideChar(OrgCharCode)) then
   begin
     PLMsg := @LMChar;
     with LMChar do
@@ -1440,8 +1449,7 @@ begin
        (((lWinControl is TCustomListbox) and
           (TCustomListBox(lWinControl).Style <> lbStandard)) or
        ((lWinControl is TCustomCombobox) and
-          ((TCustomCombobox(lWinControl).Style = csOwnerDrawFixed) or
-          (TCustomCombobox(lWinControl).Style = csOwnerDrawVariable))))
+          (TCustomCombobox(lWinControl).Style in [csOwnerDrawFixed, csOwnerDrawVariable, csOwnerDrawEditableFixed, csOwnerDrawEditableVariable])))
     then
       UpdateDrawListItem(LM_DRAWLISTITEM)
     else if Assigned(WindowInfo^.DrawItemHandler) then begin
@@ -1620,11 +1628,16 @@ begin
   end;
 end;
 
-function TWindowProcHelper.DoMsgMouseWheel(var WinResult: LResult): Boolean;
+function TWindowProcHelper.DoMsgMouseWheel(var WinResult: LResult; AHorz: Boolean): Boolean;
 var
+  NCode: integer;
   TargetWindow: HWND;
   P: TPoint;
 begin
+  if AHorz then
+    NCode := WM_MOUSEHWHEEL
+  else
+    NCode := WM_MOUSEWHEEL;
   NotifyUserInput := True;
   PLMsg := @LMMouseEvent;
   with LMMouseEvent Do
@@ -1651,14 +1664,14 @@ begin
     if not InMouseWheelRedirection and (TargetWindow <> Window) then
     begin
       InMouseWheelRedirection := true;
-      WinResult := SendMessage(TargetWindow, WM_MOUSEWHEEL, WParam, LParam);
+      WinResult := SendMessage(TargetWindow, NCode, WParam, LParam);
       InMouseWheelRedirection := false;
       Exit(True);
     end
     else if TargetWindow <> Window then
       Exit(True);
     // the mousewheel message is for us
-    Msg := LM_MOUSEWHEEL;
+    Msg := NCode;
     // important: LM_MOUSEWHEEL needs client coordinates (windows WM_MOUSEWHEEL are screen coordinates)
     Windows.ScreenToClient(TargetWindow, P);
     X := P.X;
@@ -1946,6 +1959,7 @@ var
   CharCodeNotEmpty: boolean;
   R: TRect;
   ACtl: TWinControl;
+  LMouseEvent: TTRACKMOUSEEVENT;
 {$IF NOT DECLARED(WM_DPICHANGED)} // WM_DPICHANGED was added in FPC 3.1.1
 const
   WM_DPICHANGED = $02E0;
@@ -1975,6 +1989,21 @@ begin
   end;
   if IgnoreKeyUp and (Msg = WM_KEYUP) then
     Exit(1);
+
+  case Msg of
+    WM_MOUSEFIRST..WM_MOUSELAST:
+    if (LastMouseTracking<>lWinControl) then
+    begin
+      // register for WM_MOUSELEAVE
+      FillChar(LMouseEvent, SizeOf(TTRACKMOUSEEVENT), 0);
+      LMouseEvent.cbSize := SizeOf(TTRACKMOUSEEVENT);
+      LMouseEvent.dwFlags := TME_LEAVE;
+      LMouseEvent.hwndTrack := Window;
+      LMouseEvent.dwHoverTime := HOVER_DEFAULT;
+      _TrackMouseEvent(@LMouseEvent);
+      LastMouseTracking := lWinControl;
+    end;
+  end;
 
   case Msg of
     WM_NULL:
@@ -2112,9 +2141,21 @@ begin
         Window, Msg, WParam, LParam, LMessage.Result, WinProcess) then Exit(LMessage.Result);
       DoMsgColor(ChildWindowInfo);
     end;
-    WM_CLEAR: LMessage.Msg := LM_CLEAR;
-    WM_COPY:  LMessage.Msg := LM_COPY;
-    WM_CUT:   LMessage.Msg := LM_CUT;
+    WM_CLEAR:
+    begin
+      LMessage.Msg := LM_CLEAR;
+      WinProcess := False;
+    end;
+    WM_COPY:
+    begin
+      LMessage.Msg := LM_COPY;
+      WinProcess := False;
+    end;
+    WM_CUT:
+    begin
+      LMessage.Msg := LM_CUT;
+      WinProcess := False;
+    end;
     {$ifndef RedirectDestroyMessages}
     WM_DESTROY:
     begin
@@ -2219,9 +2260,15 @@ begin
     begin
       NotifyUserInput := True;
       LMessage.Msg := LM_MOUSELEAVE;
+      if lWinControl=LastMouseTracking then
+      begin
+        Application.DoBeforeMouseMessage(nil);
+        LastMouseTracking := nil;
+      end;
     end;
     WM_MOUSEMOVE:  DoMsgMouseMove;
-    WM_MOUSEWHEEL: if DoMsgMouseWheel(Result) then Exit;
+    WM_MOUSEWHEEL: if DoMsgMouseWheel(Result, False) then Exit;
+    WM_MOUSEHWHEEL: if DoMsgMouseWheel(Result, True) then Exit;
     WM_DROPFILES:
       begin
         {$IFDEF EnableWMDropFiles}
@@ -2245,7 +2292,11 @@ begin
     WM_PRINTCLIENT:
       if ((LParam and PRF_CLIENT) = PRF_CLIENT) and (lWinControl <> nil) then
         SendPaintMessage(HDC(WParam));
-    WM_PASTE:         LMessage.Msg := LM_PASTE;
+    WM_PASTE:
+    begin
+      LMessage.Msg := LM_PASTE;
+      WinProcess := False;
+    end;
     WM_CONTEXTMENU:
     begin
       DoMsgContextMenu;
@@ -2516,7 +2567,11 @@ begin
     WM_IME_REQUEST,
     WM_IME_SELECT,
     WM_IME_SETCONTEXT,
-    WM_IME_STARTCOMPOSITION:
+    WM_IME_STARTCOMPOSITION,
+    LM_CUT,
+    LM_COPY,
+    LM_PASTE,
+    LM_CLEAR:
     begin
       WinProcess := LMessage.Result = 0;
     end;

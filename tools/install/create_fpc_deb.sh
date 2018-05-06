@@ -156,6 +156,8 @@ if [ ! -f $SrcTGZ ]; then
   ./create_fpc_export_tgz.sh $FPCSrcDir $SrcTGZ
 fi
 
+# optional: svn/fpcbuild/trunk/install under ../install
+FPCManDir=$FPCSrcDir/../install/man
 
 #------------------------------------------------------------------------------
 # create a temporary copy of the fpc sources to patch it
@@ -185,9 +187,9 @@ ResourceDir=$CurDir/debian_$PackageName
 DebianInstallDir=$FPCBuildDir/usr
 DebianRulezDir=$FPCBuildDir/DEBIAN/
 DebianDocDir=$FPCBuildDir/usr/share/doc/$PackageName${TARGET_SUFFIX}
+DebianLintianDir=$FPCBuildDir/usr/share/lintian
 DebianSourceDir=$FPCBuildDir/usr/share/fpcsrc/$FPCVersion
 Date=`date --rfc-822`
-
 
 #------------------------------------------------------------------------------
 # patch sources
@@ -205,6 +207,8 @@ mkdir -p $DebianDocDir
 chmod 755 $DebianDocDir
 mkdir -p $DebianRulezDir
 chmod 755 $DebianRulezDir
+mkdir -p $DebianLintianDir
+chmod 755 $DebianLintianDir
 
 if [ "$PackageName" = "fpc-src" ]; then
     # copy fpc sources
@@ -235,6 +239,26 @@ if [ "$PackageName" = "fpc" ]; then
 CROSS
   fi
   cd -
+
+  # remove non binaries in /usr/bin
+  for f in $DebianInstallDir/bin/*; do
+    if [ ! -x "$f" ]; then
+      rm $f
+    fi
+  done
+
+  # docs
+  if [ -d "$FPCManDir" ]; then
+    #
+    mkdir -p $FPCBuildDir/usr/share/man/man1
+    for man in $FPCManDir/man1/*.1; do
+      echo "copying man page $man"
+      shortman=$(basename $man)
+      cat $man | gzip -n --best > $FPCBuildDir/usr/share/man/man1/$shortman.gz
+    done
+  else
+    echo "WARNING: man directory not found: $FPCManDir"
+  fi
 fi
 
 #------------------------------------------------------------------------------
@@ -259,7 +283,8 @@ cat $ResourceDir/control \
         -e "s/Depends: binutils/Depends: $DEPENDS/" \
         -e "s/DEBSIZE/$DebSize/" \
   > $DebianRulezDir/control
-
+mkdir -p $DebianLintianDir/overrides
+cp $ResourceDir/lintian.overrides $DebianLintianDir/overrides/$PackageName$TARGET_SUFFIX
 
 # identify conf files
 if test -n "$TARGET_SUFFIX"
@@ -276,7 +301,8 @@ echo " -- Mattias Gaertner <mattias@freepascal.org>  $Date" >> $File
 echo "" >> $File
 cat $ResourceDir/changelog >> $File
 rm -f $File.gz
-gzip --best $File
+gzip -n --best $File
+cp $File.gz $File.Debian.gz
 
 # create postinst if needed
 if [ -f "$ResourceDir/postinst" ]
@@ -288,6 +314,8 @@ then
       | sed -e "s/FPCVERSION/$FPCVersion/g" -e "s/PPCBIN/$PPPRE$ppcbin/g" \
       > $DebianRulezDir/postinst
     cat >> $DebianRulezDir/postinst <<CFG
+#! /bin/sh
+set -e
 touch /usr/lib/fpc/$FPCVersion/fpc-cross.cfg
 sed -i -e "/^#if 2.3.1 /{:eat;s/.*//;N;/#end/d;beat}" /usr/lib/fpc/$FPCVersion/fpc-cross.cfg
 cat >> /usr/lib/fpc/$FPCVersion/fpc-cross.cfg << FPCCFG
@@ -300,15 +328,19 @@ CFG
     # un-install
     cat > $DebianRulezDir/prerm <<CROSS
 #! /bin/sh
+set -e
 rm -f /usr/lib/fpc/$FPCVersion/ppc$ppcbin
 # remove fpc-cross include lines
-sed -i -e "/^#if 2.3.1 /{:eat;s/.*//;N;/#end/d;beat}" /usr/lib/fpc/$FPCVersion/fpc-cross.cfg
+if [ -f /usr/lib/fpc/$FPCVersion/fpc-cross.cfg ]; then
+  sed -i -e "/^#if 2.3.1 /{:eat;s/.*//;N;/#end/d;beat}" /usr/lib/fpc/$FPCVersion/fpc-cross.cfg
+fi
 CROSS
     chmod a+rx $DebianRulezDir/prerm
   else
     # cross-compilerpostinst
     cat > $DebianRulezDir/postinst <<CROSS
 #! /bin/sh
+set -e
 ln -sf /usr/lib/fpc/$FPCVersion/$PPPRE$ppcbin /usr/bin/ppc$ppcbin
 grep 2>/dev/null '#include /usr/lib/fpc/$FPCVersion/fpc${TARGET_SUFFIX}.cfg' /usr/lib/fpc/$FPCVersion/fpc-cross.cfg || echo '#include /usr/lib/fpc/$FPCVersion/fpc${TARGET_SUFFIX}.cfg' >> /usr/lib/fpc/$FPCVersion/fpc-cross.cfg
 CROSS
@@ -316,8 +348,11 @@ CROSS
     # un-install
     cat > $DebianRulezDir/prerm <<CROSS
 #! /bin/sh
+set -e
 rm -f /usr/lib/fpc/$FPCVersion/$PPPRE$ppcbin
-sed -i -e "/#include \/usr\/lib\/fpc\/$FPCVersion\/fpc${TARGET_SUFFIX}.cfg/d" /usr/lib/fpc/$FPCVersion/fpc-cross.cfg
+if [ -f /usr/lib/fpc/$FPCVersion/fpc-cross.cfg ]; then
+  sed -i -e "/#include \/usr\/lib\/fpc\/$FPCVersion\/fpc${TARGET_SUFFIX}.cfg/d" /usr/lib/fpc/$FPCVersion/fpc-cross.cfg
+fi
 CROSS
     chmod a+rx $DebianRulezDir/prerm
   fi
@@ -328,7 +363,7 @@ echo "creating changelog.Debian file ..."
 File=$DebianDocDir/changelog.Debian
 cp $ResourceDir/changelog.Debian $File
 rm -f $File.gz
-gzip --best $File
+gzip -n --best $File
 
 # create debian copyright file
 echo "creating copyright file ..."
@@ -340,6 +375,8 @@ cp $ResourceDir/copyright $DebianDocDir/
 echo "fixing permissions ..."
 find $FPCBuildDir -type d -print0 | xargs -0 chmod 755  # this is needed, don't ask me why
 find $FPCBuildDir -type f -print0 | xargs -0 chmod a+r  # this is needed, don't ask me why
+find $FPCBuildDir -perm 775 | xargs -d '\n' chmod 755 || true
+find $FPCBuildDir -perm 664 | xargs -d '\n' chmod 644 || true
 
 #------------------------------------------------------------------------------
 # creating deb

@@ -43,7 +43,7 @@ type
     SaveAs: Boolean; var Saved: Boolean) of object;
 
   TfrDesignerForm = class;
-  TlrTabEditControl = class(TCustomTabControl);
+  //TlrTabEditControl = class(TCustomTabControl);
 
   { TfrDesigner }
 
@@ -553,6 +553,7 @@ type
     procedure DuplicateSelection;
     procedure ObjInspSelect(Obj:TObject);
     procedure ObjInspRefresh;
+    procedure DataInspectorRefresh;
 
     procedure GetFontList;
     procedure SetMenuBitmaps;
@@ -634,7 +635,7 @@ type
     procedure InplaceEditorMenuClick(Sender: TObject);
   private
     FTabMouseDown:boolean;
-    FTabsPage:TlrTabEditControl;
+    //FTabsPage:TlrTabEditControl;
     procedure TabsEditDragOver(Sender, Source: TObject; X, Y: Integer; State: TDragState; var Accept: Boolean);
     procedure TabsEditDragDrop(Sender, Source: TObject; X, Y: Integer);
     procedure TabsEditMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
@@ -2934,13 +2935,21 @@ begin
   Panel7.Visible := false;
   {$endif}
 
-  FTabsPage:=TlrTabEditControl((Tab1.Tabs as TTabControlNoteBookStrings).NoteBook);
+{  FTabsPage:=TlrTabEditControl((Tab1.Tabs as TTabControlNoteBookStrings).NoteBook);
   FTabsPage.DragMode:=dmManual;
   FTabsPage.OnDragOver:=@TabsEditDragOver;
   FTabsPage.OnDragDrop:=@TabsEditDragDrop;
   FTabsPage.OnMouseDown:=@TabsEditMouseDown;
   FTabsPage.OnMouseMove:=@TabsEditMouseMove;
-  FTabsPage.OnMouseUp:=@TabsEditMouseUp;
+  FTabsPage.OnMouseUp:=@TabsEditMouseUp;}
+
+  Tab1.DragMode:=dmManual;
+  Tab1.OnDragOver:=@TabsEditDragOver;
+  Tab1.OnDragDrop:=@TabsEditDragDrop;
+  Tab1.OnMouseDown:=@TabsEditMouseDown;
+  Tab1.OnMouseMove:=@TabsEditMouseMove;
+  Tab1.OnMouseUp:=@TabsEditMouseUp;
+
 end;
 
 destructor TfrDesignerForm.Destroy;
@@ -3167,7 +3176,7 @@ begin
   //N19.Caption :=      sFRDesignerForm_Open;
   //N20.Caption :=      sFRDesignerForm_Save;
   //N17.Caption :=      sFRDesignerForm_SaveAs;
-  FileSaveAs.Caption:=   sFRDesignerForm_Save;
+  FileSave.Caption:=   sFRDesignerForm_Save;
   FileSaveAs.Caption:=   sFRDesignerForm_SaveAs;
   FileBeforePrintScript.Caption := sFRDesignerForm_BeforePrintScript;
   N42.Caption :=      sFRDesignerForm_Var;
@@ -4553,7 +4562,7 @@ var
   t: TfrView;
 begin
   t := TfrView(Objects[TopSelected]);
-  if Assigned(T) and (T is TfrMemoView) then
+  if T is TfrMemoView then
   begin
     TfrMemoView(T).Memo.Text:='[' + (Sender as TMenuItem).Caption + ']';
     PageView.Invalidate;
@@ -4566,7 +4575,8 @@ end;
 procedure TfrDesignerForm.TabsEditDragOver(Sender, Source: TObject; X,
   Y: Integer; State: TDragState; var Accept: Boolean);
 begin
-  Accept:=(Source = FTabsPage) and (FTabsPage.IndexOfPageAt(X, Y) <> Tab1.TabIndex);
+  //Accept:=(Source = FTabsPage) and (FTabsPage.IndexOfPageAt(X, Y) <> Tab1.TabIndex);
+  Accept:=(Source = Tab1) and (Tab1.IndexOfTabAt(X, Y) <> Tab1.TabIndex);
 end;
 
 procedure TfrDesignerForm.TabsEditDragDrop(Sender, Source: TObject; X,
@@ -4574,7 +4584,8 @@ procedure TfrDesignerForm.TabsEditDragDrop(Sender, Source: TObject; X,
 var
   NewIndex: Integer;
 begin
-  NewIndex:=FTabsPage.IndexOfPageAt(X, Y);
+  //NewIndex:=FTabsPage.IndexOfPageAt(X, Y);
+  NewIndex:=Tab1.IndexOfTabAt(X, Y);
   //ShowMessageFmt('New index = %d', [NewIndex]);
   if (NewIndex>-1) and (NewIndex < CurReport.Pages.Count) then
   begin
@@ -4600,7 +4611,8 @@ procedure TfrDesignerForm.TabsEditMouseMove(Sender: TObject;
   Shift: TShiftState; X, Y: Integer);
 begin
   if FTabMouseDown then
-    FTabsPage.BeginDrag(false);
+    //FTabsPage.BeginDrag(false);
+    Tab1.BeginDrag(false);
 end;
 
 procedure TfrDesignerForm.TabsEditMouseUp(Sender: TObject;
@@ -4777,10 +4789,6 @@ end;
 procedure TfrDesignerForm.SelectionChanged;
 var
   t: TfrView;
-  i, j, L: Integer;
-  B: TfrObject;
-  C: TComponent;
-  M: TMenuItem;
 begin
   {$IFDEF DebugLR}
   debugLnEnter('TfrDesignerForm.SelectionChanged INIT, SelNum=%d',[SelNum]);
@@ -5305,6 +5313,12 @@ begin
   {$ENDIF}
 end;
 
+procedure TfrDesignerForm.DataInspectorRefresh;
+begin
+  if Assigned(lrFieldsList) then
+    lrFieldsList.RefreshDSList;
+end;
+
 procedure TfrDesignerForm.ClB1Click(Sender: TObject);
 var p  : TPoint;
     t  : TfrView;
@@ -5802,6 +5816,7 @@ begin
   PageView.NPDrawSelection;
   PageView.NPDrawLayerObjects(0, TopSelected);
   ObjInspRefresh;
+  DataInspectorRefresh;
 end;
 
 //Move selected object from front
@@ -6006,6 +6021,14 @@ end;
 procedure TfrDesignerForm.PgB3Click(Sender: TObject); // page setup
 var
   w, h, p: Integer;
+  function PointsToMMStr(value:Integer): string;
+  begin
+    result := IntToStr(Trunc(value*5/18+0.5));
+  end;
+  function MMStrToPoints(value:string): Integer;
+  begin
+    result := Trunc(Trunc(StrToFloatDef(value, 0.0))*18/5+0.5)
+  end;
 begin
   frPgoptForm := TfrPgoptForm.Create(nil);
   with frPgoptForm, Page do
@@ -6026,11 +6049,12 @@ begin
       E2.Text := IntToStr(Height div 10);
     end;
     
-    E3.Text := IntToStr(Margins.Left * 5 div 18);
-    E4.Text := IntToStr(Margins.Top * 5 div 18);
-    E5.Text := IntToStr(Margins.Right * 5 div 18);
-    E6.Text := IntToStr(Margins.Bottom * 5 div 18);
-    E7.Text := IntToStr(ColGap * 5 div 18);
+    E3.Text := PointsToMMStr(Margins.Left);
+    E4.Text := PointsToMMStr(Margins.Top);
+    E5.Text := PointsToMMStr(Margins.Right);
+    E6.Text := PointsToMMStr(Margins.Bottom);
+    E7.Text := PointsToMMStr(ColGap);
+
     ecolCount.Value := ColCount;
     if LayoutOrder = loColumns then
       RBColumns.Checked := true
@@ -6062,20 +6086,13 @@ begin
         except
           on exception do p := 9; // A4
         end;
-        
-      try
-        Margins.AsRect := Rect(StrToInt(E3.Text) * 18 div 5,
-                          StrToInt(E4.Text) * 18 div 5,
-                          StrToInt(E5.Text) * 18 div 5,
-                          StrToInt(E6.Text) * 18 div 5);
-        ColGap := StrToInt(E7.Text) * 18 div 5;
-      except
-        on exception do
-        begin
-          Margins.AsRect := Rect(0, 0, 0, 0);
-          ColGap := 0;
-        end;
-      end;
+
+      Margins.Left := MMStrToPoints(E3.Text);
+      Margins.Top := MMStrToPoints(E4.Text);
+      Margins.Right := MMStrToPoints(E5.Text);
+      Margins.Bottom := MMStrToPoints(E6.Text);
+      ColGap := MMStrToPoints(E7.Text);
+
       ColCount := ecolCount.Value;
       ChangePaper(p, w, h, Orientation);
       CurPage := CurPage; // for repaint and other
@@ -7958,9 +7975,6 @@ var
   FSaveGetPValue:TGetPValueEvent;
   FSaveFunEvent:TFunctionEvent;
   FSaveReportEvent: TSaveReportEvent;
-
-  ///***DocMode: (dmDesigning, dmPrinting);             // current mode
-
 begin
   if (GetComponent(0) is TfrCustomMemoView) and Assigned(CurReport) then
   begin
@@ -7978,7 +7992,7 @@ begin
     FSaveView:=CurView;
     FSaveBand:=CurBand;
     FSavePage:=CurPage;
-  // DocMode: (dmDesigning, dmPrinting);             // current mode
+
     frDesigner:=nil;
 
     CurReport:=TfrReport.Create(nil);
@@ -8003,7 +8017,6 @@ begin
     FSaveReportEvent:=frDesignerComp.OnSaveReport;
     frDesignerComp.OnSaveReport:=@DoSaveReportEvent;
 
-    //FDetailReport:=TStringStream.Create(Trim(FEditView.DetailReport.Text));
     try
       FDetailRrep.ReportBody.Position:=0;
       if FDetailRrep.ReportBody.Size > 0 then

@@ -53,7 +53,7 @@ unit etQuickFixes;
 interface
 
 uses
-  Classes, SysUtils,
+  Classes, SysUtils, Laz_AVL_Tree,
   // LCL
   Menus, Dialogs, Controls,
   // LazUtils
@@ -95,7 +95,7 @@ type
     procedure QuickFix({%H-}Fixes: TMsgQuickFixes; Msg: TMessageLine); override;
   end;
 
-  { TQuickFixUnitNotFound_Remove }
+  { TQuickFixUnitNotFound_Remove, also "unit not used" }
 
   TQuickFixUnitNotFound_Remove = class(TMsgQuickFix)
   public
@@ -314,7 +314,8 @@ begin
   for i:=0 to Fixes.LineCount-1 do begin
     Msg:=Fixes.Lines[i];
     if not IsApplicable(Msg,MsgID,Tool) then continue;
-    aCaption:='Hide message by inserting {$warn '+IntToStr(MsgID)+' off} to unit "'+ExtractFilename(Tool.MainFilename)+'"';
+    aCaption:=Format(lisHideMessageByInsertingWarnOffToUnit, [IntToStr(MsgID),
+      ExtractFilename(Tool.MainFilename)]);
     Fixes.AddMenuItem(Self,Msg,aCaption);
   end;
 end;
@@ -326,6 +327,7 @@ var
   Tool: TCodeTool;
   Code: TCodeBuffer;
   Comment: String;
+  OldChange: Boolean;
 begin
   if not IsApplicable(Msg,MsgID,Tool) then exit;
 
@@ -340,12 +342,18 @@ begin
     exit;
   end;
 
-  Comment:=' : '+TIDEFPCParser.GetFPCMsgPattern(Msg);
-  if not CodeToolBoss.AddUnitWarnDirective(Code,IntToStr(MsgID),Comment,true) then
-  begin
-    DebugLn(['TQuickFix_HideWithCompilerDirective CodeToolBoss.AddUnitWarnDirective failed']);
-    LazarusIDE.DoJumpToCodeToolBossError;
-    exit;
+  OldChange:=LazarusIDE.OpenEditorsOnCodeToolChange;
+  LazarusIDE.OpenEditorsOnCodeToolChange:=true;
+  try
+    Comment:=' : '+TIDEFPCParser.GetFPCMsgPattern(Msg);
+    if not CodeToolBoss.AddUnitWarnDirective(Code,IntToStr(MsgID),Comment,false) then
+    begin
+      DebugLn(['TQuickFix_HideWithCompilerDirective CodeToolBoss.AddUnitWarnDirective failed']);
+      LazarusIDE.DoJumpToCodeToolBossError;
+      exit;
+    end;
+  finally
+    LazarusIDE.OpenEditorsOnCodeToolChange:=OldChange;
   end;
 
   // success
@@ -625,6 +633,7 @@ procedure TQuickFixLocalVariableNotUsed_Remove.QuickFix(Fixes: TMsgQuickFixes;
 var
   Identifier: String;
   Code: TCodeBuffer;
+  OldChange: Boolean;
 begin
   if not IsApplicable(Msg,Identifier) then exit;
 
@@ -636,11 +645,17 @@ begin
   Code:=CodeToolBoss.LoadFile(Msg.GetFullFilename,true,false);
   if Code=nil then exit;
 
-  if not CodeToolBoss.RemoveIdentifierDefinition(Code,Msg.Column,Msg.Line) then
-  begin
-    DebugLn(['TQuickFixLocalVariableNotUsed_Remove remove failed']);
-    LazarusIDE.DoJumpToCodeToolBossError;
-    exit;
+  OldChange:=LazarusIDE.OpenEditorsOnCodeToolChange;
+  LazarusIDE.OpenEditorsOnCodeToolChange:=true;
+  try
+    if not CodeToolBoss.RemoveIdentifierDefinition(Code,Msg.Column,Msg.Line) then
+    begin
+      DebugLn(['TQuickFixLocalVariableNotUsed_Remove remove failed']);
+      LazarusIDE.DoJumpToCodeToolBossError;
+      exit;
+    end;
+  finally
+    LazarusIDE.OpenEditorsOnCodeToolChange:=OldChange;
   end;
 
   // message fixed
@@ -788,6 +803,7 @@ var
   MissingUnitName: string;
   SrcUnitName: string;
   Code: TCodeBuffer;
+  OldChange: Boolean;
 begin
   if not IsApplicable(Msg,MissingUnitName,SrcUnitName) then begin
     debugln(['TQuickFixUnitNotFound_Remove.QuickFix invalid message ',Msg.Msg]);
@@ -802,15 +818,21 @@ begin
   Code:=CodeToolBoss.LoadFile(Msg.GetFullFilename,true,false);
   if Code=nil then exit;
 
-  if not CodeToolBoss.RemoveUnitFromAllUsesSections(Code,MissingUnitName) then
-  begin
-    DebugLn(['TQuickFixUnitNotFound_Remove RemoveUnitFromAllUsesSections failed']);
-    LazarusIDE.DoJumpToCodeToolBossError;
-    exit;
-  end;
+  OldChange:=LazarusIDE.OpenEditorsOnCodeToolChange;
+  LazarusIDE.OpenEditorsOnCodeToolChange:=true;
+  try
+    if not CodeToolBoss.RemoveUnitFromAllUsesSections(Code,MissingUnitName) then
+    begin
+      DebugLn(['TQuickFixUnitNotFound_Remove RemoveUnitFromAllUsesSections failed']);
+      LazarusIDE.DoJumpToCodeToolBossError;
+      exit;
+    end;
 
-  // success
-  Msg.MarkFixed;
+    // success
+    Msg.MarkFixed;
+  finally
+    LazarusIDE.OpenEditorsOnCodeToolChange:=OldChange;
+  end;
 end;
 
 { TQuickFixIdentifierNotFoundAddLocal }
@@ -867,6 +889,7 @@ var
   NewX: integer;
   NewY: integer;
   NewTopLine: integer;
+  OldChange: Boolean;
 begin
   if not IsApplicable(Msg,Identifier) then exit;
 
@@ -878,11 +901,17 @@ begin
   Code:=CodeToolBoss.LoadFile(Msg.GetFullFilename,true,false);
   if Code=nil then exit;
 
-  if not CodeToolBoss.CreateVariableForIdentifier(Code,Msg.Column,Msg.Line,-1,
-             NewCode,NewX,NewY,NewTopLine,False)
-  then begin
-    LazarusIDE.DoJumpToCodeToolBossError;
-    exit;
+  OldChange:=LazarusIDE.OpenEditorsOnCodeToolChange;
+  LazarusIDE.OpenEditorsOnCodeToolChange:=true;
+  try
+    if not CodeToolBoss.CreateVariableForIdentifier(Code,Msg.Column,Msg.Line,-1,
+               NewCode,NewX,NewY,NewTopLine,False)
+    then begin
+      LazarusIDE.DoJumpToCodeToolBossError;
+      exit;
+    end;
+  finally
+    LazarusIDE.OpenEditorsOnCodeToolChange:=OldChange;
   end;
 
   // success
@@ -925,11 +954,14 @@ var
   end;
 
 var
-  Tree: TAvgLvlTree;
-  Node: TAvgLvlTreeNode;
+  Tree: TAvlTree;
+  Node: TAvlTreeNode;
   i: Integer;
+  OldChange: Boolean;
 begin
-  Tree:=TAvgLvlTree.Create(@CompareMsgLinesSrcPos);
+  OldChange:=LazarusIDE.OpenEditorsOnCodeToolChange;
+  LazarusIDE.OpenEditorsOnCodeToolChange:=true;
+  Tree:=TAvlTree.Create(@CompareMsgLinesSrcPos);
   try
     // get all messages to hide and sort them for position
     if Msg=nil then begin
@@ -956,6 +988,7 @@ begin
       Node:=Node.Precessor;
     end;
   finally
+    LazarusIDE.OpenEditorsOnCodeToolChange:=OldChange;
     Tree.Free;
   end;
 end;

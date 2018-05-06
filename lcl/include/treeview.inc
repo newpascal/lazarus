@@ -245,7 +245,7 @@ begin
   ChildNode:=FirstTreeNode;
   while ChildNode<>nil do begin
     if ChildNode.Expanded then begin
-      if Children=nil then Children:=TAvgLvlTree.Create(@CompareExpandedNodes);
+      if Children=nil then Children:=TAvlTree.Create(@CompareExpandedNodes);
       NewExpandedNode:=TTreeNodeExpandedState.Create(ChildNode.GetFirstChild,OnGetNodeText);
       if ChildNode.GetFirstChild=nil then
         NewExpandedNode.NodeText:=OnGetNodeText(ChildNode);
@@ -258,7 +258,7 @@ end;
 procedure TTreeNodeExpandedState.Apply(FirstTreeNode: TTreeNode; CollapseToo: boolean);
 var
   ChildNode: TTreeNode;
-  ANode: TAvgLvlTreeNode;
+  ANode: TAvlTreeNode;
   ChildNodeText: String;
 begin
   if Children=nil then exit;
@@ -302,12 +302,10 @@ begin
   FOverlayIndex := -1;
   FSelectedIndex := -1;
   FStateIndex := -1;
-  FStates := [];
+  FStates := [nsVisible];
   FOwner := AnOwner;
   FSubTreeCount := 1;
   FIndex := -1;
-  FVisible := True;
-  if Owner<>nil then inc(Owner.FCount);
 end;
 
 destructor TTreeNode.Destroy;
@@ -320,7 +318,7 @@ begin
   Include(FStates,nsDeleting);
 
   // we must trigger TCustomTreeView.OnDeletion event before
-  // unbinding.See issue #17832.
+  // unbinding. See issue #17832.
   if Assigned(Owner) and Assigned(Owner.Owner) then
     Owner.Owner.Delete(Self);
 
@@ -340,9 +338,7 @@ begin
   HasChildren := false;
   // unbind all references
   Unbind;
-
   if Assigned(Owner) then begin
-    dec(Owner.FCount);
     if FStates * [nsSelected, nsMultiSelected] <> [] then
       Owner.FSelection.Remove(Self);
   end;
@@ -405,6 +401,11 @@ begin
   Result := FTop;
 end;
 
+function TTreeNode.GetVisible: Boolean;
+begin
+  Result:=nsVisible in FStates;
+end;
+
 function TTreeNode.HasAsParent(AValue: TTreeNode): Boolean;
 begin
   if AValue<>nil then begin
@@ -424,7 +425,7 @@ begin
   if TreeView=nil then exit;
   Include(TreeView.FStates,tvsMaxRightNeedsUpdate);
   if (TreeView.SortType in [stText, stBoth])
-  and (nsInTree in FStates) then begin
+  and (nsBound in FStates) then begin
     if (Parent <> nil) then Parent.AlphaSort
     else TreeView.AlphaSort;
   end;
@@ -443,7 +444,7 @@ begin
   if (TreeView<>nil)
   and (TreeView.SortType in [stData, stBoth]) and Assigned(TreeView.OnCompare)
   and (not Deleting)
-  and (nsInTree in FStates) then
+  and (nsBound in FStates) then
   begin
     if Parent <> nil then
       Parent.AlphaSort
@@ -527,8 +528,11 @@ end;
 
 procedure TTreeNode.SetVisible(const AValue: Boolean);
 begin
-  if FVisible = AValue then exit;
-  FVisible := AValue;
+  if Visible = AValue then exit;
+  if AValue then
+    Include(FStates,nsVisible)
+  else
+    Exclude(FStates,nsVisible);
   Selected := False;
   if TreeView<>nil then
     TreeView.FStates:=TreeView.FStates+[tvsScrollbarChanged,tvsTopsNeedsUpdate,
@@ -830,7 +834,6 @@ end;
 
 procedure TTreeNode.SetDropTarget(AValue: Boolean);
 begin
-  if AValue=GetDropTarget then exit;
   if AValue then begin
     Include(FStates,nsDropHilited);
     if TreeView<>nil then
@@ -840,8 +843,6 @@ begin
     if TreeView<>nil then
       TreeView.FLastDropTarget:=nil;
   end;
-  {if Value then TreeView_SelectDropTarget(Handle, ItemId)
-  else if DropTarget then TreeView_SelectDropTarget(Handle, nil);}
 end;
 
 function TTreeNode.GetHasChildren: Boolean;
@@ -911,7 +912,7 @@ end;
 
 function TTreeNode.GetNextVisible: TTreeNode;
 begin
-  if FVisible and Expanded and (GetFirstVisibleChild<>nil) then
+  if Visible and Expanded and (GetFirstVisibleChild<>nil) then
     Result:=GetFirstVisibleChild
   else begin
     Result:=Self;
@@ -920,7 +921,7 @@ begin
     if Result<>nil then
       Result:=Result.GetNextVisibleSibling;
   end;
-  if (Result<>nil) and ( (not Result.FVisible) or (not AreParentsExpandedAndVisible) ) then
+  if (Result<>nil) and ( (not Result.Visible) or (not AreParentsExpandedAndVisible) ) then
     Result:=nil;
 end;
 
@@ -929,9 +930,9 @@ begin
   Result := Self;
   repeat
     Result := Result.GetNextSibling;
-  until ((Result=nil) or (Result.FVisible));
-  if (Result<>nil) and (not Result.FVisible) then // Result := nil ... will be removed
-    Assert(False,'TTreeNode.GetNextVisibleSibling: (Result<>nil) and (not Result.FVisible)');
+  until ((Result=nil) or (Result.Visible));
+  if (Result<>nil) and (not Result.Visible) then // Result := nil ... will be removed
+    Assert(False,'TTreeNode.GetNextVisibleSibling: (Result<>nil) and (not Result.Visible)');
 end;
 
 function TTreeNode.GetPrevVisible: TTreeNode;
@@ -948,7 +949,7 @@ begin
   end
   else
     Result := Parent;
-  if (Result<>nil) and ( (not Result.FVisible) or (not AreParentsExpandedAndVisible) ) then
+  if (Result<>nil) and ( (not Result.Visible) or (not AreParentsExpandedAndVisible) ) then
     Result:=nil;
 end;
 
@@ -957,9 +958,9 @@ begin
   Result := Self;
   repeat
     Result := Result.GetPrevSibling;
-  until ((Result=nil) or (Result.FVisible));
-  if (Result<>nil) and (not Result.FVisible) then  // Result := nil ... will be removed
-    Assert(False,'TTreeNode.GetPrevVisibleSibling: (Result<>nil) and (not Result.FVisible)');
+  until ((Result=nil) or (Result.Visible));
+  if (Result<>nil) and (not Result.Visible) then  // Result := nil ... will be removed
+    Assert(False,'TTreeNode.GetPrevVisibleSibling: (Result<>nil) and (not Result.Visible)');
 end;
 
 function TTreeNode.GetPrevExpanded: TTreeNode;
@@ -1031,7 +1032,7 @@ end;
 function TTreeNode.GetFirstVisibleChild: TTreeNode;
 begin
   Result := GetFirstChild;
-  if (Result<>nil) and (not Result.FVisible) then
+  if (Result<>nil) and (not Result.Visible) then
     Result := Result.GetNextVisibleSibling;
 end;
 
@@ -1276,6 +1277,8 @@ begin
   {$ENDIF}
   if not (nsBound in FStates) then exit;
   Exclude(FStates,nsBound);
+  if Owner<>nil then dec(Owner.FCount);
+
   // remove single select
   Selected:=false;
   // invalidate caches of TreeView and if root item, remove from TreeView.Items
@@ -1392,6 +1395,7 @@ begin
     if Owner<>nil then
       Owner.ClearCache;
     Include(FStates,nsBound);
+    if Owner<>nil then inc(Owner.FCount);
     // set parent
     if AddMode in [taAdd, taAddFirst] then
       FParent:=ANode
@@ -1672,15 +1676,17 @@ function TTreeNode.DisplayExpandSignLeft: integer;
 var
   TV: TCustomTreeView;
   l: LongInt;
+  RealIndent: Integer;
 begin
   Result := 0;
   TV := TreeView;
+  RealIndent := TV.Indent;
   if TV = nil then Exit;
   l := Level;
   if not (tvoShowRoot in TV.Options) then
-    inc(Result, TV.Indent * (l - 1) + (TV.Indent shr 2) + TV.BorderWidth - TV.FScrolledLeft)
+    inc(Result, RealIndent * (l - 1) + (RealIndent shr 2) + TV.BorderWidth - TV.FScrolledLeft)
   else
-    inc(Result, TV.Indent * l + TV.BorderWidth - TV.FScrolledLeft);
+    inc(Result, RealIndent * l + TV.BorderWidth - TV.FScrolledLeft);
 end;
 
 function TTreeNode.DisplayExpandSignRect: TRect;
@@ -1710,7 +1716,7 @@ begin
   TV := TreeView;
   if (TV = nil) or (TV.StateImages = nil) then Exit;
   if (StateIndex < 0) or (StateIndex >= TV.StateImages.Count) then Exit;
-  Inc(Result, TV.StateImages.Width + 2);
+  Inc(Result, TV.StateImages.WidthForPPI[TV.StateImagesWidth, TV.Font.PixelsPerInch] + TV.FDefItemSpace);
 end;
 
 function TTreeNode.DisplayStateIconLeft: integer;
@@ -1731,7 +1737,7 @@ begin
   else
     ImgIndex:=ImageIndex;
   if (ImgIndex<0) or (ImgIndex>=TV.Images.Count) then Exit;
-  Inc(Result, TV.Images.Width + 2);
+  Inc(Result, TV.Images.WidthForPPI[TV.StateImagesWidth, TV.Font.PixelsPerInch] + TV.FDefItemSpace);
 end;
 
 function TTreeNode.DisplayTextRight: integer;
@@ -1818,7 +1824,7 @@ begin
     SelectedIndex := OldInfo.SelectedIndex;
     StateIndex := OldInfo.StateIndex;
     OverlayIndex := OldInfo.OverlayIndex;
-    Data := OldInfo.Data;
+    Data := {%H-}Pointer(OldInfo.Data);
     Height := OldInfo.Height;
     NewExpanded := OldInfo.Expanded;
     ItemCount := OldInfo.Count;
@@ -1869,7 +1875,7 @@ begin
   SelectedIndex := Info^.SelectedIndex;
   StateIndex := Info^.StateIndex;
   OverlayIndex := Info^.OverlayIndex;
-  Data := Info^.Data;
+  Data := {%H-}Pointer(Info^.Data);
   if Owner<>nil then begin
     ItemCount := Info^.Count;
     for I := 0 to ItemCount - 1 do
@@ -1877,24 +1883,41 @@ begin
   end;
 end;
 
-procedure TTreeNode.WriteData(Stream: TStream);
+procedure TTreeNode.WriteData(Stream: TStream; StreamVersion: integer);
 var
   i: integer;
+  OldInfo: TOldTreeNodeInfo;
   Info: TTreeNodeInfo;
 begin
-  Info.ImageIndex := ImageIndex;
-  Info.SelectedIndex := SelectedIndex;
-  Info.OverlayIndex := OverlayIndex;
-  Info.StateIndex := StateIndex;
-  Info.Height := FHeight;
-  Info.Count := Count;
-  Info.Expanded := Expanded;
-  Info.TextLen := Length(Text);
-  Stream.WriteBuffer(Info, SizeOf(TTreeNodeInfo));
+  if StreamVersion=TTreeNodeWithPointerStreamVersion then
+  begin
+    OldInfo.ImageIndex := ImageIndex;
+    OldInfo.SelectedIndex := SelectedIndex;
+    OldInfo.OverlayIndex := OverlayIndex;
+    OldInfo.StateIndex := StateIndex;
+    OldInfo.Height := FHeight;
+    OldInfo.Data := {%H-}Cardinal(Data);
+    OldInfo.Count := Count;
+    OldInfo.Expanded := Expanded;
+    OldInfo.TextLen := Length(Text);
+    Stream.WriteBuffer(OldInfo, SizeOf(TOldTreeNodeInfo));
+  end
+  else
+  begin
+    Info.ImageIndex := ImageIndex;
+    Info.SelectedIndex := SelectedIndex;
+    Info.OverlayIndex := OverlayIndex;
+    Info.StateIndex := StateIndex;
+    Info.Height := FHeight;
+    Info.Count := Count;
+    Info.Expanded := Expanded;
+    Info.TextLen := Length(Text);
+    Stream.WriteBuffer(Info, SizeOf(TTreeNodeInfo));
+  end;
   if Text<>'' then
     Stream.Write(FText[1],length(Text));
   for i := 0 to Count - 1 do
-    Items[i].WriteData(Stream);
+    Items[i].WriteData(Stream, StreamVersion);
 end;
 
 procedure TTreeNode.WriteDelphiData(Stream: TStream; Info: PDelphiNodeInfo);
@@ -1909,7 +1932,7 @@ begin
   Info^.SelectedIndex := SelectedIndex;
   Info^.OverlayIndex := OverlayIndex;
   Info^.StateIndex := StateIndex;
-  Info^.Data := Data;
+  Info^.Data := {%H-}Cardinal(Data);
   ItemCount := Count;
   Info^.Count := ItemCount;
   Stream.WriteBuffer(Size, SizeOf(Size));
@@ -2035,8 +2058,6 @@ end;
 function TTreeNodes.GetCount: Integer;
 begin
   Result:=FCount;
-  //if Owner.HandleAllocated then Result := TreeView_GetCount(Handle)
-  //else Result := 0;
 end;
 
 function TTreeNodes.GetOwner: TPersistent;
@@ -2330,7 +2351,6 @@ begin
     Result := FTopLvlItems[0]
   else
     Result := nil;
-  //Result := GetNode(TreeView_GetRoot(Handle));
 end;
 
 function TTreeNodes.GetFirstVisibleNode: TTreeNode;
@@ -2769,12 +2789,12 @@ begin
     //select again
     bGoNext := (FirstNode.Index <= Node.Index);
     I := FirstNode;
-    I.Selected:=True;
+    I.MultiSelected:=True;
     while (I<>Node) do
     begin
       _TakeNext(I);
       if I=nil then Break;
-      I.Selected:=True;
+      I.MultiSelected:=True;
     end;
 
     FStartMultiSelected := FirstNode;
@@ -2786,20 +2806,20 @@ end;
 
 procedure TTreeNodes.Assign(Source: TPersistent);
 var
-  TreeNodes: TTreeNodes;
-  MemStream: TMemoryStream;
+  SrcNodes: TTreeNodes;
+  SrcStream: TMemoryStream;
 begin
   ClearCache;
   if Source is TTreeNodes then begin
-    TreeNodes := TTreeNodes(Source);
+    SrcNodes := TTreeNodes(Source);
     Clear;
-    MemStream := TMemoryStream.Create;
+    SrcStream := TMemoryStream.Create;
     try
-      TreeNodes.WriteData(MemStream);
-      MemStream.Position := 0;
-      ReadData(MemStream);
+      SrcNodes.WriteData(SrcStream, true);
+      SrcStream.Position := 0;
+      ReadData(SrcStream);
     finally
-      MemStream.Free;
+      SrcStream.Free;
     end;
   end
   else
@@ -2859,21 +2879,31 @@ begin
 end;
 
 procedure TTreeNodes.WriteData(Stream: TStream);
+begin
+   WriteData(Stream, false);
+end;
+
+procedure TTreeNodes.WriteData(Stream: TStream; WriteDataPointer: boolean);
 var
   ANode: TTreeNode;
   MagicNumber: integer;
+  StreamVersion: word;
 begin
   // -7 for lcl stream
   MagicNumber:=LCLStreamID;
   Stream.WriteBuffer(MagicNumber,SizeOf(MagicNumber));
   // write stream version
-  Stream.WriteBuffer(TTreeNodeStreamVersion,SizeOf(Word));
+  if WriteDataPointer then
+    StreamVersion:=TTreeNodeWithPointerStreamVersion
+  else
+    StreamVersion:=TTreeNodeStreamVersion;
+  Stream.WriteBuffer(StreamVersion,SizeOf(Word));
   // write top level node count
   Stream.WriteBuffer(FTopLvlCount, SizeOf(Integer));
   // write all nodes recursively
   ANode := GetFirstNode;
   while ANode <> nil do begin
-    ANode.WriteData(Stream);
+    ANode.WriteData(Stream, StreamVersion);
     ANode := ANode.GetNextSibling;
   end;
 end;
@@ -3207,8 +3237,9 @@ begin
   ParentColor := False;
 //  FBackgroundColor := clWindow;
   FDefItemHeight := DefaultTreeNodeHeight;
+  FDefItemSpace := ScaleY(2, 96);
   FExpandSignType := tvestTheme;
-  FExpandSignSize := 0;
+  FExpandSignSize := -1;
   Details := ThemeServices.GetElementDetails(ttGlyphOpened);
   FThemeExpandSignSize := ThemeServices.GetDetailSize(Details).cx;
   FTreeNodes := CreateNodes;
@@ -3219,7 +3250,7 @@ begin
   Items.KeepCollapsedNodes:=KeepCollapsedNodes;
   FScrollBars:=ssBoth;
   FDragImage := TDragImageList.CreateSize(32, 32);
-  FIndent:=15;
+  FIndent:=-1;
   FChangeTimer := TTimer.Create(Self);
   FChangeTimer.Enabled := False;
   FChangeTimer.Interval := 1;
@@ -3235,11 +3266,21 @@ begin
   FStates:=[tvsMaxLvlNeedsUpdate,tvsMaxRightNeedsUpdate,tvsScrollbarChanged];
   FTreeLineColor := clWindowFrame;
   FTreeLinePenStyle := psPattern;
+  SetLength(FTreeLinePenPattern, 2);
+  FTreeLinePenPattern[0] := 1;
+  FTreeLinePenPattern[1] := 1;
   FExpandSignColor := clWindowFrame;
+  FHotTrackColor := clNone;
   // Accessibility
   AccessibleDescription := rsTTreeViewAccessibilityDescription;
   AccessibleRole := larTreeView;
   FAccessibilityOn := WidgetSet.GetLCLCapability(lcAccessibilitySupport) = LCL_CAPABILITY_YES;
+
+  FDragScrollMargin := 20; // Height of 2 areas, on top/bottom of treeview, which auto-scroll treeview up/down
+  FDragScrollTimer := TTimer.Create(Self);
+  FDragScrollTimer.Enabled := false;
+  FDragScrollTimer.Interval := 150;
+  FDragScrollTimer.OnTimer := @DragScrollTimerTick;
 end;
 
 destructor TCustomTreeView.Destroy;
@@ -3290,6 +3331,28 @@ begin
   FLastVertScrollInfo.cbSize := 0;
 end;
 
+procedure TCustomTreeView.DoAutoAdjustLayout(
+  const AMode: TLayoutAdjustmentPolicy; const AXProportion, AYProportion: Double
+  );
+begin
+  inherited DoAutoAdjustLayout(AMode, AXProportion, AYProportion);
+
+  if AMode in [lapAutoAdjustWithoutHorizontalScrolling, lapAutoAdjustForDPI] then
+  begin
+    DisableAutoSizing{$IFDEF DebugDisableAutoSizing}('TCustomTreeView.DoAutoAdjustLayout'){$ENDIF};
+    try
+      if DefaultItemHeightIsStored then
+        DefaultItemHeight := Round(DefaultItemHeight*AYProportion);
+      if IndentIsStored then
+        FIndent := Round(FIndent*AXProportion);
+      if ExpandSignSizeIsStored then
+        FExpandSignSize := Round(FExpandSignSize*AXProportion);
+    finally
+      EnableAutoSizing{$IFDEF DebugDisableAutoSizing}('TCustomTreeView.DoAutoAdjustLayout'){$ENDIF};
+    end;
+  end;
+end;
+
 procedure TCustomTreeView.DoCreateNodeClass(var NewNodeClass: TTreeNodeClass);
 begin
   if Assigned(OnCreateNodeClass) then
@@ -3307,7 +3370,7 @@ var
 begin
   //DebugLn(['TCustomTreeView.BeginEditing tvsIsEditing=',tvsIsEditing in FStates,' Selected=',Selected<>nil]);
   if (tvsIsEditing in FStates) or (ANode=nil) then exit;
-  if (not CanEdit(ANode)) or (not ANode.FVisible) then exit;
+  if (not CanEdit(ANode)) or (not ANode.Visible) then exit;
   // if we are asked to edit another node while one is already being edited then
   // stop editing that node
   if FEditingItem <> nil then
@@ -3377,13 +3440,18 @@ begin
   end;
 end;
 
+function TCustomTreeView.DefaultItemHeightIsStored: Boolean;
+begin
+  Result := not(tvoAutoItemHeight in Options);
+end;
+
 function TCustomTreeView.DefaultTreeViewSort(Node1, Node2: TTreeNode): Integer;
 begin
   if Assigned(OnCompare) then begin
     Result:=0;
     OnCompare(Node1.TreeView,Node1, Node2, Result);
   end else
-    Result := LazUTF8.Utf8CompareStr(Node1.Text,Node2.Text);
+    Result := Utf8CompareStr(Node1.Text,Node2.Text);
 end;
 
 procedure TCustomTreeView.SetAutoExpand(Value: Boolean);
@@ -3539,15 +3607,20 @@ end;
 procedure TCustomTreeView.UpdateDefaultItemHeight;
 var
   NewDefItemHeight: Integer;
+  ImageSize, StateImageSize: TSize;
 begin
   if (tvoAutoItemHeight in FOptions)
   and HandleAllocated and Canvas.HandleAllocated then begin
-    NewDefItemHeight:=Canvas.TextHeight(TVAutoHeightString)+2; // +2 for spacing
-    if NewDefItemHeight<2 then NewDefItemHeight:=2;
-    if (Images<>nil) and (Images.Height>NewDefItemHeight) then
-      NewDefItemHeight:=Images.Height;
-    if (StateImages<>nil) and (StateImages.Height>NewDefItemHeight) then
-      NewDefItemHeight:=StateImages.Height;
+    NewDefItemHeight:=Canvas.TextHeight(TVAutoHeightString)+FDefItemSpace;
+    if Assigned(FImages) then
+      ImageSize := Images.SizeForPPI[ImagesWidth, Font.PixelsPerInch];
+    if Assigned(FStateImages) then
+      StateImageSize := StateImages.SizeForPPI[StateImagesWidth, Font.PixelsPerInch];
+    if NewDefItemHeight<FDefItemSpace then NewDefItemHeight:=FDefItemSpace;
+    if (Images<>nil) and (ImageSize.cy+FDefItemSpace>NewDefItemHeight) then
+      NewDefItemHeight:=ImageSize.cy+FDefItemSpace;
+    if (StateImages<>nil) and (StateImageSize.cy+FDefItemSpace>NewDefItemHeight) then
+      NewDefItemHeight:=StateImageSize.cy+FDefItemSpace;
     if Odd(NewDefItemHeight) then Inc(NewDefItemHeight);
     if NewDefItemHeight<>FDefItemHeight then begin
       FDefItemHeight:=NewDefItemHeight;
@@ -3564,7 +3637,7 @@ var
   procedure CalculateTops(Node: TTreeNode);
   begin
     while Node<>nil do begin
-      if Node.FVisible then begin
+      if Node.Visible then begin
         Node.fTop:=CurTop;
         inc(CurTop, Node.Height);
         if Node.Expanded then
@@ -3606,7 +3679,7 @@ const
 var
   Node: TTreeNode;
   i: integer;
-  FMaxTextLen: Integer;
+  FMaxTextLen, AIndent: Integer;
   Cnt: Integer;
 begin
   if not (tvsMaxRightNeedsUpdate in FStates) then exit;
@@ -3614,6 +3687,7 @@ begin
   FMaxTextLen := 0;
   Node := Items.GetFirstNode;
   Cnt := 0;
+  AIndent := Indent;
   while Node <> nil do
   begin
     if not Node.AreParentsExpandedAndVisible then
@@ -3624,7 +3698,7 @@ begin
     inc(Cnt);
     if (Cnt < LargeItemCount) then
     begin
-      i := Node.DisplayTextRight + ScrolledLeft + Indent div 2;
+      i := Node.DisplayTextRight + ScrolledLeft + AIndent div 2;
     end else
     begin
       // computing DisplayTextRight is too expensive when the tree
@@ -3865,13 +3939,10 @@ end;
 
 function TCustomTreeView.GetNodeAt(X, Y: Integer): TTreeNode;
 begin
-  Result := nil;
   if (X >= BorderWidth) and (X < ClientWidth - BorderWidth) then
-  begin
-    Result := GetNodeAtY(Y);
-    if Assigned(Result) and (X < Result.DisplayExpandSignLeft) then
-      Result := nil;
-  end;
+    Result := GetNodeAtY(Y)
+  else
+    Result := nil;
 end;
 
 procedure TCustomTreeView.GetInsertMarkAt(X, Y: Integer;
@@ -3964,7 +4035,9 @@ begin
 end;
 
 function TCustomTreeView.GetHitTestInfoAt(X, Y: Integer): THitTests;
-var Node: TTreeNode;
+// ToDo: Set also flags [htAbove, htBelow, htOnRight, htToLeft, htToRight];
+var
+  Node: TTreeNode;
 begin
   Result := [];
   if (X>=0) and (X<ClientWidth) and (Y>=0) and (Y<ClientHeight)
@@ -4208,15 +4281,19 @@ end;
 procedure TCustomTreeView.UpdateScrollbars;
 var
   ScrollInfo: TScrollInfo;
+  MaxScrollLeft, MaxScrollTop: Integer;
 begin
   if not (tvsScrollbarChanged in FStates) then exit;
 
   if not HandleAllocated or (Items.FUpdateCount>0) then
     exit;
 
+  MaxScrollLeft := GetMaxScrollLeft;
+  MaxScrollTop := GetMaxScrollTop;
+
   //DebugLn('* TCustomTreeView.UpdateScrollbars Enter *');
-  if ScrolledLeft>GetMaxScrollLeft then ScrolledLeft:=GetMaxScrollLeft;
-  if ScrolledTop>GetMaxScrollTop then ScrolledTop:=GetMaxScrollTop;
+  if ScrolledLeft>MaxScrollLeft then ScrolledLeft:=MaxScrollLeft;
+  if ScrolledTop>MaxScrollTop then ScrolledTop:=MaxScrollTop;
   Exclude(FStates,tvsScrollbarChanged);
 
   if fScrollBars in [ssBoth, ssHorizontal, ssAutoBoth, ssAutoHorizontal] then
@@ -4228,7 +4305,7 @@ begin
     ScrollInfo.nTrackPos := 0;
     ScrollInfo.nMin := 0;
     ScrollInfo.nPage := Max(1,ClientWidth-2*BorderWidth);
-    ScrollInfo.nMax := Max(1,GetMaxScrollLeft+integer(ScrollInfo.nPage)-1);
+    ScrollInfo.nMax := Max(1,MaxScrollLeft+integer(ScrollInfo.nPage));
     ScrollInfo.nPos := Max(FScrolledLeft,0);
     if not CompareMem(@ScrollInfo,@FLastHorzScrollInfo,SizeOf(TScrollInfo))
     then begin
@@ -4240,7 +4317,7 @@ begin
       end else begin
         //DebugLn(['TCustomTreeView.UpdateScrollbars Show Horizontal: nMin=',ScrollInfo.nMin,
         //' nMax=',ScrollInfo.nMax,' nPage=',ScrollInfo.nPage,
-        //' nPos=',ScrollInfo.nPos,' GetMaxScrollLeft=',GetMaxScrollLeft,
+        //' nPos=',ScrollInfo.nPos,' GetMaxScrollLeft=',MaxScrollLeft,
         //' ClientW=',ClientWidth, ' MaxRight=',FMaxRight]);
         FLastHorzScrollInfo:=ScrollInfo;
         SetShowScrollBar(SB_HORZ, true);
@@ -4259,7 +4336,7 @@ begin
     ScrollInfo.nTrackPos := 0;
     ScrollInfo.nMin := 0;
     ScrollInfo.nPage := Max(1,ClientHeight-FDefItemHeight);
-    ScrollInfo.nMax := Max(1,GetMaxScrollTop+integer(ScrollInfo.nPage)-1);
+    ScrollInfo.nMax := Max(1,MaxScrollTop+integer(ScrollInfo.nPage));
     ScrollInfo.nTrackPos := 0;
     ScrollInfo.nPos := Max(0,FScrolledTop);
     if not CompareMem(@ScrollInfo,@FLastVertScrollInfo,SizeOf(TScrollInfo))
@@ -4272,7 +4349,7 @@ begin
       end else begin
         //DebugLn(['TCustomTreeView.UpdateScrollbars Show Vertical: nMin=',ScrollInfo.nMin,
         //' nMax=',ScrollInfo.nMax,' nPage=',ScrollInfo.nPage,
-        //' nPos=',ScrollInfo.nPos,' GetMaxScrollLeft=',GetMaxScrollTop,
+        //' nPos=',ScrollInfo.nPos,' GetMaxScrollTop=',MaxScrollTop,
         //' ClientH=',ClientHeight]);
         FLastVertScrollInfo:=ScrollInfo;
         SetShowScrollBar(SB_VERT, true);
@@ -4288,58 +4365,62 @@ end;
 procedure TCustomTreeView.UpdateTooltip(X, Y: integer);
 var
   Node: TTreeNode;
-  P: TPoint;
+  PHint, PLeft: TPoint;
   R, TextRect, IntRect: TRect;
-  SText: string;
-  MaxHintWidth: Integer;
-  TransparentHints: Boolean;
+  CurMonitor: TMonitor;
 begin
+  if not (tvoToolTips in FOptions) then exit;
+
   if FHintWnd=nil then
   begin
     FHintWnd:=THintWindow.Create(Self);
     FHintWnd.OnMouseLeave:=@HintMouseLeave;
   end;
 
-  Node:=GetNodeAt(X, Y);
+  Node := GetNodeAt(X, Y);
   if Node=nil then
   begin
     FHintWnd.Hide;
     exit;
   end;
 
-  R := GetParentForm(Self).Monitor.WorkareaRect;
-  MaxHintWidth := R.Right-R.Left;
-
   TextRect := Rect(Node.DisplayTextLeft, Node.Top, Node.DisplayTextRight, Node.Top + Node.Height);
   OffsetRect(TextRect, 0, -ScrolledTop);
-
   if not PtInRect(TextRect, Point(X, Y))
-  or (IntersectRect(IntRect, TextRect, ClientRect)
-      and EqualRect(IntRect, TextRect)) then
+  or (IntersectRect(IntRect, TextRect, ClientRect) and EqualRect(IntRect, TextRect)) then
   begin
     FHintWnd.Hide;
     exit;
   end;
 
-  SText:=Node.Text;
-  R:=FHintWnd.CalcHintRect(MaxHintWidth, SText, nil);
+  // Get max width for hint from monitor's work area.
+  CurMonitor := GetParentForm(Self).Monitor;
+  R := CurMonitor.WorkareaRect;
+  R := FHintWnd.CalcHintRect(R.Right-R.Left, Node.Text, nil);
 
-  TransparentHints := WidgetSet.GetLCLCapability(lcTransparentWindow) = LCL_CAPABILITY_YES;
-  if TransparentHints then
-    P:=Point(TextRect.Left-1, TextRect.Top-3+BorderWidth)
-  else
-    P:=Point(ClientWidth, TextRect.Top-3+BorderWidth);
-
-  P:=ClientToScreen(P);
-  OffsetRect(R, P.X, P.Y);
-
-  if TransparentHints // use default hint font for non-transparent hint windows
-  and not FHintWnd.Visible then
+  if WidgetSet.GetLCLCapability(lcTransparentWindow) = LCL_CAPABILITY_YES then
   begin
-    FHintWnd.Font.Assign(Self.Font);
-    FHintWnd.Font.Color := Screen.HintFont.Color;
+    // Font is explicitly set for transparent hints, otherwise default font is used.
+    if not FHintWnd.Visible then
+    begin
+      FHintWnd.Font.Assign(Self.Font);
+      FHintWnd.Font.Color := Screen.HintFont.Color;
+    end;
+    // Put transparent hint exactly on the node.
+    PHint := ClientToScreen(Point(TextRect.Left-1, TextRect.Top-3+BorderWidth));
+  end
+  else begin
+    // By default put hint to the right side of node.
+    PHint := ClientToScreen(Point(ClientWidth, TextRect.Top-3+BorderWidth));
+    if PHint.X + R.Right > CurMonitor.BoundsRect.Right then
+    begin                      // No space on the right? Put it to the left side.
+      PLeft := ClientToScreen(Point(ClientRect.Left, ClientRect.Top));
+      if PLeft.X >= R.Right then  // enough space on left?
+        PHint.X := PLeft.X - R.Right;
+    end;
   end;
-  FHintWnd.ActivateHint(R, SText)
+  OffsetRect(R, PHint.X, PHint.Y);
+  FHintWnd.ActivateHint(R, Node.Text)
 end;
 
 function TCustomTreeView.GetSelection: TTreeNode;
@@ -4368,7 +4449,7 @@ var
   OldNode: TTreeNode;
 begin
   if FSelectedNode = Value then Exit;
-  if not CanChange(FSelectedNode) then
+  if not CanChange(Value) then
     exit;
   {$IFDEF TREEVIEW_DEBUG}
   DebugLn('TCustomTreeView.SetSelection: Changing selection for Node: ', Text);
@@ -4485,15 +4566,23 @@ begin
   Result:=(tvoReadOnly in FOptions);
 end;
 
-function TCustomTreeView.GetRealExpandSignSize: integer;
+function TCustomTreeView.GetExpandSignSize: integer;
 begin
-  if FExpandSignSize>0 then
+  if FExpandSignSize>=0 then
     Result := FExpandSignSize
   else
   if ExpandSignType = tvestTheme then
-    Result := MulDiv(FThemeExpandSignSize, Font.PixelsPerInch, Screen.PixelsPerInch)
+    Result := ScaleScreenToFont(FThemeExpandSignSize)
   else
-    Result := DefaultTreeNodeExpandSignSize;
+    Result := Scale96ToFont(DefaultTreeNodeExpandSignSize);
+end;
+
+function TCustomTreeView.GetIndent: Integer;
+begin
+  if FIndent<0 then
+    Result := Scale96ToFont(15)
+  else
+    Result := FIndent;
 end;
 
 function TCustomTreeView.GetRightClickSelect: boolean;
@@ -4511,8 +4600,6 @@ begin
   if HandleAllocated then
     if Value <> nil then
       Value.DropTarget := True;
-    {else
-      TreeView_SelectDropTarget(Handle, nil);}
 end;
 
 procedure TCustomTreeView.SetExpandSignSize(const AExpandSignSize: integer);
@@ -4585,6 +4672,9 @@ begin
       DebugLn('TCustomTreeView.DoStartDrag DragNode=nil');
     {$ENDIF}
   end;
+  FPrevToolTips := ToolTips;
+  ToolTips := False;
+  FDragScrollTimer.Enabled := true;
 end;
 
 procedure TCustomTreeView.DoEndDrag(Target: TObject; X, Y: Integer);
@@ -4594,16 +4684,37 @@ begin
   {$ENDIF}
   inherited DoEndDrag(Target, X, Y);
   FLastDropTarget := nil;
+  FDragScrollTimer.Enabled := false;
+  ToolTips := FPrevToolTips;
 end;
 
 function TCustomTreeView.DoMouseWheel(Shift: TShiftState; WheelDelta: Integer;
   MousePos: TPoint): Boolean;
+var
+  NDelta: integer;
 begin
   Result:=inherited DoMouseWheel(Shift, WheelDelta, MousePos);
   if not Result then
   begin
-    ScrolledTop := ScrolledTop -
-              (WheelDelta * Mouse.WheelScrollLines * DefaultItemHeight) div 120;
+    NDelta := (WheelDelta * Mouse.WheelScrollLines * DefaultItemHeight) div 120;
+    ScrolledTop := ScrolledTop - NDelta;
+    Result := true;
+  end;
+  UpdateTooltip(MousePos.X, MousePos.Y);
+end;
+
+function TCustomTreeView.DoMouseWheelHorz(Shift: TShiftState;
+  WheelDelta: Integer; MousePos: TPoint): Boolean;
+var
+  NDelta: integer;
+const
+  cScrollStep = 50;
+begin
+  Result:=inherited DoMouseWheelHorz(Shift, WheelDelta, MousePos);
+  if not Result then
+  begin
+    NDelta := (WheelDelta * cScrollStep) div 120;
+    ScrolledLeft := ScrolledLeft + NDelta;
     Result := true;
   end;
   UpdateTooltip(MousePos.X, MousePos.Y);
@@ -4746,7 +4857,7 @@ end;
 procedure TCustomTreeView.DoPaintNode(Node: TTreeNode);
 var
   NodeRect: TRect;
-  VertMid, VertDelta, RealExpandSignSize: integer;
+  VertMid, VertDelta, RealExpandSignSize, RealIndent: integer;
   NodeSelected, HasExpandSign: boolean;
 
   function InvertColor(AColor: TColor): TColor;
@@ -4816,14 +4927,14 @@ var
       Result := DrawTreeLines(CurNode.Parent);
       if ShowLines then
       begin
-        CurMid := Result + (Indent shr 1);
+        CurMid := Result + (RealIndent shr 1);
         if CurNode = Node then
         begin
           // draw horizontal line
           if HasExpandSign then
-            DrawHorzLine(VertMid, CurMid + RealExpandSignSize div 2, Result + Indent)
+            DrawHorzLine(VertMid, CurMid + RealExpandSignSize div 2, Result + RealIndent)
           else
-            DrawHorzLine(VertMid, CurMid, Result + Indent);
+            DrawHorzLine(VertMid, CurMid, Result + RealIndent);
         end;
 
         if (CurNode.GetNextVisibleSibling <> nil) then
@@ -4865,12 +4976,12 @@ var
             DrawVertLine(CurMid, NodeRect.Top, VertMid);
         end;
       end;
-      inc(Result, Indent);
+      inc(Result, RealIndent);
     end else
     begin
       Result := BorderWidth - FScrolledLeft;
       if CurNode <> nil then // indent first level of tree with ShowRoot = false a bit
-        inc(Result, Indent shr 2);
+        inc(Result, RealIndent shr 2);
     end;
   end;
 
@@ -4882,8 +4993,8 @@ var
       (ttHotGlyphClosed, ttHotGlyphOpened)
     );
   var
-    HalfSize, ALeft, ATop, ARight, ABottom: integer;
-    Points: PPoint;
+    HalfSize, ALeft, ATop, ARight, ABottom, SmallIndent: integer;
+    Points: array[0..2] of TPoint; // for triangle
     Details: TThemedElementDetails;
     R: TRect;
     PrevColor: TColor;
@@ -4891,12 +5002,12 @@ var
     cShiftHorzArrow = 2; //paint horz arrow N pixels upper than MidY
   begin
     HalfSize := RealExpandSignSize div 2;
-    if not Odd(RealExpandSignSize) then
-      Dec(HalfSize);
+    //if not Odd(RealExpandSignSize) then
+    //  Dec(HalfSize);
     ALeft := MidX - HalfSize;
+    ARight := MidX + HalfSize;
     ATop := MidY - HalfSize;
-    ARight := ALeft + RealExpandSignSize;
-    ABottom := ATop + RealExpandSignSize;
+    ABottom := MidY + HalfSize;
 
     if Assigned(FOnCustomDrawArrow) then
     begin
@@ -4919,22 +5030,22 @@ var
       tvestPlusMinus:
         begin
           // draw a plus or a minus sign
-          R := Rect(ALeft, ATop, ARight, ABottom);
+          R := Rect(ALeft, ATop, ARight+1, ABottom+1); //+1 for centering of line in square
           Rectangle(R);
-          MoveTo(R.Left + 2, MidY);
-          LineTo(R.Right - 2, MidY);
+          SmallIndent := Scale96ToFont(2);
+          MoveTo(R.Left + SmallIndent, MidY);
+          LineTo(R.Right - SmallIndent, MidY);
           if not CollapseSign then
           begin
-            MoveTo(MidX, R.Top + 2);
-            LineTo(MidX, R.Bottom - 2);
-	  end;
+            MoveTo(MidX, R.Top + SmallIndent);
+            LineTo(MidX, R.Bottom - SmallIndent);
+          end;
         end;
       tvestArrow,
       tvestArrowFill:
         begin
           // draw an arrow. down for collapse and right for expand
-          R := Rect(ALeft, ATop, ARight, ABottom);
-          GetMem(Points, SizeOf(TPoint) * 3);
+          R := Rect(ALeft, ATop, ARight+1, ABottom+1); //+1 for simmetry of arrow
           if CollapseSign then
           begin
             // draw an arrow down
@@ -4959,8 +5070,6 @@ var
           begin
             Brush.Color := PrevColor;
           end;
-
-          FreeMem(Points);
         end;
       end;
     end;
@@ -4980,10 +5089,10 @@ var
           // draw virtual tree line
           Pen.Color:=TreeLineColor;
           // Pen.Style:=TreeLinePenStyle; ToDo: not yet implemented in all widgetsets
-          x:=Node.DisplayExpandSignRight+Indent div 2;
+          x:=Node.DisplayExpandSignRight+RealIndent div 2;
           MoveTo(x,NodeRect.Bottom-3);
           LineTo(x,NodeRect.Bottom-2);
-          x:=Node.DisplayExpandSignRight+Indent;
+          x:=Node.DisplayExpandSignRight+RealIndent;
           LineTo(x,NodeRect.Bottom-2);
           Pen.Style:=psSolid;
 
@@ -5003,7 +5112,7 @@ var
           // draw virtual tree line
           Pen.Color:=TreeLineColor;
           //Pen.Style:=TreeLinePenStyle; ToDo: not yet implemented in all widgetsets
-          x:=Node.DisplayExpandSignLeft+Indent div 2;
+          x:=Node.DisplayExpandSignLeft+RealIndent div 2;
           MoveTo(x,NodeRect.Top+1);
           x:=Node.DisplayExpandSignRight;
           LineTo(x,NodeRect.Top+1);
@@ -5025,7 +5134,7 @@ var
           // draw virtual tree line
           Pen.Color:=TreeLineColor;
           //Pen.Style:=TreeLinePenStyle; ToDo: not yet implemented in all widgetsets
-          x:=Node.DisplayExpandSignLeft+Indent div 2;
+          x:=Node.DisplayExpandSignLeft+RealIndent div 2;
           MoveTo(x,NodeRect.Bottom-3);
           LineTo(x,NodeRect.Bottom-2);
           x:=Node.DisplayExpandSignRight;
@@ -5083,6 +5192,9 @@ var
   procedure DrawNodeText(IsSelected: Boolean; NodeRect: TRect; AText: String);
   var
     Details: TThemedElementDetails;
+    NeedUnderline: Boolean;
+    PrevFontStyle: TFontStyles;
+    PrevFontColor: TColor;
   begin
     if IsSelected then
     begin
@@ -5110,10 +5222,26 @@ var
     else
       Details := ThemeServices.GetElementDetails(ttItemNormal);
 
+    NeedUnderline := (tvoHotTrack in FOptions) and (Node=FNodeUnderCursor);
+    if NeedUnderline then
+    begin
+      PrevFontStyle := Canvas.Font.Style;
+      PrevFontColor := Canvas.Font.Color;
+      Canvas.Font.Style := [fsUnderline];
+      if FHotTrackColor<>clNone then
+        Canvas.Font.Color := FHotTrackColor;
+    end;
+
     if (tvoThemedDraw in Options) then
       ThemeServices.DrawText(Canvas, Details, AText, NodeRect, DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX, 0)
     else
       DrawText(Canvas.Handle, PChar(AText), -1, NodeRect, DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
+
+    if NeedUnderline then
+    begin
+      Canvas.Font.Style := PrevFontStyle;
+      Canvas.Font.Color := PrevFontColor;
+    end;
   end;
 
 
@@ -5123,8 +5251,14 @@ var
   DrawState: TCustomDrawState;
   PaintImages: boolean;
   OverlayIndex: Integer;
+  ImageRes, StateImageRes: TScaledImageListResolution;
 begin
-  RealExpandSignSize := GetRealExpandSignSize;
+  if Assigned(FImages) then
+    ImageRes := Images.ResolutionForPPI[ImagesWidth, Font.PixelsPerInch, GetCanvasScaleFactor];
+  if Assigned(FStateImages) then
+    StateImageRes := StateImages.ResolutionForPPI[StateImagesWidth, Font.PixelsPerInch, GetCanvasScaleFactor];
+  RealExpandSignSize := ExpandSignSize;
+  RealIndent := Indent;
   NodeRect := Node.DisplayRect(False);
   if (NodeRect.Bottom < 0) or (NodeRect.Top >= ClientHeight) then
     Exit;
@@ -5156,12 +5290,14 @@ begin
     // draw tree lines
     Pen.Color := TreeLineColor;
     Pen.Style := TreeLinePenStyle;
+    if Pen.Style = psPattern then
+      Pen.SetPattern(FTreeLinePenPattern);
     x := DrawTreeLines(Node);
     Pen.Style := psSolid;
 
     // draw expand sign
     if HasExpandSign then
-      DrawExpandSign(x - Indent + (Indent shr 1), VertMid, Node.Expanded);
+      DrawExpandSign(x - RealIndent + (RealIndent shr 1), VertMid, Node.Expanded);
 
     // draw state icon
     if (StateImages <> nil) then
@@ -5169,9 +5305,9 @@ begin
       if (Node.StateIndex >= 0) and (Node.StateIndex < StateImages.Count) then
       begin
         if PaintImages then
-          StateImages.Draw(Canvas, x + 1, (NodeRect.Top + NodeRect.Bottom - StateImages.Height) div 2,
+          StateImageRes.Draw(Canvas, x + 1, (NodeRect.Top + NodeRect.Bottom - StateImageRes.Height) div 2,
             Node.StateIndex, True);
-        Inc(x, StateImages.Width + 2);
+        Inc(x, StateImageRes.Width + FDefItemSpace);
       end;
     end;
 
@@ -5195,25 +5331,25 @@ begin
       	  if (Node.OverlayIndex >= 0) then begin
             OverlayIndex:=Node.OverlayIndex;
             if Images.HasOverlays then begin
-              Images.DrawOverlay(Canvas, x + 1, (NodeRect.Top + NodeRect.Bottom - Images.Height) div 2,
+              ImageRes.DrawOverlay(Canvas, x + 1, (NodeRect.Top + NodeRect.Bottom - ImageRes.Height) div 2,
                  ImgIndex, OverlayIndex, Node.FNodeEffect);
             end else begin
               // draw the Overlay using the image from the list
               // set an Overlay
               Images.OverLay(OverlayIndex,0);
               // draw overlay
-              Images.DrawOverlay(Canvas, x + 1, (NodeRect.Top + NodeRect.Bottom - Images.Height) div 2,
+              ImageRes.DrawOverlay(Canvas, x + 1, (NodeRect.Top + NodeRect.Bottom - ImageRes.Height) div 2,
                  ImgIndex, 0, Node.FNodeEffect);
               // reset the Overlay
               Images.OverLay(-1,0);
             end;
           end
           else begin
-            Images.Draw(Canvas, x + 1, (NodeRect.Top + NodeRect.Bottom - Images.Height) div 2,
+            ImageRes.Draw(Canvas, x + 1, (NodeRect.Top + NodeRect.Bottom - ImageRes.Height) div 2,
                ImgIndex, Node.FNodeEffect);
           end;
-       end;
-       Inc(x, Images.Width + 2);
+        end;
+        Inc(x, ImageRes.Width + FDefItemSpace);
       end;
     end;
 
@@ -5222,7 +5358,7 @@ begin
     begin
       CurTextRect := NodeRect;
       CurTextRect.Left := x;
-      CurTextRect.Right := x + TextWidth(Node.Text) + Indent div 2;
+      CurTextRect.Right := x + TextWidth(Node.Text) + RealIndent div 2;
       DrawNodeText(NodeSelected, CurTextRect, Node.Text);
     end;
 
@@ -5284,6 +5420,11 @@ end;
 procedure TCustomTreeView.Expand(Node: TTreeNode);
 begin
   if Assigned(FOnExpanded) then FOnExpanded(Self, Node);
+end;
+
+function TCustomTreeView.ExpandSignSizeIsStored: Boolean;
+begin
+  Result := FExpandSignSize >= 0;
 end;
 
 function TCustomTreeView.CanExpand(Node: TTreeNode): Boolean;
@@ -5375,6 +5516,11 @@ end;
 procedure TCustomTreeView.ImageListChange(Sender: TObject);
 begin
   Invalidate;
+end;
+
+function TCustomTreeView.IndentIsStored: Boolean;
+begin
+  Result := FIndent >= 0;
 end;
 
 procedure TCustomTreeView.MouseDown(Button: TMouseButton; Shift: TShiftState;
@@ -5485,8 +5631,21 @@ begin
   inherited MouseMove(Shift, x, y);
   if (tvoAutoInsertMark in FOptions) then
     UpdateInsertMark(X,Y);
-  if (tvoToolTips in FOptions) then
-    UpdateTooltip(X, Y);
+  UpdateTooltip(X, Y);
+  UpdateHotTrack(X, Y);
+end;
+
+procedure TCustomTreeView.UpdateHotTrack(X, Y: Integer);
+begin
+  FNodeUnderCursor := nil;
+  if Cursor = crHandPoint then
+    Cursor := crDefault;
+  if not (tvoHotTrack in FOptions) then Exit;
+
+  FNodeUnderCursor := GetNodeAt(X, Y);
+  if Assigned(FNodeUnderCursor) then
+    Cursor := crHandPoint;
+  Invalidate;
 end;
 
 procedure TCustomTreeView.MouseUp(Button: TMouseButton; Shift: TShiftState;
@@ -5616,8 +5775,17 @@ begin
   FStates:=FStates-[tvsDblClicked,tvsTripleClicked,tvsQuadClicked,
                     tvsEditOnMouseUp,tvsSingleSelectOnMouseUp];
   if Assigned(FHintWnd) and FHintWnd.Visible
-  and not PtInRect(ClientRect, ScreenToClient(Mouse.CursorPos)) then
+  and ((WidgetSet.GetLCLCapability(lcTransparentWindow) = LCL_CAPABILITY_YES)
+       or not PtInRect(ClientRect, ScreenToClient(Mouse.CursorPos))) then
     FHintWnd.Hide;
+
+  if tvoHotTrack in FOptions then
+  begin
+    FNodeUnderCursor:=nil;
+    Cursor:=crDefault;
+    Invalidate;
+  end;
+
   inherited MouseLeave;
 end;
 
@@ -5637,6 +5805,8 @@ begin
 end;
 
 procedure TCustomTreeView.SetImages(Value: TCustomImageList);
+var
+  AImageHeight: Integer;
 begin
   if Images = Value then exit;
   if Images <> nil then
@@ -5645,9 +5815,17 @@ begin
   if Images <> nil then begin
     Images.RegisterChanges(FImageChangeLink);
     Images.FreeNotification(Self);
-    if DefaultItemHeight<Images.Height+2 then
-      DefaultItemHeight:=Images.Height+2;
+    AImageHeight := Images.HeightForPPI[ImagesWidth, Font.PixelsPerInch];
+    if DefaultItemHeight<AImageHeight+FDefItemSpace then
+      DefaultItemHeight:=AImageHeight+FDefItemSpace;
   end;
+  Invalidate;
+end;
+
+procedure TCustomTreeView.SetImagesWidth(const aImagesWidth: Integer);
+begin
+  if FImagesWidth = aImagesWidth then Exit;
+  FImagesWidth := aImagesWidth;
   Invalidate;
 end;
 
@@ -5675,6 +5853,8 @@ begin
 end;
 
 procedure TCustomTreeView.SetStateImages(Value: TCustomImageList);
+var
+  AStateImageHeight: Integer;
 begin
   if FStateImages=Value then exit;
   if StateImages <> nil then
@@ -5683,9 +5863,17 @@ begin
   if StateImages <> nil then begin
     StateImages.RegisterChanges(FStateChangeLink);
     StateImages.FreeNotification(Self);
-    if DefaultItemHeight<StateImages.Height+2 then
-      DefaultItemHeight:=StateImages.Height+2;
+    AStateImageHeight := StateImages.HeightForPPI[StateImagesWidth, Font.PixelsPerInch];
+    if DefaultItemHeight<AStateImageHeight+FDefItemSpace then
+      DefaultItemHeight:=AStateImageHeight+FDefItemSpace;
   end;
+  Invalidate;
+end;
+
+procedure TCustomTreeView.SetStateImagesWidth(const aStateImagesWidth: Integer);
+begin
+  if FStateImagesWidth = aStateImagesWidth then Exit;
+  FStateImagesWidth := aStateImagesWidth;
   Invalidate;
 end;
 
@@ -5915,6 +6103,23 @@ end;
 procedure TCustomTreeView.CanvasChanged(Sender: TObject);
 begin
   Include(FStates,tvsCanvasChanged);
+end;
+
+procedure TCustomTreeView.DragScrollTimerTick(Sender: TObject);
+const
+  cScrollDelta = 10;
+var
+  Pnt: TPoint;
+begin
+  Pnt := ScreenToClient(Mouse.CursorPos);
+  if (Pnt.X >= 0) and (Pnt.X < ClientWidth) then
+  begin
+    if (Pnt.Y >= 0) and (Pnt.Y < FDragScrollMargin) then
+      ScrolledTop := ScrolledTop - cScrollDelta
+    else
+    if (Pnt.Y >= ClientHeight-FDragScrollMargin) and (Pnt.Y < ClientHeight) then
+      ScrolledTop := ScrolledTop + cScrollDelta;
+  end;
 end;
 
 procedure TCustomTreeView.ClearSelection(KeepPrimary: Boolean);

@@ -561,18 +561,6 @@ function TGtk2WidgetSet.RawImage_QueryDescription(AFlags: TRawImageQueryFlags; v
 var
   Desc: TRawImageDescription;
 begin
-  if riqfGrey in AFlags then
-  begin
-    DebugLn('TGtk2WidgetSet.RawImage_QueryDescription: riqfGrey not (yet) supported');
-    Exit(False);
-  end;
-  
-  if riqfPalette in AFlags then
-  begin
-    DebugLn('TGtk2WidgetSet.RawImage_QueryDescription: riqfPalette not (yet) supported');
-    Exit(False);
-  end;
-
   Desc.Init;
   Result := RawImage_DescriptionFromDrawable(Desc, nil, riqfAlpha in AFlags);
   if not Result then Exit;
@@ -601,8 +589,6 @@ begin
     ADesc.BluePrec := 1;
     ADesc.BlueShift := Desc.MaskShift;
   end
-  (*
-  //TODO
   else if riqfGrey in AFlags
   then begin
     ADesc.Format := ricfGray;
@@ -615,7 +601,6 @@ begin
     ADesc.RedPrec := 8;
     ADesc.RedShift := 0;
   end
-  *)
   else
   if riqfRGB in AFlags then
   begin
@@ -1276,12 +1261,13 @@ begin
     gtk_window_set_title(PGtkWindow(Dialog), PGChar(Title));
   end;
 
-  if (gtk_major_version = 2) and (gtk_minor_version <= 12) then
-  begin
-    ActiveWindow := GetActiveWindow;
-    if ActiveWindow <> 0 then
-      gtk_window_set_transient_for(PGtkWindow(Dialog), {%H-}PGtkWindow(ActiveWindow));
-  end;
+  ActiveWindow := GetActiveWindow;
+  if ActiveWindow <> 0 then
+    gtk_window_set_transient_for(PGtkWindow(Dialog), {%H-}PGtkWindow(ActiveWindow));
+  // the following line keeps the old behaviour making the dialog appear
+  // at screen center instead of at ActiveWindow center
+  gtk_window_set_position(PGtkWindow(Dialog), GTK_WIN_POS_CENTER);
+
   gtk_dialog_run(PGtkDialog(Dialog));
   gtk_widget_destroy(Dialog);
   Result := ADialogResult;

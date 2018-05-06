@@ -5,9 +5,9 @@ unit sparta_BasicResizer;
 interface
 
 uses
-  Classes, SysUtils, Controls, ExtCtrls, sparta_BasicResizeFrame, Forms, Math, StdCtrls,
+  Classes, SysUtils, Controls, ExtCtrls, sparta_BasicResizeFrame, Forms, StdCtrls,
   LCLType, Buttons, Dialogs,
-  sparta_InterfacesMDI, sparta_MDI_StrConsts, sparta_AbstractResizer;
+  sparta_InterfacesMDI, sparta_AbstractResizer;
 
 type
 
@@ -55,10 +55,7 @@ begin
   begin
     FDesignedForm.BeginUpdate;
 
-    FDesignedForm.Form.Parent := FResizerFrame.pClient;
-    {$IFNDEF WINDOWS}
-    FDesignedForm.Form.BorderStyle := bsNone;
-    {$ENDIF}
+    FDesignedForm.Form.Parent := FResizerFrame.pFormHandler;
     // for big forms (bigger than screen resolution) we need to refresh Real* values
     DesignedForm.RealWidth := DesignedForm.Width;
     DesignedForm.RealHeight := DesignedForm.Height;
@@ -95,8 +92,8 @@ begin
   FResizerFrame.Constraints.MaxWidth := pMain.Width;
   FResizerFrame.Constraints.MaxHeight := pMain.Height;
 
-  LWidth  := DesignedForm.Width + FResizerFrame.BgLeftMargin + FResizerFrame.BgRightMargin + 2*FResizerFrame.SIZER_RECT_SIZE;
-  LHeight := DesignedForm.Height + FResizerFrame.BgTopMargin + FResizerFrame.BgBottomMargin + 2*FResizerFrame.SIZER_RECT_SIZE;
+  LWidth  := DesignedForm.Width + FResizerFrame.BgLeftMargin + FResizerFrame.BgRightMargin + 2*FResizerFrame.SizerRectSize;
+  LHeight := DesignedForm.Height + FResizerFrame.BgTopMargin + FResizerFrame.BgBottomMargin + 2*FResizerFrame.SizerRectSize;
   if not FResizerFrame.NodePositioning then
   begin
     FResizerFrame.Width := LWidth;

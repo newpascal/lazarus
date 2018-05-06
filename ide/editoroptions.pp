@@ -120,7 +120,9 @@ const
     '',  // ahaSpecialVisibleChars
     '',  // ahaTopInfoHint
     '', '', '',  // ahaIfDefBlockInactive, ahaIfDefBlockActive, ahaIfDefBlockTmpActive
-     '', '', ''  // ahaIfDefNodeInactive, ahaIfDefNodeActive, ahaIfDefNodeTmpActive
+    '', '', '',  // ahaIfDefNodeInactive, ahaIfDefNodeActive, ahaIfDefNodeTmpActive
+    '', '', '', '', // ahaIdentComplWindow, ahaIdentComplWindowBorder, ahaIdentComplWindowSelection, ahaIdentComplWindowHighlight
+    '', '', '', '', '', '', '', '', '', '' // ahaOutlineLevel1Color..ahaOutlineLevel10Color
   );
 
   ahaGroupMap: array[TAdditionalHilightAttribute] of TAhaGroupName = (
@@ -162,7 +164,22 @@ const
     { ahaIfDefBlockTmpActive } agnIfDef,
     { ahaIfDefNodeInactive }   agnIfDef,
     { ahaIfDefNodeActive }     agnIfDef,
-    { ahaIfDefNodeTmpActive }  agnIfDef
+    { ahaIfDefNodeTmpActive }  agnIfDef,
+    { ahaIdentComplWindow }           agnIdentComplWindow,
+    { ahaIdentComplWindowBorder }     agnIdentComplWindow,
+    { ahaIdentComplWindowSelection }  agnIdentComplWindow,
+    { ahaIdentComplWindowHighlight }  agnIdentComplWindow,
+    { ahaOutlineLevel1Color }  agnOutlineColors,
+    { ahaOutlineLevel2Color }  agnOutlineColors,
+    { ahaOutlineLevel3Color }  agnOutlineColors,
+    { ahaOutlineLevel4Color }  agnOutlineColors,
+    { ahaOutlineLevel5Color }  agnOutlineColors,
+    { ahaOutlineLevel6Color }  agnOutlineColors,
+    { ahaOutlineLevel7Color }  agnOutlineColors,
+    { ahaOutlineLevel8Color }  agnOutlineColors,
+    { ahaOutlineLevel9Color }  agnOutlineColors,
+    { ahaOutlineLevel10Color } agnOutlineColors
+
   );
   ahaSupportedFeatures: array[TAdditionalHilightAttribute] of TColorSchemeAttributeFeatures =
   (
@@ -204,7 +221,21 @@ const
     { ahaIfDefBlockTmpActive }[hafBackColor, hafForeColor, hafFrameColor, hafAlpha, hafPrior, hafFrameStyle, hafFrameEdges, hafStyle, hafStyleMask],
     { ahaIfDefNodeInactive }  [hafBackColor, hafForeColor, hafFrameColor, hafAlpha, hafPrior, hafFrameStyle, hafFrameEdges, hafStyle, hafStyleMask],
     { ahaIfDefNodeActive }    [hafBackColor, hafForeColor, hafFrameColor, hafAlpha, hafPrior, hafFrameStyle, hafFrameEdges, hafStyle, hafStyleMask],
-    { ahaIfDefNodeTmpActive } [hafBackColor, hafForeColor, hafFrameColor, hafAlpha, hafPrior, hafFrameStyle, hafFrameEdges, hafStyle, hafStyleMask]
+    { ahaIfDefNodeTmpActive } [hafBackColor, hafForeColor, hafFrameColor, hafAlpha, hafPrior, hafFrameStyle, hafFrameEdges, hafStyle, hafStyleMask],
+    { ahaIdentComplWindow }   [hafBackColor, hafForeColor],
+    { ahaIdentComplWindowBorder }    [hafForeColor],
+    { ahaIdentComplWindowSelection } [hafBackColor, hafForeColor],
+    { ahaIdentComplWindowHighlight } [hafForeColor],
+    { ahaFoldLevel1Color }    [hafForeColor],
+    { ahaFoldLevel2Color }    [hafForeColor],
+    { ahaFoldLevel3Color }    [hafForeColor],
+    { ahaFoldLevel4Color }    [hafForeColor],
+    { ahaFoldLevel5Color }    [hafForeColor],
+    { ahaFoldLevel6Color }    [hafForeColor],
+    { ahaFoldLevel7Color }    [hafForeColor],
+    { ahaFoldLevel8Color }    [hafForeColor],
+    { ahaFoldLevel9Color }    [hafForeColor],
+    { ahaFoldLevel10Color }   [hafForeColor]
   );
 
 
@@ -2461,6 +2492,24 @@ begin
   AdditionalHighlightAttributes[ahaIfDefNodeActive]     := dlgIfDefNodeActive;
   AdditionalHighlightAttributes[ahaIfDefNodeTmpActive]  := dlgIfDefNodeTmpActive;
   AdditionalHighlightGroupNames[agnIfDef]        := dlgAddHiAttrGroupIfDef;
+
+  AdditionalHighlightAttributes[ahaIdentComplWindow]          := dlgAddHiAttrDefaultWindow;
+  AdditionalHighlightAttributes[ahaIdentComplWindowBorder]    := dlgAddHiAttrWindowBorder;
+  AdditionalHighlightAttributes[ahaIdentComplWindowSelection] := dlgBlockGroupOptions;
+  AdditionalHighlightAttributes[ahaIdentComplWindowHighlight] := dlgAddHiAttrHighlightPrefix;
+  AdditionalHighlightGroupNames[agnIdentComplWindow]          := dlgIdentifierCompletion;
+
+  AdditionalHighlightAttributes[ahaOutlineLevel1Color]  := dlgAddHiAttrOutlineLevel1Color;
+  AdditionalHighlightAttributes[ahaOutlineLevel2Color]  := dlgAddHiAttrOutlineLevel2Color;
+  AdditionalHighlightAttributes[ahaOutlineLevel3Color]  := dlgAddHiAttrOutlineLevel3Color;
+  AdditionalHighlightAttributes[ahaOutlineLevel4Color]  := dlgAddHiAttrOutlineLevel4Color;
+  AdditionalHighlightAttributes[ahaOutlineLevel5Color]  := dlgAddHiAttrOutlineLevel5Color;
+  AdditionalHighlightAttributes[ahaOutlineLevel6Color]  := dlgAddHiAttrOutlineLevel6Color;
+  AdditionalHighlightAttributes[ahaOutlineLevel7Color]  := dlgAddHiAttrOutlineLevel7Color;
+  AdditionalHighlightAttributes[ahaOutlineLevel8Color]  := dlgAddHiAttrOutlineLevel8Color;
+  AdditionalHighlightAttributes[ahaOutlineLevel9Color]  := dlgAddHiAttrOutlineLevel9Color;
+  AdditionalHighlightAttributes[ahaOutlineLevel10Color] := dlgAddHiAttrOutlineLevel10Color;
+  AdditionalHighlightGroupNames[agnOutlineColors]  := dlgAddHiAttrGroupOutlineColors;
 
   AdditionalHighlightGroupNames[agnDefault]      := dlgAddHiAttrGroupDefault;
   AdditionalHighlightGroupNames[agnText]         := dlgAddHiAttrGroupText;
@@ -5082,6 +5131,7 @@ end;
 
 function TEditorOptions.GetTrimSpaceName(IndentType: TSynEditStringTrimmingType): string;
 begin
+  Result := '';
   case IndentType of
     settLeaveLine:
       Result := 'LeaveLine';
@@ -6391,9 +6441,16 @@ procedure TColorSchemeLanguage.ApplyTo(ASynEdit: TSynEdit);
     if assigned(ASynEdit.Gutter.Parts.ByClass[aClass, 0]) then
       SetMarkupColor(aha, ASynEdit.Gutter.Parts.ByClass[aClass, 0].MarkupInfo);
   end;
+  function GetUsedAttr(aha: TAdditionalHilightAttribute): TColorSchemeAttribute;
+  begin
+    Result := AttributeByEnum[aha];
+    if Assigned(Result) and Result.IsUsingSchemeGlobals then
+      Result := Result.GetSchemeGlobal;
+  end;
 var
   Attri: TColorSchemeAttribute;
   i: Integer;
+  IDESynEdit: TIDESynEditor;
 begin
   ASynEdit.BeginUpdate;
   try
@@ -6412,19 +6469,13 @@ begin
       aSynEdit.Font.Color := clBlack;
     end;
 
-    Attri := Attribute[AhaToStoredName(ahaGutter)];
-    if Attri <> nil then begin
-      if Attri.IsUsingSchemeGlobals then
-        Attri := Attri.GetSchemeGlobal;
+    Attri := GetUsedAttr(ahaGutter);
+    if Attri <> nil then
       aSynEdit.Gutter.Color := Attri.Background;
-    end;
 
-    Attri := Attribute[AhaToStoredName(ahaRightMargin)];
-    if Attri <> nil then begin
-      if Attri.IsUsingSchemeGlobals then
-        Attri := Attri.GetSchemeGlobal;
+    Attri := GetUsedAttr(ahaRightMargin);
+    if Attri <> nil then
       aSynEdit.RightEdgeColor := Attri.Foreground;
-    end;
 
     SetMarkupColor(ahaTextBlock,         aSynEdit.SelectedColor);
     SetMarkupColor(ahaIncrementalSearch, aSynEdit.IncrementColor);
@@ -6467,6 +6518,44 @@ begin
     SetGutterColorByClass(ahaCodeFoldingTree, TSynGutterCodeFolding);
     SetGutterColorByClass(ahaGutterSeparator, TSynGutterSeparator);
 
+    if ASynEdit is TIDESynEditor then
+    begin
+      IDESynEdit := TIDESynEditor(ASynEdit);
+
+      Attri := GetUsedAttr(ahaIdentComplWindow);
+      if Attri<>nil then
+      begin
+        IDESynEdit.MarkupIdentComplWindow.TextColor := Attri.Foreground;
+        IDESynEdit.MarkupIdentComplWindow.WindowColor:= Attri.Background;
+      end else
+      begin
+        IDESynEdit.MarkupIdentComplWindow.TextColor := clNone;
+        IDESynEdit.MarkupIdentComplWindow.WindowColor:= clNone;
+      end;
+
+      Attri := GetUsedAttr(ahaIdentComplWindowBorder);
+      if Attri<>nil then
+        IDESynEdit.MarkupIdentComplWindow.BorderColor:= Attri.Foreground
+      else
+        IDESynEdit.MarkupIdentComplWindow.BorderColor:= clNone;
+
+      Attri := GetUsedAttr(ahaIdentComplWindowHighlight);
+      if Attri<>nil then
+        IDESynEdit.MarkupIdentComplWindow.HighlightColor:= Attri.Foreground
+      else
+        IDESynEdit.MarkupIdentComplWindow.HighlightColor:= clNone;
+
+      Attri := GetUsedAttr(ahaIdentComplWindowSelection);
+      if Attri<>nil then
+      begin
+        IDESynEdit.MarkupIdentComplWindow.TextSelectedColor:= Attri.Foreground;
+        IDESynEdit.MarkupIdentComplWindow.BackgroundSelectedColor:= Attri.Background;
+      end else
+      begin
+        IDESynEdit.MarkupIdentComplWindow.TextSelectedColor := clNone;
+        IDESynEdit.MarkupIdentComplWindow.BackgroundSelectedColor:= clNone;
+      end;
+    end;
 
     i := aSynEdit.PluginCount - 1;
     while (i >= 0) and not(aSynEdit.Plugin[i] is TSynPluginTemplateEdit) do
@@ -6484,6 +6573,21 @@ begin
       SetMarkupColor(ahaSyncroEditCur,   TSynPluginSyncroEdit(aSynEdit.Plugin[i]).MarkupInfoCurrent);
       SetMarkupColor(ahaSyncroEditSync,  TSynPluginSyncroEdit(aSynEdit.Plugin[i]).MarkupInfoSync);
       SetMarkupColor(ahaSyncroEditArea,  TSynPluginSyncroEdit(aSynEdit.Plugin[i]).MarkupInfoArea);
+    end;
+    i := aSynEdit.MarkupCount - 1;
+    while (i >= 0) and not(aSynEdit.Markup[i] is TSynEditMarkupFoldColors) do
+      dec(i);
+    if i >= 0 then begin
+      SetMarkupColor(ahaOutlineLevel1Color, TSynEditMarkupFoldColors(aSynEdit.Markup[i]).Color[0]);
+      SetMarkupColor(ahaOutlineLevel2Color, TSynEditMarkupFoldColors(aSynEdit.Markup[i]).Color[1]);
+      SetMarkupColor(ahaOutlineLevel3Color, TSynEditMarkupFoldColors(aSynEdit.Markup[i]).Color[2]);
+      SetMarkupColor(ahaOutlineLevel4Color, TSynEditMarkupFoldColors(aSynEdit.Markup[i]).Color[3]);
+      SetMarkupColor(ahaOutlineLevel5Color, TSynEditMarkupFoldColors(aSynEdit.Markup[i]).Color[4]);
+      SetMarkupColor(ahaOutlineLevel6Color, TSynEditMarkupFoldColors(aSynEdit.Markup[i]).Color[5]);
+      SetMarkupColor(ahaOutlineLevel7Color, TSynEditMarkupFoldColors(aSynEdit.Markup[i]).Color[6]);
+      SetMarkupColor(ahaOutlineLevel8Color, TSynEditMarkupFoldColors(aSynEdit.Markup[i]).Color[7]);
+      SetMarkupColor(ahaOutlineLevel9Color, TSynEditMarkupFoldColors(aSynEdit.Markup[i]).Color[8]);
+      SetMarkupColor(ahaOutlineLevel10Color, TSynEditMarkupFoldColors(aSynEdit.Markup[i]).Color[9]);
     end;
   finally
     ASynEdit.EndUpdate;
@@ -6776,7 +6880,7 @@ begin
     l := length(s1)
   else
     l := length(s2);
-  while i < l do begin
+  while i <= l do begin
     Result := ord(s1[i]) - ord(s2[i]);
     if Result <> 0 then
       exit;

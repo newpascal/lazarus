@@ -5,11 +5,11 @@ unit MenuTemplates;
 interface
 
 uses
-  Classes, SysUtils, types,
+  Classes, SysUtils, types, fgl,
   Buttons, Controls, Dialogs, StdCtrls, ExtCtrls, Menus,
   ComCtrls, Forms, Graphics, Themes, LCLType, LCLIntf, LCLProc,
   // LazUtils
-  LazUTF8, LazFileUtils, Laz2_XMLCfg,
+  LazFileUtils, Laz2_XMLCfg,
   // IdeIntf
   IDEDialogs,
   // IDE
@@ -41,12 +41,13 @@ type
   end;
 
   TDialogMode = (dmInsert, dmSave, dmDelete);
+  TMenuTemplateList = specialize TFPGObjectList<TMenuTemplate>;
 
   { TMenuTemplates }
 
   TMenuTemplates = class(TObject)
   strict private
-    FTemplateList: TFPList;
+    FTemplateList: TMenuTemplateList;
     function GetDescription(index: integer): string;
     function GetMenu(index: integer): TMenuItem;
     function GetMenuCount: integer;
@@ -141,23 +142,26 @@ type
 
 function SavedTemplatesExist: boolean;
 function GetSavedTemplatesCount: integer;
-function InsertMenuTemplateDlg: TMenuItem;
+function InsertMenuTemplateDlg(ParentMenuForInsert: TMenu): TMenuItem;
 function DeleteMenuTemplateDlg: boolean;
 function GetCfgPath: string;
+procedure InitMenuBaseSizes;
 
 const
-  MenuBar_Height = 20;
-  Separator_Height = 7;
-  Separator_Centre = 3;
-  DropDown_Height = 24;
-  MenuBar_Text_Offset = 7;
-  Double_MenuBar_Text_Offset = MenuBar_Text_Offset shl 1;
-  DropDown_Text_Offset = 35;
-  Double_DropDown_Text_Offset = DropDown_Text_Offset shl 1;
-  Gutter_Offset = 6;
-  Gutter_X = DropDown_Text_Offset - Gutter_Offset;
   MenuTemplatesFilename = 'menutemplates.xml';
 
+var
+  MenuBar_Height: Integer = 20;
+  Separator_Height: Integer = 7;
+  Separator_Centre: Integer = 3;
+  DropDown_Height: Integer = 24;
+  MenuBar_Text_Offset: Integer = 7;
+  Double_MenuBar_Text_Offset: Integer = 14;
+  DropDown_Text_Offset: Integer = 35;
+  Double_DropDown_Text_Offset: Integer = 70;
+  Gutter_Offset: Integer = 6;
+  Gutter_X: Integer = 29;
+  Add_Icon_Width: Integer = 16;
 
 implementation
 
@@ -235,11 +239,11 @@ begin
   end;
 end;
 }
-function InsertMenuTemplateDlg: TMenuItem;
+function InsertMenuTemplateDlg(ParentMenuForInsert: TMenu): TMenuItem;
 var
   dlg: TMenuTemplateDialog;
 begin
-  dlg:=TMenuTemplateDialog.CreateWithMode(nil, dmInsert);
+  dlg:=TMenuTemplateDialog.CreateWithMode(ParentMenuForInsert, dmInsert);
   try
     if (dlg.ShowModal = mrOK) then
       Result:=dlg.MenuToInsert
@@ -269,6 +273,20 @@ begin
   Result:=ExtractFilePath(ChompPathDelim(GetAppConfigDirUTF8(False)))+'lazarus';
 end;
 
+procedure InitMenuBaseSizes;
+begin
+  MenuBar_Height := ScaleY(20, 96);
+  Separator_Height := ScaleY(7, 96);
+  Separator_Centre := ScaleY(3, 96);
+  DropDown_Height := ScaleY(24, 96);
+  MenuBar_Text_Offset := ScaleX(7, 96);
+  Double_MenuBar_Text_Offset := MenuBar_Text_Offset shl 1;
+  DropDown_Text_Offset := ScaleX(35, 96);
+  Double_DropDown_Text_Offset := DropDown_Text_Offset shl 1;
+  Gutter_Offset := ScaleX(6, 96);
+  Gutter_X := DropDown_Text_Offset - Gutter_Offset;
+  Add_Icon_Width := ScaleX(16, 96);
+end;
 
 { TMenuTemplate }
 
@@ -368,7 +386,7 @@ end;
 function TMenuTemplates.GetDescription(index: integer): string;
 begin
   CheckIndex(index);
-  Result:=TMenuTemplate(FTemplateList[index]).Description;
+  Result:=FTemplateList[index].Description;
 end;
 
 function TMenuTemplates.GetMenu(index: integer): TMenuItem;
@@ -378,7 +396,7 @@ var
   i: integer;
 begin
   CheckIndex(index);
-  mt:=TMenuTemplate(FTemplateList[index]);
+  mt:=FTemplateList[index];
   mi:=TMenuItem.Create(nil);
   mi.Caption:=mt.PrimaryItem;
   for i:=0 to mt.SubItemCount-1 do
@@ -399,13 +417,13 @@ end;
 function TMenuTemplates.GetMenuTemplate(index: integer): TMenuTemplate;
 begin
   CheckIndex(index);
-  Result:=TMenuTemplate(FTemplateList[index]);
+  Result:=FTemplateList[index];
 end;
 
 function TMenuTemplates.GetPrimaryItem(index: integer): string;
 begin
   CheckIndex(index);
-  Result:=TMenuTemplate(FTemplateList[index]).PrimaryItem;
+  Result:=FTemplateList[index].PrimaryItem;
 end;
 
 procedure TMenuTemplates.CheckIndex(anIndex: integer);
@@ -467,19 +485,14 @@ end;
 constructor TMenuTemplates.CreateForMode(aDialogMode: TDialogMode);
 begin
   inherited Create;
-  FTemplateList:=TFPList.Create;
+  FTemplateList:=TMenuTemplateList.Create;
   if (aDialogMode = dmInsert) then
     LoadDefaultTemplates;
   LoadSavedTemplates;
 end;
 
 destructor TMenuTemplates.Destroy;
-var
-  p: pointer;
-  mt: TMenuTemplate absolute p;
 begin
-  for p in FTemplateList do
-    mt.Free;
   FreeAndNil(FTemplateList);
   inherited Destroy;
 end;

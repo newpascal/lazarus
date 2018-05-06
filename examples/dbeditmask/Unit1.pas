@@ -52,7 +52,8 @@ uses
 
 procedure TForm1.FormCreate(Sender: TObject);
 begin
-  ShortDateFormat := 'd/M/yyyy';
+  DefaultFormatSettings.ShortDateFormat := 'd/m/yyyy';
+  DefaultFormatSettings.DateSeparator := '/';
   if not FileExistsUTF8(Dbf1.TableName) then
   begin
     Dbf1.FieldDefs.Clear;
@@ -112,7 +113,7 @@ var
 begin
   DateField := Dbf1.FieldByName('ADate') as TDateTimeField;
   if ShowLongDateCheckBox.Checked then
-    DateField.DisplayFormat := LongDateFormat
+    DateField.DisplayFormat := DefaultFormatSettings.LongDateFormat
   else
     DateField.DisplayFormat := '';
 end;

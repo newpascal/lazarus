@@ -32,17 +32,19 @@ unit CheckCompilerOpts;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, Dialogs, FileUtil,
-  Clipbrd, StdCtrls, AVL_Tree, Menus, ExtCtrls, ButtonPanel, ComCtrls,
-  // codetools
-  CodeToolManager, FileProcs, LazFileCache, LazFileUtils, LazUTF8,
-  DefineTemplates, CodeToolsStructs,
+  Classes, SysUtils, Laz_AVL_Tree,
+  // LCL
+  Forms, Controls, Dialogs, Clipbrd, StdCtrls, Menus, ExtCtrls, ButtonPanel, ComCtrls,
+  // LazUtils
+  LazFileCache, FileUtil, LazFileUtils, LazUTF8, AvgLvlTree,
+  // Codetools
+  CodeToolManager, FileProcs, DefineTemplates,
   // IDEIntf
   ProjectIntf, MacroIntf, IDEExternToolIntf, LazIDEIntf, IDEDialogs,
   PackageIntf, IDEMsgIntf,
   // IDE
   Project, PackageSystem, IDEProcs,
-  LazarusIDEStrConsts, PackageDefs, CompilerOptions, TransferMacros, LazConf;
+  LazarusIDEStrConsts, PackageDefs, CompilerOptions, TransferMacros;
 
 type
   TCompilerOptionsTest = (
@@ -90,10 +92,10 @@ type
     function CheckSpecialCharsInPath(const Title, ExpandedPath: string): TModalResult;
     function CheckNonExistingSearchPaths(const Title, ExpandedPath: string): TModalResult;
     function CheckCompilerExecutable(const CompilerFilename: string): TModalResult;
-    function CheckCompilerConfig(CfgCache: TFPCTargetConfigCache): TModalResult;
+    function CheckCompilerConfig(CfgCache: TPCTargetConfigCache): TModalResult;
     function FindAllPPUFiles(const AnUnitPath: string): TStrings;
-    function CheckMissingFPCPPUs(CfgCache: TFPCTargetConfigCache): TModalResult;
-    function CheckCompilerDate(CfgCache: TFPCTargetConfigCache): TModalResult;
+    function CheckMissingFPCPPUs(CfgCache: TPCTargetConfigCache): TModalResult;
+    function CheckCompilerDate(CfgCache: TPCTargetConfigCache): TModalResult;
     function CheckForAmbiguousPPUs(SearchForPPUs: TStrings;
                                    SearchInPPUs: TStrings = nil): TModalResult;
     function CheckFPCUnitPathsContainSources(const FPCCfgUnitPath: string
@@ -411,10 +413,10 @@ begin
 end;
 
 function TCheckCompilerOptsDlg.CheckCompilerConfig(
-  CfgCache: TFPCTargetConfigCache): TModalResult;
+  CfgCache: TPCTargetConfigCache): TModalResult;
 var
   i: Integer;
-  CfgFile: TFPCConfigFileState;
+  CfgFile: TPCConfigFileState;
   CfgCount: Integer;
 begin
   FTest:=cotCheckCompilerConfig;
@@ -481,7 +483,7 @@ begin
 end;
 
 function TCheckCompilerOptsDlg.CheckMissingFPCPPUs(
-  CfgCache: TFPCTargetConfigCache): TModalResult;
+  CfgCache: TPCTargetConfigCache): TModalResult;
   
   function Check(const TheUnitname: string; Severity: TCompilerCheckMsgLvl
     ): Boolean;
@@ -519,7 +521,7 @@ begin
   Result:=mrOk;
 end;
 
-function TCheckCompilerOptsDlg.CheckCompilerDate(CfgCache: TFPCTargetConfigCache
+function TCheckCompilerOptsDlg.CheckCompilerDate(CfgCache: TPCTargetConfigCache
   ): TModalResult;
 var
   MinPPUDate: LongInt;
@@ -528,7 +530,7 @@ var
   MinPPU: String;
   MaxPPU: String;
   Node: TAVLTreeNode;
-  Item: PStringToStringTreeItem;
+  Item: PStringToStringItem;
   
   procedure CheckFileAge(const aFilename: string);
   var
@@ -599,7 +601,7 @@ begin
   // b) not updated
   Node:=CfgCache.Units.Tree.FindLowest;
   while Node<>nil do begin
-    Item:=PStringToStringTreeItem(Node.Data);
+    Item:=PStringToStringItem(Node.Data);
     if (Item^.Value<>'') and (CompareFileExt(Item^.Value,'.ppu',false)=0) then
       CheckFileAge(Item^.Value);
     Node:=CfgCache.Units.Tree.FindSuccessor(Node);
@@ -848,7 +850,7 @@ var
   cp: TParsedCompilerOptString;
   TargetCPU: String;
   TargetOS: String;
-  CfgCache: TFPCTargetConfigCache;
+  CfgCache: TPCTargetConfigCache;
   FPC_PPUs: TStrings;
 begin
   Result:=mrCancel;
@@ -889,11 +891,11 @@ begin
 
     TargetOS:=Options.TargetOS;
     TargetCPU:=Options.TargetCPU;
-    CfgCache:=CodeToolBoss.FPCDefinesCache.ConfigCaches.Find(CompilerFilename,
+    CfgCache:=CodeToolBoss.CompilerDefinesCache.ConfigCaches.Find(CompilerFilename,
                                                     '',TargetOS,TargetCPU,true);
     if CfgCache.NeedsUpdate then
-      CfgCache.Update(CodeToolBoss.FPCDefinesCache.TestFilename,
-                      CodeToolBoss.FPCDefinesCache.ExtraOptions);
+      CfgCache.Update(CodeToolBoss.CompilerDefinesCache.TestFilename,
+                      CodeToolBoss.CompilerDefinesCache.ExtraOptions);
 
     // check compiler config
     Result:=CheckCompilerConfig(CfgCache);

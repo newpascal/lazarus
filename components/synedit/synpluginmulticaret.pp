@@ -1582,7 +1582,9 @@ begin
   if (y1 < 0) or (y1 > Editor.LinesInWindow + 1) then
     y := -1; // not visible
   if y > 1 then
-    y2 := Editor.RowToScreenRow(y-1);
+    y2 := Editor.RowToScreenRow(y-1)
+  else
+    y2 := -1;
 
   if (y > 0) and (y1 <> y2) or (y=1) then begin
     if Carets.Visual[Result] = nil then
@@ -1692,14 +1694,14 @@ begin
     ViewedTextBuffer.RemoveNotifyHandler(senrAfterDecPaintLock, @DoAfterDecPaintLock);
     ViewedTextBuffer.RemoveNotifyHandler(senrBeforeIncPaintLock, @DoBeforeIncPaintLock);
     ViewedTextBuffer.RemoveEditHandler(@DoLinesEdited);
-    ViewedTextBuffer.RemoveGenericHandler(senrTextBufferChanged, TMethod(@DoBufferChanged));
+    ViewedTextBuffer.RemoveNotifyHandler(senrTextBufferChanged, @DoBufferChanged);
   end;
 end;
 
 procedure TSynPluginMultiCaretBase.DoEditorAdded(AValue: TCustomSynEdit);
 begin
   if Editor <> nil then begin
-    ViewedTextBuffer.AddGenericHandler(senrTextBufferChanged, TMethod(@DoBufferChanged));
+    ViewedTextBuffer.AddNotifyHandler(senrTextBufferChanged, @DoBufferChanged);
     ViewedTextBuffer.AddEditHandler(@DoLinesEdited);
     ViewedTextBuffer.AddNotifyHandler(senrBeforeIncPaintLock, @DoBeforeIncPaintLock);
     ViewedTextBuffer.AddNotifyHandler(senrAfterDecPaintLock, @DoAfterDecPaintLock);

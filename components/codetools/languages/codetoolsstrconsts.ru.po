@@ -5,7 +5,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "POT-Creation-Date: \n"
-"PO-Revision-Date: 2016-03-12 00:50+0300\n"
+"PO-Revision-Date: 2017-10-13 01:30+0300\n"
 "Language-Team: \n"
 "MIME-Version: 1.0\n"
 "Language: ru\n"
@@ -79,6 +79,10 @@ msgstr "скобка %s не найдена"
 msgid "bracket open expected, but %s found"
 msgstr "ожидается открывающая скобка, но найдено %s"
 
+#: codetoolsstrconsts.ctscannotaddaunittotheimplementationbecauseonlyaunith
+msgid "cannot add a unit to the implementation, because only a unit has one"
+msgstr "невозможно использовать модуль в секции Implementation, потому что она имеется только у модуля"
+
 #: codetoolsstrconsts.ctscharacterconstantoutofrange
 msgid "character constant out of range"
 msgstr "символьная константа имеет недопустимое значение"
@@ -97,6 +101,10 @@ msgstr "описание класса без предка"
 
 #: codetoolsstrconsts.ctsclassnotfound
 msgid "class \"%s\" not found"
+msgstr "класс \"%s\" не найден"
+
+#: codetoolsstrconsts.ctsclassnotfound2
+msgid "class not found \"%s\""
 msgstr "класс \"%s\" не найден"
 
 #: codetoolsstrconsts.ctsclassofdefinitionnotresolved
@@ -141,7 +149,7 @@ msgstr "Каталог конвертера"
 
 #: codetoolsstrconsts.ctscursorposoutsideofcode
 msgid "cursor pos outside of code"
-msgstr "позиция курсора вне кода"
+msgstr "курсор находится вне исходного кода"
 
 #: codetoolsstrconsts.ctscustomcomponentsdirectory
 msgid "Custom Components Directory"
@@ -517,6 +525,10 @@ msgstr "неверный переключатель режима \"%s\""
 msgid "invalid operator %s"
 msgstr "неверный оператор %s"
 
+#: codetoolsstrconsts.ctsinvalidpositionforinsertionofstatements
+msgid "invalid position for insertion of statements"
+msgstr "некорректная позиция для вставки операторов"
+
 #: codetoolsstrconsts.ctsinvalidsubrange
 msgid "invalid subrange"
 msgstr "неверный поддиапазон"
@@ -552,6 +564,10 @@ msgstr "главный каталог lazarus"
 #: codetoolsstrconsts.ctslazarussources
 msgid "Lazarus Sources"
 msgstr "Исходный код Lazarus"
+
+#: codetoolsstrconsts.ctsmethodhasnodeclaration
+msgid "method \"%s\" has no declaration"
+msgstr "метод \"%s\" не имеет объявления"
 
 #: codetoolsstrconsts.ctsmethodname
 msgid "method name"
@@ -835,6 +851,10 @@ msgstr "обнаружено неожиданное ключевое слово 
 msgid "unexpected keyword \"%s\" found while reading blocks backwards"
 msgstr "обнаружено неожиданное ключевое слово \"%s\" при чтении блоков в обратном порядке"
 
+#: codetoolsstrconsts.ctsunexpectedsectionkeyword
+msgid "unexpected section keyword %s found"
+msgstr "обнаружено неожиданное ключевое слово секции %s"
+
 #: codetoolsstrconsts.ctsunexpectedsubrangeoperatorfound
 msgid "unexpected subrange operator '..' found"
 msgstr "обнаружен неожиданный оператор поддиапазона '..'"
@@ -854,10 +874,6 @@ msgstr "Неизвестная функция %s"
 #: codetoolsstrconsts.ctsunknownmainfilename
 msgid "(unknown mainfilename)"
 msgstr "(неизвестное имя главного файла)"
-
-#: codetoolsstrconsts.ctsunknownsectionkeyword
-msgid "unknown section keyword %s found"
-msgstr "обнаружено неизвестное ключевое слово секции %s"
 
 #: codetoolsstrconsts.ctsunknownsubdescriptor
 msgid "(unknown subdescriptor %s)"
