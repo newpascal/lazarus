@@ -90,6 +90,7 @@ type
     procedure IpHtmlPanelHotChange(Sender: TObject);
     procedure IpHtmlPanelHotClick(Sender: TObject);
     procedure PopupCopyClick(Sender: TObject);
+    procedure PopupCopySourceClick(Sender: TObject);
     procedure ContentsTreeSelectionChanged(Sender: TObject);
     procedure IndexViewDblClick(Sender: TObject);
     procedure TreeViewStopCollapse(Sender: TObject; {%H-}Node: TTreeNode; var AllowCollapse: Boolean);
@@ -128,7 +129,10 @@ type
 
 implementation
 
-uses ChmSpecialParser{$IFDEF CHM_SEARCH}, chmFIftiMain{$ENDIF}, chmsitemap, LCLType, SAX_HTML, Dom, DOM_HTML, HTMWrite;
+uses
+  clipbrd,
+  ChmSpecialParser{$IFDEF CHM_SEARCH}, chmFIftiMain{$ENDIF}, chmsitemap,
+  LCLType, SAX_HTML, Dom, DOM_HTML, HTMWrite, LConvEncoding;
 
 type
 
@@ -640,13 +644,47 @@ begin
 end;
 
 procedure TChmContentProvider.IpHtmlPanelHotClick(Sender: TObject);
+var
+  HelpFile: String;
+  aPos: integer;
+  lcURL: String;
 begin
-  OpenURL(fHtml.HotURL);
+  // chm-links look like: mk:@MSITStore:D:\LazPortable\docs\chm\iPro.chm::/html/lh3zs3.htm
+  lcURL := Lowercase(fHtml.HotURL);
+  if (Pos('javascript:helppopup(''', lcURL) = 1) or
+     (Pos('javascript:popuplink(''', lcURL) = 1)
+  then begin
+    HelpFile := Copy(fHtml.HotURL, 23, Length(fHtml.HotURL) - (23-1));
+    HelpFile := Copy(HelpFile, 1, Pos('''', HelpFile)-1);
+
+    if (Pos('/',HelpFile)=0) and (Pos('.chm:',HelpFile)=0) then begin //looks like?: 'xyz.htm'
+      aPos := LastDelimiter('/', fHtml.CurURL);
+      if aPos>0 then HelpFile := Copy(fHtml.CurURL,1,aPos) + HelpFile;
+   end
+   else if (Pos('.chm:',HelpFile)=0) then begin //looks like?: 'folder/xyz.htm' or '/folder/xyz.htm'
+     if HelpFile[1]<>'/' then HelpFile:='/'+HelpFile;
+     aPos := LastDelimiter(':', fHtml.CurURL);
+     if aPos>0 then HelpFile := Copy(fHtml.CurURL,1,aPos) + HelpFile;
+   end;
+   DoLoadUri(HelpFile); //open it in current iphtmlpanel.
+ end
+ else
+   OpenURL(fHtml.HotURL);
 end;
 
 procedure TChmContentProvider.PopupCopyClick(Sender: TObject);
 begin
   fHtml.CopyToClipboard;
+end;
+
+procedure TChmContentProvider.PopupCopySourceClick(Sender: TObject);
+var
+  rbs: rawbytestring;
+  s: String;
+begin
+  rbs := TIpChmDataProvider(fHtml.DataProvider).GetHtmlText(fHtml.CurUrl);
+  s := ConvertEncoding(rbs, fHtml.MasterFrame.Html.DocCharset, encodingUTF8);
+  Clipboard.SetAsHtml(rbs, s);
 end;
 
 procedure TChmContentProvider.ContentsTreeSelectionChanged(Sender: TObject);
@@ -723,7 +761,7 @@ var
   NewTitle: String;
 begin
   Item := fContentsTree.Items.GetFirstNode;
-  NewTitle:=fActiveChmTitle +' [';
+  NewTitle := '';
   while Item <> nil do
   begin
     if ITem.Text <> fActiveChmTitle then
@@ -736,7 +774,11 @@ begin
     end;
     Item := Item.GetNextSibling;
   end;
-  NewTitle:=NewTitle+']';
+  if NewTitle <> '' then
+    NewTitle := FActiveChmTitle + ' [' + NewTitle + ']'
+  else
+    NewTitle := FActiveChmTitle;
+  if NewTitle = '' then NewTitle := '[unknown]';
   Title := NewTitle;
 end;
 
@@ -1364,6 +1406,12 @@ begin
   begin
     Caption := slhelp_Copy;
     OnClick := @PopupCopyClick;
+  end;
+  fPopup.Items.Add(TMenuItem.Create(fPopup));
+  with fPopup.Items.Items[1] do
+  begin
+    Caption := 'Copy source';
+    OnClick := @PopupCopySourceClick;
   end;
   fHtml.PopupMenu := fPopUp;
 

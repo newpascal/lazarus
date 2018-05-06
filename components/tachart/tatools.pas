@@ -321,7 +321,9 @@ type
     FOrigin: TPoint;
     FPrev: TPoint;
   strict protected
+    procedure Activate; override;
     procedure Cancel; override;
+    procedure Deactivate; override;
   public
     constructor Create(AOwner: TComponent); override;
     procedure MouseDown(APoint: TPoint); override;
@@ -873,6 +875,9 @@ procedure TChartTool.PrepareDrawingModePen(
 begin
   ADrawer.SetXor(EffectiveDrawingMode = tdmXor);
   ADrawer.Pen := APen;
+  if (APen is TChartPen) then
+    if not TChartPen(APen).EffVisible then
+      ADrawer.SetPenParams(psClear, TChartPen(APen).Color);
 end;
 
 procedure TChartTool.ReadState(Reader: TReader);
@@ -1446,6 +1451,12 @@ end;
 
 { TPanDragTool }
 
+procedure TPanDragTool.Activate;
+begin
+  inherited;
+  FChart.LockClipRect;
+end;
+
 procedure TPanDragTool.Cancel;
 begin
   if not IsActive then exit;
@@ -1457,6 +1468,12 @@ constructor TPanDragTool.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FDirections := PAN_DIRECTIONS_ALL;
+end;
+
+procedure TPanDragtool.Deactivate;
+begin
+  inherited;
+  FChart.UnlockClipRect;
 end;
 
 procedure TPanDragTool.MouseDown(APoint: TPoint);
@@ -1966,8 +1983,11 @@ end;
 procedure TDataPointCrosshairTool.DoDraw;
 var
   p: TPoint;
+  ps: TFPPenStyle;
 begin
-  FChart.Drawer.Pen := CrosshairPen;
+  if not CrosshairPen.Visible then
+    ps := CrosshairPen.Style;
+  PrepareDrawingModePen(FChart.Drawer, CrosshairPen);
   p := FChart.GraphToImage(Position);
   if Shape in [ccsVertical, ccsCross] then
     if Size < 0 then
@@ -1979,6 +1999,8 @@ begin
       FChart.DrawLineHoriz(FChart.Drawer, p.Y)
     else
       FChart.Drawer.Line(p - Point(Size, 0), p + Point(Size, 0));
+  if not CrosshairPen.Visible then
+    FChart.Drawer.SetPenParams(ps, CrosshairPen.Color);
   inherited;
 end;
 

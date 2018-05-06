@@ -24,7 +24,7 @@ uses
  // carbon bindings
   MacOSAll,
  // LCL
-  LCLProc, LCLType, GraphType, Graphics, Controls, Forms,
+  LCLProc, LCLType, GraphType, Graphics, Controls, Forms, ExtCtrls,
  // LCL Carbon
  {$ifdef DebugBitmaps}
   CarbonDebug,
@@ -360,13 +360,23 @@ type
     FQDColorCursorHandle: CCrsrHandle;
     FQDHardwareCursorName: String;
     FPixmapHandle: PixmapHandle;
+    // animated color cursors
+    FAnimationFrames: array of record
+      QDColorCursorHandle: CCrsrHandle;
+      QDHardwareCursorName: String;
+      PixmapHandle: PixmapHandle;
+    end;
+    FAnimationTimer: TTimer;
     procedure CreateThread;
     procedure DestroyThread;
+    procedure StepQDAnimation(Sender: TObject);
   protected
     procedure CreateHardwareCursor(ABitmap: TCarbonBitmap; AHotSpot: Point);
     procedure CreateColorCursor(ABitmap: TCarbonBitmap; AHotSpot: Point);
+    procedure DestroyCursor;
   public
     constructor Create;
+    constructor CreateAnimatedFromInfo(AInfo: PIconInfo; ACount: Integer);
     constructor CreateFromInfo(AInfo: PIconInfo);
     constructor CreateThemed(AThemeCursor: ThemeCursor; ADefault: Boolean = False);
     destructor Destroy; override;
@@ -1067,7 +1077,7 @@ var
   PValue: ATSUAttributeValuePtr;
 begin
   // keep copy of text
-  FTextBuffer := LazUTF8.UTF8ToUTF16(Text);
+  FTextBuffer := UTF8ToUTF16(Text);
   if FTextBuffer='' then
     FTextBuffer:=#0#0;
   TextStyle := Font.Style;
@@ -1399,7 +1409,7 @@ begin
 
   Bold := ALogFont.lfWeight > FW_NORMAL;
   Italic := ALogFont.lfItalic > 0;
-  ID := FindCarbonFontID(AFaceName, Bold, Italic);
+  ID := FindCarbonFontID(AFaceName, Bold, Italic, (ALogFont.lfPitchAndFamily and FIXED_PITCH) <> 0);
 
   if ID <> 0 then
   begin
@@ -1725,7 +1735,7 @@ begin
       AB := 1;
       AA := Byte(FA);
     end;
-    R2_NOTCOPYPEN:
+    R2_NOTXORPEN, R2_NOTCOPYPEN:
     begin
       AR := (255 - FR) / 255;
       AG := (255 - FG) / 255;
@@ -1882,17 +1892,18 @@ begin
   if ADC = nil then Exit;
   if ADC.CGContext = nil then Exit;
 
-  if UseROP2 then 
+  if UseROP2 then
     AROP2 := (ADC as TCarbonDeviceContext).ROP2
   else 
     AROP2 := R2_COPYPEN;
 
   GetRGBA(AROP2, RGBA[0], RGBA[1], RGBA[2], RGBA[3]);
 
-  if AROP2 <> R2_NOT then
-    CGContextSetBlendMode(ADC.CGContext, kCGBlendModeNormal)
-  else
-    CGContextSetBlendMode(ADC.CGContext, kCGBlendModeDifference);
+  // Blend Mode is set via TCarbonPen.Apply()
+  //if AROP2 <> R2_NOT then
+  //  CGContextSetBlendMode(ADC.CGContext, kCGBlendModeNormal)
+  //else
+  //  CGContextSetBlendMode(ADC.CGContext, kCGBlendModeDifference);
 
   if FCGPattern <> nil then
   begin
@@ -2024,6 +2035,7 @@ var
   AR, AG, AB, AA: Single;
   AROP2: Integer;
   ADashes: TCarbonDashes;
+  blendmode: CGBlendMode;
 begin
   if ADC = nil then Exit;
   if ADC.CGContext = nil then Exit;
@@ -2033,10 +2045,14 @@ begin
 
   GetRGBA(AROP2, AR, AG, AB, AA);
 
-  if AROP2 <> R2_NOT then
-    CGContextSetBlendMode(ADC.CGContext, kCGBlendModeNormal)
+  case AROP2 of
+    R2_NOT:       blendmode := kCGBlendModeDifference;
+    R2_NOTXORPEN: blendmode := kCGBlendModeExclusion;
+    R2_XORPEN:    blendmode := kCGBlendModeDifference;
   else
-    CGContextSetBlendMode(ADC.CGContext, kCGBlendModeDifference);
+    blendmode := kCGBlendModeNormal;
+  end;
+  CGContextSetBlendMode(ADC.CGContext, blendmode);
 
   CGContextSetRGBStrokeColor(ADC.CGContext, AR, AG, AB, AA);
   CGContextSetLineWidth(ADC.CGContext, FWidth);
@@ -2436,7 +2452,7 @@ begin
   FPixmapHandle^^.pmTable := nil;
   FPixmapHandle^^.baseAddr := Ptr(ABitmap.Data);
 
-  FQDHardwareCursorName := Application.Title + LazarusCursorInfix + IntToStr(Integer(Self));
+  FQDHardwareCursorName := Application.Title + LazarusCursorInfix + IntToStr(Integer(FPixmapHandle));
   OSError(
     QDRegisterNamedPixMapCursor(FPixmapHandle, nil, AHotSpot, PChar(FQDHardwareCursorName)),
     Self, 'CreateHardwareCursor', 'QDRegisterNamedPixMapCursor');
@@ -2527,6 +2543,32 @@ begin
   end;
 end;
 
+
+{------------------------------------------------------------------------------
+  Method:  TCarbonCursor.CreateFromInfo
+  Params:  AInfo - Array of cursor info
+           ACount - Number of items in array
+
+  Creates new cursor from the specified info
+ ------------------------------------------------------------------------------}
+constructor TCarbonCursor.CreateAnimatedFromInfo(AInfo: PIconInfo; ACount: Integer);
+var
+  i: Integer;
+begin
+  FAnimationTimer := TTimer.Create(nil);
+  FAnimationTimer.Enabled := False;
+  FAnimationTimer.Interval := 150;//kThemeCursorAnimationDelay;
+  FAnimationTimer.OnTimer := @StepQDAnimation;
+  SetLength(FAnimationFrames, ACount);
+  for i := 0 to ACount - 1 do begin
+    CreateFromInfo(AInfo);
+    FAnimationFrames[i].QDColorCursorHandle := FQDColorCursorHandle;
+    FAnimationFrames[i].QDHardwareCursorName := FQDHardwareCursorName;
+    FAnimationFrames[i].PixmapHandle := FPixmapHandle;
+    Inc(AInfo);
+  end;
+end;
+
 {------------------------------------------------------------------------------
   Method:  TCarbonCursor.CreateFromInfo
   Params:  AInfo - Cusrsor info
@@ -2607,29 +2649,54 @@ begin
     FCursorType := cctTheme;
 end;
 
+
 {------------------------------------------------------------------------------
   Method:  TCarbonCursor.Destroy
 
-  Frees Carbon cursor
+  Frees QuickDraw cursor
  ------------------------------------------------------------------------------}
-destructor TCarbonCursor.Destroy;
+procedure TCarbonCursor.DestroyCursor;
 begin
-  UnInstall;
-  
   case CursorType of
     cctQDHardware:
       if FQDHardwareCursorName <> '' then
       begin
         OSError(QDUnregisterNamedPixmapCursor(PChar(FQDHardwareCursorName)),
           Self, SDestroy, 'QDUnregisterNamedPixmapCursor');
-        
+
         FPixmapHandle^^.baseAddr := nil;
         DisposePixMap(FPixmapHandle);
       end;
     cctQDColor:
       DisposeCCursor(FQDColorCursorHandle);  // suppose pixmap will be disposed too
   end;
+end;
+
+{------------------------------------------------------------------------------
+  Method:  TCarbonCursor.Destroy
+
+  Frees Carbon cursor
+ ------------------------------------------------------------------------------}
+destructor TCarbonCursor.Destroy;
+var
+  i: Integer;
+begin
+  UnInstall;
   
+  if FAnimationFrames <> nil then
+  begin
+    FAnimationTimer.Free;
+    for i := 0 to Length(FAnimationFrames) - 1 do
+    begin
+      FQDColorCursorHandle := FAnimationFrames[i].QDColorCursorHandle;
+      FQDHardwareCursorName := FAnimationFrames[i].QDHardwareCursorName;
+      FPixmapHandle := FAnimationFrames[i].PixmapHandle;
+      DestroyCursor;
+    end;
+  end
+  else
+    DestroyCursor;
+
   inherited Destroy;
 end;
 
@@ -2646,6 +2713,11 @@ begin
     DebugLn('TCarbonCursor.Install type: ', DbgS(Ord(CursorType)));
   {$ENDIF}
   
+  if FAnimationTimer <> nil then
+  begin
+    FAnimationStep := 0;
+    FAnimationTimer.Enabled := True;
+  end;
   case CursorType of
     cctQDHardware:
       if FQDHardwareCursorName <> '' then
@@ -2678,6 +2750,9 @@ begin
   case CursorType of
     cctWait: QDDisplayWaitCursor(False);
     cctAnimated: DestroyThread;
+    cctQDColor, cctQDHardware:
+      if FAnimationTimer <> nil then
+        FAnimationTimer.Enabled := False;
   end;
 end;
 
@@ -2698,6 +2773,25 @@ begin
     FCursorType := cctTheme;
     SetThemeCursor(FThemeCursor);
   end;
+end;
+
+{------------------------------------------------------------------------------
+  Method:  TCarbonCursor.StepQDAnimation
+
+  Steps Carbon QuickDraw cursor animation
+ ------------------------------------------------------------------------------}
+procedure TCarbonCursor.StepQDAnimation(Sender: TObject);
+begin
+  case CursorType of
+    cctQDHardware:
+      with FAnimationFrames[FAnimationStep] do
+        if QDHardwareCursorName <> '' then
+          OSError(QDSetNamedPixmapCursor(PChar(QDHardwareCursorName)),
+            Self, 'StepAnimation', 'QDSetNamedPixmapCursor');
+    cctQDColor:
+      SetCCursor(FAnimationFrames[FAnimationStep].QDColorCursorHandle);
+  end;
+  FAnimationStep := (FAnimationStep + 1) mod Length(FAnimationFrames);
 end;
 
 {------------------------------------------------------------------------------

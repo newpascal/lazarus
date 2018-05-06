@@ -5378,11 +5378,9 @@ var
   i: Integer;
   c: Word;
 begin
-  if s='' then begin
-    Result:=s;
-    exit;
-  end;
   len:=length(s) div 2;
+  if len=0 then
+    exit('');
   SetLength(Result,len*3);// UTF-8 is at most 3/2 times the size
   Src:=PWord(Pointer(s));
   Dest:=PChar(Result);
@@ -5410,11 +5408,9 @@ var
   i: Integer;
   c: Word;
 begin
-  if s='' then begin
-    Result:=s;
-    exit;
-  end;
   len:=length(s) div 2;
+  if len=0 then
+    exit('');
   SetLength(Result,len*3);// UTF-8 is at most three times the size
   Src:=PWord(Pointer(s));
   Dest:=PChar(Result);
@@ -7029,7 +7025,7 @@ begin
       inc(Src);
       dec(len);
     end else begin
-      Unicode:=UTF8CharacterToUnicode(Src,CharLen);
+      Unicode:=UTF8CodepointToUnicode(Src,CharLen);
       inc(Src,CharLen);
       dec(len,CharLen);
       i:=UTF8CharConvFunc(Unicode);
@@ -7068,7 +7064,7 @@ begin
       inc(Src);
       dec(len);
     end else begin
-      Unicode:=UTF8CharacterToUnicode(Src,CharLen);
+      Unicode:=UTF8CodepointToUnicode(Src,CharLen);
       inc(Src,CharLen);
       dec(len,CharLen);
       if Unicode<=$ffff then begin
@@ -7108,7 +7104,7 @@ begin
       inc(Src);
       dec(len);
     end else begin
-      Unicode:=UTF8CharacterToUnicode(Src,CharLen);
+      Unicode:=UTF8CodepointToUnicode(Src,CharLen);
       inc(Src,CharLen);
       dec(len,CharLen);
       if Unicode<=$ffff then begin
@@ -7265,7 +7261,7 @@ begin
       end;
       inc(p);
     end else begin
-      i:=UTF8CharacterStrictLength(p);
+      i:=UTF8CodepointStrictSize(p);
       //DebugLn(['GuessEncoding ',i,' ',DbgStr(s[p])]);
       if i=0 then begin
         {$IFDEF VerboseIDEEncoding}

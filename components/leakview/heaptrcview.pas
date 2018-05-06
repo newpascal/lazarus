@@ -5,14 +5,14 @@ unit HeapTrcView;
 interface
 
 uses
-  Classes, SysUtils, XMLConf, contnrs, Clipbrd, LCLProc,
+  Classes, SysUtils, XMLConf, contnrs, Clipbrd, LCLProc, LCLType,
   LResources, Forms, Controls, Graphics, Dialogs, StdCtrls, ComCtrls, ExtCtrls,
   // LazUtils
   FileUtil, LazFileUtils,
   // IDEIntf
-  LazIDEIntf, MenuIntf,
+  LazIDEIntf, MenuIntf, ToolBarIntf, IDECommands,
   // LeakView
-  LeakInfo, IDECommands, ToolBarIntf, LCLType;
+  LeakInfo;
 
 type
   TJumpProc = procedure (Sender: TObject; const SourceName: string;
@@ -561,7 +561,7 @@ begin
   IDECommandCategory := IDECommandList.FindCategoryByName(CommandCategoryViewName);
   if IDECommandCategory <> nil then
   begin
-    IDECommand := RegisterIDECommand(IDECommandCategory, rsLeakView, rsLeakView, IDEShortCutX, nil, @IDEMenuClicked);
+    IDECommand := RegisterIDECommand(IDECommandCategory, 'Leaks and Traces', rsLeakView, IDEShortCutX, nil, @IDEMenuClicked);
     if IDECommand <> nil then
     begin
       IDEButtonCommand := RegisterIDEButtonCommand(IDECommand);

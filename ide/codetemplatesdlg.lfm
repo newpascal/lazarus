@@ -11,16 +11,17 @@ object CodeTemplateDialog: TCodeTemplateDialog
   OnCreate = FormCreate
   OnShow = FormShow
   Position = poScreenCenter
-  LCLVersion = '1.5'
+  LCLVersion = '1.9.0.0'
   object FilenameGroupBox: TGroupBox
     Left = 6
-    Height = 51
+    Height = 43
     Top = 6
     Width = 717
     Align = alTop
+    AutoSize = True
     BorderSpacing.Around = 6
     Caption = 'FilenameGroupBox'
-    ClientHeight = 31
+    ClientHeight = 23
     ClientWidth = 713
     TabOrder = 0
     object FilenameEdit: TFileNameEdit
@@ -29,12 +30,12 @@ object CodeTemplateDialog: TCodeTemplateDialog
       AnchorSideRight.Side = asrBottom
       Left = 6
       Height = 23
-      Top = 4
+      Top = 0
       Width = 701
       FileName = 'FilenameEdit'
       FilterIndex = 0
       HideDirectories = False
-      ButtonWidth = 45
+      ButtonWidth = 25
       NumGlyphs = 1
       Anchors = [akTop, akLeft, akRight]
       BorderSpacing.Left = 6
@@ -47,7 +48,7 @@ object CodeTemplateDialog: TCodeTemplateDialog
   object TemplatesGroupBox: TGroupBox
     Left = 6
     Height = 167
-    Top = 63
+    Top = 55
     Width = 717
     Align = alTop
     BorderSpacing.Around = 6
@@ -72,6 +73,7 @@ object CodeTemplateDialog: TCodeTemplateDialog
       BorderSpacing.Bottom = 6
       ItemHeight = 0
       OnSelectionChange = TemplateListBoxSelectionChange
+      ScrollWidth = 545
       TabOrder = 0
     end
     object AddButton: TButton
@@ -126,13 +128,13 @@ object CodeTemplateDialog: TCodeTemplateDialog
     AnchorSideRight.Control = Owner
     AnchorSideBottom.Control = FilenameGroupBox
     Left = 6
-    Height = 266
-    Top = 236
+    Height = 274
+    Top = 228
     Width = 717
     Align = alClient
     BorderSpacing.Around = 6
     Caption = 'EditTemplateGroupBox'
-    ClientHeight = 246
+    ClientHeight = 254
     ClientWidth = 713
     TabOrder = 2
     inline TemplateSynEdit: TSynEdit
@@ -143,7 +145,7 @@ object CodeTemplateDialog: TCodeTemplateDialog
       AnchorSideBottom.Control = EditTemplateGroupBox
       AnchorSideBottom.Side = asrBottom
       Left = 6
-      Height = 162
+      Height = 170
       Top = 78
       Width = 701
       BorderSpacing.Around = 6

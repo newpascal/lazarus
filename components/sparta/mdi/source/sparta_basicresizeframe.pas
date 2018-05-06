@@ -18,6 +18,7 @@ type
   TResizerFrameClass = class of TBasicResizeFrame;
   TBasicResizeFrame = class(TFrame, IResizeFrame)
     iResizerLineImg: TImage;
+    pFormHandler: TPanel;
     pFakeMenu: TPanel;
     pBG: TPanel;
     pB: TPanel;
@@ -29,6 +30,7 @@ type
     pMarginT: TPanel;
     pR: TPanel;
     pT: TPanel;
+    procedure pBGPaint(Sender: TObject);
     procedure pFakeMenuPaint(Sender: TObject);
     procedure sbVerticalScroll(Sender: TObject; ScrollCode: TScrollCode;
       var ScrollPos: Integer);
@@ -45,8 +47,8 @@ type
     FFakeFocusControl: TWinControl;
 
     procedure FakeExitEnter(Sender: TObject);
-    procedure FakeKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
-    procedure FakeKeyUp(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure FakeKeyDown(Sender: TObject; var Key: Word; {%H-}Shift: TShiftState);
+    procedure FakeKeyUp(Sender: TObject; var Key: Word; {%H-}Shift: TShiftState);
     procedure FakeUTF8KeyPress(Sender: TObject; var UTF8Key: TUTF8Char);
   private
     { private declarations }
@@ -59,19 +61,22 @@ type
     FPositioningKind: TPositioningKind;
     FMaxWidth, FMaxHeight: Integer;
     FLastClientWidth, FLastClientHeight: Integer;
+    FLastDesignedWidthToScroll, FLastDesignedHeightToScroll: Integer;
     FOldHasMainMenu: Boolean;
     FDesignerModified: Boolean;
+    FSizerLineWidth: Integer;
+    FSizerRectSize: Integer;
 
     function HasMainMenu: Boolean;
-    procedure AppOnIdle(Sender: TObject; var Done: Boolean);
+    procedure AppOnIdle(Sender: TObject; var {%H-}Done: Boolean);
 
     procedure PanelPaint(Sender: TObject);
     procedure BGChangeBounds(Sender: TObject);
 
     procedure CreateNodes;
-    procedure NodeMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-    procedure NodeMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
-    procedure NodeMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+    procedure NodeMouseDown(Sender: TObject; {%H-}Button: TMouseButton; {%H-}Shift: TShiftState; {%H-}X, {%H-}Y: Integer);
+    procedure NodeMouseMove(Sender: TObject; {%H-}Shift: TShiftState; {%H-}X, {%H-}Y: Integer);
+    procedure NodeMouseUp(Sender: TObject; {%H-}Button: TMouseButton; {%H-}Shift: TShiftState; {%H-}X, {%H-}Y: Integer);
 
     function GetRightMargin: Integer;
     function GetBottomMargin: Integer;
@@ -89,6 +94,8 @@ type
     function LeftSizerRectLeft: Integer;
     function LeftSizerLineWidth: Integer;
     function HorizontalSizerLineLength: Integer;
+
+    procedure AdjustFormHandler;
 
     function GetMenuHeight: Integer;
   protected
@@ -114,7 +121,8 @@ type
     function GetBackgroundPanel: TPanel;
     function GetBackgroundMargin(const AIndex: Integer): Integer;
 
-    function GetClientPanel: TPanel;
+    function GetNewSize: TPoint;
+    function GetFormHandler: TPanel;
     function GetNodePositioning: Boolean;
     function GetDesignedForm: IDesignedForm;
     procedure SetDesignedForm(const AValue: IDesignedForm);
@@ -141,6 +149,8 @@ type
     property BgTopMargin: Integer index 1 read GetBackgroundMargin;
     property BgRightMargin: Integer index 2 read GetBackgroundMargin;
     property BgBottomMargin: Integer index 3 read GetBackgroundMargin;
+    property SizerRectSize: Integer read FSizerRectSize;
+    property SizerLineWidth: Integer read FSizerLineWidth;
 
     procedure HideSizeControls;
     procedure ShowSizeControls;
@@ -197,6 +207,11 @@ begin
       LCanvas.TextOut(X, Y, Menu.Items[I].Caption);
       Inc(X, LCanvas.TextWidth(Menu.Items[I].Caption) + 10);
     end;
+end;
+
+procedure TBasicResizeFrame.pBGPaint(Sender: TObject);
+begin
+  pBG.SendToBack;
 end;
 
 procedure TBasicResizeFrame.sbVerticalScroll(Sender: TObject;
@@ -270,12 +285,12 @@ begin
     Exit;
   if (Sender = pR) or (Sender = pL) then
   begin
-    LWidth := SIZER_LINE_WIDTH;
+    LWidth := SizerLineWidth;
     LHeight := Height;
   end else
   begin
     LWidth := Width;
-    LHeight := SIZER_LINE_WIDTH;
+    LHeight := SizerLineWidth;
   end;
   LCanvas := (Sender as TPanel).Canvas;
   if FFakeFocusControl.Focused then
@@ -330,7 +345,7 @@ begin
   pB.Repaint;
 
   HideSizeRects;
-  pBG.Visible := False;
+  pBG.SendToBack;
 end;
 
 procedure TBasicResizeFrame.ShowSizeRects;
@@ -355,7 +370,7 @@ begin
   pB.Repaint;
 
   ShowSizeRects;
-  pBG.Visible := True;
+  //pBG.Visible := True;
 end;
 
 procedure TBasicResizeFrame.CreateNodes;
@@ -373,16 +388,17 @@ begin
 
       Name := 'Node' + IntToStr(Node);
       Caption:='';
-      Width := SIZER_RECT_SIZE;
-      Height := SIZER_RECT_SIZE;
+      Width := SIZER_RECT_SIZE;  // scaled dynamically by LCL
+      Height := SIZER_RECT_SIZE; // scaled dynamically by LCL
       Parent := Self;
       Visible := True;
       FNodes.Add(Panel);
 
       case Node of
-        {0,}4: Cursor := crSizeNWSE;
+        // on mac there is no cursor for crNWSE ( https://bugs.freepascal.org/view.php?id=32194#c101876 )
+        {0,}4: Cursor := {$IFDEF MACOS}crSizeAll{$ELSE}crSizeNWSE{$ENDIF};
         {1,}5: Cursor := crSizeNS;
-        //{2,}6: Cursor := crSizeNESW;
+        //{2,}6: Cursor := $IFDEF MACOS}crSizeAll{$ELSE}crSizeNESW{$ENDIF};
         3{,7}: Cursor := crSizeWE;
       end;
       if Node in [3,4,5] then
@@ -432,6 +448,7 @@ begin
   if (Enabled) and (Sender is TWinControl) then
   begin
     FNodePositioning:=True;
+    BeginFormSizeUpdate(Sender);
 
     // when we start resizing the rules do not apply to us :)
     FMaxWidth := Constraints.MaxWidth;
@@ -442,12 +459,12 @@ begin
     begin
       Align := alClient;
       if pBG.Left + BgLeftMargin <= 0 then
-        BorderSpacing.Left := Max(-pBG.Left - (FHorizontalScrollPos - SIZER_RECT_SIZE), 0)
+        BorderSpacing.Left := Max(-pBG.Left - (FHorizontalScrollPos - SizerRectSize), 0)
       else
         BorderSpacing.Left := Max(pBG.Left + BgLeftMargin, 0);
 
       if pBG.Top + BgTopMargin <= 0 then
-        BorderSpacing.Top := Max(-pBG.Top - (FVerticalScrollPos - SIZER_RECT_SIZE), 0)
+        BorderSpacing.Top := Max(-pBG.Top - (FVerticalScrollPos - SizerRectSize), 0)
       else
         BorderSpacing.Top := Max(pBG.Top + BgTopMargin, 0);
 
@@ -455,7 +472,6 @@ begin
       BorderSpacing.Bottom := Max(Self.Height - (pB.Top - BgBottomMargin), 0);
     end;
 
-    BeginFormSizeUpdate(Sender);
 
     {$IF Defined(LCLWin32) or Defined(LCLWin64)}
     SetCapture(TWinControl(Sender).Handle);
@@ -512,9 +528,9 @@ begin
 
   if FNodePositioning then
   begin
+    with TWinControl(Sender) do
     begin
-      with TWinControl(Sender) do
-      begin
+      newPos := Point(0, 0);
       GetCursorPos(newPos);
 
       if (newPos.x = FOldPos.x) and (newPos.y = FOldPos.y) then
@@ -581,7 +597,6 @@ begin
       Left := Left - FOldPos.X + newPos.X;
       Top := Top - FOldPos.Y + newPos.Y;
       FOldPos := newPos;
-      end;
     end;
     PositionNodes(Self);
     if Assigned(OnNodePositioning) then
@@ -616,6 +631,7 @@ begin
     if Assigned(OnNodePositioning) then
       OnNodePositioning(Sender, FPositioningKind, pcPositioningEnd);
     FPositioningKind := [];
+    FNodePositioning := False;
 
     pClient.Align := alNone;
     BorderSpacing.Left := 0;
@@ -629,6 +645,10 @@ begin
     // after resizing, TFrame is frozen in Windows OS
     // this is trick to workaraund IDE bug. Also for proper size for normal form
     TryBoundDesignedForm;
+    // for small resizes, designed form is moved on the top and on the bottom
+    // is showed white block - to stop this we need to move pClient to right position
+    PositionNodes;
+    ShowSizeControls;
   end;
 end;
 
@@ -650,6 +670,7 @@ var
 begin
   Result := False;
   if  (FDesignedForm<>nil) and (FDesignedForm.Form.Menu<>nil)
+  and not (csDestroying in FDesignedForm.Form.Menu.ComponentState)
   and (FDesignedForm.Form.Menu.Items.Count>0)
   then
     for I := 0 to FDesignedForm.Form.Menu.Items.Count-1 do
@@ -670,12 +691,12 @@ end;
 
 function TBasicResizeFrame.BottomSizerRectHeight: Integer;
 begin
-  Result := SIZER_RECT_SIZE;
+  Result := SizerRectSize;
 end;
 
 function TBasicResizeFrame.BottomSizerLineWidth: Integer;
 begin
-  Result := SIZER_LINE_WIDTH;
+  Result := SizerLineWidth;
 end;
 
 function TBasicResizeFrame.TopSizerRectTop: Integer;
@@ -685,7 +706,7 @@ end;
 
 function TBasicResizeFrame.TopSizerLineWidth: Integer;
 begin
-  Result := SIZER_LINE_WIDTH;
+  Result := SizerLineWidth;
 end;
 
 function TBasicResizeFrame.VerticalSizerLineLength: Integer;
@@ -699,12 +720,12 @@ end;
 
 function TBasicResizeFrame.RightSizerRectWidth: Integer;
 begin
-  Result := SIZER_RECT_SIZE;
+  Result := SizerRectSize;
 end;
 
 function TBasicResizeFrame.RightSizerLineWidth: Integer;
 begin
-  Result := SIZER_LINE_WIDTH;
+  Result := SizerLineWidth;
 end;
 
 function TBasicResizeFrame.LeftSizerRectLeft: Integer;
@@ -714,12 +735,20 @@ end;
 
 function TBasicResizeFrame.LeftSizerLineWidth: Integer;
 begin
-  Result := SIZER_LINE_WIDTH;
+  Result := SizerLineWidth;
 end;
 
 function TBasicResizeFrame.HorizontalSizerLineLength: Integer;
 begin
   Result := Width - RightMargin;
+end;
+
+procedure TBasicResizeFrame.AdjustFormHandler;
+begin
+  pFormHandler.Left:=(-FDesignedForm.Form.Left)-(FDesignedForm.PositionDelta.x+ifthen(FHorizontalScrollPos-SizerLineWidth>0,FHorizontalScrollPos-SizerLineWidth,0));
+  pFormHandler.Top:=(-FDesignedForm.Form.Top)-(FDesignedForm.PositionDelta.y+ifthen(FVerticalScrollPos-SizerLineWidth>0,FVerticalScrollPos-SizerLineWidth,0));
+  pFormHandler.Width:=(FDesignedForm.Form.Width+abs(FDesignedForm.Form.Left)+FDesignedForm.PositionDelta.x);;
+  pFormHandler.Height:=(FDesignedForm.Form.Height+abs(FDesignedForm.Form.Top)+FDesignedForm.PositionDelta.y);
 end;
 
 function TBasicResizeFrame.GetBackgroundMargin(const AIndex: Integer): Integer;
@@ -733,9 +762,14 @@ begin
     Result := Result + GetMenuHeight;
 end;
 
-function TBasicResizeFrame.GetClientPanel: TPanel;
+function TBasicResizeFrame.GetNewSize: TPoint;
 begin
-  Result := pClient;
+  Result := TPoint.Create(FLastClientWidth,FLastClientHeight);
+end;
+
+function TBasicResizeFrame.GetFormHandler: TPanel;
+begin
+  Result := pFormHandler;
 end;
 
 function TBasicResizeFrame.GetNodePositioning: Boolean;
@@ -792,9 +826,9 @@ begin
 
   // for GTK2 resizing form (pClient is hidden under pBG)
   {$IF DEFINED(LCLGtk2) OR DEFINED(LCLQt) OR DEFINED(LCLQt5)}
-  pClient.SendToBack; // <--- this is a must.
+  pFormHandler.SendToBack; // <--- this is a must.
   {$ENDIF}
-  pClient.BringToFront;
+  pFormHandler.BringToFront;
 
   pFakeMenu.Visible := HasMainMenu;
   if pFakeMenu.Visible then
@@ -809,10 +843,15 @@ end;
 
 procedure TBasicResizeFrame.BeginFormSizeUpdate(Sender: TObject);
 begin
+  FLastDesignedWidthToScroll:=DesignedWidthToScroll;
+  FLastDesignedHeightToScroll:=DesignedHeightToScroll;
+  pBG.OnPaint := nil;
+  pBG.SendToBack;
 end;
 
 procedure TBasicResizeFrame.EndFormSizeUpdate(Sender: TObject);
 begin
+  pBG.OnPaint := pBGPaint;
 end;
 
 function TBasicResizeFrame.GetFrame: TCustomFrame;
@@ -842,12 +881,12 @@ end;
 
 function TBasicResizeFrame.GetSizerRectSize: Integer;
 begin
-  Result := SIZER_RECT_SIZE;
+  Result := SizerRectSize;
 end;
 
 function TBasicResizeFrame.GetSizerLineWidth: Integer;
 begin
-  Result := SIZER_LINE_WIDTH;
+  Result := SizerLineWidth;
 end;
 
 function TBasicResizeFrame.GetBackgroundPanel: TPanel;
@@ -859,8 +898,10 @@ function TBasicResizeFrame.DesignedWidthToScroll: Integer;
 begin
   if DesignedForm = nil then
     Exit(0);
-
-  Result := DesignedForm.Width - FLastClientWidth;
+  if FNodePositioning then
+    Result := FLastDesignedWidthToScroll
+  else
+    Result := abs(DesignedForm.Width - FLastClientWidth);
   //Result := DesignedForm.Width - DesignedForm.RealWidth;
 end;
 
@@ -875,7 +916,10 @@ begin
   if DesignedForm = nil then
     Exit(0);
 
-  Result := DesignedForm.Height - FLastClientHeight;
+  if FNodePositioning then
+    Result := FLastDesignedHeightToScroll
+  else
+    Result := abs(DesignedForm.Height - FLastClientHeight);
   //Result := DesignedForm.Height - DesignedForm.RealHeight;
 end;
 
@@ -889,6 +933,11 @@ end;
 constructor TBasicResizeFrame.Create(TheOwner: TComponent);
 begin
   inherited Create(TheOwner);
+
+// Michl: Don't change DesignTimePPI of BasicResizeFrame (sparta_basicresizeframe.lfm).
+//        There always has to be the default (none entry = 96 PPI) value!
+  FSizerRectSize := ScaleX(SIZER_RECT_SIZE, 96);
+  FSizerLineWidth := ScaleX(SIZER_LINE_WIDTH, 96);
 
   FFakeFocusControl := TEdit.Create(Self);
   FFakeFocusControl.Parent := Self;
@@ -915,11 +964,15 @@ begin
 end;
 
 procedure TBasicResizeFrame.AppOnIdle(Sender: TObject; var Done: Boolean);
+var
+  aHasMainMenu: Boolean;
 begin
   if FDesignerModified then
   begin
-    if FOldHasMainMenu <> HasMainMenu then
+    aHasMainMenu := HasMainMenu;
+    if aHasMainMenu <> FOldHasMainMenu then
     begin
+      FOldHasMainMenu := aHasMainMenu;
       TryBoundDesignedForm;
       if Assigned(OnNodePositioning) then
         OnNodePositioning(Self, [pkBottom], pcPositioningEnd);
@@ -1001,21 +1054,21 @@ begin
 
     // width and height
     pL.Top:=0;
-    pL.Height := FDesignedForm.Height + 2*SIZER_RECT_SIZE + BgTopMargin + BgBottomMargin;
+    pL.Height := FDesignedForm.Height + 2*SizerRectSize + BgTopMargin + BgBottomMargin;
     pR.Top:=0;
-    pR.Height := FDesignedForm.Height + 2*SIZER_RECT_SIZE + BgTopMargin + BgBottomMargin;
+    pR.Height := FDesignedForm.Height + 2*SizerRectSize + BgTopMargin + BgBottomMargin;
     pT.Left:=0;
-    pT.Width := FDesignedForm.Width + 2*SIZER_RECT_SIZE + BgLeftMargin + BgRightMargin;
+    pT.Width := FDesignedForm.Width + 2*SizerRectSize + BgLeftMargin + BgRightMargin;
     pB.Left:=0;
-    pB.Width := FDesignedForm.Width + 2*SIZER_RECT_SIZE + BgLeftMargin + BgRightMargin;
+    pB.Width := FDesignedForm.Width + 2*SizerRectSize + BgLeftMargin + BgRightMargin;
 
     // client
     if pBG.Left + BgLeftMargin <= 0 then
-      pClient.Left := -(pBG.Left) - (FHorizontalScrollPos - SIZER_RECT_SIZE)
+      pClient.Left := -(pBG.Left) - (FHorizontalScrollPos - SizerRectSize)
     else
       pClient.Left := pBG.Left + BgLeftMargin;
     if pBG.Top + BgTopMargin <= 0 then
-      pClient.Top := -(pBG.Top) - (FVerticalScrollPos - SIZER_RECT_SIZE)
+      pClient.Top := -(pBG.Top) - (FVerticalScrollPos - SizerRectSize)
     else
       pClient.Top := pBG.Top + BgTopMargin;
 
@@ -1023,7 +1076,7 @@ begin
     pClient.Width := Width - pClient.Left - Max(Width - (pR.Left - BgRightMargin), 0);
   end;
 
-  FOldHasMainMenu := HasMainMenu;
+  AdjustFormHandler;
 
   for Node := 0 to 7 do
   begin

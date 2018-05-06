@@ -136,6 +136,7 @@ var
   {$ENDIF}
   dx, dy: integer;
   APalette: QPaletteH;
+  W: WideString;
 
   procedure DrawSplitterInternal;
   var
@@ -298,8 +299,9 @@ begin
               HP_HEADERITEMRIGHT: Position := QStyleOptionHeaderEnd;
             end;
 
-            // fix for oxygen weird drawing of header sections. issue #23143
-            if (GetStyleName = 'oxygen') and (Position = QStyleOptionHeaderMiddle) then
+            W := GetStyleName;
+            // fix for oxygen and breeze weird drawing of header sections. issue #23143
+            if ((W = 'oxygen') or (W = 'breeze')) and (Position = QStyleOptionHeaderMiddle) then
             begin
               // see if this is needed (in case of fixedRows in grids)
               // if (ARect.Left > 0) or ((ARect.Left = 0) and (ARect.Top = 0)) then
@@ -568,7 +570,7 @@ begin
   case Details.Element of
     teToolTip:
       begin
-        W := GetUTF8String(S);
+        W := {%H-}S;
         Context.save;
         AOldMode := Context.SetBkMode(TRANSPARENT);
         try
@@ -612,7 +614,7 @@ begin
             exit;
           end;
 
-          W := GetUTF8String(S);
+          W := {%H-}S;
           Context.save;
           try
             Context.SetBkMode(TRANSPARENT);
@@ -660,7 +662,7 @@ begin
 
     else
     begin // default text drawing for all !
-      W := GetUTF8String(S);
+      W := {%H-}S;
       Context.save;
       AOldMode := Context.SetBkMode(TRANSPARENT);
       if Context.Parent <> nil then
@@ -859,13 +861,17 @@ begin
       end;
     teRebar :
       if Details.Part in [RP_GRIPPER, RP_GRIPPERVERT] then
-        Result := Size(-1, -1);
+        Result := Size(-1, -1)
+      else
+        Result := inherited;
     teTreeView:
-      if Details.Part in [TVP_GLYPH, TVP_HOTGLYPH] then
       begin
         Result := inherited;
-        inc(Result.cx);
-        inc(Result.cy);
+        if Details.Part in [TVP_GLYPH, TVP_HOTGLYPH] then
+        begin
+          inc(Result.cx);
+          inc(Result.cy);
+        end;
       end;
     teToolBar:
       if (Details.Part = TP_DROPDOWNBUTTON) or (Details.Part = TP_SPLITBUTTONDROPDOWN) then
@@ -873,6 +879,11 @@ begin
         Result.cy := -1;
         Result.cx := QStyle_pixelMetric(Style, QStylePM_MenuButtonIndicator, nil, nil);
       end else
+        Result := inherited;
+    teHeader:
+      if Details.Part = HP_HEADERSORTARROW then
+        Result := Size(-1, -1) // not yet supported
+      else
         Result := inherited;
     else
       Result := inherited;

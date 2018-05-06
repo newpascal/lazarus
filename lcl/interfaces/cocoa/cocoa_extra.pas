@@ -32,6 +32,7 @@ type
   end;
 
   NSViewFix = objccategory external (NSView)
+    // 10.7+
     function fittingSize: NSSize; message 'fittingSize';
   end;
 
@@ -58,10 +59,59 @@ type
     class function modifierFlags_: NSUInteger; message 'modifierFlags';
   end;
 
+  NSWindowFix = objccategory external (NSWindow)
+    // 10.4-10.7
+    function userSpaceScaleFactor: CGFloat; message 'userSpaceScaleFactor'; //deprecated
+    // 10.7+
+    procedure toggleFullScreen(sender: id); message 'toggleFullScreen:';
+    function backingScaleFactor: CGFloat; message 'backingScaleFactor';
+  end;
+
   {// private since 10.5, doesn't seam to do anything in 10.10
   NSApplicationSetAppleMenu = objccategory external(NSApplication)
     procedure setAppleMenu(AMenu: NSMenu); message 'setAppleMenu:';
   end;}
+
+  NSOperatingSystemVersion = record
+    majorVersion: NSInteger;
+    minorVersion: NSInteger;
+    patchVersion: NSInteger;
+  end;
+
+const
+  NSAppKitVersionNumber10_7 = 1138; // defined in NSApplication.h
+
+
+const
+  //kCGBaseWindowLevelKey = 0;
+  //kCGMinimumWindowLevelKey = 1;
+  //kCGDesktopWindowLevelKey = 2;
+  //kCGBackstopMenuLevelKey = 3;
+  NSNormalWindowLevel = 4;
+  NSFloatingWindowLevel = 5;
+  NSSubmenuWindowLevel = 6;
+  NSTornOffMenuWindowLevel = 6;
+  //kCGDockWindowLevelKey = 7; deprecated
+  NSMainMenuWindowLevel = 8;
+  NSStatusWindowLevel = 9;
+  NSModalPanelWindowLevel = 10;
+  NSPopUpMenuWindowLevel = 11;
+  NSScreenSaverWindowLevel = 12;
+  //kCGScreenSaverWindowLevelKey = 13;
+  //kCGMaximumWindowLevelKey = 14;
+  //kCGOverlayWindowLevelKey = 15;
+  //kCGHelpWindowLevelKey = 16;
+  //kCGUtilityWindowLevelKey = 17;
+  //kCGDesktopIconWindowLevelKey = 18;
+  //kCGCursorWindowLevelKey = 19;
+  //kCGAssistiveTechHighWindowLevelKey = 20;
+  //kCGNumberOfWindowLevelKeys = 21;	{ Must be last. }
+
+const
+  NSWindowCollectionBehaviorFullScreenPrimary = 1 shl 7;  // 10.7
+  NSWindowCollectionBehaviorFullScreenAuxiliary = 1 shl 8;  // 10.7
+  NSWindowCollectionBehaviorFullScreenAllowsTiling = 1 shl 11; // 10.11
+  NSWindowCollectionBehaviorFullScreenDisallowsTiling = 1 shl 12; // 10.11
 
 implementation
 

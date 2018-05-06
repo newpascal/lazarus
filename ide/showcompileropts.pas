@@ -35,11 +35,18 @@ unit ShowCompilerOpts;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, Buttons, StdCtrls, ComCtrls, ExtCtrls,
-  LazFileUtils, LazUTF8, CodeToolsCfgScript,
-  LazIDEIntf, IDEImagesIntf, CompOptsIntf, ProjectIntf,
-  LazarusIDEStrConsts, CompilerOptions,
-  IDEProcs, Project, ModeMatrixOpts, PackageDefs, MiscOptions;
+  Classes, SysUtils,
+  // LCL
+  Forms, Controls, Buttons, StdCtrls, ComCtrls, ExtCtrls,
+  // LazUtils
+  LazFileUtils, LazUTF8,
+  // CodeTools
+  CodeToolsCfgScript,
+  // IdeIntf
+  LazIDEIntf, IDEImagesIntf, CompOptsIntf, ProjectIntf, PackageIntf,
+  // IDE
+  LazarusIDEStrConsts, IDEProcs, Project, PackageDefs,
+  CompilerOptions, ModeMatrixOpts, MiscOptions;
 
 type
 
@@ -161,9 +168,9 @@ end;
 
 procedure TShowCompilerOptionsDlg.FormCreate(Sender: TObject);
 begin
-  ImageIndexPackage := IDEImages.LoadImage(16, 'item_package');
-  ImageIndexRequired := IDEImages.LoadImage(16, 'pkg_required');
-  ImageIndexInherited := IDEImages.LoadImage(16, 'pkg_inherited');
+  ImageIndexPackage := IDEImages.LoadImage('item_package');
+  ImageIndexRequired := IDEImages.LoadImage('pkg_required');
+  ImageIndexInherited := IDEImages.LoadImage('pkg_inherited');
 
   Caption:=dlgCompilerOptions;
 

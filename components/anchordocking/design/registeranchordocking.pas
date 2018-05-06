@@ -251,7 +251,12 @@ begin
   Result:=false;
   if AForm is TAnchorDockHostSite then exit;
   if (DockMaster.FindControl(AForm.Name)=nil) and (AForm.Parent<>nil) then exit;
-  Result:=true;
+  Result := AForm.IsVisible
+    or (
+      Assigned(AForm.Parent)
+      and Assigned(AForm.Parent.Parent)
+      and (AForm.Parent.Parent is TAnchorDockPage)
+    );
 end;
 
 procedure TIDEAnchorDockMaster.AdjustMainIDEWindowHeight(
@@ -367,7 +372,7 @@ begin
     end;
 
   finally
-    OldActiveControl:=AForm.ActiveControl;
+    OldActiveControl:=AForm.LastActiveControl;
     {$IF defined(VerboseAnchorDocking) or defined(VerboseAnchorDockRestore)}
     if not AForm.IsVisible then
       debugln(['TIDEAnchorDockMaster.ShowForm MakeVisible ',DbgSName(AForm),' ',dbgs(AForm.BoundsRect),' Floating=',DockMaster.IsFloating(AForm)]);

@@ -42,7 +42,7 @@ begin
   FResourceCacheDescriptorClass := TFontHandleCacheDescriptor;
 end;
 
-function TFontHandleCache.CompareDescriptors(Tree: TAvgLvlTree; Desc1,
+function TFontHandleCache.CompareDescriptors(Tree: TAvlTree; Desc1,
   Desc2: Pointer): integer;
 var
   Descriptor1: TFontHandleCacheDescriptor absolute Desc1;
@@ -57,7 +57,7 @@ end;
 
 function TFontHandleCache.FindFont(TheFont: TLCLHandle): TResourceCacheItem;
 var
-  ANode: TAvgLvlTreeNode;
+  ANode: TAvlTreeNode;
 begin
   ANode := FItems.FindKey(@TheFont,
                           TListSortCompare(@ComparePHandleWithResourceCacheItem));
@@ -71,7 +71,7 @@ function TFontHandleCache.FindFontDesc(const LogFont: TLogFont;
   const LongFontName: string): TFontHandleCacheDescriptor;
 var
   LogFontAndName: TLogFontAndName;
-  ANode: TAvgLvlTreeNode;
+  ANode: TAvlTreeNode;
 begin
   LogFontAndName.LogFont := LogFont;
   LogFontAndName.LongFontName := LongFontName;
@@ -624,6 +624,7 @@ begin
   FCharSet := DefFontData.CharSet;
   FQuality := DefFontData.Quality;
   FHeight := DefFontData.Height;
+  FStyle := DefFontData.Style;
   inherited SetSize(-MulDiv(FHeight, 72, FPixelsPerInch));
   DelayAllocate := True;
   inherited SetName(DefFontData.Name);
@@ -688,28 +689,22 @@ var
 begin
   BeginUpdate;
   try
-    with ALogFont do
-    begin
-      Height := ALogFont.lfHeight;
-      Charset := TFontCharset(ALogFont.lfCharSet);
-      AStyle := [];
-      with ALogFont do
-      begin
-        if lfWeight >= FW_SEMIBOLD then Include(AStyle, fsBold);
-        if lfItalic <> 0 then Include(AStyle, fsItalic);
-        if lfUnderline <> 0 then Include(AStyle, fsUnderline);
-        if lfStrikeOut <> 0 then Include(AStyle, fsStrikeOut);
-      end;
-      if (FIXED_PITCH and lfPitchAndFamily) <> 0 then
-        Pitch := fpFixed
-      else if (VARIABLE_PITCH and lfPitchAndFamily) <> 0 then
-        Pitch := fpVariable
-      else
-        Pitch := fpDefault;
-      Style := AStyle;
-      Quality := TFontQuality(ALogFont.lfQuality);
-      Name := ALogFont.lfFaceName;
-    end;
+    Height := ALogFont.lfHeight;
+    Charset := TFontCharset(ALogFont.lfCharSet);
+    AStyle := [];
+    if ALogFont.lfWeight >= FW_SEMIBOLD then Include(AStyle, fsBold);
+    if ALogFont.lfItalic <> 0 then Include(AStyle, fsItalic);
+    if ALogFont.lfUnderline <> 0 then Include(AStyle, fsUnderline);
+    if ALogFont.lfStrikeOut <> 0 then Include(AStyle, fsStrikeOut);
+    if (FIXED_PITCH and ALogFont.lfPitchAndFamily) <> 0 then
+      Pitch := fpFixed
+    else if (VARIABLE_PITCH and ALogFont.lfPitchAndFamily) <> 0 then
+      Pitch := fpVariable
+    else
+      Pitch := fpDefault;
+    Style := AStyle;
+    Quality := TFontQuality(ALogFont.lfQuality);
+    Name := ALogFont.lfFaceName;
   finally
     EndUpdate;
   end;
@@ -721,7 +716,6 @@ begin
   if (AFont=nil)
   or (CharSet<>AFont.CharSet)
   or (Color<>AFont.Color)
-  or (PixelsPerInch<>AFont.PixelsPerInch)
   or (Size<>AFont.Size)
   or (Height<>AFont.Height)
   or (Name<>AFont.Name)
@@ -766,6 +760,7 @@ begin
          and (Color={$ifdef UseCLDefault}clDefault{$else}clWindowText{$endif})
          and (Height=0)
          and (not IsNameStored)
+         and (Orientation=0)
          and (Pitch=fpDefault)
          and (Size=0)
          and (Quality=fqDefault)
@@ -933,7 +928,7 @@ end;
 function TFont.GetColor: TColor;
 begin
   Result := Color;
-  if (Result = clDefault) and Assigned(Canvas) and (Canvas is TCanvas) then
+  if (Result = clDefault) and (Canvas is TCanvas) then
     Result := TCanvas(Canvas).GetDefaultColor(dctFont);
 end;
 

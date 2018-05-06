@@ -23,7 +23,7 @@ interface
 
 uses
   // RTL / FCL
-  Classes, TypInfo, SysUtils, types, RtlConsts, variants,
+  Classes, TypInfo, SysUtils, types, RtlConsts, variants, Contnrs,
   // LCL
   LCLType, LCLIntf, LCLProc, Forms, Controls, GraphType, ButtonPanel, Graphics,
   StdCtrls, Buttons, Menus, ExtCtrls, ComCtrls, Dialogs, EditBtn, Grids, ValEdit,
@@ -258,7 +258,6 @@ type
     paDisableSubProperties,
     paReference,
     paNotNestable,
-    paHasDefaultValue,
     paCustomDrawn
     );
   TPropertyAttributes = set of TPropertyAttribute;
@@ -278,7 +277,7 @@ type
   TGetPropEditProc = procedure(Prop: TPropertyEditor) of object;
 
   TPropEditDrawStateType = (pedsSelected, pedsFocused, pedsInEdit,
-       pedsInComboList, pedsPainted);
+       pedsInComboList);
   TPropEditDrawState = set of TPropEditDrawStateType;
   
   TPropEditHint = (
@@ -360,7 +359,10 @@ type
     function GetUnicodeStrValueAt(Index: Integer): UnicodeString;
     function GetValue: ansistring; virtual;
     function GetHint({%H-}HintType: TPropEditHint; {%H-}x, {%H-}y: integer): string; virtual;
+    function HasDefaultValue: Boolean;
+    function HasStoredFunction: Boolean;
     function GetDefaultValue: ansistring; virtual;
+    function CallStoredFunction: Boolean; virtual;
     function GetVisualValue: ansistring; virtual;
     procedure GetValues({%H-}Proc: TGetStrProc); virtual;
     procedure Initialize; virtual;
@@ -381,23 +383,22 @@ type
     procedure SetVarValue(const NewValue: Variant);
     procedure Modified(PropName: ShortString = '');
     function ValueAvailable: Boolean;
-    procedure ListMeasureWidth(const {%H-}AValue: ansistring; {%H-}Index:integer;
-                               {%H-}ACanvas:TCanvas; var {%H-}AWidth: Integer); virtual;
-    procedure ListMeasureHeight(const AValue: ansistring; {%H-}Index:integer;
-                                ACanvas:TCanvas; var AHeight: Integer); virtual;
-    procedure ListDrawValue(const AValue: ansistring; {%H-}Index:integer;
-                            ACanvas:TCanvas; const ARect: TRect;
-                            AState: TPropEditDrawState); virtual;
+    procedure ListMeasureWidth(const {%H-}AValue: ansistring; {%H-}Index: Integer;
+                               {%H-}ACanvas: TCanvas; var {%H-}AWidth: Integer); virtual;
+    procedure ListMeasureHeight(const AValue: ansistring; {%H-}Index: Integer;
+                                ACanvas: TCanvas; var AHeight: Integer); virtual;
+    procedure ListDrawValue(const AValue: ansistring; {%H-}Index: Integer;
+                            ACanvas: TCanvas; const ARect: TRect;
+                            {%H-}AState: TPropEditDrawState); virtual;
     procedure PropMeasureHeight(const {%H-}NewValue: ansistring;  {%H-}ACanvas: TCanvas;
-                                var {%H-}AHeight:Integer); virtual;
-    procedure PropDrawName(ACanvas: TCanvas; const ARect:TRect;
+                                var {%H-}AHeight: Integer); virtual;
+    procedure PropDrawName(ACanvas: TCanvas; const ARect: TRect;
                            {%H-}AState: TPropEditDrawState); virtual;
-    procedure PropDrawValue(ACanvas:TCanvas; const ARect:TRect;
-                            {%H-}AState:TPropEditDrawState); virtual;
+    procedure PropDrawValue(ACanvas: TCanvas; const ARect: TRect;
+                            {%H-}AState: TPropEditDrawState); virtual;
     procedure UpdateSubProperties; virtual;
     function SubPropertiesNeedsUpdate: boolean; virtual;
-    function IsDefaultValue: boolean; virtual;
-    function IsNotDefaultValue: boolean; virtual;
+    function ValueIsStreamed: boolean; virtual;
     function IsRevertableToInherited: boolean; virtual;
     // These are used for the popup menu in OI
     function GetVerbCount: Integer; virtual;
@@ -431,7 +432,6 @@ type
   public
     function AllEqual: Boolean; override;
     function GetEditLimit: Integer; override;
-    function GetAttributes: TPropertyAttributes; override;
     function GetValue: ansistring; override;
     function GetDefaultValue: ansistring; override;
     function OrdValueToVisualValue(OrdValue: longint): string; virtual;
@@ -463,9 +463,12 @@ type
   (sCircle, sTriangle, sSquare), etc.). }
 
   TEnumPropertyEditor = class(TOrdinalPropertyEditor)
+  private
+    FInvalid: Boolean;
   public
     function GetAttributes: TPropertyAttributes; override;
     function OrdValueToVisualValue(OrdValue: longint): string; override;
+    function GetVisualValue: ansistring; override;
     procedure GetValues(Proc: TGetStrProc); override;
     procedure SetValue(const NewValue: ansistring); override;
   end;
@@ -511,6 +514,8 @@ type
   TFloatPropertyEditor = class(TPropertyEditor)
   public
     function AllEqual: Boolean; override;
+    function FormatValue(const AValue: Extended): ansistring;
+    function GetDefaultValue: ansistring; override;
     function GetValue: ansistring; override;
     procedure SetValue(const NewValue: ansistring); override;
   end;
@@ -600,7 +605,7 @@ type
     function GetVisualValue: ansistring; override;
     procedure GetValues(Proc: TGetStrProc); override;
     procedure SetValue(const NewValue: ansistring); override;
-    function IsNotDefaultValue: boolean; override;
+    function ValueIsStreamed: boolean; override;
     procedure PropDrawValue(ACanvas: TCanvas; const ARect: TRect;
                             AState: TPropEditDrawState); override;
    end;
@@ -629,13 +634,17 @@ type
     FSubPropsTypeFilter: TTypeKinds;
     FSubPropsNameFilter: String;
     FHideClassName: Boolean;
+    FSubProps: TObjectList;
+    procedure ListSubProps(Prop: TPropertyEditor);
     procedure SetSubPropsTypeFilter(const AValue: TTypeKinds);
     function EditorFilter(const AEditor: TPropertyEditor): Boolean;
   protected
     function GetSelections: TPersistentSelectionList; virtual;
   public
     constructor Create(Hook: TPropertyEditorHook; APropCount: Integer); override;
+    destructor Destroy; override;
 
+    function ValueIsStreamed: boolean; override;
     function AllEqual: Boolean; override;
     function GetAttributes: TPropertyAttributes; override;
     procedure GetProperties(Proc: TGetPropEditProc); override;
@@ -652,6 +661,8 @@ type
   Property editor for all method properties. }
 
   TMethodPropertyEditor = class(TPropertyEditor)
+  private
+    function GetTrimmedEventName: shortstring;
   public
     function AllEqual: Boolean; override;
     procedure Edit; override;
@@ -662,7 +673,6 @@ type
     procedure GetValues(Proc: TGetStrProc); override;
     procedure SetValue(const NewValue: ansistring); override;
     function GetFormMethodName: shortstring;
-    function GetTrimmedEventName: shortstring;
     class function GetDefaultMethodName(Root, Component: TComponent;
         const RootClassName, ComponentName, PropName: shortstring): shortstring;
   end;
@@ -738,6 +748,8 @@ type
     function GetSelections: TPersistentSelectionList; override;
   public
     function AllEqual: Boolean; override;
+    procedure Edit; override;
+    function GetAttributes: TPropertyAttributes; override;
     procedure GetValues(Proc: TGetStrProc); override;
     procedure SetValue(const NewValue: string); override;
     function GetValue: AnsiString; override;
@@ -1256,6 +1268,7 @@ type
   TPropHookRenameMethod = procedure(const CurName, NewName: String) of object;
   TPropHookShowMethod = procedure(const Name: String) of object;
   TPropHookMethodFromAncestor = function(const Method:TMethod):boolean of object;
+  TPropHookMethodFromLookupRoot = function(const Method:TMethod):boolean of object;
   TPropHookChainCall = procedure(const AMethodName, InstanceName,
                       InstanceMethod:ShortString; TypeData:PTypeData) of object;
   // components
@@ -1294,7 +1307,8 @@ type
   TPropHookObjectPropertyChanged = procedure(Sender: TObject;
                                              NewObject: TPersistent) of object;
   // modifing
-  TPropHookModified = procedure(Sender: TObject; PropName: ShortString) of object;
+  TPropHookModified = procedure(Sender: TObject) of object;
+  TPropHookModifiedWithName = procedure(Sender: TObject; PropName: ShortString) of object;
   TPropHookRevert = procedure(Instance:TPersistent; PropInfo:PPropInfo) of object;
   TPropHookRefreshPropertyValues = procedure of object;
   // other
@@ -1313,6 +1327,7 @@ type
     htRenameMethod,
     htShowMethod,
     htMethodFromAncestor,
+    htMethodFromLookupRoot,
     htChainCall,
     // components
     htGetComponent,
@@ -1337,6 +1352,7 @@ type
     htObjectPropertyChanged,
     // modifing
     htModified,
+    htModifiedWithName,
     htRevert,
     htRefreshPropertyValues,
     // dependencies
@@ -1385,6 +1401,7 @@ type
     procedure RenameMethod(const CurName, NewName: String);
     procedure ShowMethod(const aName: String);
     function MethodFromAncestor(const Method: TMethod): boolean;
+    function MethodFromLookupRoot(const Method: TMethod): boolean;
     procedure ChainCall(const AMethodName, InstanceName,
                         InstanceMethod: ShortString;  TypeData: PTypeData);
     // components
@@ -1463,6 +1480,10 @@ type
                        const OnMethodFromAncestor: TPropHookMethodFromAncestor);
     procedure RemoveHandlerMethodFromAncestor(
                        const OnMethodFromAncestor: TPropHookMethodFromAncestor);
+    procedure AddHandlerMethodFromLookupRoot(
+                       const OnMethodFromLookupRoot: TPropHookMethodFromLookupRoot);
+    procedure RemoveHandlerMethodFromLookupRoot(
+                       const OnMethodFromLookupRoot: TPropHookMethodFromLookupRoot);
     procedure AddHandlerChainCall(const OnChainCall: TPropHookChainCall);
     procedure RemoveHandlerChainCall(const OnChainCall: TPropHookChainCall);
     // component event
@@ -1534,6 +1555,8 @@ type
     // modifing events
     procedure AddHandlerModified(const OnModified: TPropHookModified);
     procedure RemoveHandlerModified(const OnModified: TPropHookModified);
+    procedure AddHandlerModifiedWithName(const OnModified: TPropHookModifiedWithName);
+    procedure RemoveHandlerModifiedWithName(const OnModified: TPropHookModifiedWithName);
     procedure AddHandlerRevert(const OnRevert: TPropHookRevert);
     procedure RemoveHandlerRevert(const OnRevert: TPropHookRevert);
     procedure AddHandlerRefreshPropertyValues(
@@ -2543,6 +2566,44 @@ begin
   Result:=True;
 end;
 
+type
+  TBoolFunc = function: Boolean of object;
+  TBoolIndexFunc = function(const Index: Integer): Boolean of object;
+function TPropertyEditor.CallStoredFunction: Boolean;
+var
+  Met: TMethod;
+  Func: TBoolFunc;
+  IndexFunc: TBoolIndexFunc;
+  APropInfo: PPropInfo;
+  StoredProcType: Byte;
+begin
+  APropInfo:=FPropList^[0].PropInfo;
+  StoredProcType := ((APropInfo^.PropProcs shr 4) and 3);
+  if StoredProcType in [ptStatic, ptVirtual] then
+  begin
+    case StoredProcType of
+      ptStatic: Met.Code := APropInfo^.StoredProc;
+      ptVirtual: Met.Code := PPointer(Pointer(FPropList^[0].Instance.ClassType))[{%H-}PtrInt(APropInfo^.StoredProc) div SizeOf(Pointer)];
+    end;
+    if Met.Code = nil then
+      raise EPropertyError.Create('No property stored method available');
+    Met.Data := FPropList^[0].Instance;
+    if ((APropInfo^.PropProcs shr 6) and 1) <> 0 then // has index property
+    begin
+      IndexFunc := TBoolIndexFunc(Met);
+      Result := IndexFunc(APropInfo^.Index);
+    end else
+    begin
+      Func := TBoolFunc(Met);
+      Result := Func();
+    end;
+  end else
+  if StoredProcType = ptConst then
+    Result := APropInfo^.StoredProc<>nil
+  else
+    raise EPropertyError.Create('No property stored method/const available');
+end;
+
 function TPropertyEditor.DrawCheckbox(ACanvas: TCanvas; const ARect: TRect;
   IsTrue: Boolean): TRect;
 // Draws a Checkbox using theme services for editing booleans.
@@ -2886,6 +2947,24 @@ begin
   with FPropList^[Index] do Result:=GetWideStrProp(Instance,PropInfo);
 end;
 
+function TPropertyEditor.HasDefaultValue: Boolean;
+var
+  APropInfo: PPropInfo;
+begin
+  APropInfo:=FPropList^[0].PropInfo;
+  Result := APropInfo^.Default<>NoDefaultValue;
+end;
+
+function TPropertyEditor.HasStoredFunction: Boolean;
+var
+  APropInfo: PPropInfo;
+  StoredProcType: Byte;
+begin
+  APropInfo:=FPropList^[0].PropInfo;
+  StoredProcType := ((APropInfo^.PropProcs shr 4) and 3);
+  Result := StoredProcType in [ptConst, ptStatic, ptVirtual];
+end;
+
 function TPropertyEditor.GetUnicodeStrValue: UnicodeString;
 begin
   Result:=GetUnicodeStrValueAt(0);
@@ -2933,7 +3012,7 @@ end;
 
 function TPropertyEditor.GetDefaultValue: ansistring;
 begin
-  if not (paHasDefaultValue in GetAttributes) then
+  if not HasDefaultValue then
     raise EPropertyError.Create('No property default available');
   Result:='';
 end;
@@ -2984,175 +3063,111 @@ end;
 procedure TPropertyEditor.SetFloatValue(const NewValue: Extended);
 var
   I: Integer;
-  Changed: boolean;
 begin
-  Changed:=false;
   for I:=0 to FPropCount-1 do
-    with FPropList^[I] do
-      Changed:=Changed or (GetFloatProp(Instance,PropInfo)<>NewValue);
-  if Changed then
-    for I:=0 to FPropCount-1 do
-      with FPropList^[I] do begin
-        SetFloatProp(Instance,PropInfo,NewValue);
-        Modified(PropInfo^.Name);
-      end;
+    with FPropList^[I] do begin
+      SetFloatProp(Instance,PropInfo,NewValue);
+      Modified(PropInfo^.Name);
+    end;
 end;
 
 procedure TPropertyEditor.SetMethodValue(const NewValue: TMethod);
 var
   I: Integer;
-  Changed: boolean;
-  AMethod: TMethod;
 begin
-  Changed:=false;
   for I:=0 to FPropCount-1 do
     with FPropList^[I] do begin
-      AMethod:=LazGetMethodProp(Instance,PropInfo);
-      Changed:=Changed or not CompareMem(@AMethod,@NewValue,SizeOf(TMethod));
+      LazSetMethodProp(Instance,PropInfo,NewValue);
+      Modified(PropInfo^.Name);
     end;
-  if Changed then
-    for I:=0 to FPropCount-1 do
-      with FPropList^[I] do begin
-        LazSetMethodProp(Instance,PropInfo,NewValue);
-        Modified(PropInfo^.Name);
-      end;
 end;
 
 procedure TPropertyEditor.SetInt64Value(const NewValue: Int64);
 var
   I: Integer;
-  Changed: boolean;
 begin
-  Changed:=false;
   for I:=0 to FPropCount-1 do
-    with FPropList^[I] do
-      Changed:=Changed or (GetInt64Prop(Instance,PropInfo)<>NewValue);
-  if Changed then
-    for I:=0 to FPropCount-1 do
-      with FPropList^[I] do begin
-        SetInt64Prop(Instance,PropInfo,NewValue);
-        Modified(PropInfo^.Name);
-      end;
+    with FPropList^[I] do begin
+      SetInt64Prop(Instance,PropInfo,NewValue);
+      Modified(PropInfo^.Name);
+    end;
 end;
 
 procedure TPropertyEditor.SetIntfValue(const NewValue: IInterface);
 var
   I: Integer;
-  Changed: boolean;
 begin
-  Changed := False;
   for I := 0 to FPropCount - 1 do
-    with FPropList^[I] do
-      Changed := Changed or (GetInterfaceProp(Instance, PropInfo) <> NewValue);
-  if Changed then
-    for I := 0 to FPropCount - 1 do
-      with FPropList^[I] do begin
-        SetInterfaceProp(Instance, PropInfo, NewValue);
-        Modified(PropInfo^.Name);
-      end;
+    with FPropList^[I] do begin
+      SetInterfaceProp(Instance, PropInfo, NewValue);
+      Modified(PropInfo^.Name);
+    end;
 end;
 
 procedure TPropertyEditor.SetOrdValue(const NewValue: Longint);
 var
   I: Integer;
-  Changed: boolean;
 begin
-  Changed := False;
   for I := 0 to FPropCount - 1 do
-    with FPropList^[I] do
-      Changed := Changed or (GetOrdProp(Instance, PropInfo) <> NewValue);
-  if Changed then
-    for I := 0 to FPropCount - 1 do
-      with FPropList^[I] do begin
-        SetOrdProp(Instance, PropInfo, NewValue);
-        Modified(PropInfo^.Name);
-      end;
+    with FPropList^[I] do begin
+      SetOrdProp(Instance, PropInfo, NewValue);
+      Modified(PropInfo^.Name);
+    end;
 end;
 
 procedure TPropertyEditor.SetPtrValue(const NewValue: Pointer);
 var
   I: Integer;
-  Changed: boolean;
 begin
-  Changed := False;
   for I := 0 to FPropCount - 1 do
-    with FPropList^[I] do
-      Changed := Changed or (GetOrdProp(Instance, PropInfo) <> PtrInt({%H-}PtrUInt(NewValue)));
-  if Changed then
-    for I := 0 to FPropCount - 1 do
-      with FPropList^[I] do begin
-        SetOrdProp(Instance, PropInfo, PtrInt({%H-}PtrUInt(NewValue)));
-        Modified(PropInfo^.Name);
-      end;
+    with FPropList^[I] do begin
+      SetOrdProp(Instance, PropInfo, PtrInt({%H-}PtrUInt(NewValue)));
+      Modified(PropInfo^.Name);
+    end;
 end;
 
 procedure TPropertyEditor.SetStrValue(const NewValue: AnsiString);
 var
   I: Integer;
-  Changed: boolean;
 begin
-  Changed:=false;
   for I:=0 to FPropCount-1 do
-    with FPropList^[I] do
-      Changed:=Changed or (GetStrProp(Instance,PropInfo)<>NewValue);
-  if Changed then
-    for I:=0 to FPropCount-1 do
-      with FPropList^[I] do begin
-        SetStrProp(Instance,PropInfo,NewValue);
-        Modified(PropInfo^.Name);
-      end;
+    with FPropList^[I] do begin
+      SetStrProp(Instance,PropInfo,NewValue);
+      Modified(PropInfo^.Name);
+    end;
 end;
 
 procedure TPropertyEditor.SetWideStrValue(const NewValue: WideString);
 var
   I: Integer;
-  Changed: boolean;
 begin
-  Changed:=false;
   for I:=0 to FPropCount-1 do
-    with FPropList^[I] do
-      Changed:=Changed or (GetWideStrProp(Instance,PropInfo)<>NewValue);
-  if Changed then
-    for I:=0 to FPropCount-1 do
-      with FPropList^[I] do begin
-        SetWideStrProp(Instance,PropInfo,NewValue);
-        Modified(PropInfo^.Name);
-      end;
+    with FPropList^[I] do begin
+      SetWideStrProp(Instance,PropInfo,NewValue);
+      Modified(PropInfo^.Name);
+    end;
 end;
 
 procedure TPropertyEditor.SetUnicodeStrValue(const NewValue: UnicodeString);
 var
   I: Integer;
-  Changed: boolean;
 begin
-  Changed:=false;
   for I:=0 to FPropCount-1 do
-    with FPropList^[I] do
-      Changed:=Changed or (GetUnicodeStrProp(Instance,PropInfo)<>NewValue);
-  if Changed then
-    for I:=0 to FPropCount-1 do
-      with FPropList^[I] do begin
-        SetUnicodeStrProp(Instance,PropInfo,NewValue);
-        Modified(PropInfo^.Name);
-      end;
+    with FPropList^[I] do begin
+      SetUnicodeStrProp(Instance,PropInfo,NewValue);
+      Modified(PropInfo^.Name);
+    end;
 end;
 
 procedure TPropertyEditor.SetVarValue(const NewValue: Variant);
 var
   I: Integer;
-  Changed: boolean;
 begin
-  Changed:=false;
   for I:=0 to FPropCount-1 do
-    with FPropList^[I] do
-      Changed:=Changed or (GetVariantProp(Instance,PropInfo)<>NewValue)
-        or (VarType(GetVariantProp(Instance,PropInfo))<>VarType(NewValue));
-  if Changed then
-    for I:=0 to FPropCount-1 do
-      with FPropList^[I] do begin
-        SetVariantProp(Instance,PropInfo,NewValue);
-        Modified(PropInfo^.Name);
-      end;
+    with FPropList^[I] do begin
+      SetVariantProp(Instance,PropInfo,NewValue);
+      Modified(PropInfo^.Name);
+    end;
 end;
 
 procedure TPropertyEditor.Revert;
@@ -3319,47 +3334,32 @@ end;
   override the two measure procedures if the default width or height don't
   need to be changed. }
 procedure TPropertyEditor.ListMeasureHeight(const AValue: ansistring;
-  Index: integer; ACanvas: TCanvas; var AHeight: Integer);
+  Index: Integer; ACanvas: TCanvas; var AHeight: Integer);
 begin
   AHeight := ACanvas.TextHeight(AValue);
 end;
 
 procedure TPropertyEditor.ListMeasureWidth(const AValue: ansistring;
-  Index: integer; ACanvas: TCanvas; var AWidth: Integer);
+  Index: Integer; ACanvas: TCanvas; var AWidth: Integer);
 begin
   //
 end;
 
-procedure TPropertyEditor.ListDrawValue(const AValue:ansistring; Index:integer;
-  ACanvas:TCanvas; const ARect:TRect; AState: TPropEditDrawState);
+procedure TPropertyEditor.ListDrawValue(const AValue: ansistring; Index: Integer;
+  ACanvas: TCanvas; const ARect: TRect; AState: TPropEditDrawState);
 var
   Style : TTextStyle;
-  OldColor : TColor;
 begin
   FillChar(Style{%H-},SizeOf(Style),0);
   With Style do begin
     Alignment := taLeftJustify;
     Layout := tlCenter;
-    Opaque := (pedsInEdit in AState) and (ACanvas.Brush.Color <> clNone);
+    Opaque := False;
     Clipping := True;
     ShowPrefix := True;
     WordBreak := False;
     SingleLine := True;
     SystemFont := False;
-  end;
-  If (pedsInComboList in AState) and not (pedsInEdit in AState)
-  then begin
-    OldColor := ACanvas.Brush.Color;
-    If pedsSelected in AState then begin
-      ACanvas.Brush.Color := clHighlight;
-      ACanvas.Font.Color := clHighlightText;
-    end
-    else begin
-      ACanvas.Brush.Color := clwhite{clWindow};
-      ACanvas.Font.Color := clWindowText;
-    end;
-    ACanvas.FillRect(ARect);
-    ACanvas.Brush.Color := OldColor;
   end;
   ACanvas.TextRect(ARect, ARect.Left+2,ARect.Top,AValue, Style);
 end;
@@ -3367,8 +3367,8 @@ end;
 { these three procedures implement the default render behavior of the
   object inspector's property row. You don't need to override the measure
   procedure if the default height don't need to be changed. }
-procedure TPropertyEditor.PropMeasureHeight(const NewValue:ansistring;
-  ACanvas:TCanvas;  var AHeight:Integer);
+procedure TPropertyEditor.PropMeasureHeight(const NewValue: ansistring;
+  ACanvas: TCanvas; var AHeight: Integer);
 begin
   //
 end;
@@ -3393,7 +3393,7 @@ begin
   ACanvas.TextRect(ARect,ARect.Left+2,ARect.Top,GetName,Style);
 end;
 
-procedure TPropertyEditor.PropDrawValue(ACanvas:TCanvas; const ARect: TRect;
+procedure TPropertyEditor.PropDrawValue(ACanvas: TCanvas; const ARect: TRect;
   AState: TPropEditDrawState);
 begin
   DrawValue(GetVisualValue,ACanvas,ARect,AState);
@@ -3410,16 +3410,14 @@ begin
   Result:=false;
 end;
 
-function TPropertyEditor.IsDefaultValue: boolean;
+function TPropertyEditor.ValueIsStreamed: boolean;
 begin
-  Result:=(paHasDefaultValue in GetAttributes)
-      and (GetDefaultValue=GetVisualValue);
-end;
-
-function TPropertyEditor.IsNotDefaultValue: boolean;
-begin
-  Result:=(paHasDefaultValue in GetAttributes)
-      and (GetDefaultValue<>GetVisualValue);
+  if HasStoredFunction then
+    Result := CallStoredFunction
+  else
+    Result := True;
+  if Result and HasDefaultValue then
+    Result := GetDefaultValue<>GetVisualValue;
 end;
 
 function TPropertyEditor.IsRevertableToInherited: boolean;
@@ -3442,7 +3440,7 @@ end;
 function TPropertyEditor.GetVerbCount: Integer;
 begin
   Result:=0;
-  if paHasDefaultValue in GetAttributes then
+  if HasDefaultValue then
     inc(Result); // show a menu item for default value only if there is default value
   if IsRevertableToInherited then
     inc(Result); // show a menu item for 'Revert to inherited'
@@ -3452,8 +3450,9 @@ function TPropertyEditor.GetVerb(Index: Integer): string;
 var
   i: Integer;
 begin
+  Result := '';
   i:=-1;
-  if paHasDefaultValue in GetAttributes then begin
+  if HasDefaultValue then begin
     inc(i);
     if i=Index then begin
       Result := Format(oisSetToDefault, [GetDefaultValue]);
@@ -3479,7 +3478,7 @@ var
   i: Integer;
 begin
   i:=-1;
-  if paHasDefaultValue in GetAttributes then begin
+  if HasDefaultValue then begin
     inc(i);
     if i=Index then begin
       SetValue(GetDefaultValue);
@@ -3515,13 +3514,6 @@ end;
 function TOrdinalPropertyEditor.GetEditLimit: Integer;
 begin
   Result := 63;
-end;
-
-function TOrdinalPropertyEditor.GetAttributes: TPropertyAttributes;
-begin
-  Result:=(inherited GetAttributes);
-  if GetDefaultOrdValue <> NoDefaultValue then
-    Result := Result + [paHasDefaultValue];
 end;
 
 function TOrdinalPropertyEditor.GetValue: ansistring;
@@ -3632,8 +3624,6 @@ end;
 function TEnumPropertyEditor.GetAttributes: TPropertyAttributes;
 begin
   Result := [paMultiSelect, paValueList, paSortList, paRevertable];
-  if GetDefaultOrdValue <> NoDefaultValue then
-    Result := Result + [paHasDefaultValue];
 end;
 
 function TEnumPropertyEditor.OrdValueToVisualValue(OrdValue: longint): string;
@@ -3646,6 +3636,14 @@ begin
   with TypeData^ do
     if (L < MinValue) or (L > MaxValue) then L := MaxValue;
   Result := GetEnumName(GetPropType, L);
+end;
+
+function TEnumPropertyEditor.GetVisualValue: ansistring;
+begin
+  if FInvalid then
+    Result := oisInvalid
+  else
+    Result := inherited GetVisualValue;
 end;
 
 procedure TEnumPropertyEditor.GetValues(Proc: TGetStrProc);
@@ -3667,11 +3665,9 @@ var
   I: Integer;
 begin
   I := GetEnumValue(GetPropType, NewValue);
-  if I < 0 then begin
-    {raise EPropertyError.CreateRes(@SInvalidPropertyValue)};
-//    exit;
-  end;
-  SetOrdValue(I);
+  FInvalid := I < 0;
+  if not FInvalid then
+    SetOrdValue(I);
 end;
 
 { TBoolPropertyEditor  }
@@ -3789,7 +3785,7 @@ begin
   Result := True;
 end;
 
-function TFloatPropertyEditor.GetValue: ansistring;
+function TFloatPropertyEditor.FormatValue(const AValue: Extended): ansistring;
 const
   Precisions: array[TFloatType] of Integer = (7, 15, 19, 19, 19);
 var
@@ -3797,8 +3793,20 @@ var
 begin
   FS := DefaultFormatSettings;
   FS.DecimalSeparator := '.'; //It's Pascal sourcecode representation of a float, not a textual (i18n) one
-  Result := FloatToStrF(GetFloatValue, ffGeneral,
+  Result := FloatToStrF(AValue, ffGeneral,
     Precisions[GetTypeData(GetPropType)^.FloatType], 0, FS);
+end;
+
+function TFloatPropertyEditor.GetDefaultValue: ansistring;
+begin
+  if not HasDefaultValue then
+    raise EPropertyError.Create('No property default available');
+  Result:=FormatValue(0);
+end;
+
+function TFloatPropertyEditor.GetValue: ansistring;
+begin
+  Result := FormatValue(GetFloatValue);
 end;
 
 procedure TFloatPropertyEditor.SetValue(const NewValue: ansistring);
@@ -3983,8 +3991,6 @@ end;
 function TSetElementPropertyEditor.GetAttributes: TPropertyAttributes;
 begin
   Result := [paMultiSelect, paValueList, paSortList];
-  if GetDefaultOrdValue <> NoDefaultValue then
-    Result := Result + [paHasDefaultValue];
 end;
 
 function TSetElementPropertyEditor.GetName: shortstring;
@@ -4032,12 +4038,15 @@ begin
   SetOrdValue(Integer(S));
 end;
 
-function TSetElementPropertyEditor.IsNotDefaultValue: boolean; 
+function TSetElementPropertyEditor.ValueIsStreamed: boolean;
 var
   S1, S2: TIntegerSet;
 begin
-  Result := (paHasDefaultValue in GetAttributes);
-  if Result then
+  if HasStoredFunction then
+    Result := CallStoredFunction
+  else
+    Result := True;
+  if Result and HasDefaultValue then
   begin
     Integer(S1) := GetOrdValue;
     Integer(S2) := GetDefaultOrdValue;
@@ -4062,8 +4071,6 @@ end;
 function TSetPropertyEditor.GetAttributes: TPropertyAttributes;
 begin
   Result := [paMultiSelect, paSubProperties, paReadOnly, paRevertable];
-  if GetDefaultOrdValue <> NoDefaultValue then
-    Result := Result + [paHasDefaultValue];
 end;
 
 function TSetPropertyEditor.GetEditLimit: Integer;
@@ -4483,6 +4490,12 @@ begin
   Result:=True; // ToDo: Maybe all sub-properties should be compared for equality.
 end;
 
+destructor TClassPropertyEditor.Destroy;
+begin
+  FSubProps.Free;
+  inherited Destroy;
+end;
+
 function TClassPropertyEditor.EditorFilter(const AEditor: TPropertyEditor): Boolean;
 begin
   Result := IsInteresting(AEditor, SubPropsTypeFilter, SubPropsNameFilter);
@@ -4524,7 +4537,35 @@ end;
 
 function TClassPropertyEditor.GetValue: ansistring;
 begin
-  if not FHideClassName then Result:='(' + GetPropType^.Name + ')';
+  if FHideClassName then
+    Result:=''
+  else
+    Result:='(' + GetPropType^.Name + ')';
+end;
+
+function TClassPropertyEditor.ValueIsStreamed: boolean;
+var
+  I: Integer;
+begin
+  Result := inherited ValueIsStreamed;
+  if not Result then
+    Exit;
+
+  if FSubProps=nil then
+  begin
+    FSubProps := TObjectList.Create(True);
+    GetProperties(@ListSubProps);
+  end;
+
+  for I := 0 to FSubProps.Count-1 do
+    if TPropertyEditor(FSubProps[I]).ValueIsStreamed then
+      Exit(True);
+  Result := False;
+end;
+
+procedure TClassPropertyEditor.ListSubProps(Prop: TPropertyEditor);
+begin
+  FSubProps.Add(Prop);
 end;
 
 procedure TClassPropertyEditor.SetSubPropsTypeFilter(const AValue: TTypeKinds);
@@ -4563,23 +4604,60 @@ procedure TMethodPropertyEditor.Edit;
 }
 var
   NewMethodName: String;
+  r: TModalResult;
 begin
   NewMethodName := GetValue;
-  //DebugLn('### TMethodPropertyEditor.Edit A OldValue=',NewMethodName);
-  if not LazIsValidIdent(NewMethodName, True, True)
-  or PropertyHook.MethodFromAncestor(GetMethodValue) then
+  {$IFDEF VerboseMethodPropEdit}
+  debugln(['TMethodPropertyEditor.Edit OldValue="',NewMethodName,'" FromLookupRoot=',(LazIsValidIdent(NewMethodName, True, True) and PropertyHook.MethodFromLookupRoot(GetMethodValue))]);
+  DumpStack;
+  {$ENDIF}
+  if IsValidIdent(NewMethodName)
+  and PropertyHook.MethodFromLookupRoot(GetMethodValue) then
   begin
-    // the current method is from the ancestor
-    // -> add an override with the default name
-    NewMethodName := GetFormMethodName;
-    //DebugLn('### TMethodPropertyEditor.Edit B FormMethodName=',NewMethodName);
-    if not IsValidIdent(NewMethodName) then
-      raise EPropertyError.Create('Method name "'+NewMethodName+'" must be an identifier');
-    SetValue(NewMethodName); // this will jump to the method
-    PropertyHook.RefreshPropertyValues;
-  end
-  else
+    {$IFDEF VerboseMethodPropEdit}
+    debugln(['TMethodPropertyEditor.Edit Show']);
+    {$ENDIF}
     PropertyHook.ShowMethod(NewMethodName);
+  end else begin
+    // the current method is from the another class (e.g. ancestor or frame)
+    if IsValidIdent(NewMethodName) then
+      r:=QuestionDlg('Override or jump',
+        'The event "'+GetName+'" currently points to an inherited method.',
+        mtConfirmation,[mrYes,'Create Override',mrOk,'Jump to inherited method',mrCancel],
+        0)
+    else
+      r:=mrYes;
+    case r of
+    mrYes:
+      begin
+        // -> add an override with the default name
+        NewMethodName := GetFormMethodName;
+        {$IFDEF VerboseMethodPropEdit}
+        debugln(['TMethodPropertyEditor.Edit NewValue="',NewMethodName,'"']);
+        {$ENDIF}
+        Assert(IsValidIdent(NewMethodName),'Method name "'+NewMethodName+'" must be an identifier');
+        NewMethodName:=PropertyHook.LookupRoot.ClassName+'.'+NewMethodName;
+        {$IFDEF VerboseMethodPropEdit}
+        debugln(['TMethodPropertyEditor.Edit CreateMethod "',NewMethodName,'"...']);
+        {$ENDIF}
+        SetMethodValue(PropertyHook.CreateMethod(NewMethodName, GetPropType,
+                                                 GetComponent(0), GetPropertyPath(0)));
+        {$IFDEF VerboseMethodPropEdit}
+        debugln(['TMethodPropertyEditor.Edit CHANGED new method=',GetValue]);
+        {$ENDIF}
+        PropertyHook.RefreshPropertyValues;
+        ShowValue;
+      end;
+    mrOk:
+      begin
+        // -> jump to ancestor method
+        {$IFDEF VerboseMethodPropEdit}
+        debugln(['TMethodPropertyEditor.Edit Jump to ancestor method ',NewMethodName]);
+        {$ENDIF}
+        PropertyHook.ShowMethod(NewMethodName);
+      end;
+    end;
+  end;
 end;
 
 procedure TMethodPropertyEditor.ShowValue;
@@ -4612,27 +4690,55 @@ begin
             (I > 1) and (Result[I] in ['0'..'9'])
            )
     then
-      System.Delete(Result, I, 1);
+      Delete(Result, I, 1);
+end;
+
+function TrimDotsAndBrackets(const Txt: String): String;
+var
+  I: Integer;
+begin
+  Result := Txt;
+  for I := Length(Result) downto 1 do
+    if Result[I] in ['.','[',']'] then
+      Delete(Result, I, 1);
+end;
+
+function TrimEventName(const aName: shortstring): shortstring;
+begin
+  Result := aName;
+  if (Length(Result) >= 2)
+  and (Result[1] in ['O','o']) and (Result[2] in ['N','n'])
+  then
+    Delete(Result, 1, 2);
+end;
+
+function TMethodPropertyEditor.GetTrimmedEventName: shortstring;
+begin
+  Result := TrimEventName(GetName);
+end;
+
+function MethodNameSub(Root: TPersistent): shortstring;
+begin
+  if Root is TCustomForm then
+    Result := 'Form'
+  else
+  if Root is TDataModule then
+    Result := 'DataModule'
+  else
+  if Root is TFrame then
+    Result := 'Frame'
+  else
+    Result := '';
 end;
 
 function TMethodPropertyEditor.GetFormMethodName: shortstring;
 // returns the default name for a new method
-var
-  Root: TPersistent;
 begin
-  Result:='';
+  Result := '';
   if PropertyHook.LookupRoot=nil then exit;
   if GetComponent(0) = PropertyHook.LookupRoot then begin
-    Root:=PropertyHook.LookupRoot;
-    if Root is TCustomForm then
-      Result := 'Form'
-    else 
-    if Root is TDataModule then
-      Result := 'DataModule'
-    else
-    if Root is TFrame then
-      Result := 'Frame'
-    else 
+    Result := MethodNameSub(PropertyHook.LookupRoot);
+    if Result = '' then
       Result := ClassNameToComponentName(PropertyHook.GetRootClassName);
   end
   else
@@ -4642,61 +4748,33 @@ begin
   Result := Result + GetTrimmedEventName;
 end;
 
-function TMethodPropertyEditor.GetTrimmedEventName: shortstring;
-begin
-  Result := GetName;
-  if (Length(Result) >= 2)
-  and (Result[1] in ['O','o']) and (Result[2] in ['N','n'])
-  then
-    System.Delete(Result,1,2);
-end;
-
-class function TMethodPropertyEditor.GetDefaultMethodName(Root,
-  Component: TComponent; const RootClassName, ComponentName,
-  PropName: shortstring): shortstring;
+class function TMethodPropertyEditor.GetDefaultMethodName(Root, Component: TComponent;
+  const RootClassName, ComponentName, PropName: shortstring): shortstring;
 // returns the default name for a new method
-var I: Integer;
-  Postfix: shortstring;
 begin
-  Result:='';
+  Result := '';
   if Root=nil then exit;
   if Component = Root then begin
-    if Root is TCustomForm then
-      Result := 'Form'
-    else 
-    if Root is TDataModule then
-      Result := 'DataModule'
-    else
-    if Root is TFrame then
-      Result := 'Frame'
-    else 
-    begin
+    Result := MethodNameSub(Root);
+    if Result = '' then
       Result := ClassNameToComponentName(RootClassName);
-    end;
-  end else begin
-    Result := ComponentName;
-    for I := Length(Result) downto 1 do
-      if Result[I] in ['.','[',']'] then
-        System.Delete(Result, I, 1);
-  end;
-  if Result = '' then begin
-    DebugLn(['TMethodPropertyEditor.GetDefaultMethodName can not create name - this should never happen']);
-    exit;
-  end;
-  Postfix := PropName;
-  if (Length(Postfix) >= 2)
-  and (Postfix[1] in ['O','o']) and (Postfix[2] in ['N','n'])
-  then
-    System.Delete(Postfix,1,2);
-  Result:=Result+Postfix;
+  end
+  else
+    Result := TrimDotsAndBrackets(ComponentName);
+  if Result <> '' then
+    Result := Result + TrimEventName(PropName)
+  else
+    DebugLn(['TMethodPropertyEditor.GetDefaultMethodName cannot create name - should never happen']);
 end;
 
 function TMethodPropertyEditor.GetValue: ansistring;
 begin
   if Assigned(PropertyHook) then
     Result:=PropertyHook.GetMethodName(GetMethodValue,GetComponent(0))
-  else
+  else begin
+    Result:='';
     debugln(['TMethodPropertyEditor.GetValue : PropertyHook=Nil Name=',GetName,' Data=',dbgs(GetMethodValue.Data)]);
+  end;
 end;
 
 procedure TMethodPropertyEditor.GetValues(Proc: TGetStrProc);
@@ -4708,7 +4786,7 @@ end;
 
 procedure TMethodPropertyEditor.SetValue(const NewValue: ansistring);
 var
-  CreateNewMethod: Boolean;
+  CreateNewMethodSrc: Boolean;
   CurValue: string;
   NewMethodExists, NewMethodIsCompatible, NewMethodIsPublished,
   NewIdentIsMethod: boolean;
@@ -4717,7 +4795,9 @@ var
 begin
   CurValue := GetValue;
   if CurValue = NewValue then exit;
-  //DebugLn('### TMethodPropertyEditor.SetValue A OldValue="',CurValue,'" NewValue=',NewValue);
+  {$IFDEF VerboseMethodPropEdit}
+  debugln(['TMethodPropertyEditor.SetValue CurValue="',CurValue,'" NewValue="',NewValue,'"']);
+  {$ENDIF}
   IsNil := (NewValue='') or (NewValue=oisNone);
   
   if (not IsNil) and (not IsValidIdent(NewValue)) then
@@ -4731,7 +4811,9 @@ begin
   NewMethodExists := (not IsNil) and
     PropertyHook.CompatibleMethodExists(NewValue, GetInstProp,
                    NewMethodIsCompatible, NewMethodIsPublished, NewIdentIsMethod);
-  //DebugLn('### TMethodPropertyEditor.SetValue B NewMethodExists=',NewMethodExists,' NewMethodIsCompatible=',NewMethodIsCompatible,' ',NewMethodIsPublished,' ',NewIdentIsMethod);
+  {$IFDEF VerboseMethodPropEdit}
+  debugln(['TMethodPropertyEditor.SetValue NewValue="',NewValue,'" IsCompatible=',NewMethodIsCompatible,' IsPublished=',NewMethodIsPublished,' IsMethod=',NewIdentIsMethod]);
+  {$ENDIF}
   if NewMethodExists then
   begin
     if not NewIdentIsMethod then
@@ -4762,39 +4844,55 @@ begin
         exit;
     end;
   end;
-  //DebugLn('### TMethodPropertyEditor.SetValue C');
+
   if IsNil then
   begin
+    // clear
     NewMethod.Data := nil;
     NewMethod.Code := nil;
+    {$IFDEF VerboseMethodPropEdit}
+    debugln(['TMethodPropertyEditor.SetValue SET to NIL']);
+    {$ENDIF}
     SetMethodValue(NewMethod);
   end
   else
   if IsValidIdent(CurValue) and
      not NewMethodExists and
-     not PropertyHook.MethodFromAncestor(GetMethodValue) then
+     PropertyHook.MethodFromLookupRoot(GetMethodValue) then
   begin
     // rename the method
     // Note:
     //   All other not selected properties that use this method, contain just
     //   the TMethod record. So, changing the name in the jitform will change
     //   all other event names in all other components automatically.
+    {$IFDEF VerboseMethodPropEdit}
+    debugln(['TMethodPropertyEditor.SetValue RENAME']);
+    {$ENDIF}
     PropertyHook.RenameMethod(CurValue, NewValue)
   end else
   begin
-    //DebugLn('### TMethodPropertyEditor.SetValue E');
-    CreateNewMethod := not NewMethodExists;
+    // change value and create method src if needed
+    CreateNewMethodSrc := not NewMethodExists;
+    {$IFDEF VerboseMethodPropEdit}
+    debugln(['TMethodPropertyEditor.SetValue CHANGE new method=',CreateNewMethodSrc]);
+    {$ENDIF}
     SetMethodValue(
        PropertyHook.CreateMethod(NewValue, GetPropType,
                                  GetComponent(0), GetPropertyPath(0)));
-    //DebugLn('### TMethodPropertyEditor.SetValue F NewValue=',GetValue);
-    if CreateNewMethod then
+    {$IFDEF VerboseMethodPropEdit}
+    debugln(['TMethodPropertyEditor.SetValue CHANGED new method=',CreateNewMethodSrc]);
+    {$ENDIF}
+    if CreateNewMethodSrc then
     begin
-      //DebugLn('### TMethodPropertyEditor.SetValue G');
+      {$IFDEF VerboseMethodPropEdit}
+      debugln(['TMethodPropertyEditor.SetValue SHOW "',NewValue,'"']);
+      {$ENDIF}
       PropertyHook.ShowMethod(NewValue);
     end;
   end;
-  //DebugLn('### TMethodPropertyEditor.SetValue END  NewValue=',GetValue);
+  {$IFDEF VerboseMethodPropEdit}
+  DebugLn('### TMethodPropertyEditor.SetValue END  NewValue=',GetValue);
+  {$ENDIF}
 end;
 
 { TPersistentPropertyEditor }
@@ -4999,6 +5097,36 @@ begin
     Result := True;
 end;
 
+procedure TInterfacePropertyEditor.Edit;
+var
+  Temp: TPersistent;
+  Designer: TIDesigner;
+  AComponent: TComponent;
+begin
+  Temp := GetComponentReference;
+  if Temp is TComponent then begin
+    AComponent:=TComponent(Temp);
+    Designer:=FindRootDesigner(AComponent);
+    if (Designer<>nil)
+    and (Designer.GetShiftState * [ssCtrl, ssLeft] = [ssCtrl, ssLeft]) then
+      Designer.SelectOnlyThisComponent(AComponent)
+    else
+      inherited Edit;
+  end else
+    inherited Edit;
+end;
+
+function TInterfacePropertyEditor.GetAttributes: TPropertyAttributes;
+begin
+ Result := [paMultiSelect];
+  if Assigned(GetPropInfo^.SetProc) then
+    Result := Result + [paValueList, paSortList, paRevertable, paVolatileSubProperties]
+  else
+    Result := Result + [paReadOnly];
+  if GReferenceExpandable and (GetComponentReference <> nil) and AllEqual then
+    Result := Result + [paSubProperties];
+end;
+
 function TInterfacePropertyEditor.GetComponent(const AInterface: IInterface): TComponent;
 var
   ComponentRef: IInterfaceComponentReference;
@@ -5096,8 +5224,7 @@ begin
       Result := PropertyHook.GetComponentName(Component)
     else
       Result := Component.Name;
-  end else
-    Result := inherited GetValue;
+  end;
 end;
 
 { TComponentNamePropertyEditor }
@@ -5270,7 +5397,7 @@ var
 begin
   Result := varempty;
   for I := Low(VarTypeStr) to High(VarTypeStr) do
-    if UpperCase(VarTypeStr[I].Name) = UpperCase(AName) then
+    if CompareText(VarTypeStr[I].Name, AName) = 0 then
       Exit(VarTypeStr[I].VarType);
 end;
 
@@ -5360,9 +5487,9 @@ var
   V: Variant;
 begin
   try
-    VarCast(V{%H-}, Value, VarType(GetVarValue));
-  except
     V := Value;
+  except
+    V := 0; // Some backup value.
   end;
   SetVarValue(V);
 end;
@@ -5373,8 +5500,6 @@ end;
 function TModalResultPropertyEditor.GetAttributes: TPropertyAttributes;
 begin
   Result := [paMultiSelect, paValueList, paRevertable];
-  if GetDefaultOrdValue <> NoDefaultValue then
-    Result := Result + [paHasDefaultValue];
 end;
 
 function TModalResultPropertyEditor.OrdValueToVisualValue(OrdValue: longint): string;
@@ -5602,8 +5727,6 @@ end;
 function TShortCutPropertyEditor.GetAttributes: TPropertyAttributes;
 begin
   Result := [paMultiSelect, paValueList, paRevertable, paDialog];
-  if GetDefaultOrdValue <> NoDefaultValue then
-    Result := Result + [paHasDefaultValue];
 end;
 
 function TShortCutPropertyEditor.OrdValueToVisualValue(OrdValue: longint): string;
@@ -5750,8 +5873,6 @@ end;
 function TCursorPropertyEditor.GetAttributes: TPropertyAttributes;
 begin
   Result := [paMultiSelect, paSortList, paValueList, paRevertable];
-  if GetDefaultOrdValue <> NoDefaultValue then
-    Result := Result + [paHasDefaultValue];
 end;
 
 function TCursorPropertyEditor.OrdValueToVisualValue(OrdValue: longint): string;
@@ -5985,7 +6106,7 @@ var
 begin
   Result.Code := nil;
   Result.Data := nil;
-  if IsValidIdent(aName) and Assigned(ATypeInfo) then
+  if LazIsValidIdent(aName,true,true) and Assigned(ATypeInfo) then
   begin
     i := GetHandlerCount(htCreateMethod);
     while GetNextHandlerIndex(htCreateMethod, i) do
@@ -6134,6 +6255,29 @@ begin
       AncestorClass := TObject(Method.Data).ClassParent;
       Result := Assigned(AncestorClass) and (AncestorClass.MethodName(Method.Code)<>'');
     end;
+  end;
+end;
+
+function TPropertyEditorHook.MethodFromLookupRoot(const Method: TMethod
+  ): boolean;
+var
+  Root: TPersistent;
+  i: Integer;
+  Handler: TPropHookMethodFromLookupRoot;
+begin
+  // check if given Method is in LookupRoot source,
+  Root:=LookupRoot;
+  if Root=nil then exit(false);
+  i := GetHandlerCount(htMethodFromLookupRoot);
+  if GetNextHandlerIndex(htMethodFromLookupRoot, i) then
+  begin
+    Handler := TPropHookMethodFromLookupRoot(FHandlers[htMethodFromLookupRoot][i]);
+    Result := Handler(Method);
+  end
+  else
+  begin
+    Result := (TObject(Method.Data)=Root) and Assigned(Method.Code)
+      and (Root.MethodName(Method.Code)<>'');
   end;
 end;
 
@@ -6512,9 +6656,13 @@ var
 begin
   i := GetHandlerCount(htModified);
   while GetNextHandlerIndex(htModified,i) do
-    TPropHookModified(FHandlers[htModified][i])(Sender, PropName);
+    TPropHookModified(FHandlers[htModified][i])(Sender);
 
-  if Sender is TPropertyEditor then 
+  i := GetHandlerCount(htModifiedWithName);
+  while GetNextHandlerIndex(htModifiedWithName,i) do
+    TPropHookModifiedWithName(FHandlers[htModifiedWithName][i])(Sender, PropName);
+
+  if Sender is TPropertyEditor then
   begin
     // mark the designer form of every selected persistent
     // ToDo: Use PropName here somehow.
@@ -6734,6 +6882,18 @@ procedure TPropertyEditorHook.RemoveHandlerMethodFromAncestor(
   const OnMethodFromAncestor: TPropHookMethodFromAncestor);
 begin
   RemoveHandler(htMethodFromAncestor,TMethod(OnMethodFromAncestor));
+end;
+
+procedure TPropertyEditorHook.AddHandlerMethodFromLookupRoot(
+  const OnMethodFromLookupRoot: TPropHookMethodFromLookupRoot);
+begin
+  AddHandler(htMethodFromLookupRoot,TMethod(OnMethodFromLookupRoot));
+end;
+
+procedure TPropertyEditorHook.RemoveHandlerMethodFromLookupRoot(
+  const OnMethodFromLookupRoot: TPropHookMethodFromLookupRoot);
+begin
+  RemoveHandler(htMethodFromLookupRoot,TMethod(OnMethodFromLookupRoot));
 end;
 
 procedure TPropertyEditorHook.AddHandlerChainCall(
@@ -6963,10 +7123,26 @@ begin
   RemoveHandler(htObjectPropertyChanged,TMethod(OnObjectPropertyChanged));
 end;
 
-procedure TPropertyEditorHook.AddHandlerModified(
-  const OnModified: TPropHookModified);
+procedure TPropertyEditorHook.AddHandlerModified(const OnModified: TPropHookModified);
 begin
   AddHandler(htModified,TMethod(OnModified));
+end;
+
+procedure TPropertyEditorHook.RemoveHandlerModified(const OnModified: TPropHookModified);
+begin
+  RemoveHandler(htModified,TMethod(OnModified));
+end;
+
+procedure TPropertyEditorHook.AddHandlerModifiedWithName(
+  const OnModified: TPropHookModifiedWithName);
+begin
+  AddHandler(htModifiedWithName,TMethod(OnModified));
+end;
+
+procedure TPropertyEditorHook.RemoveHandlerModifiedWithName(
+  const OnModified: TPropHookModifiedWithName);
+begin
+  RemoveHandler(htModifiedWithName,TMethod(OnModified));
 end;
 
 procedure TPropertyEditorHook.AddHandlerDesignerMouseDown(
@@ -6979,12 +7155,6 @@ procedure TPropertyEditorHook.AddHandlerDesignerMouseUp(
   const OnMouseUp: TMouseEvent);
 begin
   AddHandler(htDesignerMouseUp,TMethod(OnMouseUp));
-end;
-
-procedure TPropertyEditorHook.RemoveHandlerModified(
-  const OnModified: TPropHookModified);
-begin
-  RemoveHandler(htModified,TMethod(OnModified));
 end;
 
 procedure TPropertyEditorHook.RemoveHandlerDesignerMouseDown(
@@ -7776,6 +7946,9 @@ begin
   RegisterPropertyEditor(TypeInfo(TTabOrder), TControl, 'TabOrder', TTabOrderPropertyEditor);
   RegisterPropertyEditor(TypeInfo(ShortString), nil, '', TCaptionPropertyEditor);
   RegisterPropertyEditor(TypeInfo(TStrings), nil, '', TStringsPropertyEditor);
+  {$IF FPC_FULLVERSION > 30101}
+  RegisterPropertyEditor(TypeInfo(TFileName), nil, '', TFileNamePropertyEditor);
+  {$ENDIF}
   RegisterPropertyEditor(TypeInfo(AnsiString), nil, 'SessionProperties', TSessionPropertiesPropertyEditor);
   RegisterPropertyEditor(TypeInfo(TModalResult), nil, 'ModalResult', TModalResultPropertyEditor);
   RegisterPropertyEditor(TypeInfo(TShortCut), nil, '', TShortCutPropertyEditor);

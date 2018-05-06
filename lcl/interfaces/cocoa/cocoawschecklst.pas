@@ -68,11 +68,11 @@ begin
   end;
   list.callback := TLCLListBoxCallback.Create(list, AWinControl);
   list.list := TCocoaStringList.Create(list);
-  list.addTableColumn(NSTableColumn.alloc.init);
   list.setHeaderView(nil);
   list.setDataSource(list);
   list.setDelegate(list);
   list.AllowMixedState := TCustomCheckListBox(AWinControl).AllowGrayed;
+  ListBoxSetStyle(list, TCustomCheckListBox(AWinControl).Style);
 
   scroll := EmbedInScrollView(list);
   if not Assigned(scroll) then

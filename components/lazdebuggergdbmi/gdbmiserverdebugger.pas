@@ -77,6 +77,8 @@ type
     property UseNoneMiRunCommands;
     property DisableLoadSymbolsForLibraries;
     //property WarnOnSetBreakpointError;
+    property CaseSensitivity;
+    property GdbValueMemLimit;
   end;
 
 procedure Register;

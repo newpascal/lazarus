@@ -37,7 +37,7 @@ interface
 uses
   Classes, SysUtils, LCLProc, Forms, Controls, Dialogs, StdCtrls, Buttons, Spin,
   ExtCtrls, Graphics, IDECommands, PropEdits, IDEDialogs, LazarusIDEStrConsts,
-  IDEOptionDefs;
+  IDEOptionDefs, IDEImagesIntf;
 
 type
 
@@ -466,18 +466,18 @@ end;
 
 procedure TAnchorDesigner.LoadGlyphs;
 begin
-  LeftRefLeftSpeedButton.LoadGlyphFromResourceName(HInstance, 'anchor_left');
-  LeftRefCenterSpeedButton.LoadGlyphFromResourceName(HInstance, 'anchor_center_horizontal');
-  LeftRefRightSpeedButton.LoadGlyphFromResourceName(HInstance, 'anchor_left_right');
-  RightRefLeftSpeedButton.LoadGlyphFromResourceName(HInstance, 'anchor_left_right');
-  RightRefCenterSpeedButton.LoadGlyphFromResourceName(HInstance, 'anchor_center_horizontal');
-  RightRefRightSpeedButton.LoadGlyphFromResourceName(HInstance, 'anchor_right');
-  TopRefTopSpeedButton.LoadGlyphFromResourceName(HInstance, 'anchor_top');
-  TopRefCenterSpeedButton.LoadGlyphFromResourceName(HInstance, 'anchor_center_vertical');
-  TopRefBottomSpeedButton.LoadGlyphFromResourceName(HInstance, 'anchor_top_bottom');
-  BottomRefTopSpeedButton.LoadGlyphFromResourceName(HInstance, 'anchor_top_bottom');
-  BottomRefCenterSpeedButton.LoadGlyphFromResourceName(HInstance, 'anchor_center_vertical');
-  BottomRefBottomSpeedButton.LoadGlyphFromResourceName(HInstance, 'anchor_bottom');
+  TIDEImages.AssignImage(LeftRefLeftSpeedButton.Glyph, 'anchor_left_left');
+  TIDEImages.AssignImage(LeftRefCenterSpeedButton.Glyph, 'anchor_left_center');
+  TIDEImages.AssignImage(LeftRefRightSpeedButton.Glyph, 'anchor_left_right');
+  TIDEImages.AssignImage(RightRefLeftSpeedButton.Glyph, 'anchor_right_left');
+  TIDEImages.AssignImage(RightRefCenterSpeedButton.Glyph, 'anchor_right_center');
+  TIDEImages.AssignImage(RightRefRightSpeedButton.Glyph, 'anchor_right_right');
+  TIDEImages.AssignImage(TopRefTopSpeedButton.Glyph, 'anchor_top_top');
+  TIDEImages.AssignImage(TopRefCenterSpeedButton.Glyph, 'anchor_top_center');
+  TIDEImages.AssignImage(TopRefBottomSpeedButton.Glyph, 'anchor_top_bottom');
+  TIDEImages.AssignImage(BottomRefTopSpeedButton.Glyph, 'anchor_bottom_top');
+  TIDEImages.AssignImage(BottomRefCenterSpeedButton.Glyph, 'anchor_bottom_center');
+  TIDEImages.AssignImage(BottomRefBottomSpeedButton.Glyph, 'anchor_bottom_bottom');
 end;
 
 procedure TAnchorDesigner.CreateSideControls;
@@ -562,9 +562,8 @@ begin
         CurControl.AnchorSide[Kind].Side,
         ReferenceControl,ReferenceSide,CheckPosition))
       then begin
-        if IDEMessageDialog(lisCCOWarningCaption,
-          lisThisWillCreateACircularDependency, mtWarning, [mbIgnore, mbCancel])<>
-            mrIgnore
+        if IDEMessageDialog(lisCCOWarningCaption, lisThisWillCreateACircularDependency,
+                            mtWarning, [mbIgnore, mbCancel]) <> mrIgnore
         then begin
           Refresh;
           exit;
@@ -581,7 +580,7 @@ begin
       else
         CurControl.Anchors:=CurControl.Anchors-[Kind];
     end;
-    GlobalDesignHook.Modified(Self);
+    GlobalDesignHook.Modified(Self, 'Anchors');
     GlobalDesignHook.RefreshPropertyValues;
   end;
 end;
@@ -628,7 +627,7 @@ begin
       else
         CurControl.BorderSpacing.Space[Kind]:=NewValue;
     end;
-    GlobalDesignHook.Modified(Self);
+    GlobalDesignHook.Modified(Self, 'Anchors');
     GlobalDesignHook.RefreshPropertyValues;
   end;
 end;
@@ -681,13 +680,14 @@ var
   UseNeighbours: boolean;
   OldPositions,OldPositions2: array of Integer;
 
-  function NeighbourPosition(c: TControl):Integer;
+  function NeighbourPosition(c: TControl): Integer;
   begin
+    result:=0;
     case CurNeighbour of
-    akTop: result:=c.top;
-    akLeft: result:=c.Left;
-    akRight: result:=c.left+c.Width;
-    akBottom: result:=c.Top+c.Height;
+      akTop: result:=c.top;
+      akLeft: result:=c.Left;
+      akRight: result:=c.left+c.Width;
+      akBottom: result:=c.Top+c.Height;
     end;
   end;
 
@@ -812,9 +812,10 @@ begin
       end;
     end;
 
-    GlobalDesignHook.Modified(Self);
+    GlobalDesignHook.Modified(Self, 'Anchors');
     GlobalDesignHook.RefreshPropertyValues;
-    if UseNeighbours then TComboBox(Sender).Caption:=NewValue;
+    if UseNeighbours then
+      TComboBox(Sender).Caption:=NewValue;
   end;
 end;
 
@@ -910,7 +911,7 @@ begin
       CurControl:=TControl(SelectedControls[i]);
       CurControl.AnchorSide[Kind].Side:=SideRef;
     end;
-    GlobalDesignHook.Modified(Self);
+    GlobalDesignHook.Modified(Self, 'Anchors');
     GlobalDesignHook.RefreshPropertyValues;
 end;
 
@@ -994,6 +995,7 @@ end;
 
 function TAnchorDesigner.AnchorDesignerNeighbourText(direction: TAnchorKind): string;
 begin
+  result:='';
   case direction of
     akLeft: result:=lisSelectedLeftNeighbour;
     akRight: result:=lisSelectedRightNeighbour;

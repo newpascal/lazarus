@@ -26,11 +26,15 @@ unit opkman_downloader;
 
 {$mode objfpc}{$H+}
 
+{$INCLUDE opkman_fpcdef.inc}
+
 interface
 
 uses
-  Classes, SysUtils, fpjson, opkman_httpclient, opkman_timer, opkman_common,
-  opkman_serializablepackages;
+  Classes, SysUtils, fpjson,
+  // OpkMan
+  opkman_timer, opkman_common, opkman_serializablepackages, opkman_const, opkman_options,
+  {$IFDEF FPC311}fphttpclient{$ELSE}opkman_httpclient{$ENDIF};
 
 type
   TDownloadType = (dtJSON, dtPackage, dtUpdate);
@@ -48,20 +52,20 @@ type
 
   { TDownloadStream }
 
-   TDownloadStream = class(TStream)
-   private
-     FOnWriteStream: TOnWriteStream;
-     FStream: TStream;
-   public
-     constructor Create(AStream: TStream);
-     destructor Destroy; override;
-     function Read(var Buffer; Count: LongInt): LongInt; override;
-     function Write(const Buffer; Count: LongInt): LongInt; override;
-     function Seek(Offset: LongInt; Origin: Word): LongInt; override;
-     procedure DoProgress;
-   published
-     property OnWriteStream: TOnWriteStream read FOnWriteStream write FOnWriteStream;
-   end;
+  TDownloadStream = class(TStream)
+  private
+    FOnWriteStream: TOnWriteStream;
+    FStream: TStream;
+  public
+    constructor Create(AStream: TStream);
+    destructor Destroy; override;
+    function Read(var Buffer; Count: LongInt): LongInt; override;
+    function Write(const Buffer; Count: LongInt): LongInt; override;
+    function Seek(Offset: LongInt; Origin: Word): LongInt; override;
+    procedure DoProgress;
+  published
+    property OnWriteStream: TOnWriteStream read FOnWriteStream write FOnWriteStream;
+  end;
 
   { TThreadDownload }
 
@@ -95,6 +99,7 @@ type
     FUTyp: Integer;
     FUErrMsg: String;
     FUSuccess: Boolean;
+    FSilent: Boolean;
     FOnPackageDownloadProgress: TOnPackageDownloadProgress;
     FOnPackageDownloadError: TOnPackageDownloadError;
     FOnPackageDownloadCompleted: TOnPackageDownloadCompleted;
@@ -112,22 +117,22 @@ type
     procedure DoOnPackageUpdateProgress;
     procedure DoOnPackageUpdateCompleted;
   protected
-     procedure Execute; override;
+    procedure Execute; override;
   public
     constructor Create;
     destructor Destroy; override;
-    procedure DownloadJSON(const ATimeOut: Integer = -1);
+    procedure DownloadJSON(const ATimeOut: Integer = -1; const ASilent: Boolean = False);
     procedure DownloadPackages(const ADownloadTo: String);
     procedure UpdatePackages(const ADownloadTo: String);
-   published
-     property OnJSONProgress: TNotifyEvent read FOnJSONProgress write FOnJSONProgress;
-     property OnJSONDownloadCompleted: TOnJSONDownloadCompleted read FOnJSONComplete write FOnJSONComplete;
-     property OnPackageDownloadCompleted: TOnPackageDownloadCompleted read FOnPackageDownloadCompleted write FOnPackageDownloadCompleted;
-     property OnPackageDownloadError: TOnPackageDownloadError read FOnPackageDownloadError write FOnPackageDownloadError;
-     property OnPackageDownloadProgress: TOnPackageDownloadProgress read FOnPackageDownloadProgress write FOnPackageDownloadProgress;
-     property OnPackageUpdateProgress: TOnPackageUpdateProgress read FOnPackageUpdateProgress write FOnPackageUpdateProgress;
-     property OnPackageUpdateCompleted: TOnPackageUpdateCompleted read FOnPackageUpdateCompleted write FOnPackageUpdateCompleted;
-     property NeedToBreak: Boolean read FNeedToBreak write FNeedToBreak;
+  published
+    property OnJSONProgress: TNotifyEvent read FOnJSONProgress write FOnJSONProgress;
+    property OnJSONDownloadCompleted: TOnJSONDownloadCompleted read FOnJSONComplete write FOnJSONComplete;
+    property OnPackageDownloadCompleted: TOnPackageDownloadCompleted read FOnPackageDownloadCompleted write FOnPackageDownloadCompleted;
+    property OnPackageDownloadError: TOnPackageDownloadError read FOnPackageDownloadError write FOnPackageDownloadError;
+    property OnPackageDownloadProgress: TOnPackageDownloadProgress read FOnPackageDownloadProgress write FOnPackageDownloadProgress;
+    property OnPackageUpdateProgress: TOnPackageUpdateProgress read FOnPackageUpdateProgress write FOnPackageUpdateProgress;
+    property OnPackageUpdateCompleted: TOnPackageUpdateCompleted read FOnPackageUpdateCompleted write FOnPackageUpdateCompleted;
+    property NeedToBreak: Boolean read FNeedToBreak write FNeedToBreak;
   end;
 
   { TPackageDownloader }
@@ -138,6 +143,7 @@ type
     FDownload: TThreadDownload;
     FRemoteRepository: String;
     FLastError: String;
+    FDownloadingJSON: Boolean;
     FOnJSONProgress: TNotifyEvent;
     FOnJSONDownloadCompleted: TOnJSONDownloadCompleted;
     FOnPackageDownloadProgress: TOnPackageDownloadProgress;
@@ -156,14 +162,14 @@ type
   public
     constructor Create(const ARemoteRepository: String);
     destructor Destroy; override;
-    procedure DownloadJSON(const ATimeOut: Integer = -1);
+    procedure DownloadJSON(const ATimeOut: Integer = -1; const ASilent: Boolean = False);
     procedure DownloadPackages(const ADownloadTo: String);
-    procedure CancelDownloadPackages;
     procedure UpdatePackages(const ADownloadTo: String);
-    procedure CancelUpdatePackages;
+    procedure Cancel;
   published
     property RemoteRepository: String read FRemoteRepository write FRemoteRepository;
     property LastError: String read FLastError write FLastError;
+    property DownloadingJSON: Boolean read FDownloadingJSON;
     property JSON: TJSONStringType read FJSON;
     property OnJSONProgress: TNotifyEvent read FOnJSONProgress write FOnJSONProgress;
     property OnJSONDownloadCompleted: TOnJSONDownloadCompleted read FOnJSONDownloadCompleted write FOnJSONDownloadCompleted;
@@ -178,8 +184,6 @@ var
   PackageDownloader: TPackageDownloader = nil;
 
 implementation
-
-uses opkman_const, opkman_options;
 
 { TDownloadStream }
 constructor TDownloadStream.Create(AStream: TStream);
@@ -221,7 +225,7 @@ end;
 
 procedure TThreadDownload.DoOnPackageDownloadProgress;
 begin
-  if Assigned(FOnPackageDownloadCompleted) then
+  if Assigned(FOnPackageDownloadProgress) then
     FOnPackageDownloadProgress(Self, FFrom, FTo, FCnt, FTotCnt, FCurPos, FCurSize, FTotPosTmp, FTotSize, FElapsed, FRemaining, FSpeed);
 end;
 
@@ -253,12 +257,15 @@ procedure TThreadDownload.DoOnJSONDownloadCompleted;
 var
   JSON: TJSONStringType;
 begin
+  if FSilent then
+    Exit;
   if Assigned(FOnJSONComplete) then
   begin
     if (FErrTyp = etNone) or (FMS.Size > 0) then
     begin
       SetLength(JSON, FMS.Size);
       FMS.Read(Pointer(JSON)^, Length(JSON));
+      SerializablePackages.JSONToPackages(JSON);
       FOnJSONComplete(Self, JSON, FErrTyp, '');
     end
     else
@@ -270,11 +277,12 @@ procedure TThreadDownload.DoOnTimer(Sender: TObject);
 begin
   if FDownloadType = dtJSON then
   begin
-    FHTTPClient.NeedToBreak := True;
+    FHTTPClient.Terminate;
     FErrMsg := rsMainFrm_rsMessageError2;
     FErrTyp := etTimeOut;
     FTimer.StopTimer;
-    Synchronize(@DoOnJSONDownloadCompleted);
+    TThreadTimer(Sender).Synchronize(@DoOnJSONDownloadCompleted);
+    //Synchronize(@DoOnJSONDownloadCompleted);
     FOnJSONComplete := nil;
   end
   else if (FDownloadType = dtPackage) or (FDownloadType = dtUpdate) then
@@ -288,6 +296,8 @@ end;
 
 procedure TThreadDownload.DoOnJSONProgress;
 begin
+  if FSilent then
+    Exit;
   if Assigned(FOnJSONProgress) then
     FOnJSONProgress(Self);
 end;
@@ -497,10 +507,12 @@ begin
   inherited Destroy;
 end;
 
-procedure TThreadDownload.DownloadJSON(const ATimeOut: Integer = -1);
+procedure TThreadDownload.DownloadJSON(const ATimeOut: Integer = -1;
+  const ASilent: Boolean = False);
 begin
   FRemoteJSONFile := Options.RemoteRepository[Options.ActiveRepositoryIndex] + cRemoteJSONFile;
   FDownloadType := dtJSON;
+  FSilent := ASilent;
   FTimer := TThreadTimer.Create;
   FTimer.Interval := ATimeOut;
   FTimer.OnTimer := @DoOnTimer;
@@ -644,6 +656,7 @@ begin
   FJSON := AJSON;
   if Assigned(FOnJSONDownloadCompleted) then
     FOnJSONDownloadCompleted(Self, AJSON, AErrTyp, AErrMsg);
+  FDownloadingJSON := False;
 end;
 
 constructor TPackageDownloader.Create(const ARemoteRepository: String);
@@ -658,12 +671,14 @@ begin
   inherited Destroy;
 end;
 
-procedure TPackageDownloader.DownloadJSON(const ATimeOut: Integer = -1);
+procedure TPackageDownloader.DownloadJSON(const ATimeOut: Integer = -1;
+  const ASilent: Boolean = False);
 begin
+  FDownloadingJSON := True;
   FDownload := TThreadDownload.Create;
   FDownload.OnJSONProgress := @DoOnJSONProgress;
   FDownload.OnJSONDownloadCompleted := @DoOnJSONDownloadCompleted;
-  FDownload.DownloadJSON(ATimeOut);
+  FDownload.DownloadJSON(ATimeOut, ASilent);
 end;
 
 procedure TPackageDownloader.DownloadPackages(const ADownloadTo: String);
@@ -673,16 +688,6 @@ begin
   FDownload.OnPackageDownloadError := @DoOnPackageDownloadError;
   FDownload.OnPackageDownloadCompleted := @DoOnPackageDownloadCompleted;
   FDownload.DownloadPackages(ADownloadTo);
-end;
-
-procedure TPackageDownloader.CancelDownloadPackages;
-begin
-  if Assigned(FDownload) then
-  begin
-    FDownload.FHTTPClient.NeedToBreak := True;
-    FDownload.FTimer.StopTimer;
-    FDownload.NeedToBreak := True;
-  end;
 end;
 
 procedure TPackageDownloader.UpdatePackages(const ADownloadTo: String);
@@ -696,11 +701,11 @@ begin
   FDownload.UpdatePackages(ADownloadTo);
 end;
 
-procedure TPackageDownloader.CancelUpdatePackages;
+procedure TPackageDownloader.Cancel;
 begin
   if Assigned(FDownload) then
   begin
-    FDownload.FHTTPClient.NeedToBreak := True;
+    FDownload.FHTTPClient.Terminate;
     FDownload.FTimer.StopTimer;
     FDownload.NeedToBreak := True;
   end;

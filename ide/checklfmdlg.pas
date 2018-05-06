@@ -42,7 +42,7 @@ uses
   IDEExternToolIntf, PackageIntf, IDEWindowIntf, PropEdits, PropEditUtils,
   IDEMsgIntf, IDEDialogs, ComponentReg,
   // IDE
-  CustomFormEditor, LazarusIDEStrConsts,
+  CustomFormEditor, LazarusIDEStrConsts, IDEImagesIntf,
   IDEProcs, EditorOptions, SourceMarks, JITForms;
 
 type
@@ -322,9 +322,10 @@ begin
 
     MsgResult:=IDEQuestionDialog(lisMissingEvents,
       Format(lisTheFollowingMethodsUsedByAreNotInTheSourceRemoveTh, [DbgSName(
-        RootComponent), LineEnding, PascalBuffer.Filename, LineEnding+LineEnding, s, LineEnding])
-       ,mtConfirmation,
-       [mrYes, lisRemoveThem, mrIgnore, lisKeepThemAndContinue, mrAbort]);
+        RootComponent), LineEnding, PascalBuffer.Filename, LineEnding+LineEnding, s, LineEnding]),
+      mtConfirmation, [mrYes, lisRemoveThem,
+                       mrIgnore, lisKeepThemAndContinue,
+                       mrAbort]);
      if MsgResult=mrYes then begin
        ClearDanglingEvents(ListOfPInstancePropInfo);
        ComponentModified:=true;
@@ -748,7 +749,7 @@ begin
   ErrorsGroupBox.Caption:=lisErrors;
   LFMGroupBox.Caption:=lisLFMFile;
   RemoveAllButton.Caption:=lisRemoveAllInvalidProperties;
-  RemoveAllButton.LoadGlyphFromResourceName(HInstance, 'laz_delete');
+  TIDEImages.AssignImage(RemoveAllButton.Glyph, 'laz_delete');
   CancelButton.Caption:=lisCancel;
   EditorOpts.GetHighlighterSettings(SynLFMSyn1);
   EditorOpts.GetSynEditSettings(LFMSynEdit);

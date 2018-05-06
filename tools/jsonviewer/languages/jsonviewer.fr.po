@@ -4,13 +4,13 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n > 1);\n"
 "Project-Id-Version: \n"
 "POT-Creation-Date: 2015-04-29 15:02+0100\n"
-"PO-Revision-Date: 2017-02-06 16:15+0200\n"
+"PO-Revision-Date: 2018-05-02 08:17+0200\n"
 "Last-Translator: Vasseur Gilles <gillesvasseur58@gmail.com>\n"
 "Language-Team: http://lazarus.developpez.com/\n"
 "MIME-Version: 1.0\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Language: fr_FR\n"
-"X-Generator: Poedit 1.8.9\n"
+"X-Generator: Poedit 2.0.6\n"
 
 #: msgjsonviewer.sarray
 msgid "Array (%d elements)"
@@ -39,15 +39,19 @@ msgstr "Document JSON modifié"
 
 #: msgjsonviewer.sdocumentmodifiedaction
 msgid ""
-"The JSON data was changed but not saved.\n"
+"The JSON data in \"%s\" was changed but not saved.\n"
 "What do want to do ?\n"
 msgstr ""
-"Les données JSON ont été modifiées mais pas enregistrées.\n"
+"Les données JSON  dans \"%s\"ont été modifiées mais pas enregistrées.\n"
 "Que voulez-vous faire ?\n"
 
 #: msgjsonviewer.sduplicatemembername
 msgid "Duplicate member name \"%s\"."
 msgstr "Nom de membre en doublon \"%s\"."
+
+#: msgjsonviewer.sefilenameneeded
+msgid "Filename needed for generated code"
+msgstr "Nom de fichier nécessaire pour le code généré"
 
 #: msgjsonviewer.selement
 msgid "Element nr. %d"
@@ -67,7 +71,7 @@ msgstr "Valeur incorrecte ou type erroné : \"%s\""
 
 #: msgjsonviewer.serrnovalidjsonclipboard
 msgid "The clipboard does not contain valid JSON data"
-msgstr "Le presse-papier ne contient pas de données JSON correctes"
+msgstr "Le presse-papiers ne contient pas de données JSON correctes"
 
 #: msgjsonviewer.snewmember
 msgid "New object member"
@@ -93,13 +97,75 @@ msgstr "Objet (%d membres)"
 msgid "Save the changes"
 msgstr "Enregistrer les changements"
 
+#: tcreatecodeform.caption
+msgctxt "tcreatecodeform.caption"
+msgid "Create pascal code"
+msgstr "Créer du code Pascal"
+
+#: tcreatecodeform.cgoptions.caption
+msgid "Other options"
+msgstr "Autres options"
+
+#: tcreatecodeform.eextraunitnames.texthint
+msgid "Unit names, separated by commas"
+msgstr "Noms d'unités, séparées par des virgules"
+
+#: tcreatecodeform.leconstructorargslabel1.caption
+msgid "Constructor arguments"
+msgstr "Paramètres de constructeur"
+
+#: tcreatecodeform.lepropertytypesuffix.caption
+msgid "Property type suffix"
+msgstr "Suffixe de type propriété"
+
+#: tcreatecodeform.leunitname.caption
+msgid "Unit name"
+msgstr "Nom de l'unité"
+
+#: tcreatecodeform.leunitname1.caption
+msgid "Field Prefix"
+msgstr "Préfixe de champ"
+
+#: tcreatecodeform.lextraunitnames.caption
+msgid "Extra units in uses"
+msgstr "Unités supplémentaires dans uses"
+
+#: tcreatecodeform.lfecode.caption
+msgid "File"
+msgstr "Fichier"
+
+#: tcreatecodeform.lparentname.caption
+msgid "Object Parent class"
+msgstr "Classe parente d'objet"
+
+#: tcreatecodeform.lseindent.caption
+msgid "Indent"
+msgstr "Indenter"
+
+#: tcreatecodeform.tscode.caption
+msgid "Preview"
+msgstr "Aperçu"
+
+#: tcreatecodeform.tsoptions.caption
+msgid "Options"
+msgstr "Options"
+
+#: tmainform.aclose.caption
+msgid "&Close"
+msgstr "&Fermer"
+
 #: tmainform.acopy.caption
 msgid "&Copy"
 msgstr "&Copier"
 
 #: tmainform.acopy.hint
 msgid "Copy selected node to clipboard as JSON"
-msgstr "Copier le nœud sélectionné dans le presse-papier au format JSON"
+msgstr "Copier le nœud sélectionné dans le presse-papiers au format JSON"
+
+#: tmainform.acreatecode.caption
+msgctxt "tmainform.acreatecode.caption"
+msgid "Create pascal code"
+msgstr "Créer du code Pascal"
 
 #: tmainform.acut.caption
 msgid "C&ut"
@@ -107,7 +173,7 @@ msgstr "Co&uper"
 
 #: tmainform.acut.hint
 msgid "Cut selected node to clipboard as JSON"
-msgstr "Couper le nœud sélectionné dans le presse-papier au format JSON"
+msgstr "Couper le nœud sélectionné dans le presse-papiers au format JSON"
 
 #: tmainform.adeletevalue.caption
 msgid "&Delete value"
@@ -211,7 +277,7 @@ msgstr "&Coller"
 
 #: tmainform.apaste.hint
 msgid "Paste JSON data in clipboard as new member"
-msgstr "Coller les données JSON dans le presse-papier en tant que nouveaux membres"
+msgstr "Coller les données JSON dans le presse-papiers en tant que nouveaux membres"
 
 #: tmainform.apasteasdocument.caption
 msgid "Paste as new document"
@@ -219,7 +285,7 @@ msgstr "Coller en tant que nouveau document"
 
 #: tmainform.apasteasdocument.hint
 msgid "Paste JSON data in clipboard as new document"
-msgstr "Coller les données JSON dans le presse-papier en tant que nouveau document"
+msgstr "Coller les données JSON dans le presse-papiers en tant que nouveau document"
 
 #: tmainform.aquit.caption
 msgid "&Quit"
@@ -239,7 +305,7 @@ msgstr "Enregistrer le document JSON"
 
 #: tmainform.asaveas.caption
 msgid "Save &as"
-msgstr "Enregistrer &sous..."
+msgstr "Enregistrer &sous"
 
 #: tmainform.asaveas.hint
 msgid "Save JSON document with a new name"
@@ -258,6 +324,15 @@ msgstr "&Éditer"
 msgid "&File"
 msgstr "&Fichier"
 
+#: tmainform.miallowcomments.caption
+msgctxt "tmainform.miallowcomments.caption"
+msgid "Allow comments"
+msgstr "Autoriser les commentaires"
+
+#: tmainform.miallowtrailingcomma.caption
+msgid "Allow trailing comma"
+msgstr "Autoriser une virgule de fin"
+
 #: tmainform.micompact.caption
 msgid "Compact display"
 msgstr "Affichage compact"
@@ -269,6 +344,10 @@ msgstr "&Nouveau document avec objet"
 #: tmainform.miinsert.caption
 msgid "&Values"
 msgstr "&Valeurs"
+
+#: tmainform.miquotestrings.caption
+msgid "Quote string values"
+msgstr "Indiquer les valeurs chaînes"
 
 #: tmainform.misortmembers.caption
 msgid "Sort object members"
@@ -292,7 +371,7 @@ msgstr "Sauvegarder le document JSON dans un fichier"
 
 #: tmainform.tbjson.caption
 msgid "TBJSON"
-msgstr "\"TBJSON\""
+msgstr "TBJSON"
 
 #: tmainform.toolbutton1.caption
 msgid "ToolButton1"

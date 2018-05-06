@@ -28,11 +28,13 @@ unit BuildProjectDlg;
 interface
 
 uses
-  Classes, SysUtils, Math, AVL_Tree, Forms, Controls,
-  Dialogs, ButtonPanel, StdCtrls, ComCtrls, Masks, LCLIntf,
-  FileProcs, LazFileUtils, LazFileCache, LazUtilities,
+  Classes, SysUtils, Math, Laz_AVL_Tree,
+  // LCL
+  Forms, Controls, Dialogs, ButtonPanel, StdCtrls, ComCtrls, Masks, LCLIntf,
+  // LazUtils
+  LazFileUtils, LazFileCache, LazUtilities, AvgLvlTree,
   // codetools
-  CodeToolManager, DirectoryCacher, CodeToolsStructs,
+  FileProcs, CodeToolManager, DirectoryCacher,
   // IDEIntf
   IDEDialogs, IDEImagesIntf, PackageIntf,
   // IDE
@@ -137,8 +139,8 @@ begin
   DeleteButton.Caption:=lisDelete;
 
   FilesTreeView.Images:=IDEImages.Images_16;
-  ImageIndexDirectory := IDEImages.LoadImage(16, 'pkg_files');
-  ImageIndexFile := IDEImages.LoadImage(16, 'laz_delete');
+  ImageIndexDirectory := IDEImages.LoadImage('pkg_files');
+  ImageIndexFile := IDEImages.LoadImage('laz_delete');
 
   ButtonPanel1.OKButton.ModalResult:=mrNone;
 end;
@@ -433,7 +435,7 @@ begin
     p:=System.Pos('/',aTVPath);
     if p>0 then begin
       NodeText:=copy(aTVPath,1,p-1);
-      aTVPath:=Copy(aTVPath,p+1,length(aTVPath));
+      Delete(aTVPath,1,p);
     end else begin
       NodeText:=aTVPath;
     end;
@@ -518,7 +520,7 @@ function TCleanBuildProjectDialog.DeleteFiles: TModalResult;
 var
   Files: TFilenameToStringTree;
   Node: TAVLTreeNode;
-  Item: PStringToStringTreeItem;
+  Item: PStringToStringItem;
   MaskList: TMaskList;
   Filename: String;
   SourceFiles: TStringList;
@@ -531,7 +533,7 @@ begin
     // warn before deleting sources
     Node:=Files.Tree.FindLowest;
     while Node<>nil do begin
-      Item:=PStringToStringTreeItem(Node.Data);
+      Item:=PStringToStringItem(Node.Data);
       Filename:=Item^.Name;
       if MaskList.Matches(ExtractFilename(Filename)) then
         SourceFiles.Add(Filename);
@@ -549,7 +551,7 @@ begin
     Node:=Files.Tree.FindLowest;
     Quiet:=false;
     while Node<>nil do begin
-      Item:=PStringToStringTreeItem(Node.Data);
+      Item:=PStringToStringItem(Node.Data);
       Node:=Files.Tree.FindSuccessor(Node);
       Filename:=Item^.Name;
       //debugln(['TBuildProjectDialog.DeleteFiles ',Filename,' ',FileExistsUTF8(Filename)]);
@@ -557,8 +559,11 @@ begin
         if FileExistsUTF8(Filename) and (not DeleteFileUTF8(Filename))
         and (not Quiet) then begin
           Result:=IDEQuestionDialog(lisDeleteFileFailed,
-            Format(lisPkgMangUnableToDeleteFile, [Filename]),
-            mtError, [mrRetry, mrCancel, mrNo, lisCCOSkip, mrNoToAll, lisSkipErrors]);
+              Format(lisPkgMangUnableToDeleteFile, [Filename]),
+              mtError, [mrRetry,
+                        mrCancel,
+                        mrNo, lisCCOSkip,
+                        mrNoToAll, lisSkipErrors]);
           if Result=mrNoToAll then begin
             Quiet:=true;
             break;

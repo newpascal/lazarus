@@ -29,7 +29,8 @@ uses
   LCLIntf, LCLType, LCLProc, Forms, Controls, Dialogs, ExtCtrls, StdCtrls,
   Graphics, Menus, ComCtrls, DBActns, StdActns, ActnList,
   // IDEIntf
-  ObjInspStrConsts, ComponentEditors, PropEdits, PropEditUtils, IDEWindowIntf;
+  ObjInspStrConsts, ComponentEditors, PropEdits, PropEditUtils, IDEWindowIntf,
+  IDEImagesIntf;
 
 type
   TActStdPropItem = class;
@@ -105,7 +106,6 @@ type
     Splitter: TSplitter;
     ToolBar1: TToolBar;
     btnAdd: TToolButton;
-    btnAddMore: TToolButton;
     btnDelete: TToolButton;
     ToolButton4: TToolButton;
     btnUp: TToolButton;
@@ -390,7 +390,7 @@ begin
   ActMoveDown.Hint := cActionListEditorMoveDownAction;
   ActPanelDescr.Caption := cActionListEditorPanelDescrriptions;
   ActPanelToolBar.Caption := cActionListEditorPanelToolBar;
-  btnAddMore.Hint := cActionListEditorNewAction;
+  btnAdd.Hint := cActionListEditorNewAction;
   mItemToolBarNewAction.Caption := cActionListEditorNewAction;
   mItemToolBarNewStdAction.Caption := cActionListEditorNewStdAction;
   mItemActListNewAction.Caption := cActionListEditorNewAction;
@@ -410,18 +410,29 @@ begin
 end;
 
 procedure TActionListEditor.FormCreate(Sender: TObject);
+var
+  ImageSize: Integer;
 begin
-  //imageindex 0 exists
-  ImageList1.AddResourceName(HInstance, 'laz_add'); //imageindex 1
-  ImageList1.AddResourceName(HInstance, 'laz_delete'); //imageindex 2
-  ImageList1.AddResourceName(HInstance, 'arrow_up'); //imadeindex 3
-  ImageList1.AddResourceName(HInstance, 'arrow_down'); //imageindex 4
-  btnAddMore.ImageIndex := 0;
-  // These must be set in code because OI does not work with non-existent values.
-  btnAdd.ImageIndex := 1;
-  btnDelete.ImageIndex := 2;
-  btnUp.ImageIndex := 3;
-  btnDown.ImageIndex := 4;
+  ImageSize := TIDEImages.ScaledSize;
+  ImageList1.Width := ImageSize;
+  ImageList1.Height := ImageSize;
+  ImageList1.Scaled := False;
+  TIDEImages.AddImageToImageList(ImageList1, 'laz_add'); //imageindex 0
+  TIDEImages.AddImageToImageList(ImageList1, 'laz_delete'); //imageindex 1
+  TIDEImages.AddImageToImageList(ImageList1, 'arrow_up'); //imadeindex 2
+  TIDEImages.AddImageToImageList(ImageList1, 'arrow_down'); //imageindex 3
+  btnAdd.ImageIndex := 0;
+  btnDelete.ImageIndex := 1;
+  btnUp.ImageIndex := 2;
+  btnDown.ImageIndex := 3;
+  IDEDialogLayoutList.ApplyLayout(Self);
+end;
+
+procedure TActionListEditor.ActionListEditorClose(Sender: TObject;
+  var CloseAction: TCloseAction);
+begin
+  IDEDialogLayoutList.SaveLayout(Self);
+  CloseAction := caFree;
 end;
 
 procedure TActionListEditor.FormShow(Sender: TObject);
@@ -732,12 +743,6 @@ end;
 procedure TActionListEditor.ActPanelToolBarExecute(Sender: TObject);
 begin
   ToolBar1.Visible := TAction(Sender).Checked;
-end;
-
-procedure TActionListEditor.ActionListEditorClose(Sender: TObject;
-  var CloseAction: TCloseAction);
-begin
-  CloseAction := caFree;
 end;
 
 procedure TActionListEditor.ActionListEditorKeyDown(Sender: TObject;

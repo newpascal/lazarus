@@ -41,7 +41,7 @@ uses
   StdCtrls, LCLType, LCLUnicodeData, GraphType, Grids, ButtonPanel, ComCtrls,
   IDEHelpIntf, LazUTF8,
   {$ifdef WINDOWS}Windows,{$endif} lconvencoding,
-  LazarusIDEStrConsts, EditorOptions, EnvironmentOpts;
+  LazarusIDEStrConsts, IDEImagesIntf, EditorOptions, EnvironmentOpts;
 
 type
   TOnInsertCharacterEvent = procedure (const C: TUTF8Char) of object;
@@ -51,38 +51,47 @@ type
   TCharacterMapDialog = class(TForm)
     ButtonPanel: TButtonPanel;
     cbCodePage: TComboBox;
-    CharInfoLabel: TLabel;
+    AnsiCharInfoLabel: TLabel;
     cbUniRange: TComboBox;
-    Label1: TLabel;
+    SortUniRangeListButton: TSpeedButton;
+    CodePageLabel: TLabel;
     RangeLabel: TLabel;
     UnicodeCharInfoLabel: TLabel;
     PageControl1: TPageControl;
-    StringGrid1: TStringGrid;
-    StringGrid2: TStringGrid;
+    AnsiGrid: TStringGrid;
+    UnicodeGrid: TStringGrid;
     pgAnsi: TTabSheet;
     pgUnicode: TTabSheet;
+    procedure GridPrepareCanvas(sender: TObject; {%H-}aCol, {%H-}aRow: Integer;
+      {%H-}aState: TGridDrawState);
     procedure cbCodePageSelect(Sender: TObject);
     procedure cbUniRangeSelect(Sender: TObject);
     procedure FormKeyDown(Sender: TObject; var Key: Word; {%H-}Shift: TShiftState);
     procedure HelpButtonClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormShow(Sender: TObject);
-    procedure StringGrid1SelectCell(Sender: TObject; aCol, aRow: Integer;
+    procedure SortUniRangeListButtonClick(Sender: TObject);
+    procedure AnsiGridSelectCell(Sender: TObject; aCol, aRow: Integer;
       var {%H-}CanSelect: Boolean);
-    procedure StringGrid2SelectCell(Sender: TObject; aCol, aRow: Integer;
+    procedure UnicodeGridSelectCell(Sender: TObject; aCol, aRow: Integer;
       var {%H-}CanSelect: Boolean);
     procedure StringGridKeyPress(Sender: TObject; var Key: char);
     procedure StringGridMouseDown(Sender: TObject; Button: TMouseButton;
       {%H-}Shift: TShiftState; X, Y: Integer);
-    procedure StringGrid1MouseMove(Sender: TObject; {%H-}Shift: TShiftState; X,
+    procedure AnsiGridMouseMove(Sender: TObject; {%H-}Shift: TShiftState; X,
       Y: Integer);
-    procedure StringGrid2MouseMove(Sender: TObject; {%H-}Shift: TShiftState; X,
+    procedure UnicodeGridMouseMove(Sender: TObject; {%H-}Shift: TShiftState; X,
       Y: Integer);
   private
     FOnInsertCharacter: TOnInsertCharacterEvent;
-    procedure DoStatusGrid1(ACol, ARow: integer);
-    procedure DoStatusGrid2(ACol, ARow: integer);
-    procedure FillCharMap;
+    FUnicodeBlockIndex: Integer;
+    procedure DoStatusAnsiGrid(ACol, ARow: integer);
+    procedure DoStatusUnicodeGrid(ACol, ARow: integer);
+    procedure FillAnsiGrid;
+    procedure FillUnicodeGrid;
+    procedure FillUniRangeList(ASorted: Boolean);
+    function UnicodeBlockIndexByName(AName: String): Integer;
+    function UnicodeBlockSelected: Boolean;
     procedure SelectSystemCP;
   public
     property OnInsertCharacter: TOnInsertCharacterEvent read FOnInsertCharacter
@@ -97,6 +106,9 @@ var
 implementation
 
 {$R *.lfm}
+
+const
+  NOT_SELECTED=Low(UnicodeBlocks)-1;
 
 procedure ShowCharacterMap(AOnInsertChar: TOnInsertCharacterEvent);
 begin
@@ -113,15 +125,18 @@ procedure TCharacterMapDialog.FormCreate(Sender: TObject);
 begin
   Caption := lisCharacterMap;
   RangeLabel.Caption := lisRange;
+  SortUniRangeListButton.Flat:=True;
+  SortUniRangeListButton.Hint:=lisSortUnicodeRangeListAlphabetically;
+  TIDEImages.AssignImage(SortUniRangeListButton.Glyph, 'pkg_sortalphabetically');
   ButtonPanel.HelpButton.Caption:=lisMenuHelp;
   ButtonPanel.CloseButton.Caption:=lisBtnClose;
 
   //EnvironmentOptions.IDEWindowLayoutList.Apply(Self, Name);
   PageControl1.ActivePageIndex := 0;
-  CharInfoLabel.Caption := '-';
+  AnsiCharInfoLabel.Caption := '-';
   UnicodeCharInfoLabel.Caption := '-';
   SelectSystemCP;
-  FillCharMap;
+  FillAnsiGrid;
 end;
 
 procedure TCharacterMapDialog.SelectSystemCP;
@@ -163,73 +178,62 @@ end;
 
 function RoundUp(Value, Divi:integer):integer;
 begin
-  if Value mod Divi=0 then
-   Result:=Value div Divi else
-   Result:=(Value div Divi)+1;
+  if Value mod Divi = 0 then
+    Result:=Value div Divi
+  else
+    Result:=(Value div Divi)+1;
 end;
 
 procedure TCharacterMapDialog.cbCodePageSelect(Sender: TObject);
 begin
-  FillCharMap;
+  FillAnsiGrid;
 end;
 
 procedure TCharacterMapDialog.cbUniRangeSelect(Sender: TObject);
-var cnt, x, y :integer;
-S,E:Integer;
 begin
- S:=UnicodeBlocks[cbUniRange.ItemIndex].S;
- E:=UnicodeBlocks[cbUniRange.ItemIndex].E;
- StringGrid2.Clear;
- StringGrid2.ColCount:=16;
- StringGrid2.RowCount:=RoundUp(E-S,16);
- cnt:=0;
- for y:=0 to StringGrid2.RowCount-1 do
-  for x:=0 to StringGrid2.ColCount-1 do
-  begin
-   if S+Cnt<=E then
-     StringGrid2.Cells[x,y]:=UnicodeToUTF8(S+Cnt);
-   inc(cnt);
-  end;
-  StringGrid2.AutoSizeColumns;
+  FUnicodeBlockIndex:=UnicodeBlockIndexByName(cbUniRange.Text);
+  FillUnicodeGrid;
 end;
 
-procedure TCharacterMapDialog.FormKeyDown(Sender: TObject; var Key: Word;
-  Shift: TShiftState);
+procedure TCharacterMapDialog.FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
   if Key=VK_ESCAPE then
   begin
     Close;
     Key:= 0;
-    Exit
   end;
 end;
 
 procedure TCharacterMapDialog.FormShow(Sender: TObject);
-var i:integer;
 begin
-  StringGrid1.Font.Name := EditorOpts.EditorFont;
-  StringGrid2.Font.Name := EditorOpts.EditorFont;
-  StringGrid1.Font.Size := 10;
-  StringGrid2.Font.Size := 10;
+  AnsiGrid.Font.Name := EditorOpts.EditorFont;
+  UnicodeGrid.Font.Name := EditorOpts.EditorFont;
+  AnsiGrid.Font.Size := 10;
+  UnicodeGrid.Font.Size := 10;
 
-  StringGrid1.AutoSizeColumns;
+  AnsiGrid.AutoSizeColumn(0);
+  AnsiGrid.AutoFillColumns := true;
 
-  cbUniRange.Items.Clear;
-  for i:=0 to MaxUnicodeBlocks do cbUniRange.Items.Add(UnicodeBlocks[i].PG);
-  cbUniRange.ItemIndex:=0;
-  cbUniRangeSelect(nil);
+  FUnicodeBlockIndex:=NOT_SELECTED;
+  FillUniRangeList(SortUniRangeListButton.Down);
+  FillUnicodeGrid;
 end;
 
-procedure TCharacterMapDialog.StringGrid1SelectCell(Sender: TObject; aCol,
-  aRow: Integer; var CanSelect: Boolean);
+procedure TCharacterMapDialog.SortUniRangeListButtonClick(Sender: TObject);
 begin
-  DoStatusGrid1(aCol, aRow);
+  FillUniRangeList(SortUniRangeListButton.Down);
 end;
 
-procedure TCharacterMapDialog.StringGrid2SelectCell(Sender: TObject; aCol,
+procedure TCharacterMapDialog.AnsiGridSelectCell(Sender: TObject; aCol,
   aRow: Integer; var CanSelect: Boolean);
 begin
-  DoStatusGrid2(aCol, aRow);
+  DoStatusAnsiGrid(aCol, aRow);
+end;
+
+procedure TCharacterMapDialog.UnicodeGridSelectCell(Sender: TObject; aCol,
+  aRow: Integer; var CanSelect: Boolean);
+begin
+  DoStatusUnicodeGrid(aCol, aRow);
 end;
 
 procedure TCharacterMapDialog.StringGridKeyPress(Sender: TObject; var Key: char);
@@ -237,7 +241,8 @@ var
   sg: TStringGrid;
   s: string;
 begin
-  if Key = #13 then begin
+  if Key = #13 then
+  begin
     sg := Sender as TStringGrid;
     s := sg.Cells[sg.Col, sg.Row];
     if (s <> '') and (Assigned(OnInsertCharacter)) then
@@ -261,39 +266,49 @@ begin
   end;
 end;
 
-procedure TCharacterMapDialog.DoStatusGrid1(ACol, ARow: integer);
+procedure TCharacterMapDialog.DoStatusAnsiGrid(ACol, ARow: integer);
 var
   N: integer;
 begin
   N := ACol-1 + (ARow-1)*16 + 32;
-  CharInfoLabel.Caption := Format('Decimal: %s, Hex: $%s', [IntToStr(N), IntToHex(N, 2)]);
+  AnsiCharInfoLabel.Caption := Format('Decimal: %s, Hex: $%s', [IntToStr(N), IntToHex(N, 2)]);
 end;
 
-procedure TCharacterMapDialog.StringGrid1MouseMove(Sender: TObject;
+procedure TCharacterMapDialog.AnsiGridMouseMove(Sender: TObject;
   Shift: TShiftState; X, Y: Integer);
 var
   Row, Col: Integer;
 begin
-  if StringGrid1.MouseToGridZone(X, Y) = gzNormal then
+  if AnsiGrid.MouseToGridZone(X, Y) = gzNormal then
   begin
     Col:=0; Row:=0;
-    StringGrid1.MouseToCell(X, Y, Col, Row);
-    DoStatusGrid1(Col, Row);
+    AnsiGrid.MouseToCell(X, Y, Col, Row);
+    DoStatusAnsiGrid(Col, Row);
   end
   else
-  begin
-    CharInfoLabel.Caption := '-';
+    AnsiCharInfoLabel.Caption := '-';
+end;
+
+procedure TCharacterMapDialog.GridPrepareCanvas(sender: TObject; aCol,
+  aRow: Integer; aState: TGridDrawState);
+var
+  ts: TTextStyle;
+begin
+  with (Sender as TStringGrid) do begin
+    ts := Canvas.TextStyle;
+    ts.Alignment := taCenter;
+    Canvas.TextStyle := ts;
   end;
 end;
 
-procedure TCharacterMapDialog.DoStatusGrid2(ACol, ARow: integer);
+procedure TCharacterMapDialog.DoStatusUnicodeGrid(ACol, ARow: integer);
 var
   S: Cardinal;
   tmp, tmp2: String;
   i: Integer;
 begin
-  if cbUniRange.ItemIndex<0 then exit;
-  S:=UnicodeBlocks[cbUniRange.ItemIndex].S+(ACol)+(ARow*16);
+  if not UnicodeBlockSelected then Exit;
+  S:=UnicodeBlocks[FUnicodeBlockIndex].S+(ACol)+(ARow*16);
   tmp:=UnicodeToUTF8(S);
   tmp2:='';
   for i:=1 to Length(tmp) do
@@ -301,24 +316,22 @@ begin
   UnicodeCharInfoLabel.Caption:='U+'+inttohex(S,4)+', UTF-8: '+tmp2;
 end;
 
-procedure TCharacterMapDialog.StringGrid2MouseMove(Sender: TObject;
+procedure TCharacterMapDialog.UnicodeGridMouseMove(Sender: TObject;
   Shift: TShiftState; X, Y: Integer);
 var
   Row, Col: Integer;
 begin
-  if StringGrid2.MouseToGridZone(X, Y) = gzNormal then
+  if UnicodeGrid.MouseToGridZone(X, Y) = gzNormal then
   begin
     Col:=0; Row:=0;
-    StringGrid2.MouseToCell(X, Y, Col, Row);
-    DoStatusGrid2(Col, Row);
+    UnicodeGrid.MouseToCell(X, Y, Col, Row);
+    DoStatusUnicodeGrid(Col, Row);
   end
   else
-  begin
-    CharInfoLabel.Caption := '-';
-  end;
+    AnsiCharInfoLabel.Caption := '-';
 end;
 
-procedure TCharacterMapDialog.FillCharMap;
+procedure TCharacterMapDialog.FillAnsiGrid;
 var
   R, C, p: Integer;
   cp: String;
@@ -326,16 +339,69 @@ begin
   cp := cbCodePage.Items[cbCodePage.ItemIndex];
   p := pos(' ', cp);
   if p > 0 then SetLength(cp, p-1);
-  for R := 0 to Pred(StringGrid1.RowCount) do
+  for R := 0 to Pred(AnsiGrid.RowCount) do
   begin
-    if R <> 0 then  StringGrid1.Cells[0, R] := Format('%.3d +', [Succ(R) * 16]);
-    for C := 1 to Pred(StringGrid1.ColCount) do
+    if R <> 0 then  AnsiGrid.Cells[0, R] := Format('%.3d +', [Succ(R) * 16]);
+    for C := 1 to Pred(AnsiGrid.ColCount) do
     begin
-      if R = 0 then StringGrid1.Cells[C, R] := Format('%.2d', [Pred(C)])
+      if R = 0 then AnsiGrid.Cells[C, R] := Format('%.2d', [Pred(C)])
       else
-        StringGrid1.Cells[C, R] := ConvertEncoding(Chr(Succ(R) * 16 + Pred(C)), cp, 'utf8');
+        AnsiGrid.Cells[C, R] := ConvertEncoding(Chr(Succ(R) * 16 + Pred(C)), cp, 'utf8');
     end;
   end;
+end;
+
+procedure TCharacterMapDialog.FillUnicodeGrid;
+var
+  cnt, x, y: integer;
+  S, E: integer;
+begin
+  UnicodeGrid.Clear;
+  if not UnicodeBlockSelected then
+    Exit;
+  S:=UnicodeBlocks[FUnicodeBlockIndex].S;
+  E:=UnicodeBlocks[FUnicodeBlockIndex].E;
+  UnicodeGrid.ColCount:=16;
+  UnicodeGrid.RowCount:=RoundUp(E-S,16);
+  cnt:=0;
+  for y:=0 to UnicodeGrid.RowCount-1 do
+    for x:=0 to UnicodeGrid.ColCount-1 do
+    begin
+      if S+Cnt<=E then
+        UnicodeGrid.Cells[x,y]:=UnicodeToUTF8(S+Cnt);
+      inc(cnt);
+    end;
+  UnicodeGrid.AutoSizeColumns;
+end;
+
+procedure TCharacterMapDialog.FillUniRangeList(ASorted: Boolean);
+var
+  BlockIdx: Integer;
+begin
+  cbUniRange.Items.Clear;
+  cbUniRange.Sorted:=ASorted;
+
+  for BlockIdx:=Low(UnicodeBlocks) to High(UnicodeBlocks) do
+    cbUniRange.Items.Append(UnicodeBlocks[BlockIdx].PG);
+
+  if not UnicodeBlockSelected then
+    FUnicodeBlockIndex:=Low(UnicodeBlocks);
+  cbUniRange.Text:=UnicodeBlocks[FUnicodeBlockIndex].PG;
+end;
+
+function TCharacterMapDialog.UnicodeBlockIndexByName(AName: String): Integer;
+var
+  BlockIdx: Integer;
+begin
+  for BlockIdx:=Low(UnicodeBlocks) to High(UnicodeBlocks) do
+    if UnicodeBlocks[BlockIdx].PG=AName then
+      Exit(BlockIdx);
+  Result:=NOT_SELECTED;
+end;
+
+function TCharacterMapDialog.UnicodeBlockSelected: Boolean;
+begin
+  Result:=(FUnicodeBlockIndex>=Low(UnicodeBlocks)) and (FUnicodeBlockIndex<=High(UnicodeBlocks));
 end;
 
 end.

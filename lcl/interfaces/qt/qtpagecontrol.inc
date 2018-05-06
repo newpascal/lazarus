@@ -51,7 +51,7 @@ class procedure TQtWSCustomPage.DestroyHandle(const AWinControl: TWinControl);
 var
   B: Boolean;
 begin
-  B := Assigned(AWinControl.Parent) and (AWinControl.Parent is TPageControl) and
+  B := (AWinControl.Parent is TPageControl) and
     AWinControl.Parent.HandleAllocated;
   if B then
     TQtWidget(AWinControl.Parent.Handle).BeginUpdate;
@@ -100,6 +100,7 @@ var
   Icon: QIconH;
   B: Boolean;
   Size: TSize;
+  Res: TScaledImageListResolution;
 begin
   ImageList := TCustomTabControl(ACustomPage.Parent).Images;
 
@@ -107,17 +108,21 @@ begin
 
   if Assigned(ImageList) then
   begin
+    Res := ImageList.ResolutionForPPI[
+      TCustomTabControl(ACustomPage.Parent).ImagesWidth,
+      TCustomTabControl(ACustomPage.Parent).Font.PixelsPerInch,
+      TCustomTabControl(ACustomPage.Parent).GetCanvasScaleFactor];
     ImageIndex := TCustomTabControl(ACustomPage.Parent).GetImageIndex(ACustomPage.PageIndex);
-    if (ImageIndex >= 0) and (ImageIndex < ImageList.Count) then
+    if (ImageIndex >= 0) and (ImageIndex < Res.Count) then
     begin
       Bmp := TBitmap.Create;
       try
-        ImageList.GetBitmap(ACustomPage.ImageIndex, Bmp);
+        Res.GetBitmap(ACustomPage.ImageIndex, Bmp);
         if (TQtPage(ACustomPage.Handle).ChildOfComplexWidget = ccwTabWidget) and
           (TQtPage(ACustomPage.Handle).getTabWidget <> nil) then
         begin
-          Size.cx := ImageList.Width;
-          Size.cy := ImageList.Height;
+          Size.cx := Res.Width;
+          Size.cy := Res.Height;
           QTabWidget_setIconSize(TQtPage(ACustomPage.Handle).getTabWidget, @Size);
         end;
         TQtPage(ACustomPage.Handle).setIcon(TQtImage(Bmp.Handle).AsIcon);
@@ -292,8 +297,7 @@ begin
   QtTabWidget.setUpdatesEnabled(False);
   QtTabWidget.BeginUpdate;
   try
-    QtTabWidget.insertTab(AIndex, TQtPage(AChild.Handle).Widget,
-      GetUtf8String(AChild.Caption));
+    QtTabWidget.insertTab(AIndex, TQtPage(AChild.Handle).Widget, AChild.Caption{%H-});
   finally
     QtTabWidget.EndUpdate;
     QtTabWidget.setUpdatesEnabled(True);
@@ -481,7 +485,7 @@ begin
   Index := AChild.PageIndex;
   if Index < 0 then
     Index := ATabControl.IndexOf(AChild);
-  TQtTabWidget(ATabControl.Handle).setTabText(Index, GetUtf8String(AText));
+  TQtTabWidget(ATabControl.Handle).setTabText(Index, AText{%H-});
 end;
 
 class procedure TQtWSCustomTabControl.SetTabPosition(
@@ -492,6 +496,8 @@ end;
 
 class procedure TQtWSCustomTabControl.SetTabSize(
   const ATabControl: TCustomTabControl; const ATabWidth, ATabHeight: integer);
+const
+  FmtS = 'QTabBar::tab { height: %dpx; width: %dpx; }';
 var
   ASize, ANewSize: TSize;
   WS: WideString;
@@ -510,9 +516,9 @@ begin
   else
   begin
     if ATabControl.TabPosition in [tpLeft, tpRight] then
-      WS := {%H-}Format('QTabBar::tab { height: %dpx; width: %dpx; }',[ANewSize.cx, ANewSize.cy])
+      WS := {%H-}Format(FmtS, [ANewSize.cx, ANewSize.cy])
     else
-      WS := {%H-}Format('QTabBar::tab { height: %dpx; width: %dpx; }',[ANewSize.cy, ANewSize.cx]);
+      WS := {%H-}Format(FmtS, [ANewSize.cy, ANewSize.cx]);
   end;
   QWidget_setStyleSheet(TQtTabWidget(ATabControl.Handle).Widget, @WS);
 end;

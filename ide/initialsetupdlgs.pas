@@ -49,7 +49,7 @@ uses
   FileUtil, LazUTF8, LazUTF8Classes, LazFileUtils, LazFileCache, LazLogger,
   // Other
   MacroDefIntf, GDBMIDebugger, DbgIntfDebuggerBase,
-  TransferMacros, LazarusIDEStrConsts, LazConf, EnvironmentOpts,
+  TransferMacros, LazarusIDEStrConsts, LazConf, EnvironmentOpts, IDEImagesIntf,
   AboutFrm, IDETranslations, BaseBuildManager, InitialSetupProc;
   
 type
@@ -489,7 +489,7 @@ begin
   ImgIDError := Imagelist1.AddResourceName(HInstance, 'state_error');
   ImgIDWarning := Imagelist1.AddResourceName(HInstance, 'state_warning');
 
-  StopScanButton.LoadGlyphFromResourceName(HInstance, 'menu_stop');
+  TIDEImages.AssignImage(StopScanButton.Glyph, 'menu_stop');
 
   UpdateCaptions;
 
@@ -845,7 +845,7 @@ var
   Files: TSDFileInfoList;
 begin
   Exclude(FFlags,sdfCompilerFilenameNeedsUpdate);
-  Files:=SearchCompilerCandidates(false,CodeToolBoss.FPCDefinesCache.TestFilename);
+  Files:=SearchCompilerCandidates(false,CodeToolBoss.CompilerDefinesCache.TestFilename);
   FreeAndNil(FCandidates[sddtCompilerFilename]);
   FCandidates[sddtCompilerFilename]:=Files;
   FillComboboxWithFileInfoList(CompilerComboBox,Files);
@@ -970,7 +970,7 @@ var
   Quality: TSDFilenameQuality;
   s: String;
   ImageIndex: Integer;
-  CfgCache: TFPCTargetConfigCache;
+  CfgCache: TPCTargetConfigCache;
 begin
   if csDestroying in ComponentState then exit;
   CurCaption:=CompilerComboBox.Text;
@@ -980,14 +980,14 @@ begin
   //debugln(['TInitialSetupDialog.UpdateCompilerNote ',fLastParsedCompiler]);
 
   Quality:=CheckCompilerQuality(fLastParsedCompiler,Note,
-                                CodeToolBoss.FPCDefinesCache.TestFilename);
+                                CodeToolBoss.CompilerDefinesCache.TestFilename);
   if Quality<>sddqInvalid then begin
-    CodeToolBoss.FPCDefinesCache.ConfigCaches.Find(
+    CodeToolBoss.CompilerDefinesCache.ConfigCaches.Find(
       fLastParsedCompiler,'','','',true);
     // check compiler again
-    CfgCache:=CodeToolBoss.FPCDefinesCache.ConfigCaches.Find(
+    CfgCache:=CodeToolBoss.CompilerDefinesCache.ConfigCaches.Find(
                                                fLastParsedCompiler,'','','',true);
-    CfgCache.Update(CodeToolBoss.FPCDefinesCache.TestFilename);
+    CfgCache.Update(CodeToolBoss.CompilerDefinesCache.TestFilename);
     BuildBoss.SetBuildTargetIDE;
   end;
 

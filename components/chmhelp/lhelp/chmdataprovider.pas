@@ -61,6 +61,7 @@ type
   public
     constructor Create(AOwner: TComponent; AChm: TChmFileList); reintroduce;
     destructor Destroy; override;
+    function GetHtmlText(AURL: String): RawByteString;
     property Chm: TChmFileList read fChm write fChm;
     property OnHelpPopup: THelpPopupEvent read fOnHelpPopup write fOnHelpPopup;
     property CurrentPage: String read fCurrentPage;
@@ -81,6 +82,34 @@ begin
   i := Pos('#', Result);
   if i > 0 then
     Result := Copy(Result, 1, i-1);
+end;
+
+function TIpChmDataProvider.GetHtmlText(AURL: string): RawByteString;
+var
+  stream: TStream;
+  ms: TMemoryStream;
+begin
+  Result := '';
+  stream := DoGetHtmlStream(AURL, nil);
+  if stream = nil then
+    exit;
+  try
+    if stream.Size > 0 then
+    begin
+      // The stream created by DoGetHtmlStream can be read only once!
+      // --> buffer to memory stream
+      ms := TMemoryStream.Create;
+      try
+        ms.CopyFrom(stream, stream.Size);
+        SetLength(Result, ms.Size);
+        Move(ms.Memory^, Result[1], ms.Size);
+      finally
+        ms.Free;
+      end;
+    end;
+  finally
+    stream.Free;
+  end;
 end;
 
 function TIpChmDataProvider.DoGetHtmlStream(const URL: string;
@@ -154,21 +183,22 @@ end;
 
 function TIpChmDataProvider.CanHandle(const URL: string): Boolean;
 var
-  HelpFile: String;
   Reader: TChmReader = nil;
 begin
   Result := True;
-  if Pos('Java', URL) =1  then Result := False;
-  if  (fChm.ObjectExists(StripInPageLink(url), Reader)= 0)
-  and (fChm.ObjectExists(StripInPageLink(BuildUrl(fCurrentPath,Url)), Reader) = 0) then Result := False;
+  if Pos('Java', URL) = 1 then
+    Result := False;
+
+  if (fChm.ObjectExists(StripInPageLink(url), Reader)= 0) and
+     (fChm.ObjectExists(StripInPageLink(BuildUrl(fCurrentPath,Url)), Reader) = 0)
+  then
+    Result := False;
+
   //DebugLn('CanHandle ',Url,' = ', Result);
   //if not Result then if fChm.ObjectExists(BuildURL('', URL)) > 0 Then result := true;
-  if Pos('javascript:helppopup(''', LowerCase(URL)) = 1 then begin
-    HelpFile := Copy(URL, 23, Length(URL) - (23-1));
-    HelpFile := Copy(HelpFile, 1, Pos('''', HelpFile)-1);
-    //DebugLn('HelpFile = ', HelpFile);
-  end;
-  if (not Result) and (Pos('#', URL) = 1) then Result := True;
+
+  if (not Result) and (Pos('#', URL) = 1) then
+    Result := True;
 end;
 
 function TIpChmDataProvider.BuildURL(const OldURL, NewURL: string): string;
@@ -194,36 +224,39 @@ begin
   end;
 
   ParentDirs := GetDirsParents(OldURL);
-  RemoveDirCount := 0;
-  repeat
-    X := Pos('../', fNewURL);
-    if X > 0 then
-    begin
-      Delete(fNewURL, X, 3);
-      Inc(RemoveDirCount);
-    end;
-  until X = 0;
+  try
+    RemoveDirCount := 0;
+    repeat
+      X := Pos('../', fNewURL);
+      if X > 0 then
+      begin
+        Delete(fNewURL, X, 3);
+        Inc(RemoveDirCount);
+      end;
+    until X = 0;
 
-  repeat
-    X := Pos('./', fNewURL);
-    if X > 0 then
-      Delete(fNewURL, X, 2);
-  until X = 0;
+    repeat
+      X := Pos('./', fNewURL);
+      if X > 0 then
+        Delete(fNewURL, X, 2);
+    until X = 0;
 
-  Result := '';
-  for X := 0 to ParentDirs.Count-RemoveDirCount-1 do
-    Result := Result + ParentDirs[X] + '/';
+    Result := '';
+    for X := 0 to ParentDirs.Count-RemoveDirCount-1 do
+      Result := Result + ParentDirs[X] + '/';
 
-  Result := Result+fNewURL;
+    Result := Result+fNewURL;
 
-  repeat
-    X := Pos('//', Result);
-    if X > 0 then
-      Delete(Result, X, 1);
-  until X = 0;
+    repeat
+      X := Pos('//', Result);
+      if X > 0 then
+        Delete(Result, X, 1);
+    until X = 0;
 
-  ParentDirs.Free;
-  //WriteLn('res = ', Result);
+  finally
+    ParentDirs.Free;
+    //WriteLn('res = ', Result);
+  end;
 end;
 
 function TIpChmDataProvider.GetDirsParents(ADir: String): TStringList;

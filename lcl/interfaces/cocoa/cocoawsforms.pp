@@ -39,7 +39,10 @@ type
   private
     IsActivating: boolean;
   public
+    window : CocoaAll.NSWindow;
     constructor Create(AOwner: NSObject; ATarget: TWinControl); override;
+    destructor Destroy; override;
+
     function CanActivate: Boolean; virtual;
     procedure Activate; virtual;
     procedure Deactivate; virtual;
@@ -61,7 +64,7 @@ type
   private
   protected
   public
-//    class function  CreateHandle(const AWinControl: TWinControl; const AParams: TCreateParams): TLCLIntfHandle; override;
+    class function  CreateHandle(const AWinControl: TWinControl; const AParams: TCreateParams): TLCLIntfHandle; override;
   end;
 
   { TCocoaWSScrollBox }
@@ -94,13 +97,14 @@ type
   private
     class function GetStyleMaskFor(ABorderStyle: TFormBorderStyle; ABorderIcons: TBorderIcons): NSUInteger;
     class procedure UpdateWindowIcons(AWindow: NSWindow; ABorderStyle: TFormBorderStyle; ABorderIcons: TBorderIcons);
-    class procedure UpdateWindowMask(AWindow: NSWindow; ABorderStyle: TFormBorderStyle; ABorderIcons: TBorderIcons);
   public
+    class procedure UpdateWindowMask(AWindow: NSWindow; ABorderStyle: TFormBorderStyle; ABorderIcons: TBorderIcons);
     class function GetWindowFromHandle(const ACustomForm: TCustomForm): TCocoaWindow;
     class function GetWindowContentFromHandle(const ACustomForm: TCustomForm): TCocoaWindowContent;
   published
     class function AllocWindowHandle: TCocoaWindow; virtual;
     class function CreateHandle(const AWinControl: TWinControl; const AParams: TCreateParams): TLCLIntfHandle; override;
+    class procedure DestroyHandle(const AWinControl: TWinControl); override;
 
     class function GetText(const AWinControl: TWinControl; var AText: String): Boolean; override;
     class function GetTextLen(const AWinControl: TWinControl; var ALength: Integer): Boolean; override;
@@ -139,7 +143,6 @@ type
   public
   published
     class function CreateHandle(const AWinControl: TWinControl; const AParams: TCreateParams): TLCLIntfHandle; override;
-    class procedure DestroyHandle(const AWinControl: TWinControl); override;
   end;
 
   { TCocoaWSScreen }
@@ -207,6 +210,7 @@ var
   cnt: TCocoaWindowContent;
   R: NSRect;
   Form: TCustomForm absolute AWinControl;
+  cb: TLCLWindowCallback;
 const
   WinMask = NSBorderlessWindowMask or NSUtilityWindowMask;
 begin
@@ -222,7 +226,6 @@ begin
   win := TCocoaPanel(win.initWithContentRect_styleMask_backing_defer(R, WinMask, NSBackingStoreBuffered, False));
   win.enableCursorRects;
   win.setLevel(HintWindowLevel);
-  TCocoaPanel(win).callback := TLCLWindowCallback.Create(win, AWinControl);
   win.setDelegate(win);
   if AWinControl.Perform(WM_NCHITTEST, 0, 0)=HTTRANSPARENT then
     win.setIgnoresMouseEvents(True)
@@ -232,37 +235,14 @@ begin
   R.origin.x := 0;
   R.origin.y := 0;
   cnt := TCocoaWindowContent.alloc.initWithFrame(R);
-  cnt.callback := TCocoaPanel(win).callback;
+  cb := TLCLWindowCallback.Create(cnt, AWinControl);
+  cb.window := win;
+  cnt.callback := cb;
+  TCocoaPanel(win).callback := cb;
+
   win.setContentView(cnt);
 
   Result := TLCLIntfHandle(cnt);
-end;
-
-
-class procedure TCocoaWSHintWindow.DestroyHandle(const AWinControl: TWinControl);
-var
-  cnt: TCocoaWindowContent;
-  Callback: ICommonCallback;
-  CallbackObject: TObject;
-begin
-  if not AWinControl.HandleAllocated then
-    Exit;
-
-  cnt:= TCocoaWindowContent(AWinControl.Handle);
-  cnt.removeFromSuperview;
-
-  cnt.ownwin.close;
-
-  Callback := cnt.lclGetCallback;
-  if Assigned(Callback) then
-  begin
-    CallbackObject := Callback.GetCallbackObject;
-    Callback := nil;
-    cnt.lclClearCallback;
-    CallbackObject.Free;
-  end;
-
-  cnt.release;
 end;
 
 { TLCLWindowCallback }
@@ -278,6 +258,12 @@ begin
   IsActivating:=false;
 end;
 
+destructor TLCLWindowCallback.Destroy;
+begin
+  if Assigned(window) then window.lclClearCallback;
+  inherited Destroy;
+end;
+
 procedure TLCLWindowCallback.Activate;
 var
   ACustForm: TCustomForm;
@@ -290,21 +276,23 @@ begin
     if (ACustForm.Menu <> nil) and
        (ACustForm.Menu.HandleAllocated) then
     begin
-      if NSObject(ACustForm.Menu.Handle).isKindOfClass_(TCocoaMenuItem) then
+      if NSObject(ACustForm.Menu.Handle).isKindOfClass_(TCocoaMenu) then
       begin
-        if TCocoaMenuItem(ACustForm.Menu.Handle).hasSubmenu then
-          CocoaWidgetSet.SetMainMenu(HMENU(TCocoaMenuItem(ACustForm.Menu.Handle).submenu), ACustForm.Menu)
-        else
-          debugln('Warning: Menu does not have a valid handle.');
+        CocoaWidgetSet.SetMainMenu(ACustForm.Menu.Handle, ACustForm.Menu);
+        TCocoaMenu(ACustForm.Menu.Handle).attachAppleMenu();
       end
       else
-        CocoaWidgetSet.SetMainMenu(ACustForm.Menu.Handle, ACustForm.Menu);
+        debugln('Warning: Menu does not have a valid handle.');
     end
     else
       CocoaWidgetSet.SetMainMenu(0, nil);
 
     LCLSendActivateMsg(Target, WA_ACTIVE, false);
     LCLSendSetFocusMsg(Target);
+    // The only way to update Forms.ActiveCustomForm for the main form
+    // is calling TCustomForm.SetFocusedControl, see bug 31056
+    ACustForm.SetFocusedControl(ACustForm.ActiveControl);
+
     IsActivating:=False;
   end;
 end;
@@ -355,22 +343,47 @@ end;
 
 procedure TLCLWindowCallback.Resize;
 begin
-  boundsDidChange;
+  boundsDidChange(Owner);
 end;
 
 procedure TLCLWindowCallback.Move;
 begin
-  boundsDidChange;
+  boundsDidChange(Owner);
 end;
 
 function TLCLWindowCallback.GetEnabled: Boolean;
 begin
-  Result := NSWindow(Owner).contentView.lclIsEnabled;
+  Result := Owner.lclIsEnabled;
 end;
 
 procedure TLCLWindowCallback.SetEnabled(AValue: Boolean);
 begin
-  NSWindow(Owner).contentView.lclSetEnabled(AValue);
+  Owner.lclSetEnabled(AValue);
+end;
+
+{ TCocoaWSScrollingWinControl}
+
+class function  TCocoaWSScrollingWinControl.CreateHandle(const AWinControl: TWinControl; const AParams: TCreateParams): TLCLIntfHandle;
+var
+  scrollcon: TCocoaScrollView;
+  docview: TCocoaCustomControl;
+  lcl: TLCLCustomControlCallback;
+begin
+  docview := TCocoaCustomControl.alloc.lclInitWithCreateParams(AParams);
+  scrollcon:=EmbedInScrollView(docView);
+  scrollcon.setBackgroundColor(NSColor.windowBackgroundColor);
+  scrollcon.setAutohidesScrollers(True);
+  scrollcon.setHasHorizontalScroller(True);
+  scrollcon.setHasVerticalScroller(True);
+  scrollcon.isCustomRange := true;
+
+  lcl := TLCLCustomControlCallback.Create(docview, AWinControl);
+  docview.callback := lcl;
+  docview.setAutoresizingMask(NSViewWidthSizable or NSViewHeightSizable);
+  scrollcon.callback := lcl;
+  lcl.Frame:=scrollcon;
+  scrollcon.setDocumentView(docview);
+  Result := TLCLIntfHandle(scrollcon);
 end;
 
 
@@ -456,7 +469,9 @@ var
   R: NSRect;
   pool:NSAutoReleasePool;
   lDestView: NSView;
- begin
+  ds: TCocoaDesignOverlay;
+  cb: TLCLWindowCallback;
+begin
   //todo: create TCocoaWindow or TCocoaPanel depending on the border style
   //      if parent is specified neither Window nor Panel needs to be created
   //      the only thing that needs to be created is Content
@@ -464,6 +479,8 @@ var
   pool := NSAutoreleasePool.alloc.init;
   R := CreateParamsToNSRect(AParams);
   cnt := TCocoaWindowContent.alloc.initWithFrame(R);
+  cb := TLCLWindowCallback.Create(cnt, AWinControl);
+  cnt.callback := cb;
 
   if (AParams.Style and WS_CHILD) = 0 then
   begin
@@ -489,11 +506,15 @@ var
       win.setHidesOnDeactivate(FormStyleToHideOnDeactivate[Form.FormStyle]);
     end;
     win.enableCursorRects;
-    TCocoaWindow(win).callback := TLCLWindowCallback.Create(win, AWinControl);
+
+    TCocoaWindow(win).callback := cb;
+    cb.window := win;
+
     win.setDelegate(win);
     ns := NSStringUtf8(AWinControl.Caption);
     win.setTitle(ns);
     ns.release;
+    win.setReleasedWhenClosed(False); // do not release automatically
     win.setAcceptsMouseMovedEvents(True);
     if AWinControl.Perform(WM_NCHITTEST, 0, 0)=HTTRANSPARENT then
       win.setIgnoresMouseEvents(True);
@@ -510,6 +531,15 @@ var
 
     // support for drag & drop
     win.registerForDraggedTypes(NSArray.arrayWithObjects_count(@NSFilenamesPboardType, 1));
+
+    if IsFormDesign(AWinControl) then begin
+      ds:=(TCocoaDesignOverlay.alloc).initWithFrame(cnt.frame);
+      ds.callback := cnt.callback;
+      ds.setAutoresizingMask(NSViewWidthSizable or NSViewHeightSizable);
+      cnt.addSubview_positioned_relativeTo(ds, NSWindowAbove, nil);
+      cnt.overlay := ds;
+    end;
+
   end
   else
   begin
@@ -529,6 +559,21 @@ var
 
   pool.release;
   Result := TLCLIntfHandle(cnt);
+end;
+
+class procedure TCocoaWSCustomForm.DestroyHandle(const AWinControl: TWinControl
+  );
+var
+  win : NSWindow;
+begin
+  if not AWinControl.HandleAllocated then
+    Exit;
+
+  win := TCocoaWindowContent(AWinControl.Handle).lclOwnWindow;
+  if Assigned(win) then win.close;
+
+  TCocoaWSWinControl.DestroyHandle(AWinControl);
+  //inherited DestroyHandle(AWinControl);
 end;
 
 
@@ -663,7 +708,7 @@ var
 begin
   if AForm.HandleAllocated then
   begin
-    win := TCocoaWindowContent(AForm.Handle).lclOwnWindow;
+    win := NSWindow(TCocoaWindowContent(AForm.Handle).lclOwnWindow);
     if Assigned(win) then
       UpdateWindowMask(win, GetDesigningBorderStyle(AForm), ABorderIcons);
   end;
@@ -676,7 +721,7 @@ var
 begin
   if AForm.HandleAllocated then
   begin
-    win := TCocoaWindowContent(AForm.Handle).lclOwnWindow;
+    win := NSWindow(TCocoaWindowContent(AForm.Handle).lclOwnWindow);
     if Assigned(win) then
       UpdateWindowMask(win, AFormBorderStyle, AForm.BorderIcons);
   end;
@@ -700,11 +745,16 @@ end;
 
 class procedure TCocoaWSCustomForm.SetRealPopupParent(
   const ACustomForm: TCustomForm; const APopupParent: TCustomForm);
+var
+  win : NSWindow;
 begin
-  if Assigned(NSWindow(ACustomForm.Handle).parentWindow) then
-    NSWindow(ACustomForm.Handle).parentWindow.removeChildWindow(NSWindow(ACustomForm.Handle));
+  if not ACustomForm.HandleAllocated then Exit;
+
+  win := TCocoaWindowContent(ACustomForm.Handle).lclOwnWindow;
+  if Assigned(win.parentWindow) then
+    win.parentWindow.removeChildWindow(win);
   if Assigned(APopupParent) then
-    NSWindow(APopupParent.Handle).addChildWindow_ordered(NSWindow(ACustomForm.Handle), NSWindowAbove);
+    NSWindow( NSView(APopupParent.Handle).window).addChildWindow_ordered(win, NSWindowAbove);
 end;
 
 class function TCocoaWSCustomForm.GetClientBounds(
@@ -739,7 +789,7 @@ begin
     pool := NSAutoreleasePool.alloc.init;
     //debugln('TCocoaWSCustomForm.SetBounds: '+AWinControl.Name+'Bounds='+dbgs(Bounds(ALeft, ATop, AWidth, AHeight)));
     NSObject(AWinControl.Handle).lclSetFrame(Bounds(ALeft, ATop, AWidth, AHeight));
-    TCocoaWindowContent(AwinControl.Handle).callback.boundsDidChange;
+    TCocoaWindowContent(AwinControl.Handle).callback.boundsDidChange(NSObject(AWinControl.Handle));
     pool.release;
   end;
 end;

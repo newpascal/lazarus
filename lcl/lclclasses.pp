@@ -28,7 +28,7 @@ uses
 type
 
   // SysUtils.LongRec has unsigned Word for Lo and Hi,
-  //  we need a similar record with signed ShortInt
+  //  we need a similar record with signed SmallInt
   LazLongRec = packed record
 {$ifdef FPC_LITTLE_ENDIAN}
     Lo,Hi : SmallInt;
@@ -121,8 +121,12 @@ end;
 destructor TLCLComponent.Destroy;
 begin
   {$IFNDEF DisableChecks}
-  if FLCLRefCount>0 then
+  if FLCLRefCount>0 then begin
     DebugLn(['WARNING: ' + ClassName + '.Destroy with LCLRefCount>0. Hint: Maybe the component is processing an event?']);
+    {$IFDEF DebugTLCLComponentDestroy}
+    DumpStack;
+    {$ENDIF}
+  end;
   {$ENDIF}
   {$IFDEF DebugLCLComponents}
   //DebugLn('TLCLComponent.Destroy ',DbgSName(Self));

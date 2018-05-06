@@ -95,9 +95,11 @@ type
     procedure RegisterDockSite(Site: TWinControl; DoRegister: Boolean);override;
 
     //The Drag and Drop routines
-    procedure DragStart(AControl: TControl; AImmediate: Boolean; AThreshold: Integer); override;
+    procedure DragStart(AControl: TControl; AImmediate: Boolean; AThreshold: Integer; StartFromCurrentMouse:Boolean=False); override;
     procedure DragMove(APosition: TPoint); override;
     procedure DragStop(ADropped: Boolean); override;
+
+    function CanStartDragging(Site: TWinControl;  AThreshold: Integer; X,Y:Integer): boolean; override;
 
     property StartPosition: TPoint read FStartPosition;
   end;
@@ -363,6 +365,29 @@ procedure TDockPerformer.DragMove(APosition: TPoint);
     ARect: TRect;
     I: Integer;
     j: Integer;
+
+    function HaveMultiplePotentialDockClient(AControl: TWinControl):boolean;
+    var
+      I,Count:Integer;
+    begin
+      Count := 0;
+      for I := 0 to AControl.ControlCount - 1 do
+      begin
+        if (AControl.Controls[I].DragKind  = dkDock) and (AControl.Controls[I].DragMode = dmAutomatic) then
+          inc(Count);
+        if Count > 1 then exit(True);
+      end;
+      Result:=False;
+    end;
+
+    function ItCanBeHostSite:boolean;
+    begin
+      if FDockObject.Control.HostDockSite <> nil then
+        result := (FDockObject.Control.HostDockSite <> AControl) or (AControl.VisibleDockClientCount > 1)
+      else
+        result := (AControl <> FDockObject.Control.Parent) or HaveMultiplePotentialDockClient(AControl);
+    end;
+
   begin
     Result := nil;
     
@@ -381,7 +406,7 @@ procedure TDockPerformer.DragMove(APosition: TPoint);
         if AControl=FDockObject.Control then continue;
         if IsControlChildOfClient(AControl) then continue;
 
-        if (FDockObject.Control.HostDockSite <> AControl) or (AControl.VisibleDockClientCount > 1) then
+        if ItCanBeHostSite then
         begin
           CanDock := True;
           AControl.GetSiteInfo(FDockObject.Control, ARect, APosition, CanDock);
@@ -595,6 +620,8 @@ begin
       end
       else
         DragMsg := dmDragDrop;
+      ADockObjectCopy.Control.Top:=0;
+      ADockObjectCopy.Control.Left:=0;
       SendDragMessage(ADockObjectCopy.DragTarget, DragMsg, ADockObjectCopy,
                       ADockObjectCopy.DragTarget, ADockObjectCopy.DragPos);
     end;
@@ -639,7 +666,7 @@ begin
     Result := FPerformer.Dragging(AControl)
 end;
 
-procedure TDragManagerDefault.DragStart(AControl: TControl; AImmediate: Boolean; AThreshold: Integer);
+procedure TDragManagerDefault.DragStart(AControl: TControl; AImmediate: Boolean; AThreshold: Integer; StartFromCurrentMouse:Boolean=False);
 //Start a drag operation
 begin
   if FPerformer = nil then
@@ -649,7 +676,10 @@ begin
     else
       FThresholdValue := DragThreshold;
     FWaitForTreshold := not AImmediate;
-    GetCursorPos(FStartPosition);
+    if StartFromCurrentMouse then
+      FStartPosition:=AControl.ClientToScreen(point(0,0))
+    else
+      GetCursorPos(FStartPosition);
 
     AControl.BeforeDragStart;
 
@@ -824,5 +854,18 @@ begin
     DragStop(AIsDragging);
 end;
 
+function TDragManagerDefault.CanStartDragging(Site: TWinControl;  AThreshold: Integer; X,Y:Integer): boolean;
+var
+  Threshold:integer;
+  aRect:TRect;
+begin
+  if AThreshold<=0 then
+    Threshold:=DragThreshold
+  else
+    Threshold:=AThreshold;
+  aRect := Site.ClientRect;
+  InflateRect(aRect, Threshold, Threshold);
+  Result := not PtInRect(aRect, Point(X, Y));
+end;
 
 //included by controls.pp

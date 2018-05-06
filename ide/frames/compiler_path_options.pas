@@ -7,8 +7,9 @@ interface
 uses
   Classes, SysUtils, LCLProc, LazFileUtils, LazFileCache, Controls, Dialogs,
   Buttons, StdCtrls, LCLType, IDEOptionsIntf, MacroIntf, IDEDialogs,
-  CompOptsIntf, Project, CompilerOptions, LazarusIDEStrConsts, PathEditorDlg,
-  IDEProcs, CheckCompilerOpts, ShowCompilerOpts, ImExportCompilerOpts;
+  CompOptsIntf, Project, CompilerOptions, LazarusIDEStrConsts, IDEImagesIntf,
+  PathEditorDlg, IDEProcs, CheckCompilerOpts, ShowCompilerOpts,
+  ImExportCompilerOpts;
 
 type
 
@@ -72,9 +73,6 @@ type
 implementation
 
 {$R *.lfm}
-
-const
-  cBrowseBtnSize = 50;
 
 function CheckSearchPath(const Context, ExpandedPath: string; Level: TCheckCompileOptionsMsgLvl; Hint: string = ''): boolean;
 var
@@ -398,8 +396,8 @@ begin
       if IDEQuestionDialog(lisDuplicateSearchPath,
         Format(lisTheOtherSourcesContainsADirectoryWhichIsAlreadyInT,
               [LineEnding+LineEnding, Duplicates.DelimitedText]),
-        mtError, [mrCancel, mrYes, lisRemoveThePathsFromOtherSources, 'IsDefault']
-        )=mrYes
+        mtError, [mrCancel,
+                  mrYes, lisRemoveThePathsFromOtherSources, 'IsDefault']) = mrYes
       then begin
         // remove paths from SrcPath
         OldUnparsedSrcPath:=FCompilerOpts.SrcPath;
@@ -505,7 +503,7 @@ begin
     AnchorParallel(akTop, 0, OtherUnitsEdit);
     AnchorParallel(akBottom, 0, OtherUnitsEdit);
     AnchorParallel(akRight, 0, Self);
-    Width := cBrowseBtnSize;
+    Width := Height;
     AssociatedEdit := OtherUnitsEdit;
     ContextCaption := OtherUnitsLabel.Caption;
     Templates:='$(LazarusDir)/lcl/units/$(TargetCPU)-$(TargetOS)' +
@@ -532,7 +530,7 @@ begin
     AnchorParallel(akTop, 0, IncludeFilesEdit);
     AnchorParallel(akBottom, 0, IncludeFilesEdit);
     AnchorParallel(akRight, 0, Self);
-    Width := cBrowseBtnSize;
+    Width := Height;
     AssociatedEdit := IncludeFilesEdit;
     ContextCaption := IncludeFilesLabel.Caption;
     Templates := 'include;inc';
@@ -555,7 +553,7 @@ begin
     AnchorParallel(akTop, 0, OtherSourcesEdit);
     AnchorParallel(akBottom, 0, OtherSourcesEdit);
     AnchorParallel(akRight, 0, Self);
-    Width := cBrowseBtnSize;
+    Width := Height;
     AssociatedEdit := OtherSourcesEdit;
     ContextCaption := OtherSourcesLabel.Caption;
     Templates := '$(LazarusDir)/lcl' +
@@ -581,7 +579,7 @@ begin
     AnchorParallel(akTop, 0, LibrariesEdit);
     AnchorParallel(akBottom, 0, LibrariesEdit);
     AnchorParallel(akRight, 0, Self);
-    Width := cBrowseBtnSize;
+    Width := Height;
     AssociatedEdit := LibrariesEdit;
     ContextCaption := LibrariesLabel.Caption;
     Templates := '/usr/X11R6/lib;/sw/lib';
@@ -604,7 +602,7 @@ begin
     AnchorParallel(akTop, 0, UnitOutputDirEdit);
     AnchorParallel(akBottom, 0, UnitOutputDirEdit);
     AnchorParallel(akRight, 0, Self);
-    Width := cBrowseBtnSize;
+    Width := Height;
     OnClick := @FileBrowseBtnClick;
   end;
   UnitOutputDirEdit.AnchorToNeighbour(akRight, 0, btnUnitOutputDir);
@@ -623,7 +621,7 @@ begin
     AnchorParallel(akTop, 0, DebugPathEdit);
     AnchorParallel(akBottom, 0, DebugPathEdit);
     AnchorParallel(akRight, 0, Self);
-    Width := cBrowseBtnSize;
+    Width := Height;
     AssociatedEdit := DebugPathEdit;
     ContextCaption := DebugPathLabel.Caption;
     Templates := '$(LazarusDir)/lcl/include' +
@@ -638,7 +636,7 @@ begin
 
   // register special buttons in the dialog itself
   btnShowOptions := CreateButton(dlgCOShowOptions);
-  btnShowOptions.LoadGlyphFromResourceName(HInstance, 'menu_compiler_options');
+  TIDEImages.AssignImage(btnShowOptions.Glyph, 'menu_compiler_options');
   btnShowOptions.OnClick := @DoShowOptions;
   // Check
   btnCheck := CreateButton(lisCompTest);
@@ -659,7 +657,7 @@ begin
   btnLoadSave.Hint := dlgCOLoadSaveHint;
   btnLoadSave.LoadGlyphFromStock(idButtonOpen);
   if btnLoadSave.Glyph.Empty then
-    btnLoadSave.LoadGlyphFromResourceName(HInstance, 'laz_save');
+    TIDEImages.AssignImage(btnLoadSave.Glyph, 'laz_save');
 
   ADialog.AddButtonSeparator;
 

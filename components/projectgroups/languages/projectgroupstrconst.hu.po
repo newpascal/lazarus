@@ -122,7 +122,7 @@ msgid "New project group"
 msgstr "Új projektcsoport"
 
 #: projectgroupstrconst.lisnewprojectgroupmenuc
-msgid "New project group ..."
+msgid "New Project group ..."
 msgstr "Új projektcsoport ..."
 
 #: projectgroupstrconst.lisnodebuildmodes
@@ -154,11 +154,11 @@ msgid "Targets"
 msgstr "Célok"
 
 #: projectgroupstrconst.lisopenprojectgroup
-msgid "Open project group ..."
+msgid "Open Project Group ..."
 msgstr "Projektcsoport megnyitása ..."
 
 #: projectgroupstrconst.lisopenrecentprojectgroup
-msgid "Open recent project group"
+msgid "Open Recent Project Group"
 msgstr "Legutóbbi projektcsoport megnyitása"
 
 #: projectgroupstrconst.lisotherproject
@@ -234,6 +234,10 @@ msgstr ""
 msgid "Reload"
 msgstr "Újratöltés"
 
+#: projectgroupstrconst.lisprojectgroups
+msgid "Project Groups"
+msgstr "Projektcsoportok"
+
 #: projectgroupstrconst.lisprojectgroupsaveascaption
 msgid "Save As ..."
 msgstr "Mentés másként ..."
@@ -267,12 +271,12 @@ msgstr "Projektcsoport mentése"
 
 #: projectgroupstrconst.lissaveprojectgroup
 msgctxt "projectgroupstrconst.lissaveprojectgroup"
-msgid "Save project group"
+msgid "Save Project Group"
 msgstr "Projektcsoport mentése"
 
 #: projectgroupstrconst.lissaveprojectgroupas
-msgid "Save project group as ..."
-msgstr "A projektcsoport mentése másként ..."
+msgid "Save Project Group As ..."
+msgstr "Projektcsoport mentése másként ..."
 
 #: projectgroupstrconst.lisskipalltargets
 msgid "Remove all invalid targets"

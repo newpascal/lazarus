@@ -22,7 +22,7 @@
 @created(Sun Sep 14 2003)
 @lastmod($Date$)
 }
-unit DbCtrls;
+unit DBCtrls;
 
 {$mode objfpc}
 {$H+}
@@ -208,7 +208,9 @@ Type
     property ReadOnly: Boolean read GetReadOnly write SetReadOnly default False;
 
     property Align;
+    property Alignment;
     property Anchors;
+    property AutoSelect;
     property AutoSize;
     property BiDiMode;
     property BorderSpacing;
@@ -381,11 +383,16 @@ Type
     property BiDiMode;
     property BorderSpacing;
     property BorderStyle;
+    property Color;
+    property Constraints;
     property DataField;
     property DataSource;
     property DragCursor;
+    property DragKind;
     property DragMode;
+    property Enabled;
     property ExtendedSelect;
+    property Font;
     property ItemHeight;
     property Items;
     property MultiSelect;
@@ -411,8 +418,10 @@ Type
     property OnResize;
     property OnStartDrag;
     property OnUTF8KeyPress;
+    property Options;
     property ParentBiDiMode;
     property ParentShowHint;
+    property PopupMenu;
     property ReadOnly;
     property ShowHint;
     property Sorted;
@@ -450,6 +459,7 @@ Type
     procedure DataChange(Sender: TObject); override;
     procedure DoSelectionChange(User: Boolean); override;
     procedure InitializeWnd; override;
+    procedure DestroyWnd; override;
     procedure KeyDown(var Key: Word; Shift: TShiftState); override;
     procedure Loaded; override;
     procedure UpdateData(Sender: TObject); override;
@@ -463,12 +473,16 @@ Type
     property BorderSpacing;
     property BorderStyle;
     property Color;
+    property Constraints;
     property DataField;
     property DataSource;
     property DragCursor;
+    property DragKind;
     property DragMode;
 //    property ExtendedSelect;
 //    property ItemHeight;
+    property Enabled;
+    property Font;
     property KeyField: string read GetKeyField write SetKeyField;
     property ListField: string read GetListField write SetListField;
     property ListFieldIndex: Integer read GetListFieldIndex write SetListFieldIndex;
@@ -499,6 +513,7 @@ Type
     property OnResize;
     property OnStartDrag;
     property OnUTF8KeyPress;
+    property Options;
     property ParentBiDiMode;
     property ParentShowHint;
     property PopupMenu;
@@ -554,15 +569,22 @@ Type
   published
     property Align;
     property Anchors;
+    property AutoFill;
+    property AutoSize;
     property BiDiMode;
     property BorderSpacing;
     property Caption;
+    property ChildSizing;
+    property Color;
+    property ColumnLayout;
     property Columns;
+    property Constraints;
     property DataField: string read GetDataField write SetDataField;
     property DataSource: TDataSource read GetDataSource write SetDataSource;
     property DragCursor;
     property DragMode;
     property Enabled;
+    property Font;
     property Items write SetItems;
     property OnChange: TNotifyEvent read FOnChange write FOnChange;
     property OnChangeBounds;
@@ -581,7 +603,12 @@ Type
     property OnResize;
     property OnStartDrag;
     property ParentBiDiMode;
+    property ParentColor;
+    property ParentFont;
+    property ParentShowHint;
+    property PopupMenu;
     property ReadOnly: Boolean read GetReadOnly write SetReadOnly default False;
+    property ShowHint;
     property TabOrder;
     property TabStop;
     property Values: TStrings read FValues write SetValues;
@@ -621,8 +648,10 @@ Type
     property Field: TField read GetField;
     property State;
   published
-    property AllowGrayed;
+    property Action;
     property Align;
+    property Alignment;
+    property AllowGrayed;
     property Anchors;
     property AutoSize;
     property BiDiMode;
@@ -682,6 +711,7 @@ Type
     procedure SetReadOnly(const AValue: Boolean);
     procedure CMGetDataLink(var Message: TLMessage); message CM_GETDATALINK;
   protected
+    procedure CloseUp; override;
     procedure DataChange(Sender: TObject); virtual; abstract;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure Change; override;
@@ -706,16 +736,20 @@ Type
 
   TDBComboBox = class(TCustomDBComboBox)
   protected
+    procedure Change; override;
     procedure DataChange(Sender: TObject); override;
     procedure KeyDown(var Key: Word; Shift: TShiftState); override;
     procedure KeyPress(var Key: char); override;
     procedure Select; override;
     procedure UpdateData(Sender: TObject); override;
   published
+    property Align;
     property Anchors;
     property ArrowKeysTraverseList;
-    property AutoDropDown;
     property AutoComplete;
+    property AutoCompleteText;
+    property AutoDropDown;
+    property AutoSelect;
     property AutoSize;
     property BiDiMode;
     property BorderSpacing;
@@ -725,6 +759,7 @@ Type
     property DataField;
     property DataSource;
     property DragCursor;
+    property DragKind;
     property DragMode;
     property DropDownCount;
     property Enabled;
@@ -764,6 +799,7 @@ Type
     property ParentColor;
     property ParentFont;
     property ParentShowHint;
+    property PopupMenu;
     property ReadOnly;
     property ShowHint;
     property Sorted;
@@ -799,7 +835,9 @@ Type
   protected
     procedure CloseUp; override;
     procedure InitializeWnd; override;
+    procedure DestroyWnd; override;
     procedure KeyDown(var Key: Word; Shift: TShiftState); override;
+    procedure UTF8KeyPress(var UTF8Key: TUTF8Char); override;
     procedure Loaded; override;
     procedure UpdateData(Sender: TObject); override;
     procedure DataChange(Sender: TObject); override;
@@ -812,14 +850,20 @@ Type
     property Anchors;
     property ArrowKeysTraverseList;
     property AutoComplete;
+    //property AutoCompleteText;
     property AutoDropDown;
+    property AutoSelect;
     property AutoSize;
     property BiDiMode;
     property BorderSpacing;
+    property BorderStyle;
+    property CharCase;
     property Color;
+    property Constraints;
     property DataField;
     property DataSource;
     property DragCursor;
+    property DragKind;
     property DragMode;
     property DropDownCount;
     property Enabled;
@@ -899,7 +943,7 @@ Type
     procedure Change; override;
     procedure KeyDown(var Key: Word; Shift: TShiftState); override;
     procedure KeyPress(var Key:Char); override;
-    procedure WndProc(var AMessage : TLMessage); override;
+    procedure WndProc(var Message : TLMessage); override;
     class procedure WSRegisterClass; override;
   public
     constructor Create(TheOwner: TComponent); override;
@@ -911,6 +955,7 @@ Type
     property Field: TField read GetField;
   published
     property Align;
+    property Alignment;
     property Anchors;
     property AutoDisplay: Boolean read FAutoDisplay write SetAutoDisplay default True;
     property BiDiMode;
@@ -922,6 +967,7 @@ Type
     property DataField: string read GetDataField write SetDataField;
     property DataSource: TDataSource read GetDataSource write SetDataSource;
     property DragCursor;
+    property DragKind;
     property DragMode;
     property Enabled;
     property Font;
@@ -959,6 +1005,8 @@ Type
     property TabOrder;
     property Tabstop;
     property Visible;
+    property WantReturns;
+    property WantTabs;
     property WordWrap;
   end;
   
@@ -993,9 +1041,11 @@ Type
     property ClientWidth;
     property Color;
     property Constraints;
+    property Cursor;
     property DataField: string read GetDataField write SetDataField;
     property DataSource: TDataSource read GetDataSource write SetDataSource;
     property DragCursor;
+    property DragKind;
     property DragMode;
     property Enabled;
     property Font;
@@ -1073,6 +1123,7 @@ Type
   published
     property Align;
     property Anchors;
+    property AntialiasingMode;
     property AutoDisplay: Boolean read FAutoDisplay write SetAutoDisplay default True;
     property AutoSize;
     property BorderSpacing;
@@ -1081,7 +1132,10 @@ Type
     property DataField: string read GetDataField write SetDataField;
     property DataSource: TDataSource read GetDataSource write SetDataSource;
     property DragCursor;
+    property DragKind;
     property DragMode;
+    property KeepOriginXWhenClipped;
+    property KeepOriginYWhenClipped;
     property OnClick;
     property OnDblClick;
     property OnDBImageRead: TOnDBImageRead read  FOnDBImageRead write FOnDBImageRead;
@@ -1099,10 +1153,14 @@ Type
     property OnMouseWheelDown;
     property OnMouseWheelUp;
     property OnStartDrag;
+    property ParentShowHint;
     property Proportional;
     property QuickDraw: Boolean read FQuickDraw write FQuickDraw default True;
     property ReadOnly: Boolean read GetReadOnly write SetReadOnly default False;
+    property ShowHint;
     property Stretch;
+    property StretchInEnabled;
+    property StretchOutEnabled;
     property Transparent;
     property Visible;
     property WriteHeader: Boolean read FWriteHeader write FWriteHeader default True;

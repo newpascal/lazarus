@@ -6,13 +6,14 @@ interface
 
 uses
   Classes, OpenGLContext, SysUtils, FileUtil, Forms, Controls, Graphics,
-  Dialogs, TAGraph, TASeries, TASources, GL, GLU;
+  Dialogs, ExtCtrls, TAGraph, TASeries, TASources, GL, GLU;
 
 type
 
   { TForm1 }
 
   TForm1 = class(TForm)
+    Bevel1: TBevel;
     Chart1: TChart;
     Chart1BarSeries1: TBarSeries;
     Chart1LineSeries1: TLineSeries;
@@ -43,8 +44,9 @@ procedure TForm1.FormCreate(Sender: TObject);
 begin
   // If the text engine does not find the fonts needed for the OpenGL output
   // copy the fonts to the exe folder and uncomment the next line
+  // Requires TAFonts in "uses"
 
-  // InitFonts(ExtractFilePath(ParamStr(0)));
+  //  InitFonts(ExtractFilePath(ParamStr(0)));
 end;
 
 procedure TForm1.OpenGLControl1Paint(Sender: TObject);

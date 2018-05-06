@@ -44,12 +44,24 @@ begin
     ItemIndex := -1;
 end;
 
+procedure TDBLookupListBox.DestroyWnd;
+begin
+  inherited;
+  //after handle destroy Items address changes
+  FLookup.ControlItems := Items;
+end;
+
 procedure TDBLookupListBox.DoSelectionChange(User: Boolean);
 begin
   if User then
   begin
-    FDataLink.Modified;
-    FDataLink.UpdateRecord;
+    if FDataLink.CanModify then
+    begin
+      FDataLink.Modified;
+      FDataLink.UpdateRecord;
+    end
+    else
+      DataChange(Self);
   end;
   inherited DoSelectionChange(User);
 end;

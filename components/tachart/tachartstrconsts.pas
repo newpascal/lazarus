@@ -24,6 +24,8 @@ resourcestring
   rsPieSeries = 'Pie series';
   rsPolarSeries = 'Polar series';
   rsUserDrawnSeries = 'User-drawn series';
+  rsExpressionSeries = 'Math expression series';
+  rsExpressionColorMapSeries = 'Math expression color map series';
 
   // Series editor
   sesSeriesEditorTitle = 'Edit series';
@@ -119,6 +121,9 @@ resourcestring
   rsBSClear = 'no fill';
   rsBSImage = 'image fill';
   rsBSPattern = 'pattern fill';
+
+  rsErrInvalidResultType = 'Expression result type must be integer or float. Got "%s".';
+//  rsTDistParamError = 'Function tdist() requires parameter "tails" to be 1 or 2. Get %d.';
 
 implementation
 

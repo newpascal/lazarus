@@ -25,7 +25,7 @@ unit frmmain;
 interface
 
 uses
-  Classes, SysUtils, fpJSON, JSONParser,
+  Classes, SysUtils, fpJSON, jsonscanner, JSONParser,
   Forms, Controls, Dialogs, ActnList, Menus, ComCtrls, IniPropStorage, PropertyStorage,
   DefaultTranslator;
 
@@ -33,8 +33,54 @@ type
 
   { TMainForm }
 
+  { TJSONTab }
+  TViewerOptions = Class(TObject)
+  {$IF FPC_FULLVERSION>=30002}
+    FOptions : TJSONOptions;
+  {$ELSE}
+    FStrict,
+  {$ENDIF}
+    FQuoteStrings,
+    FSortObjectMembers,
+    FCompact,
+    FNewObject : Boolean;
+  end;
+
+  TJSONTab = Class(TTabsheet)
+  private
+    FCurrentFind: TTreeNode;
+    FDocNo: Integer;
+    FFileName: String;
+    FJSONData: TJSONData;
+    FModified: Boolean;
+    FOptions: TViewerOptions;
+    FTreeView: TTreeview;
+    procedure SetCurrentFind(AValue: TTreeNode);
+    procedure SetFileName(AValue: String);
+    procedure SetJSONData(AValue: TJSONData);
+    procedure SetModified(AValue: Boolean);
+  Protected
+    Procedure SetCaption;
+  Public
+    Constructor Create(AOwner : TComponent); override;
+    Destructor Destroy; override;
+    procedure ShowJSONData(AParent: TTreeNode; Data: TJSONData);
+    procedure ShowJSONDocument;
+    Property FileName : String read FFileName Write SetFileName;
+    Property TVJSON : TTreeview Read FTreeView;
+    // We own JSON
+    Property Root : TJSONData Read FJSONData Write SetJSONData;
+    Property CurrentFind : TTreeNode Read FCurrentFind Write SetCurrentFind;
+    Property Modified : Boolean Read FModified Write SetModified;
+    Property DocNo : Integer Read FDocNo Write FDocNo;
+    // Just a reference
+    Property Options : TViewerOptions Read FOptions Write FOptions;
+  end;
+
   TMainForm = class(TForm)
     ACopy: TAction;
+    AClose: TAction;
+    ACreateCode: TAction;
     AFindNext: TAction;
     AFind: TAction;
     AExpandCurrentContainer: TAction;
@@ -54,12 +100,26 @@ type
     ASave: TAction;
     AOpen: TAction;
     ANew: TAction;
-    ActionList1: TActionList;
+    ALJSON: TActionList;
     FDJSON: TFindDialog;
     ILJSON: TImageList;
     MEDit: TMenuItem;
+    MenuItem10: TMenuItem;
+    MenuItem11: TMenuItem;
+    MenuItem12: TMenuItem;
+    MenuItem13: TMenuItem;
+    MenuItem14: TMenuItem;
+    MIGenCode: TMenuItem;
     MenuItem2: TMenuItem;
     MenuItem3: TMenuItem;
+    MenuItem4: TMenuItem;
+    MenuItem5: TMenuItem;
+    MenuItem6: TMenuItem;
+    MenuItem7: TMenuItem;
+    MenuItem9: TMenuItem;
+    MIQuoteStrings: TMenuItem;
+    MIAllowTrailingComma: TMenuItem;
+    MIAllowComments: TMenuItem;
     MICompact: TMenuItem;
     MIFInd: TMenuItem;
     MIExpandCurrent: TMenuItem;
@@ -71,6 +131,8 @@ type
     MISortMembers: TMenuItem;
     MenuItem8: TMenuItem;
     MIDelete: TMenuItem;
+    PCJSON: TPageControl;
+    PMTreeView: TPopupMenu;
     PSMain: TIniPropStorage;
     MenuItem1: TMenuItem;
     MINewNull: TMenuItem;
@@ -99,15 +161,20 @@ type
     TBSave: TToolButton;
     ToolButton1: TToolButton;
     ToolButton2: TToolButton;
+    ToolButton3: TToolButton;
     ToolButton4: TToolButton;
     TBNEwNull: TToolButton;
     TBNewBoolean: TToolButton;
     TBNewNumber: TToolButton;
     TBNewString: TToolButton;
     TBNewArray: TToolButton;
-    TVJSON: TTreeView;
+    ToolButton5: TToolButton;
+    procedure ACloseExecute(Sender: TObject);
+    procedure ACloseUpdate(Sender: TObject);
     procedure ACopyExecute(Sender: TObject);
     procedure ACopyUpdate(Sender: TObject);
+    procedure ACreateCodeExecute(Sender: TObject);
+    procedure ACreateCodeUpdate(Sender: TObject);
     procedure ACutExecute(Sender: TObject);
     procedure ACutUpdate(Sender: TObject);
     procedure ADeleteValueExecute(Sender: TObject);
@@ -136,12 +203,17 @@ type
     procedure FDJSONFind(Sender: TObject);
     procedure FormCloseQuery(Sender: TObject; var CanClose: boolean);
     procedure FormCreate(Sender: TObject);
+    procedure FormDestroy(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure HaveData(Sender: TObject);
+    procedure MIAllowTrailingCommaClick(Sender: TObject);
+    procedure MIAllowCommentsClick(Sender: TObject);
     procedure MICompactClick(Sender: TObject);
     procedure MIdocumentClick(Sender: TObject);
+    procedure MIQuoteStringsClick(Sender: TObject);
     procedure MISortMembersClick(Sender: TObject);
     procedure MIStrictClick(Sender: TObject);
+    procedure PCJSONCloseTabClicked(Sender: TObject);
     procedure PSMainStoredValues0Restore(Sender: TStoredValue;
       var Value: TStoredType);
     procedure PSMainStoredValues1Restore(Sender: TStoredValue;
@@ -150,25 +222,27 @@ type
       var Value: TStoredType);
     procedure PSMainStoredValues3Restore(Sender: TStoredValue;
       var Value: TStoredType);
+    procedure PSMainStoredValues6Restore(Sender: TStoredValue;
+      var Value: TStoredType);
     procedure TVJSONEdited(Sender: TObject; Node: TTreeNode; var S: string);
     procedure TVJSONEditing(Sender: TObject; Node: TTreeNode;
       var AllowEdit: Boolean);
   private
-    FRoot : TJSONData;
-    FFileName : String;
-    FSortObjectMembers,
-    FStrict,
-    FNewObject,
-    FCompact,
-    FModified : Boolean;
-    FCurrentFind : TTreeNode;
+    FOptions : TViewerOptions;
+    function CheckClose(T: TJSONTab): Boolean;
+    procedure CloseCurrent;
+    function GetCurrentFind: TTreeNode;
+    function GetCurrenTJSONTab: TJSONTab;
+    function GetCurrentRoot: TJSONData;
+    function GetTVJSON: TTreeView;
+    procedure setCurrentFind(AValue: TTreeNode);
     procedure AddDataToContainer(const AMemberName: String; D: TJSONData);
     procedure CopyCurrentData;
     procedure DeleteCurrentValue;
-    function FindNode(Start: TTreeNode; const AText: String;
-      CaseInsensitive: Boolean; WholeWord: Boolean): TTreeNode;
+    function FindNode(Start: TTreeNode; const AText: String;  CaseInsensitive: Boolean; WholeWord: Boolean): TTreeNode;
     function GetNextSearchNode(Anode: TTreeNode): TTreeNode;
     procedure Modify;
+    Function NewJSONTab : TJSONTab;
     procedure AddNewValue(AType: TJSONType);
     function CurrentNode: TTreeNode;
     function CurrentNodeType : TJSONType;
@@ -179,23 +253,30 @@ type
     function FindContainerNode(AStart: TTreeNode): TTreeNode;
     function GetSaveFileName(Force: Boolean): String;
     function IsContainerNode(ANode: TTreeNode): Boolean;
-    procedure NewDocument;
+    Function NewDocument : TJSONTab;
     procedure OpenFile(const AFileName: String);
     procedure PasteJSON(DoClear: Boolean);
     procedure SaveToFile(const AFileName: string);
     procedure SetCaption;
-    procedure ShowJSONData(AParent: TTreeNode; Data: TJSONData);
     procedure ShowJSONDocument;
+    {$IF FPC_FULLVERSION>=30002}
+    procedure ToggleOption(O: TJSONOption; Enable: Boolean);
+    {$ENDIF}
+    Property CurrentJSONTab : TJSONTab Read GetCurrenTJSONTab;
+    Property CurrentFind : TTreeNode Read GetCurrentFind Write setCurrentFind;
+    Property CurrentRoot : TJSONData Read GetCurrentRoot;
+    Property TVJSON : TTreeView Read GetTVJSON;
   public
-
-  end; 
+  end;
 
 var
   MainForm: TMainForm;
 
 implementation
 
-uses msgjsonviewer, frmNewBoolean, frmNewINteger, frmNewString, clipbrd;
+uses
+  typinfo,  {$IF FPC_FULLVERSION>=30004} frmcreatecode, {$endif}
+msgjsonviewer, lcltype, frmNewBoolean, frmNewINteger, frmNewString, clipbrd;
 
 {$R *.lfm}
 Const
@@ -205,36 +286,148 @@ Const
   JSONTypeNames : Array[TJSONtype] of string =
      ('Unknown','Number','String','Boolean','Null','Array','Object');
 
+{ TJSONTab }
+
+procedure TJSONTab.SetJSONData(AValue: TJSONData);
+begin
+  if (FJSONData=AValue) then Exit;
+  FreeAndNil(FJSONData);
+  FJSONData:=AValue;
+  Modified:=True;
+  ShowJSONDocument;
+end;
+
+procedure TJSONTab.SetModified(AValue: Boolean);
+begin
+  if FModified=AValue then Exit;
+  FModified:=AValue;
+  SetCaption;
+end;
+
+procedure TJSONTab.SetFileName(AValue: String);
+begin
+  if FFileName=AValue then Exit;
+  FFileName:=AValue;
+  SetCaption;
+end;
+
+procedure TJSONTab.SetCurrentFind(AValue: TTreeNode);
+begin
+  if FCurrentFind=AValue then Exit;
+  FCurrentFind:=AValue;
+end;
+
+constructor TJSONTab.Create(AOwner: TComponent);
+
+begin
+  inherited Create(AOwner);
+  FTreeView:=TTreeview.Create(Self);
+  FTreeView.Parent:=Self;
+  FTreeView.Options:= [tvoAutoItemHeight,tvoKeepCollapsedNodes,tvoRightClickSelect,tvoShowButtons,tvoShowLines,tvoShowRoot,tvoToolTips,tvoThemedDraw];
+  FTreeView.Align:=alClient;
+  SetCaption;
+end;
+
+destructor TJSONTab.Destroy;
+begin
+  FreeAndNil(FJSONData);
+  inherited Destroy;
+end;
+
+procedure TJSONTab.SetCaption;
+
+Var
+  S: String;
+
+begin
+  S:=ExtractFileName(FFileName);
+  if S='' then
+    S:=Format('New file %d',[docNo]);
+  if Modified then
+    S:=S+' *';
+  Caption:=S;
+end;
+
 { TMainForm }
+{$IF FPC_FULLVERSION>=30002}
+procedure TMainForm.ToggleOption(O : TJSONOption; Enable : Boolean);
+Var
+  S : String;
+begin
+  if Enable then
+    Include(FOptions.Foptions,O)
+  else
+    Exclude(FOptions.Foptions,O);
+  S:=GetEnumName(TypeInfo(TJSONOption),Ord(O));
+  Delete(S,1,2);
+  PSMain.StoredValue[S]:=IntToStr(Ord(Enable));
+end;
+{$ENDIF}
 
 procedure TMainForm.MIStrictClick(Sender: TObject);
 begin
+{$IF FPC_FULLVERSION>=30002}
+  ToggleOption(joStrict,(Sender as TMenuItem).Checked);
+{$ELSE}
   FStrict:=(Sender as TMenuItem).Checked;
   PSMain.StoredValue['strict']:=IntToStr(Ord(Fstrict));
+{$ENDIF}
+end;
+
+procedure TMainForm.PCJSONCloseTabClicked(Sender: TObject);
+begin
+  if CheckClose(Sender as TJSONTab) then
+    Application.ReleaseComponent(Sender as TJSONTab);
 end;
 
 procedure TMainForm.PSMainStoredValues0Restore(Sender: TStoredValue;
   var Value: TStoredType);
+
+{$IF FPC_FULLVERSION>=30002}
+Var
+  S : String;
+  o : integer;
+  JO : TJSONOption;
+{$ENDIF}
 begin
+  {$IF FPC_FULLVERSION>=30002}
+  S:=Sender.Name;
+  O:=GetEnumValue(TypeInfo(TJSONOption),'jo'+S);
+  if O<>-1 then
+    begin
+    JO:=TJSONOption(O);
+    if StrToIntDef(Value,0)=1 then
+        Include(FOptions.Foptions,JO)
+      else
+        Exclude(FOptions.Foptions,JO);
+    end;
+  {$ELSE}
   FStrict:=StrToIntDef(Value,0)=1
+  {$ENDIF}
 end;
 
 procedure TMainForm.PSMainStoredValues1Restore(Sender: TStoredValue;
   var Value: TStoredType);
 begin
-  FNewObject:=StrToIntDef(Value,0)=1
+  FOptions.FNewObject:=StrToIntDef(Value,0)=1
 end;
 
 procedure TMainForm.PSMainStoredValues2Restore(Sender: TStoredValue;
   var Value: TStoredType);
 begin
-  FSortObjectMembers:=StrToIntDef(Value,0)=1;
+  FOptions.FSortObjectMembers:=StrToIntDef(Value,0)=1;
 end;
 
 procedure TMainForm.PSMainStoredValues3Restore(Sender: TStoredValue;
   var Value: TStoredType);
 begin
-  FCompact:=StrToIntDef(Value,0)=1;
+  FOptions.FCompact:=StrToIntDef(Value,0)=1;
+end;
+
+procedure TMainForm.PSMainStoredValues6Restore(Sender: TStoredValue;
+  var Value: TStoredType);
+begin
+  FOptions.FQuoteStrings:=StrToIntDef(Value,0)=1;
 end;
 
 procedure TMainForm.TVJSONEdited(Sender: TObject; Node: TTreeNode; var S: string);
@@ -242,7 +435,7 @@ procedure TMainForm.TVJSONEdited(Sender: TObject; Node: TTreeNode; var S: string
 Var
   D : TJSONData;
   O : TJSONObject;
-  I : Integer;
+  L,I : Integer;
 
 begin
   D:=CurrentData;
@@ -270,7 +463,11 @@ begin
     begin
     // value change
     try
-      D.AsString:=S;
+      L:=Length(S);
+      if FOptions.FQuoteStrings and (L>=2) and (S[1]='"') and (S[L]='"') then
+        D.AsString:=Copy(S,2,L-2)
+      else
+        D.AsString:=S;
     except
       ShowMessage(Format(SErrInvalidValue,[S]));
       S:=D.AsString;
@@ -291,10 +488,88 @@ begin
     AllowEdit:=Not (CurrentNodeType in [jtNull,jtArray,jtObject]);
 end;
 
+function TMainForm.GetCurrentFind: TTreeNode;
+
+Var
+  T : TJSONTab;
+
+begin
+  T:=CurrentJSONTab;
+  If Assigned(T) then
+    Result:=T.CurrentFind
+  else
+    Result:=Nil;
+end;
+
+function TMainForm.GetCurrenTJSONTab: TJSONTab;
+begin
+  if PCJSON.ActivePage is TJSONTab then
+    Result:=PCJSON.ActivePage as TJSONTab
+  else
+    Result:=Nil;
+end;
+
+function TMainForm.GetCurrentRoot: TJSONData;
+Var
+  T : TJSONTab;
+
+begin
+  T:=GetCurrenTJSONTab;
+  if T=Nil then
+    Result:=nil
+  else
+    Result:=T.Root;
+end;
+
+function TMainForm.GetTVJSON: TTreeView;
+
+Var
+  T : TJSONTab;
+
+begin
+  T:=GetCurrenTJSONTab;
+  if T=Nil then
+    Result:=nil
+  else
+    Result:=T.TVJSON;
+end;
+
+procedure TMainForm.setCurrentFind(AValue: TTreeNode);
+
+Var
+  T : TJSONTab;
+
+begin
+  T:=CurrentJSONTab;
+  If Assigned(T) and (AValue.TreeView=T.TVJSON) then
+    T.CurrentFind:=aValue
+end;
+
 procedure TMainForm.Modify;
 begin
-  FModified:=True;
   SetCaption;
+end;
+
+function TMainForm.NewJSONTab: TJSONTab;
+Var
+  I,DC : Integer;
+
+begin
+  DC:=1;
+  For I:=0 to PCJSON.PageCount-1 do
+    If (PCJSON.Pages[i] is TJSONTab)
+      and (TJSONTab(PCJSON.Pages[i]).FileName='') then
+      Inc(DC);
+  Result:=TJSONTab.Create(Self);
+  Result.PageControl:=PCJSON;
+  Result.TVJSON.PopupMenu:=PMTreeView;
+  Result.TVJSON.Images:=ILJSON;
+  Result.TVJSON.OnEdited:=@TVJSONEdited;
+  Result.TVJSON.OnEditing:=@TVJSONEditing;
+  Result.Options:=FOptions;
+  Result.DocNo:=DC;
+  Result.FileName:='';
+  Result.ImageIndex:=16;
 end;
 
 procedure TMainForm.SetCaption;
@@ -303,11 +578,11 @@ Var
   FN : String;
 
 begin
-  If (FFileName='') then
+  If (CurrentJSONTab=Nil) or (CurrentJSONTab.FileName='') then
     FN:=SEmpty
   else
-    FN:=FFileName;
-  If FModified then
+    FN:=CurrentJSONTab.FileName;
+  If CurrentJSONTab.Modified then
     FN:=FN+' *';
   Caption:=SCaption+' ['+FN+']';
 end;
@@ -317,21 +592,23 @@ begin
   NewDocument;
 end;
 
-procedure TMainForm.NewDocument;
+function TMainForm.NewDocument: TJSONTab;
 
 begin
-  FreeAndNil(FRoot);
+  Result:=NewJSONTab;
+  PCJSON.ActivePage:=Result;
+{  FreeAndNil(FRoot);
   If FNewObject then
     FRoot:=TJSONObject.Create;
   ShowJSONDocument;
   FFileName:='';
-  SetCaption;
+  SetCaption;}
 end;
 
 procedure TMainForm.ContainerAvailable(Sender: TObject);
 
 begin
-  (Sender as Taction).Enabled:=(TVJSON.Items.Count=0) or (Nil<>CurrentContainer) ;
+  (Sender as Taction).Enabled:=Assigned(TVJSON) and ((TVJSON.Items.Count=0) or (Nil<>CurrentContainer));
 end;
 
 procedure TMainForm.ASaveExecute(Sender: TObject);
@@ -374,7 +651,7 @@ end;
 
 procedure TMainForm.AExpandAllUpdate(Sender: TObject);
 begin
-  (Sender as TAction).Enabled:=Assigned(FRoot);
+  (Sender as TAction).Enabled:=Assigned(CurrentJSONTab) and Assigned(CurrentJSONTab.Root);
 end;
 
 procedure TMainForm.AExpandCurrentContainerExecute(Sender: TObject);
@@ -406,7 +683,7 @@ end;
 
 procedure TMainForm.AFindNextUpdate(Sender: TObject);
 begin
-  (Sender as TAction).ENabled:=(FCurrentFind<>Nil)
+  (Sender as TAction).ENabled:=Assigned(CurrentJSONTab) and (CurrentJSONTab.CurrentFind<>Nil)
 end;
 
 procedure TMainForm.ADeleteValueExecute(Sender: TObject);
@@ -429,8 +706,7 @@ begin
     PN:=CurrentContainerNode;
  If (PN=Nil) then
    begin
-   FreeAndNil(FRoot);
-   ShowJSONDocument;
+   CurrentJSONTab.Root:=Nil;
    end
  else
    begin
@@ -443,10 +719,10 @@ begin
    If PN<>Nil then
      begin
      PN.DeleteChildren;
-     ShowJSONData(PN,P);
+     CurrentJSONTab.ShowJSONData(PN,P);
      end
    else
-     ShowJSONDocument;
+     CurrentJSONTab.ShowJSONDocument;
    end;
    Modify;
 end;
@@ -454,6 +730,18 @@ end;
 procedure TMainForm.ACopyUpdate(Sender: TObject);
 begin
   (Sender as Taction).Enabled:=Assigned(CurrentData);
+end;
+
+procedure TMainForm.ACreateCodeExecute(Sender: TObject);
+begin
+  {$IF FPC_FULLVERSION>=30004}
+  CreateCodeFromJSON(CurrentRoot);
+  {$endif}
+end;
+
+procedure TMainForm.ACreateCodeUpdate(Sender: TObject);
+begin
+  (Sender as TAction).Enabled:=Assigned(CurrentRoot);
 end;
 
 procedure TMainForm.ACutExecute(Sender: TObject);
@@ -467,6 +755,47 @@ begin
   CopyCurrentData;
 end;
 
+procedure TMainForm.ACloseUpdate(Sender: TObject);
+
+begin
+  (Sender as TAction).Enabled:=Assigned(CurrentJSONTab);
+end;
+
+procedure TMainForm.ACloseExecute(Sender: TObject);
+begin
+  CloseCurrent;
+end;
+
+procedure TMainForm.CloseCurrent;
+
+Var
+  T : TJSONTab;
+
+begin
+  T:=CurrentJSONTab;
+  if CheckClose(t) then
+    T.Free;
+end;
+
+Function TMainForm.CheckClose(T : TJSONTab) : Boolean;
+
+begin
+  Result:=Not T.Modified;
+  if Result then
+    Exit;
+  case QuestionDlg(SDocumentModified,Format(SDocumentModifiedAction,[T.Caption]), mtWarning,[
+    mrNo,SDiscard,
+    mrYes,SSaveData,
+    mrCancel,SCancelClose],0) of
+    mrNo : Result:=True;
+  mrYes :
+    begin
+    SaveToFile(GetSaveFileName(T.FileName=''));
+    Result:=True;
+    end;
+  end;
+end;
+
 procedure TMainForm.CopyCurrentData;
 
 Var
@@ -476,7 +805,6 @@ begin
   D:=CurrentData;
   If Not Assigned(D) then
     exit;
-  ShowMessage(D.AsJSON);
   Clipboard.Clear;
   ClipBoard.AsText:=D.AsJSON;
 end;
@@ -522,10 +850,18 @@ Var
   P : TJSONParser;
   D : TJSONData;
   N : String;
+  T : TJSONTab;
+
 begin
   D:=Nil;
   try
+{$IF FPC_FULLVERSION>=30002}
+    P:=TJSONParser.Create(Clipboard.AsText,[]);
+    P.Options:=FOptions.FOptions;
+{$ELSE}
     P:=TJSONParser.Create(Clipboard.AsText);
+    P.Strict:=FStrict;
+{$ENDIF}
     try
       D:=P.Parse;
     finally
@@ -536,20 +872,11 @@ begin
       ShowMessage(SErrNoValidJSONClipBoard)
   end;
   N:=SNewMember;
+  T:=CurrentJSONTab;
   If DoClear then
     begin
-    If FModified then
-      case QuestionDlg(SDocumentModified,SDocumentModifiedAction,mtWarning,[
-          mrNo,SDiscard,
-          mrYes,SSaveData,
-          mrCancel,SCancelPaste],0) of
-        mrYes : SaveToFile(GetSaveFileName(FFileName=''));
-        mrNo : ;
-        mrCancel : Exit;
-      end;
-    FreeAndNil(FRoot);
-    TVJSON.Items.Clear;
-    FFileName:='';
+    T:=NewDocument;
+    Application.ProcessMessages;
     N:='';
     end
   else If CurrentContainerType=jtObject then
@@ -558,12 +885,13 @@ begin
       D.Free;
       Exit;
       end;
-  AddDataToCOntainer(N,D);
+  AddDataToContainer(N,D);
 end;
 
 procedure TMainForm.APasteUpdate(Sender: TObject);
 begin
-  (Sender as TAction).Enabled:=ClipBoard.HasFormat(Clipboard.FindFormatID('text/plain'));
+//  (Sender as TAction).Enabled:=ClipBoard.HasFormat(Clipboard.FindFormatID('text/plain'));
+  (Sender as TAction).Enabled:=ClipBoard.HasFormat(CF_TEXT);
 end;
 
 procedure TMainForm.AddNewValue(AType : TJSONType);
@@ -654,12 +982,16 @@ procedure TMainForm.AddDataToContainer(Const AMemberName : String; D : TJSONData
 Var
   P : TTreeNode;
   I : Integer;
+  T : TJSONTab;
 
 begin
+  T:=CurrentJSONTab;
+  if T=Nil then
+    Raise Exception.Create('Cannot determine current JSON document');
   Case CurrentContainerType of
-    jtUnknown  :
+    jtUnknown :
        begin
-       FRoot:=D;
+       T.Root:=D;
        P:=Nil;
        end;
     jtObject :
@@ -678,13 +1010,21 @@ begin
     begin
     P.ImageIndex:=ImageTypeMap[D.JSONType];
     P.SelectedIndex:=ImageTypeMap[D.JSONType];
+    P.MakeVisible;
     end;
-  ShowJSONData(P,D);
+  T.ShowJSONData(P,D);
 end;
 
 function TMainForm.CurrentNode: TTreeNode;
+
+Var
+  T : TTreeView;
 begin
-  Result:=TVJSON.Selected;
+  T:=TVJSON;
+  if Assigned(T) then
+    Result:=T.Selected
+  else
+    Result:=Nil;
 end;
 
 function TMainForm.CurrentNodeType: TJSONType;
@@ -707,24 +1047,27 @@ Var
   F : TFileStream;
 
 begin
-  F:=TFileStream.Create(AFileName,fmCreate);
-  try
-    If Assigned(FRoot) then
-      S:=FRoot.AsJSON;
-    If length(S)>0 then
-      F.WriteBuffer(S[1],Length(S));
-    FModified:=False;
-  finally
-    F.Free;
-  end;
-  FFileName:=AFileName;
-  SetCaption;
+  if (AFileName<>'') then
+  begin
+    F:=TFileStream.Create(AFileName,fmCreate);
+    try
+      If Assigned(CurrentJSONTab.Root) then
+        S:=CurrentJSONTab.Root.AsJSON;
+      If length(S)>0 then
+        F.WriteBuffer(S[1],Length(S));
+      CurrentJSONTab.Modified:=False;
+    finally
+      F.Free;
+    end;
+    CurrentJSONTab.FileName:=AFileName;
+    SetCaption;
+    end;
 end;
 
 Function TMainForm.GetSaveFileName(Force : Boolean) : String;
 
 begin
-  Result:=FFileName;
+  Result:=CurrentJSONTab.FileName;
   If Force or (Result='') then
     with SDJSON do
       begin
@@ -807,7 +1150,7 @@ procedure TMainForm.AOpenExecute(Sender: TObject);
 begin
   With ODJSON do
     begin
-    FileName:=FFileName;
+    FileName:=CurrentJSONTab.FileName;
     If Execute then
       OpenFile(FileName)
     end;
@@ -819,19 +1162,19 @@ Var
   N : TTreeNode;
 
 begin
-  If (FCurrentFind=Nil) then
+  If (CurrentFind=Nil) then
     begin
     If (frEntireScope in FDJSON.Options) and (TVJSON.Items.Count>0) then
-      FCurrentFind:=TVJSON.Items[0]
+      CurrentFind:=TVJSON.Items[0]
     else
-      FCurrentFind:=TVJSON.Selected;
+      CurrentFind:=TVJSON.Selected;
     end
   else
-    FCurrentFind:=GetNextSearchNode(FCurrentFind);
-  If (FCurrentFind=Nil) then
+    CurrentFind:=GetNextSearchNode(CurrentFind);
+  If (CurrentFind=Nil) then
     Exit;
   With FDJSON do
-    N:=FindNode(FCurrentFind,FindText,Not (frMatchCase in Options), frWholeWord in Options);
+    N:=FindNode(CurrentFind,FindText,Not (frMatchCase in Options), frWholeWord in Options);
   If Assigned(N) then
     begin
     N.MakeVisible;
@@ -839,14 +1182,15 @@ begin
     end
   else
     ShowMessage(SNoMoreMatches);
-  FCurrentFind:=N;
+  CurrentFind:=N;
 end;
 
 Function TMainForm.GetNextSearchNode(Anode : TTreeNode) : TTreeNode;
 
 begin
   Result:=Nil;
-  If (ANode=Nil) then Exit;
+  If (ANode=Nil) then
+    Exit;
   If (ANode.Count>0) then
     Result:=ANode.GetFirstChild
   else
@@ -854,7 +1198,8 @@ begin
   While (Result=Nil) and (ANode<>Nil) do
     begin
     ANode:=ANode.Parent;
-    Result:=ANode.GetNextSibling;
+    if assigned(ANode) then
+      Result:=ANode.GetNextSibling;
     end;
 end;
 
@@ -890,19 +1235,22 @@ begin
 end;
 
 procedure TMainForm.FormCloseQuery(Sender: TObject; var CanClose: boolean);
+
+Var
+  I : Integer;
+  T : TJSONTab;
+
 begin
-  CanClose:=Not FModified;
-  If Not CanClose then
-    case QuestionDlg(SDocumentModified,SDocumentModifiedAction,mtWarning,[
-      mrNo,SDiscard,
-      mrYes,SSaveData,
-      mrCancel,SCancelClose],0) of
-    mrNo : CanClose:=True;
-    mrYes :
-       begin
-       SaveToFile(GetSaveFileName(FFileName=''));
-       CanClose:=True;
-       end;
+  CanClose:=True;
+  I:=0;
+  While CanClose and (I<PCJSON.PageCount) do
+    begin
+    if (PCJSON.Pages[i] is TJSONTab) then
+      begin
+      T:=PCJSON.Pages[i] as TJSONTab;
+      CanClose:=CheckClose(T);
+      end;
+    Inc(I);
     end;
 end;
 
@@ -912,40 +1260,88 @@ Var
   S : String;
 
 begin
+  FOptions:=TViewerOptions.Create;
   S:=GetAppConfigFile(false,true);
   PSMain.IniFileName:=S;
   S:=ExtractFilePath(S);
   If not ForceDirectories(S) then
     ShowMessage(Format(SErrCreatingConfigDir,[S]));
   PSMain.Active:=True;
+{$IF FPC_FULLVERSION<30002}
+  MIAllowTrailingComma.Visible:=False;
+  MIAllowComments.Visible:=False;
+{$ENDIF}
+{$IF FPC_FULLVERSION<30004}
+  ACreateCode.Visible:=False;
+{$endif}
+end;
+
+procedure TMainForm.FormDestroy(Sender: TObject);
+begin
+  FOptions.Free;
 end;
 
 procedure TMainForm.FormShow(Sender: TObject);
 begin
-  NewDocument;
+  if (ParamCount>0)  and FileExists(ParamStr(1)) then
+    OpenFile(ParamStr(1))
+  else
+    NewDocument;
 end;
 
 procedure TMainForm.HaveData(Sender: TObject);
 begin
-  (Sender as TAction).Enabled:=(FRoot<>Nil);
+  (Sender as TAction).Enabled:=(CurrentRoot<>Nil);
+end;
+
+procedure TMainForm.MIAllowTrailingCommaClick(Sender: TObject);
+begin
+  {$IF FPC_FULLVERSION>=30002}
+    ToggleOption(joIgnoreTrailingComma,(Sender as TMenuItem).Checked);
+  {$ENDIF}
+end;
+
+procedure TMainForm.MIAllowCommentsClick(Sender: TObject);
+begin
+  {$IF FPC_FULLVERSION>=30002}
+    ToggleOption(joComments,(Sender as TMenuItem).Checked);
+  {$ENDIF}
+end;
+
+procedure TMainForm.ShowJSONDocument;
+
+Var
+  I : Integer;
+
+begin
+  For I:=0 to PCJSON.PageCount-1 do
+    if PCJSON.Pages[i] is TJSONTab then
+      (PCJSON.Pages[i] as TJSONTab).ShowJSONDocument;
 end;
 
 procedure TMainForm.MICompactClick(Sender: TObject);
 begin
-  FCompact:=MICompact.Checked;
-  PSMain.StoredValue['compact']:=IntToStr(Ord(Fstrict));
+  FOptions.FCompact:=MICompact.Checked;
+  PSMain.StoredValue['compact']:=IntToStr(Ord(FOptions.FCompact));
   ShowJSONDocument;
 end;
 
 procedure TMainForm.MIdocumentClick(Sender: TObject);
 begin
-  FNewObject:=(Sender as TMenuItem).Checked;
-  PSMain.StoredValue['object']:=IntToStr(Ord(FNewObject));
+  FOptions.FNewObject:=(Sender as TMenuItem).Checked;
+  PSMain.StoredValue['object']:=IntToStr(Ord(FOptions.FNewObject));
+end;
+
+procedure TMainForm.MIQuoteStringsClick(Sender: TObject);
+begin
+  FOptions.FQuoteStrings:=MICompact.Checked;
+  PSMain.StoredValue['QuoteStrings']:=IntToStr(Ord(FOptions.FQuoteStrings));
+  ShowJSONDocument;
 end;
 
 procedure TMainForm.MISortMembersClick(Sender: TObject);
 begin
-  FSortObjectMembers:=(Sender as TMenuItem).Checked;
+  FOptions.FSortObjectMembers:=(Sender as TMenuItem).Checked;
   ShowJSONDocument;
 end;
 
@@ -956,11 +1352,19 @@ Var
   P : TJSONParser;
   D : TJSONData;
 begin
-  S:=TFileStream.Create(AFileName,fmOpenRead);
+  S:=TFileStream.Create(AFileName,fmOpenRead or fmShareDenyWrite);
   try
+{$IF FPC_FULLVERSION>=30002}
+    P:=TJSONParser.Create(S,[]);
+{$ELSE}
     P:=TJSONParser.Create(S);
+{$ENDIF}
     try
-      P.Strict:=FStrict;
+{$IF FPC_FULLVERSION>=30002}
+      P.Options:=P.Options+[joStrict];
+{$ELSE}
+      P:=TJSONParser.Create(S);
+{$ENDIF}
       D:=P.Parse;
     finally
       P.Free;
@@ -968,14 +1372,13 @@ begin
   finally
     S.Free;
   end;
-  FFileName:=AFileName;
+  NewDocument.FileName:=AFileName;
+  NewDocument.Root:=D;
   SetCaption;
-  FreeAndNil(FRoot);
-  FRoot:=D;
-  ShowJSONDocument;
+//  NewDocument.ShowJSONDocument;
 end;
 
-procedure TMainForm.ShowJSONDocument;
+procedure TJSONTab.ShowJSONDocument;
 
 begin
   With TVJSON.Items do
@@ -983,7 +1386,7 @@ begin
     BeginUpdate;
     try
       TVJSON.Items.Clear;
-      ShowJSONData(Nil,FRoot);
+      ShowJSONData(Nil,Root);
       With TVJSON do
         If (Items.Count>0) and Assigned(Items[0]) then
           begin
@@ -996,7 +1399,7 @@ begin
     end;
 end;
 
-procedure TMainForm.ShowJSONData(AParent : TTreeNode; Data : TJSONData);
+procedure TJSONTab.ShowJSONData(AParent : TTreeNode; Data : TJSONData);
 
 Var
   N,N2 : TTreeNode;
@@ -1008,7 +1411,7 @@ Var
 begin
   if Not Assigned(Data) then
     exit;
-  if FCompact and (AParent<>Nil) then
+  if Options.FCompact and (AParent<>Nil) then
     N:=AParent
   else
     N:=TVJSON.Items.AddChild(AParent,'');
@@ -1028,7 +1431,7 @@ begin
             S.AddObject(IntToStr(I),Data.items[i])
           else
             S.AddObject(TJSONObject(Data).Names[i],Data.items[i]);
-        If FSortObjectMembers and (Data.JSONType=jtObject) then
+        If Options.FSortObjectMembers and (Data.JSONType=jtObject) then
           S.Sort;
         For I:=0 to S.Count-1 do
           begin
@@ -1046,7 +1449,7 @@ begin
       C:=SNull;
   else
     C:=Data.AsString;
-    if (Data.JSONType=jtString) then
+    if Options.FQuoteStrings and  (Data.JSONType=jtString) then
       C:='"'+C+'"';
   end;
   If Assigned(N) then

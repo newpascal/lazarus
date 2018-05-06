@@ -38,15 +38,19 @@ msgstr "Документ JSON был изменён"
 
 #: msgjsonviewer.sdocumentmodifiedaction
 msgid ""
-"The JSON data was changed but not saved.\n"
+"The JSON data in \"%s\" was changed but not saved.\n"
 "What do want to do ?\n"
 msgstr ""
-"Данные JSON были изменены, но не сохранены.\n"
+"Данные JSON в \"%s\" были изменены, но не сохранены.\n"
 "Что следует сделать?\n"
 
 #: msgjsonviewer.sduplicatemembername
 msgid "Duplicate member name \"%s\"."
 msgstr "Элемент с именем \"%s\" уже имеется."
+
+#: msgjsonviewer.sefilenameneeded
+msgid "Filename needed for generated code"
+msgstr "Для генерируемого кода требуется имя файла"
 
 #: msgjsonviewer.selement
 msgid "Element nr. %d"
@@ -92,6 +96,63 @@ msgstr "Объект (%d элементов)"
 msgid "Save the changes"
 msgstr "Сохранить изменения"
 
+#: tcreatecodeform.caption
+msgctxt "tcreatecodeform.caption"
+msgid "Create pascal code"
+msgstr "Создание кода на Паскале"
+
+#: tcreatecodeform.cgoptions.caption
+msgid "Other options"
+msgstr "Прочие параметры"
+
+#: tcreatecodeform.eextraunitnames.texthint
+msgid "Unit names, separated by commas"
+msgstr "Имена модулей, разделённые запятыми"
+
+#: tcreatecodeform.leconstructorargslabel1.caption
+msgid "Constructor arguments"
+msgstr "Аргументы конструктора"
+
+#: tcreatecodeform.lepropertytypesuffix.caption
+msgid "Property type suffix"
+msgstr "Суффикс типа свойства"
+
+#: tcreatecodeform.leunitname.caption
+msgid "Unit name"
+msgstr "Имя модуля"
+
+#: tcreatecodeform.leunitname1.caption
+msgid "Field Prefix"
+msgstr "Префикс поля"
+
+#: tcreatecodeform.lextraunitnames.caption
+msgid "Extra units in uses"
+msgstr "Дополнительные модули в Uses"
+
+#: tcreatecodeform.lfecode.caption
+msgid "File"
+msgstr "Файл"
+
+#: tcreatecodeform.lparentname.caption
+msgid "Object Parent class"
+msgstr "Класс предка объекта"
+
+#: tcreatecodeform.lseindent.caption
+msgid "Indent"
+msgstr "Отступ"
+
+#: tcreatecodeform.tscode.caption
+msgid "Preview"
+msgstr "Предварительный просмотр"
+
+#: tcreatecodeform.tsoptions.caption
+msgid "Options"
+msgstr "Параметры"
+
+#: tmainform.aclose.caption
+msgid "&Close"
+msgstr "&Закрыть"
+
 #: tmainform.acopy.caption
 msgid "&Copy"
 msgstr "К&опировать"
@@ -99,6 +160,11 @@ msgstr "К&опировать"
 #: tmainform.acopy.hint
 msgid "Copy selected node to clipboard as JSON"
 msgstr "Копировать выбранный элемент в буфер обмена как JSON"
+
+#: tmainform.acreatecode.caption
+msgctxt "tmainform.acreatecode.caption"
+msgid "Create pascal code"
+msgstr "Создать код на Паскале"
 
 #: tmainform.acut.caption
 msgid "C&ut"
@@ -257,6 +323,15 @@ msgstr "&Правка"
 msgid "&File"
 msgstr "&Файл"
 
+#: tmainform.miallowcomments.caption
+msgctxt "tmainform.miallowcomments.caption"
+msgid "Allow comments"
+msgstr "Разрешить наличие комментариев"
+
+#: tmainform.miallowtrailingcomma.caption
+msgid "Allow trailing comma"
+msgstr "Разрешить наличие замыкающей запятой"
+
 #: tmainform.micompact.caption
 msgid "Compact display"
 msgstr "Компактное отображение"
@@ -268,6 +343,10 @@ msgstr "&Новый документ с объектом"
 #: tmainform.miinsert.caption
 msgid "&Values"
 msgstr "&Значения"
+
+#: tmainform.miquotestrings.caption
+msgid "Quote string values"
+msgstr "Заключать строковые значения в кавычки"
 
 #: tmainform.misortmembers.caption
 msgid "Sort object members"

@@ -271,7 +271,7 @@ begin
           if CarbonMenu.Parent.Dismissed=kHIMenuDismissedBySelection then begin
             FillChar(Msg{%H-}, SizeOf(Msg), 0);
             Msg.msg := LM_ACTIVATE;
-            CarbonMenu.LCLMenuItem.Dispatch(Msg);
+            DeliverMessage(CarbonMenu.LCLMenuItem, Msg);
             if assigned(CarbonMenu.Parent) then  // if parent not closed
               CarbonMenu.Parent.Dismissed:=0;
             Result := noErr;
@@ -542,8 +542,8 @@ begin
   // fill the screen info
   ScreenDC := GetDC(0);
   try
-    ScreenInfo.PixelsPerInchX := GetDeviceCaps(ScreenDC, LOGPIXELSX);
-    ScreenInfo.PixelsPerInchY := GetDeviceCaps(ScreenDC, LOGPIXELSY);
+    ScreenInfo.PixelsPerInchX := 96; //GetDeviceCaps(ScreenDC, LOGPIXELSX);
+    ScreenInfo.PixelsPerInchY := 96; //GetDeviceCaps(ScreenDC, LOGPIXELSY);
     ScreenInfo.ColorDepth := GetDeviceCaps(ScreenDC, BITSPIXEL);
   finally
     ReleaseDC(0, ScreenDC);

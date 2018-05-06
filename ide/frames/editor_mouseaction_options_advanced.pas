@@ -545,7 +545,7 @@ begin
     l := length(ExtractFileExt(NewName));
     if (l > 0) and (l+1 < Length(NewName)) then
       NewName := Copy(NewName, 1, Length(NewName) - l);
-    l := UTF8CharacterLength(PChar(NewName));
+    l := UTF8CodepointSize(PChar(NewName));
     if l > 0 then
       NewName := UTF8UpperCase(copy(NewName, 1, l)) + copy(NewName, 1+l, length(NewName));
 
@@ -713,11 +713,11 @@ begin
   OtherActToggleBox.Caption := dlgMouseOptOtherActToggle;
 
   ToolBar1.Images := IDEImages.Images_16;
-  BtnImport.ImageIndex := IDEImages.LoadImage(16, 'laz_open');
-  BtnExport.ImageIndex := IDEImages.LoadImage(16, 'laz_save');
-  UpdateButton.ImageIndex := IDEImages.LoadImage(16, 'laz_edit');
-  AddNewButton.ImageIndex := IDEImages.LoadImage(16, 'laz_add');
-  DelButton.ImageIndex := IDEImages.LoadImage(16, 'laz_delete');
+  BtnImport.ImageIndex := IDEImages.LoadImage('laz_open');
+  BtnExport.ImageIndex := IDEImages.LoadImage('laz_save');
+  UpdateButton.ImageIndex := IDEImages.LoadImage('laz_edit');
+  AddNewButton.ImageIndex := IDEImages.LoadImage('laz_add');
+  DelButton.ImageIndex := IDEImages.LoadImage('laz_delete');
 
   OpenDialog1.Title := lisImport;
   SaveDialog1.Title := lisExport;

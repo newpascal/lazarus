@@ -16,8 +16,11 @@ unit TreeFilterEdit;
 interface
 
 uses
-  Classes, SysUtils, Forms, Graphics, Controls, ComCtrls, EditBtn,
-  LResources, LCLType, LCLProc, LazFileUtils, LazUTF8, AvgLvlTree, fgl;
+  Classes, SysUtils, fgl,
+  // LCL
+  LCLType, Graphics, ComCtrls, EditBtn,
+  // LazUtils
+  LazFileUtils, LazUTF8, AvgLvlTree;
 
 type
   TImageIndexEvent = function (Str: String; Data: TObject;
@@ -93,7 +96,7 @@ type
     function ReturnKeyHandled: Boolean; override;
     procedure SortAndFilter; override;
     procedure ApplyFilterCore; override;
-    function GetDefaultGlyph: TBitmap; override;
+    function GetDefaultGlyphName: string; override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -129,9 +132,6 @@ type
     Filename: string;
     constructor Create(AFilename: string; aData: Pointer);
   end;
-
-var
-  TreeFilterGlyph: TBitmap;
 
 implementation
 
@@ -237,7 +237,7 @@ begin
         s:=fNodeTextToFullFilenameMap[FileN];           // Full file name.
       AObject := TFileNameItem.Create(s, AObject);
     end;
-    If Assigned(AObject) and (AObject is TTFENodeData) then Begin
+    If AObject is TTFENodeData then Begin
       TTFENodeData(AObject).Node := TVNode;
       TTFENodeData(AObject).Branch := Self;
     end;
@@ -280,10 +280,10 @@ begin
   p:=0;
   while Filename<>'' do begin
     // get the next file name part
-    DelimPos:=System.Pos(PathDelim,Filename);
+    DelimPos:=Pos(PathDelim,Filename);
     if DelimPos>0 then begin
       FilePart:=copy(Filename,1,DelimPos-1);
-      Filename:=copy(Filename,DelimPos+1,length(Filename));
+      delete(Filename,1,DelimPos);
     end else begin
       FilePart:=Filename;
       Filename:='';
@@ -427,9 +427,9 @@ begin
   inherited Destroy;
 end;
 
-function TTreeFilterEdit.GetDefaultGlyph: TBitmap;
+function TTreeFilterEdit.GetDefaultGlyphName: string;
 begin
-  Result := TreeFilterGlyph;
+  Result := 'btnfiltercancel';
 end;
 
 procedure TTreeFilterEdit.OnBeforeTreeDestroy(Sender: TObject);
@@ -440,12 +440,15 @@ end;
 procedure TTreeFilterEdit.SetFilteredTreeview(const AValue: TCustomTreeview);
 begin
   if fFilteredTreeview = AValue then Exit;
-  if fFilteredTreeview <> nil then begin
+  if fFilteredTreeview <> nil then
+  begin
     fFilteredTreeview.RemoveFreeNotification(Self);
     fFilteredTreeview.RemoveHandlerOnBeforeDestruction(@OnBeforeTreeDestroy);
   end;
   fFilteredTreeview := AValue;
-  if fFilteredTreeview <> nil then begin
+  if fFilteredTreeview <> nil then
+  begin
+    Filter := Text;
     fFilteredTreeview.FreeNotification(Self);
     fFilteredTreeview.AddHandlerOnBeforeDestruction(@OnBeforeTreeDestroy);
   end;
@@ -597,12 +600,14 @@ end;
 
 procedure TTreeFilterEdit.MoveEnd(ASelect: Boolean);
 begin
-  fFilteredTreeview.MoveEnd(ASelect);
+  if Assigned(fFilteredTreeview) then
+    fFilteredTreeview.MoveEnd(ASelect);
 end;
 
 procedure TTreeFilterEdit.MoveHome(ASelect: Boolean);
 begin
-  fFilteredTreeview.MoveHome(ASelect);
+  if Assigned(fFilteredTreeview) then
+    fFilteredTreeview.MoveHome(ASelect);
 end;
 
 function TTreeFilterEdit.GetCleanBranch(ARootNode: TTreeNode): TTreeFilterBranch;
@@ -636,22 +641,26 @@ end;
 
 procedure TTreeFilterEdit.MoveNext(ASelect: Boolean);
 begin
-  fFilteredTreeview.MoveToNextNode(ASelect);
+  if Assigned(fFilteredTreeview) then
+    fFilteredTreeview.MoveToNextNode(ASelect);
 end;
 
 procedure TTreeFilterEdit.MovePageDown(ASelect: Boolean);
 begin
-  fFilteredTreeview.MovePageDown(ASelect);
+  if Assigned(fFilteredTreeview) then
+    fFilteredTreeview.MovePageDown(ASelect);
 end;
 
 procedure TTreeFilterEdit.MovePageUp(ASelect: Boolean);
 begin
-  fFilteredTreeview.MovePageUp(ASelect);
+  if Assigned(fFilteredTreeview) then
+    fFilteredTreeview.MovePageUp(ASelect);
 end;
 
 procedure TTreeFilterEdit.MovePrev(ASelect: Boolean);
 begin
-  fFilteredTreeview.MoveToPrevNode(ASelect);
+  if Assigned(fFilteredTreeview) then
+    fFilteredTreeview.MoveToPrevNode(ASelect);
 end;
 
 function TTreeFilterEdit.ReturnKeyHandled: Boolean;

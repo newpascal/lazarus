@@ -30,10 +30,13 @@ interface
 uses
   Windows, // keep as first
   Classes, SysUtils, RtlConsts, ActiveX, MultiMon, CommCtrl,
+  {$IF FPC_FULLVERSION>=30000}
+  character,
+  {$ENDIF}
   // LCL
   LCLPlatformDef, InterfaceBase, LCLIntf, LclProc, LCLType, LMessages,
   Controls, Buttons, Forms, Dialogs, GraphMath, GraphType, StdCtrls,
-  Graphics, Menus, ComCtrls, Themes, Win32Def,
+  Graphics, Menus, ComCtrls, Themes, Win32Def, Spin,
   // LazUtils
   LazUTF8, Translations;
   {, Win32Debug}
@@ -204,6 +207,8 @@ type
     property CommonControlsVersion: DWord read FCommonControlsVersion;
     property OnAsyncSocketMsg: TSocketEvent read FOnAsyncSocketMsg write FOnAsyncSocketMsg;
     property DotsPatternBitmap: HBitmap read GetDotsPatternBitmap;
+    property Metrics: TNonClientMetrics read FMetrics;
+    property MetricsFailed: Boolean read FMetricsFailed;
   end;
 
   {$I win32listslh.inc}
@@ -271,6 +276,7 @@ type
 
 var
   LastMouse: TLastMouseInfo;
+  LastMouseTracking: TControl = nil;
   ComboBoxHandleSizeWindow: HWND = 0;
   IgnoreNextCharWindow: HWND = 0;  // ignore next WM_(SYS)CHAR message
   IgnoreKeyUp: Boolean = True; // ignore KeyUp after application start; issue #30836
@@ -296,19 +302,18 @@ function InitShellScalingStubs: Boolean;
 var
   hShcore: Windows.HMODULE;
 begin
-  if g_fShellScalingInitDone then
-    Exit(@g_pfnGetDpiForMonitor <> nil);
-
-  hShcore := GetModuleHandle('Shcore');
-  if hShcore<>0 then
+  if not g_fShellScalingInitDone then
   begin
-    Pointer(g_pfnGetDpiForMonitor) := GetProcAddress(hShcore, 'GetDpiForMonitor');
+    hShcore := GetModuleHandle('Shcore');
+    if hShcore<>0 then
+      Pointer(g_pfnGetDpiForMonitor) := GetProcAddress(hShcore, 'GetDpiForMonitor')
+    else
+      Pointer(g_pfnGetDpiForMonitor) := nil;
 
     g_fShellScalingInitDone := True;
-  end else
-  begin
-    Pointer(g_pfnGetDpiForMonitor)    := nil;
   end;
+
+  Result := (Pointer(g_pfnGetDpiForMonitor)<>nil) and (@g_pfnGetDpiForMonitor <> nil);
 end;
 
 function xGetDpiForMonitor(hmonitor: HMONITOR; dpiType: TMonitorDpiType;

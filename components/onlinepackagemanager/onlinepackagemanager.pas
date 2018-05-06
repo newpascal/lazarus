@@ -12,9 +12,12 @@ uses
   opkman_visualtree, opkman_serializablepackages, opkman_downloader, 
   opkman_common, opkman_progressfrm, opkman_zipper, opkman_timer, 
   opkman_installer, opkman_packagelistfrm, opkman_options, 
-  opkman_createrepositorypackage, opkman_categoriesfrm, 
-  opkman_packagedetailsfrm, opkman_updates, opkman_createjsonforupdates, 
-  opkman_uploader, opkman_repositories, LazarusPackageIntf;
+  opkman_createrepositorypackagefrm, opkman_categoriesfrm, 
+  opkman_packagedetailsfrm, opkman_updates, opkman_createjsonforupdatesfrm, 
+  opkman_uploader, opkman_repositories, opkman_createrepositoryfrm, 
+  opkman_repositorydetailsfrm, opkman_addrepositorypackagefrm, opkman_intf, 
+  opkman_intf_packagelistfrm, opkman_showhint, opkman_showhintbase, 
+  opkman_colorsfrm, LazarusPackageIntf;
 
 implementation
 

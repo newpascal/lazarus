@@ -31,7 +31,7 @@ uses
   Classes, SysUtils, CommCtrl,
   StdCtrls, Controls, Graphics, Forms, Themes,
 ////////////////////////////////////////////////////
-  WSControls, WSStdCtrls, WSLCLClasses, WSProc, Windows, LCLType,
+  WSControls, WSStdCtrls, WSLCLClasses, WSProc, Windows, LCLIntf, LCLType,
   LazUTF8, LazUtf8Classes, InterfaceBase, LMessages, LCLMessageGlue, TextStrings,
   Win32Int, Win32Proc, Win32WSControls, Win32Extra, Win32Themes;
 
@@ -91,11 +91,11 @@ type
     class procedure SetDropDownCount(const ACustomComboBox: TCustomComboBox; NewCount: Integer); override;
     class procedure SetDroppedDown(const ACustomComboBox: TCustomComboBox;
        ADroppedDown: Boolean); override;
+    class procedure SetFont(const AWinControl: TWinControl; const AFont: TFont); override;
     class procedure SetSelStart(const ACustomComboBox: TCustomComboBox; NewStart: integer); override;
     class procedure SetSelLength(const ACustomComboBox: TCustomComboBox; NewLength: integer); override;
     class procedure SetItemIndex(const ACustomComboBox: TCustomComboBox; NewIndex: integer); override;
     class procedure SetMaxLength(const ACustomComboBox: TCustomComboBox; NewLength: integer); override;
-    class procedure SetReadOnly(const ACustomComboBox: TCustomComboBox; NewReadOnly: boolean); override;
     class procedure SetStyle(const ACustomComboBox: TCustomComboBox; NewStyle: TComboBoxStyle); override;
 
     class function  GetItems(const ACustomComboBox: TCustomComboBox): TStrings; override;
@@ -266,6 +266,7 @@ type
   published
     class function CreateHandle(const AWinControl: TWinControl;
           const AParams: TCreateParams): HWND; override;
+    class function GetDoubleBuffered(const AWinControl: TWinControl): Boolean; override;
     class procedure GetPreferredSize(const AWinControl: TWinControl;
           var PreferredWidth, PreferredHeight: integer;
           WithThemeSpace: Boolean); override;
@@ -541,8 +542,8 @@ begin
           and not TCustomGroupBox(Info^.WinControl).Enabled then
           begin
             GroupBox := TCustomGroupBox(Info^.WinControl);
-            DC := GetDC(Window);
-            SetBkColor(DC, GetSysColor(COLOR_BTNFACE));
+            DC := Windows.GetDC(Window);
+            SetBkMode(DC, TRANSPARENT);
             SetTextColor(DC, GetSysColor(COLOR_GRAYTEXT));
             SelectObject(DC, GroupBox.Font.Reference.Handle);
             Flags := 0;
@@ -803,7 +804,7 @@ begin
   Handle := ACustomListBox.Handle;
   // The check for GetProp is required because of some division error which happens
   // if call LB_GETITEMRECT on window initialization
-  Result := (GetProp(Handle, 'WinControl') <> 0) and (Windows.SendMessage(Handle, LB_GETITEMRECT, Index, LPARAM(@ARect)) <> LB_ERR);
+  Result := Assigned(GetProp(Handle, 'WinControl')) and (Windows.SendMessage(Handle, LB_GETITEMRECT, Index, LPARAM(@ARect)) <> LB_ERR);
 end;
 
 class function TWin32WSCustomListBox.GetScrollWidth(const ACustomListBox: TCustomListBox): Integer;
@@ -933,23 +934,6 @@ end;
 
 { TWin32WSCustomComboBox }
 
-const
-  ComboBoxStylesMask = CBS_DROPDOWN or CBS_DROPDOWN or CBS_DROPDOWNLIST or
-    CBS_OWNERDRAWFIXED or CBS_OWNERDRAWVARIABLE;
-
-function CalcComboBoxWinFlags(AComboBox: TCustomComboBox): dword;
-const
-  ComboBoxStyles: array[TComboBoxStyle] of dword = (
-    CBS_DROPDOWN, CBS_SIMPLE, CBS_DROPDOWNLIST,
-    CBS_OWNERDRAWFIXED, CBS_OWNERDRAWVARIABLE);
-  ComboBoxReadOnlyStyles: array[boolean] of dword = (
-    CBS_DROPDOWN, CBS_DROPDOWNLIST);
-begin
-  Result := ComboBoxStyles[AComboBox.Style];
-  if AComboBox.Style in [csOwnerDrawFixed, csOwnerDrawVariable] then
-    Result := Result or ComboBoxReadOnlyStyles[AComboBox.ReadOnly];
-end;
-
 class function TWin32WSCustomComboBox.GetStringList(
   const ACustomComboBox: TCustomComboBox): TWin32ComboBoxStringList;
 begin
@@ -1046,13 +1030,7 @@ begin
 end;
 
 class procedure TWin32WSCustomComboBox.SetStyle(const ACustomComboBox: TCustomComboBox; NewStyle: TComboBoxStyle);
-var
-  CurrentStyle: DWord;
 begin
-  CurrentStyle := GetWindowLong(ACustomComboBox.Handle, GWL_STYLE);
-  if (CurrentStyle and ComboBoxStylesMask) = CalcComboBoxWinFlags(ACustomComboBox) then
-    Exit;
-
   RecreateWnd(ACustomComboBox);
 end;
 
@@ -1103,20 +1081,38 @@ class procedure TWin32WSCustomComboBox.SetDroppedDown(
 var
   aSelStart, aSelLength: Integer;
   aText: string;
+  Editable: Boolean;
+  OldItemIndex: Integer;
 begin
   if WSCheckHandleAllocated(ACustomComboBox, 'TWin32WSCustomComboBox.SetDroppedDown') then
   begin
-    if not GetText(ACustomComboBox, aText) then
-      aText := ACustomComboBox.Text;
-    aSelStart := GetSelStart(ACustomComboBox);
-    aSelLength := GetSelLength(ACustomComboBox);
+    Editable := (ACustomComboBox.Style in [csDropDown, csOwnerDrawEditableFixed, csOwnerDrawEditableVariable]);
+    if Editable then
+    begin
+      if not GetText(ACustomComboBox, aText) then
+        aText := ACustomComboBox.Text;
+      aSelStart := GetSelStart(ACustomComboBox);
+      aSelLength := GetSelLength(ACustomComboBox);
+    end;
 
+    OldItemIndex := GetItemIndex(ACustomComboBox);
     SendMessage(ACustomComboBox.Handle, CB_SHOWDROPDOWN, WPARAM(ADroppedDown), 0);
+    SetItemIndex(ACustomComboBox, OldItemIndex);
 
-    SetText(ACustomComboBox, aText);
-    SetSelStart(ACustomComboBox, aSelStart);
-    SetSelLength(ACustomComboBox, aSelLength);
+    if Editable then
+    begin
+      SetText(ACustomComboBox, aText);
+      SetSelStart(ACustomComboBox, aSelStart);
+      SetSelLength(ACustomComboBox, aSelLength);
+    end;
   end;
+end;
+
+class procedure TWin32WSCustomComboBox.SetFont(const AWinControl: TWinControl;
+  const AFont: TFont);
+begin
+  TWin32WSWinControl.SetFont(AWinControl, AFont);
+  GetControlConstraints(AWinControl.Constraints);
 end;
 
 class procedure TWin32WSCustomComboBox.SetSelStart(const ACustomComboBox: TCustomComboBox; NewStart: integer);
@@ -1147,12 +1143,6 @@ begin
   winhandle := ACustomComboBox.Handle;
   SendMessage(winhandle, CB_LIMITTEXT, NewLength, 0);
   GetWin32WindowInfo(winhandle)^.MaxLength := NewLength;
-end;
-
-class procedure TWin32WSCustomComboBox.SetReadOnly(const ACustomComboBox: TCustomComboBox;
-  NewReadOnly: boolean);
-begin
-  RecreateWnd(ACustomComboBox);
 end;
 
 class function TWin32WSCustomComboBox.GetItems(const ACustomComboBox: TCustomComboBox): TStrings;
@@ -1861,6 +1851,12 @@ begin
   // create window
   FinishCreateWindow(AWinControl, Params, false);
   Result := Params.Window;
+end;
+
+class function TWin32WSCustomCheckBox.GetDoubleBuffered(
+  const AWinControl: TWinControl): Boolean;
+begin
+  Result := GetWin32ThemedDoubleBuffered(AWinControl);
 end;
 
 class procedure TWin32WSCustomCheckBox.GetPreferredSize(const AWinControl: TWinControl;

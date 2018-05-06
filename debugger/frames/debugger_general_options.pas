@@ -38,8 +38,8 @@ type
   TDebuggerGeneralOptionsFrame = class(TAbstractIDEOptionsEditor)
     cmbDebuggerPath: TComboBox;
     cmbDebuggerType: TComboBox;
-    cmdOpenAdditionalPath: TSpeedButton;
-    cmdOpenDebuggerPath: TSpeedButton;
+    cmdOpenAdditionalPath: TButton;
+    cmdOpenDebuggerPath: TButton;
     gbAdditionalSearchPath: TGroupBox;
     gbDebuggerSpecific: TGroupBox;
     gbDebuggerType: TGroupBox;

@@ -70,8 +70,6 @@ type
     FIsReadOnly: Boolean;
     FLayout: TLeftRight;
     FSpacing: Integer;
-    FTextHintFontColor: TColor;      //remove in 1.9
-    FTextHintFontStyle: TFontStyles; //remove in 1.9
     //Forwarded events from FButton
     FOnBuddyClick: TNotifyEvent;
     //Forwarded events from FEdit
@@ -122,8 +120,6 @@ type
     function GetSelText: String;
     function GetTabStop: Boolean;
     function GetTextHint: TTranslateString;
-    function GetTextHintFontColor: TColor;      //Remove in 1.9
-    function GetTextHintFontStyle: TFontStyles; //Remove in 1.9
 
     procedure InternalOnBuddyClick(Sender: TObject);
     procedure InternalOnEditClick(Sender: TObject);
@@ -178,8 +174,6 @@ type
     procedure SetTabStop(AValue: Boolean);
     procedure SetTextHint(AValue: TTranslateString);
   protected
-    procedure DoAutoAdjustLayout(const AMode: TLayoutAdjustmentPolicy;
-      const AXProportion, AYProportion: Double); override;
     procedure CalculatePreferredSize(var PreferredWidth, PreferredHeight: integer;
                 WithThemeSpace: Boolean); override;
     function CreateBuddy: TControl; virtual;
@@ -228,8 +222,8 @@ type
     procedure EditMouseMove(Shift: TShiftState; X, Y: Integer); virtual;
     procedure EditMouseWheel(Shift: TShiftState;
          WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
-    procedure EditMouseWheelUp(Shift: TShiftState; MousePos: TPoint; var Handled: Boolean);
-    procedure EditMouseWheelDown(Shift: TShiftState; MousePos: TPoint; var Handled: Boolean);
+    procedure EditMouseWheelUp(Shift: TShiftState; MousePos: TPoint; var Handled: Boolean); virtual;
+    procedure EditMouseWheelDown(Shift: TShiftState; MousePos: TPoint; var Handled: Boolean); virtual;
     procedure EditUtf8KeyPress(var UTF8Key: TUTF8Char); virtual;
     procedure EditStartDrag(var DragObject: TDragObject); virtual;
 
@@ -304,8 +298,6 @@ type
     property TabStop: Boolean read GetTabStop write SetTabStop default True;
     property Text;
     property TextHint: TTranslateString read GetTextHint write SetTextHint;
-    property TextHintFontColor: TColor read GetTextHintFontColor write FTextHintFontColor default clGrayText; deprecated 'Will be removed in the future'; //deprecated in 1.7
-    property TextHintFontStyle: TFontStyles read GetTextHintFontStyle write FTextHintFontStyle default [fsItalic]; deprecated 'Will be removed in the future'; //deprecated in 1.7
 
     property OnChange: TNotifyEvent read FOnEditChange write FOnEditChange;
     property OnClick: TNotifyEvent read FOnEditClick write FOnEditClick;
@@ -422,7 +414,7 @@ begin
     Result := inherited PerformTab(ForwardTab)
   else
   begin
-    if Assigned(Owner) and (Owner is TCustomAbstractGroupedEdit) then
+    if Owner is TCustomAbstractGroupedEdit then
       Result :=  TCustomAbstractGroupedEdit(Owner).PerformTab(ForwardTab)
     else
       Result := False;
@@ -620,7 +612,7 @@ end;
 
 function TCustomAbstractGroupedEdit.GetTabStop: Boolean;
 begin
-  Result := inherited TabStop;
+  Result := FEdit.TabStop;
 end;
 
 function TCustomAbstractGroupedEdit.RealGetText: TCaption;
@@ -631,16 +623,6 @@ end;
 function TCustomAbstractGroupedEdit.GetTextHint: TTranslateString;
 begin
   Result := FEdit.TextHint;
-end;
-
-function TCustomAbstractGroupedEdit.GetTextHintFontColor: TColor;
-begin
-  Result := clGrayText;
-end;
-
-function TCustomAbstractGroupedEdit.GetTextHintFontStyle: TFontStyles;
-begin
-  Result := [fsItalic];
 end;
 
 procedure TCustomAbstractGroupedEdit.FocusAndMaybeSelectAll;
@@ -935,7 +917,8 @@ end;
 procedure TCustomAbstractGroupedEdit.DoEnter;
 begin
   inherited DoEnter;
-  FEdit.SetFocus;
+  if not (csDesigning in ComponentState) then
+    FEdit.SetFocus;
 end;
 
 procedure TCustomAbstractGroupedEdit.EditChange;
@@ -1132,7 +1115,6 @@ end;
 
 procedure TCustomAbstractGroupedEdit.SetTabStop(AValue: Boolean);
 begin
-  inherited TabStop := AValue;
   FEdit.TabStop := AValue;
 end;
 
@@ -1193,6 +1175,7 @@ begin
   FDirectInput := True;
   FIsReadOnly := False;
   TabStop := True;
+  inherited TabStop := False;
   FocusOnBuddyClick := False;
   FSpacing := 0;
   SetInitialBounds(0, 0, GetControlClassDefaultSize.CX, GetControlClassDefaultSize.CY);
@@ -1243,18 +1226,6 @@ end;
 destructor TCustomAbstractGroupedEdit.Destroy;
 begin
   inherited Destroy;
-end;
-
-procedure TCustomAbstractGroupedEdit.DoAutoAdjustLayout(
-  const AMode: TLayoutAdjustmentPolicy; const AXProportion, AYProportion: Double
-  );
-begin
-  inherited;
-
-  if AMode in [lapAutoAdjustWithoutHorizontalScrolling, lapAutoAdjustForDPI] then
-  begin
-    BuddyWidth := Round(BuddyWidth*AXProportion);
-  end;
 end;
 
 function TCustomAbstractGroupedEdit.Focused: Boolean;

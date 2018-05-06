@@ -38,11 +38,10 @@ begin
   // and use the interface based list
   FItems := NewStrings;
 
-  if FItemIndex <> -1 then
+  if (FItemIndex > -1) and (FItemIndex < FItems.Count) then
     TWSCustomComboBoxClass(WidgetSetClass).SetItemIndex(Self, FItemIndex);
   TWSCustomComboBoxClass(WidgetSetClass).SetStyle(Self, FStyle);
   TWSCustomComboBoxClass(WidgetSetClass).SetArrowKeysTraverseList(Self, FArrowKeysTraverseList);
-  TWSCustomComboBoxClass(WidgetSetClass).SetReadOnly(Self, FReadOnly);
   TWSCustomComboBoxClass(WidgetSetClass).SetMaxLength(Self, FMaxLength);
   TWSCustomComboBoxClass(WidgetSetClass).SetDropDownCount(Self, FDropDownCount);
 
@@ -85,6 +84,20 @@ begin
   inherited DestroyWnd;
 end;
 
+procedure TCustomComboBox.DoAutoAdjustLayout(
+  const AMode: TLayoutAdjustmentPolicy; const AXProportion, AYProportion: Double
+  );
+begin
+  inherited;
+
+  if AMode in [lapAutoAdjustWithoutHorizontalScrolling, lapAutoAdjustForDPI] then
+  begin
+    if (Style in [csOwnerDrawFixed, csOwnerDrawVariable, csOwnerDrawEditableFixed, csOwnerDrawEditableVariable])
+    and (FItemHeight > 0) then
+      ItemHeight := Round(ItemHeight * AYProportion);
+  end;
+end;
+
 {------------------------------------------------------------------------------
   procedure TCustomComboBox.DrawItem(Index: Integer; Rect: TRect;
     State: TOwnerDrawState);
@@ -95,9 +108,10 @@ begin
   //TControlCanvas(FCanvas).UpdateTextFlags;
   if Assigned(FOnDrawItem) then
     FOnDrawItem(Self, Index, ARect, State)
-  else if not (odPainted in State) then
+  else
   begin
-    FCanvas.FillRect(ARect);
+    if not (odBackgroundPainted in State) then
+      FCanvas.FillRect(ARect);
     InternalDrawItem(Self, FCanvas, ARect, Items[Index])
   end;
 end;
@@ -175,6 +189,11 @@ begin
   Result := FMaxLength;
 end;
 
+function TCustomComboBox.GetReadOnly: Boolean;
+begin
+  Result := Style in [csDropDownList, csOwnerDrawFixed, csOwnerDrawVariable];
+end;
+
 {------------------------------------------------------------------------------
   Method: TCustomComboBox.LMChanged
   Params: msg -
@@ -233,7 +252,7 @@ end;
 procedure TCustomComboBox.CloseUp;
 begin
   if [csLoading,csDestroying,csDesigning]*ComponentState<>[] then exit;
-  if not ReadOnly then
+  if Style in [csSimple, csDropDown, csOwnerDrawEditableFixed, csOwnerDrawEditableVariable] then
     EditingDone;
   if Assigned(FOnCloseUp) then FOnCloseUp(Self);
   if FAutoSelect then
@@ -403,10 +422,6 @@ begin
   if Val <> FStyle then
   begin
     FStyle:= Val;
-    case FStyle of
-      csDropDown, csSimple: FReadOnly := false;
-      csDropDownList: FReadOnly := true;
-    end;
     if HandleAllocated and ([csLoading,csDestroying]*ComponentState=[]) then
       TWSCustomComboBoxClass(WidgetSetClass).SetStyle(Self, Val);
   end;
@@ -459,15 +474,13 @@ procedure TCustomComboBox.CreateParams(var Params: TCreateParams);
 const
   ComboBoxStyles: array[TComboBoxStyle] of dword = (
     CBS_DROPDOWN, CBS_SIMPLE, CBS_DROPDOWNLIST,
-    CBS_OWNERDRAWFIXED, CBS_OWNERDRAWVARIABLE);
-  ComboBoxReadOnlyStyles: array[boolean] of dword = (
-    CBS_DROPDOWN, CBS_DROPDOWNLIST);
+    CBS_OWNERDRAWFIXED or CBS_DROPDOWNLIST, CBS_OWNERDRAWVARIABLE or CBS_DROPDOWNLIST,
+    CBS_OWNERDRAWFIXED or CBS_DROPDOWN, CBS_OWNERDRAWVARIABLE or CBS_DROPDOWN);
 begin
   inherited CreateParams(Params);
   Params.Style := Params.Style or (WS_VSCROLL or CBS_AUTOHSCROLL or CBS_HASSTRINGS) or
     ComboBoxStyles[Style];
-  if Style in [csOwnerDrawFixed, csOwnerDrawVariable] then
-    Params.Style := Params.Style or ComboBoxReadOnlyStyles[ReadOnly];
+
   if Sorted then
     Params.Style := Params.Style or CBS_SORT;
 end;
@@ -482,7 +495,11 @@ begin
   PreventDropDown := Key in [VK_TAB, VK_RETURN, VK_ESCAPE];
   if PreventDropDown then
   begin
-    if DroppedDown then Key := VK_UNKNOWN; //prevent execution of DefaultAction (Delphi compatibility)
+    // Prevent execution of DefaultAction (Delphi compatibility) except for
+    // style csSimple. There DroppedDown is always true (Delphi compatible).
+    // Tab key should work further and shouldn't be deleted. Issue #32559
+    if DroppedDown and not (Style = csSimple) then
+      Key := VK_UNKNOWN;
     DroppedDown := False;
   end;
   // if AutoDropDown then don't close DropDown, like in Delphi, issue #31247
@@ -660,10 +677,11 @@ function TCustomComboBox.GetItemHeight: Integer;
 begin
   // FItemHeight is not initialized at class creating. we can, but with what value?
   // so, if it still uninitialized (=0), then we ask widgetset
-  if (FStyle in [csOwnerDrawFixed, csOwnerDrawVariable]) and (FItemHeight > 0) or not HandleAllocated then
-  begin
+  if (FStyle in [csOwnerDrawFixed, csOwnerDrawVariable,
+                 csOwnerDrawEditableFixed, csOwnerDrawEditableVariable])
+  and (FItemHeight > 0) or not HandleAllocated then
     Result := FItemHeight
-  end else
+  else
   begin
     Result := TWSCustomComboBoxClass(WidgetSetClass).GetItemHeight(Self);
     if (FItemHeight = 0) then
@@ -698,7 +716,8 @@ begin
   if (not HandleAllocated) then 
     exit;
 
-  if Style in [csOwnerDrawFixed, csOwnerDrawVariable] then
+  if Style in [csOwnerDrawFixed, csOwnerDrawVariable,
+               csOwnerDrawEditableFixed, csOwnerDrawEditableVariable] then
     TWSCustomComboBoxClass(WidgetSetClass).SetItemHeight(Self, FItemHeight);
 end;
 
@@ -1001,7 +1020,10 @@ begin
   begin
     FCanvas.Handle := DC;
     if Font<>nil then
+    begin
       FCanvas.Font := Font;
+      FCanvas.Font.PixelsPerInch := Font.PixelsPerInch;
+    end;
     if Brush<>nil then
       FCanvas.Brush := Brush;
     if (ItemID <> UINT(-1)) and (odSelected in ItemState) then
@@ -1070,29 +1092,9 @@ begin
   end;
 end;
 
-function TCustomComboBox.IsReadOnlyStored: boolean;
-begin
-  // these styles imply readonly value
-  Result := not (FStyle in [csSimple, csDropDown, csDropDownList]);
-  if Result then
-    Result := FReadOnly <> false;
-end;
-
 procedure TCustomComboBox.SetReadOnly(const AValue: Boolean);
 begin
-  if FReadOnly=AValue then exit;
-  if FStyle=csSimple then exit;
-  FReadOnly:=AValue;
-  case FStyle of
-    csDropDown, csDropDownList: begin
-      if FReadOnly
-        then Style := csDropDownList
-        else Style := csDropDown;
-    end;
-    csOwnerDrawFixed, csOwnerDrawVariable:
-      if HandleAllocated then
-        TWSCustomComboBoxClass(WidgetSetClass).SetReadOnly(Self, AValue);
-  end;
+  // will be removed in 1.10
 end;
 
 {------------------------------------------------------------------------------

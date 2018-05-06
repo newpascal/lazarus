@@ -111,12 +111,12 @@ uses
   MemCheck,
   {$ENDIF}
   // RTL + FCL
-  Classes, SysUtils, AVL_Tree,
+  Classes, SysUtils, Laz_AVL_Tree,
   // CodeTools
-  FileProcs, CodeToolsStructs, BasicCodeTools, KeywordFuncLists, LinkScanner,
-  CodeCache, CodeTree, NonPascalCodeTools,
+  FileProcs, BasicCodeTools, KeywordFuncLists, CodeCache, CodeTree,
+  NonPascalCodeTools, CodeToolsStructs,
   // LazUtils
-  LazFileUtils;
+  LazFileUtils, AvgLvlTree;
 
 type
   TCCodeNodeDesc = word;
@@ -352,7 +352,7 @@ type
     LinkCount: integer;
     Links: PCHFileLink;
     LinksCapacity: integer;
-    Macros: TStringToStringTree;
+    Macros: TIdentStringToStringTree;
     constructor Create;
     destructor Destroy; override;
     procedure Clear;
@@ -493,7 +493,7 @@ end;
 
 constructor TCHeaderFileMerger.Create;
 begin
-  Macros:=TStringToStringTree.Create(true);
+  Macros:=TIdentStringToStringTree.Create(true);
 end;
 
 destructor TCHeaderFileMerger.Destroy;
@@ -558,7 +558,7 @@ var
     p: LongInt;
     MacroValue: string;
     MacroNode: TAVLTreeNode;
-    MacroItem: PStringToStringTreeItem;
+    MacroItem: PStringToStringItem;
     Src: String;
     BracketLvl: Integer;
   begin
@@ -592,7 +592,7 @@ var
         MacroNode:=Macros.FindNodeWithIdentifierAsPrefix(StartP);
         if MacroNode<>nil then begin
           // macro found
-          MacroItem:=PStringToStringTreeItem(MacroNode.Data);
+          MacroItem:=PStringToStringItem(MacroNode.Data);
           MacroValue:=MacroItem^.Value;
           //debugln(['Append MacroName=',MacroItem^.Name,' Src=',GetIdentifier(@Src[AtomStart]),' Value=',dbgstr(MacroValue)]);
           // write source in front of macro
@@ -1861,6 +1861,8 @@ begin
   {$ENDIF}
 end;
 
+{$IFOPT R+}{$DEFINE RangeChecking}{$ENDIF}
+{$R-}
 function TCCodeParserTool.ReadTilBracketClose(
   ExceptionOnNotFound: boolean): boolean;
 // AtomStart must be on bracket open
@@ -1881,8 +1883,6 @@ begin
     exit;
   end;
   StartPos:=AtomStart;
-  {$IFOPT R+}{$DEFINE RangeChecking}{$ENDIF}
-  {$R-}
   repeat
     ReadRawNextCAtom(Src,SrcPos,AtomStart);
     if AtomStart>SrcLen then begin
@@ -1903,8 +1903,8 @@ begin
       if Src[AtomStart]=CloseBracket then exit(true);
     end;
   until false;
-  {$IFDEF RangeChecking}{$R+}{$UNDEF RangeChecking}{$ENDIF}
 end;
+{$IFDEF RangeChecking}{$R+}{$UNDEF RangeChecking}{$ENDIF}
 
 function TCCodeParserTool.AtomIs(const s: shortstring): boolean;
 var

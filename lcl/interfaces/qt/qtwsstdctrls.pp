@@ -29,7 +29,7 @@ uses
   // RTL
   math,
   // LCL
-  Classes, Types, StdCtrls, Controls, Forms, SysUtils, InterfaceBase, LCLType,
+  Classes, Types, Graphics, StdCtrls, Controls, Forms, SysUtils, InterfaceBase, LCLType,
   // Widgetset
   WSProc, WSStdCtrls, WSLCLClasses;
 
@@ -154,6 +154,7 @@ type
     class function GetSelLength(const ACustomEdit: TCustomEdit): integer; override;
     class procedure SetSelStart(const ACustomEdit: TCustomEdit; NewStart: integer); override;
     class procedure SetSelLength(const ACustomEdit: TCustomEdit; NewLength: integer); override;
+    class procedure ShowHide(const AWinControl: TWinControl); override;
 
     //class procedure SetPasswordChar(const ACustomEdit: TCustomEdit; NewChar: char); override;
     class procedure Cut(const ACustomEdit: TCustomEdit); override;
@@ -265,6 +266,14 @@ type
   published
   end;
 
+  { TEditHelper }
+
+  TEditHelper = class helper for TCustomEdit
+  public
+    function EmulatedTextHintStatus: TCustomEdit.TEmulatedTextHintStatus;
+    function CreateEmulatedTextHintFont: TFont;
+  end;
+
 
 implementation
 uses qtint;
@@ -290,6 +299,18 @@ const
     QFramePlain,
     QFrameSunken
   );
+
+{ TEditHelper }
+
+function TEditHelper.EmulatedTextHintStatus: TCustomEdit.TEmulatedTextHintStatus;
+begin
+  Result := FEmulatedTextHintStatus;
+end;
+
+function TEditHelper.CreateEmulatedTextHintFont: TFont;
+begin
+  Result := inherited CreateEmulatedTextHintFont;
+end;
 
 
 { TQtWSScrollBar }
@@ -750,7 +771,7 @@ var
 begin
   if not WSCheckHandleAllocated(ACustomMemo, 'AppendText') or (Length(AText) = 0) then
     Exit;
-  AStr := GetUtf8String(AText);
+  AStr := {%H-}AText;
   TQtTextEdit(ACustomMemo.Handle).BeginUpdate;
   TQtTextEdit(ACustomMemo.Handle).Append(AStr);
   TQtTextEdit(ACustomMemo.Handle).EndUpdate;
@@ -764,7 +785,7 @@ end;
 class function TQtWSCustomMemo.GetStrings(const ACustomMemo: TCustomMemo): TStrings;
 begin
   if not WSCheckHandleAllocated(ACustomMemo, 'GetStrings') then
-    Exit;
+    Exit(Nil);
   if not Assigned(TQtTextEdit(ACustomMemo.Handle).FList) then
     TQtTextEdit(ACustomMemo.Handle).FList := TQtMemoStrings.Create(ACustomMemo);
   
@@ -1028,6 +1049,31 @@ begin
   AStart := GetSelStart(ACustomEdit);
   if Supports(Widget, IQtEdit, QtEdit) then
     QtEdit.setSelection(AStart, NewLength);
+end;
+
+class procedure TQtWSCustomEdit.ShowHide(const AWinControl: TWinControl);
+var
+  Widget: TQtWidget;
+  EditFont: TFont;
+begin
+  if not WSCheckHandleAllocated(AWincontrol, 'ShowHide') then
+    Exit;
+
+  Widget := TQtWidget(AWinControl.Handle);
+  Widget.BeginUpdate;
+
+  TQtWSWinControl.ShowHide(AWinControl);
+  if AWinControl.HandleObjectShouldBeVisible
+  and (TCustomEdit(AWinControl).EmulatedTextHintStatus=thsShowing) then
+  begin
+    EditFont := TCustomEdit(AWinControl).CreateEmulatedTextHintFont;
+    try
+      SetFont(AWinControl, EditFont);
+    finally
+      EditFont.Free;
+    end;
+  end;
+  Widget.EndUpdate;
 end;
 
 class procedure TQtWSCustomEdit.Cut(const ACustomEdit: TCustomEdit);
@@ -1365,7 +1411,7 @@ begin
   Text := TCustomComboBox(AWinControl).Text;
   QtComboBox.FList.Assign(TCustomComboBox(AWinControl).Items);
   QtComboBox.setCurrentIndex(ItemIndex);
-  QtComboBox.setText(GetUTF8String(Text));
+  QtComboBox.setText(Text{%H-});
   QtComboBox.setEditable((AParams.Style and CBS_DROPDOWN <> 0) or
     (AParams.Style and CBS_SIMPLE <> 0));
 
@@ -1440,6 +1486,7 @@ class function TQtWSCustomComboBox.GetMaxLength(
 var
   LineEdit: TQtLineEdit;
 begin
+  Result := 0;
   if not WSCheckHandleAllocated(ACustomComboBox, 'GetMaxLength') then
     Exit;
   LineEdit := TQtComboBox(ACustomComboBox.Handle).LineEdit;
@@ -1448,9 +1495,7 @@ begin
     Result := LineEdit.getMaxLength;
     if Result = QtMaxEditLength then
       Result := 0;
-  end
-  else
-    Result := 0;
+  end;
 end;
 
 {------------------------------------------------------------------------------
@@ -1593,10 +1638,12 @@ end;
 class procedure TQtWSCustomComboBox.SetStyle(
   const ACustomComboBox: TCustomComboBox; NewStyle: TComboBoxStyle);
 begin
-  TQtComboBox(ACustomComboBox.Handle).setEditable(NewStyle in [csDropDown, csSimple]);
+  TQtComboBox(ACustomComboBox.Handle).setEditable(NewStyle in [csDropDown, csSimple, csOwnerDrawEditableFixed, csOwnerDrawEditableVariable]);
   TQtComboBox(ACustomComboBox.Handle).OwnerDrawn := NewStyle in
                                                    [csOwnerDrawFixed,
-                                                    csOwnerDrawVariable];
+                                                    csOwnerDrawVariable,
+                                                    csOwnerDrawEditableFixed,
+                                                    csOwnerDrawEditableVariable];
   // TODO: implement styles: csSimple
   inherited SetStyle(ACustomComboBox, NewStyle);
 end;
@@ -1611,7 +1658,7 @@ var
   ComboBox: TQtComboBox;
 begin
   if not WSCheckHandleAllocated(ACustomComboBox, 'GetItems') then
-    Exit;
+    Exit(Nil);
   ComboBox := TQtComboBox(ACustomComboBox.Handle);
   if not Assigned(ComboBox.FList) then
   begin
@@ -1654,7 +1701,7 @@ begin
       QWidget_setFont(ACombo, ComboBox.getFont);
       QComboBox_setEditable(ACombo, not ACustomComboBox.ReadOnly);
       AText := 'Mtjx';
-      AItems := QStringList_create(PWideString(@AText));
+      AItems := QStringList_create(@AText);
       QComboBox_addItems(ACombo, AItems);
       QStringList_destroy(AItems);
       Result := QAbstractItemView_sizeHintForRow(QComboBox_view(ACombo), 0);
@@ -1671,12 +1718,12 @@ var
 begin
   if not WSCheckHandleAllocated(ACustomComboBox, 'SetItemHeight') then
     Exit;
-  {only for csOwnerDrawFixed, csOwnerDrawVariable}
+  {only for csOwnerDrawFixed, csOwnerDrawVariable, csOwnerDrawEditableFixed, csOwnerDrawEditableVariable}
   ComboBox := TQtComboBox(ACustomComboBox.Handle);
   if ComboBox.getDroppedDown then
   begin
     ComboBox.DropList.setUniformItemSizes(False);
-    ComboBox.DropList.setUniformItemSizes(ACustomComboBox.Style = csOwnerDrawFixed);
+    ComboBox.DropList.setUniformItemSizes(ACustomComboBox.Style in [csOwnerDrawFixed, csOwnerDrawEditableFixed]);
   end else
     RecreateWnd(ACustomComboBox);
 end;
@@ -1691,12 +1738,11 @@ end;
  ------------------------------------------------------------------------------}
 class function TQtWSToggleBox.RetrieveState(const ACustomCheckBox: TCustomCheckBox): TCheckBoxState;
 begin
+  Result := cbUnChecked;
   if not WSCheckHandleAllocated(ACustomCheckBox, 'RetrieveState') then
     Exit;
   if TQtToggleBox(ACustomCheckBox.Handle).isChecked then
-    Result := cbChecked
-  else
-    Result := cbUnChecked;
+    Result := cbChecked;
 end;
 
 {------------------------------------------------------------------------------

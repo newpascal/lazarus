@@ -25,7 +25,8 @@ unit IDEImagesIntf;
 interface
 
 uses
-  Classes, SysUtils, LCLProc, LCLType, ImgList, Controls, Graphics, LResources;
+  Classes, SysUtils, LCLProc, LCLType, ImgList, Controls, Graphics, LResources,
+  Math;
 
 type
 
@@ -43,16 +44,28 @@ type
     function GetImages_12: TCustomImageList;
     function GetImages_16: TCustomImageList;
     function GetImages_24: TCustomImageList;
+
+    class function CreateBitmapFromRes(const ImageName: string): TCustomBitmap;
+    class function CreateBestBitmapForScalingFromRes(const ImageName: string; const aDefScale: Integer; out aBitmap: TCustomBitmap): Integer;
   public
     constructor Create;
     destructor Destroy; override;
 
     class function GetScalePercent: Integer;
     class function ScaleImage(const AImage: TGraphic; out ANewInstance: Boolean;
-      TargetWidth, TargetHeight: Integer): TGraphic;
+      TargetWidth, TargetHeight: Integer; const AFactor: Double): TCustomBitmap;
+    class function CreateImage(ImageSize: Integer; ImageName: String): TCustomBitmap; deprecated 'Use the other overload instead.';
+    class function CreateImage(ImageName: String; ImageSize: Integer = 16): TCustomBitmap;
+    class procedure AssignImage(const ABitmap: TCustomBitmap; ImageName: String;
+      ImageSize: Integer = 16);
+    class function AddImageToImageList(const AImageList: TImageList;
+      ImageName: String; ImageSize: Integer = 16): Integer;
+    class function ScaledSize(ImageSize: Integer = 16): Integer;
 
-    function GetImageIndex(ImageSize: Integer; ImageName: String): Integer;
-    function LoadImage(ImageSize: Integer; ImageName: String): Integer;
+    function LoadImage(ImageSize: Integer; ImageName: String): Integer; deprecated 'Use the other overload instead.';
+    function LoadImage(ImageName: String; ImageSize: Integer = 16): Integer;
+    function GetImageIndex(ImageSize: Integer; ImageName: String): Integer; deprecated 'Use the other overload instead.';
+    function GetImageIndex(ImageName: String; ImageSize: Integer = 16): Integer;
 
     property Images_12: TCustomImageList read GetImages_12;
     property Images_16: TCustomImageList read GetImages_16;
@@ -75,6 +88,7 @@ begin
     FImages_12 := TImageList.Create(nil);
     FImages_12.Width := MulDiv(12, GetScalePercent, 100);
     FImages_12.Height := FImages_12.Width;
+    FImages_12.Scaled := False;
   end;
   Result := FImages_12;
 end;
@@ -86,6 +100,7 @@ begin
     FImages_16 := TImageList.Create(nil);
     FImages_16.Width := MulDiv(16, GetScalePercent, 100);
     FImages_16.Height := FImages_16.Width;
+    FImages_16.Scaled := False;
   end;
   Result := FImages_16;
 end;
@@ -97,6 +112,7 @@ begin
     FImages_24 := TImageList.Create(nil);
     FImages_24.Width := MulDiv(24, GetScalePercent, 100);
     FImages_24.Height := FImages_24.Width;
+    FImages_24.Scaled := False;
   end;
   Result := FImages_24;
 end;
@@ -109,7 +125,70 @@ begin
   if ScreenInfo.PixelsPerInchX <= 168 then
     Result := 150 // 126%-175% (144-168 DPI): 150% scaling
   else
-    Result := 200; // 200%: 200% scaling
+    Result := Round(ScreenInfo.PixelsPerInchX/96) * 100; // 200, 300, 400, ...
+end;
+
+function TIDEImages.LoadImage(ImageSize: Integer; ImageName: String): Integer;
+begin
+  Result := LoadImage(ImageName, ImageSize);
+end;
+
+class function TIDEImages.CreateImage(ImageName: String; ImageSize: Integer
+  ): TCustomBitmap;
+var
+  Grp: TCustomBitmap;
+  GrpScaledNewInstance: Boolean;
+  ScalePercent, GrpScale: Integer;
+begin
+  ScalePercent := GetScalePercent;
+
+  Grp := nil;
+  try
+    GrpScale := CreateBestBitmapForScalingFromRes(ImageName, ScalePercent, Grp);
+    if Grp<>nil then
+    begin
+      Result := ScaleImage(Grp, GrpScaledNewInstance,
+        MulDiv(ImageSize, ScalePercent, GrpScale), MulDiv(ImageSize, ScalePercent, GrpScale), ScalePercent / GrpScale);
+      if not GrpScaledNewInstance then
+        Grp := nil;
+      Exit; // found
+    end;
+  finally
+    Grp.Free;
+  end;
+  Result := nil; // not found
+end;
+
+class procedure TIDEImages.AssignImage(const ABitmap: TCustomBitmap;
+  ImageName: String; ImageSize: Integer);
+var
+  xBmp: TCustomBitmap;
+begin
+  xBmp := TIDEImages.CreateImage(ImageName, ImageSize);
+  try
+    ABitmap.Assign(xBmp);
+  finally
+    xBmp.Free;
+  end;
+end;
+
+class function TIDEImages.AddImageToImageList(const AImageList: TImageList;
+  ImageName: String; ImageSize: Integer): Integer;
+var
+  xBmp: TCustomBitmap;
+begin
+  Result := -1;
+  xBmp := TIDEImages.CreateImage(ImageName, ImageSize);
+  try
+    Result := AImageList.Add(xBmp, nil);
+  finally
+    xBmp.Free;
+  end;
+end;
+
+class function TIDEImages.ScaledSize(ImageSize: Integer): Integer;
+begin
+  Result := ImageSize * GetScalePercent div 100;
 end;
 
 constructor TIDEImages.Create;
@@ -125,6 +204,47 @@ begin
   FImageNames_24.Duplicates := dupIgnore;
 end;
 
+class function TIDEImages.CreateBitmapFromRes(const ImageName: string
+  ): TCustomBitmap;
+var
+  ResHandle: TLResource;
+begin
+  ResHandle := LazarusResources.Find(ImageName);
+  if ResHandle <> nil then
+    Result := CreateBitmapFromLazarusResource(ResHandle)
+  else
+    Result := CreateBitmapFromResourceName(HInstance, ImageName);
+end;
+
+class function TIDEImages.CreateBestBitmapForScalingFromRes(
+  const ImageName: string; const aDefScale: Integer; out aBitmap: TCustomBitmap
+  ): Integer;
+begin
+  aBitmap := nil;
+  Result := aDefScale;
+  while (Result > 100) do
+  begin
+    aBitmap := CreateBitmapFromRes(ImageName+'_'+IntToStr(Result));
+    if aBitmap<>nil then Exit;
+    if (Result>300) and ((Result div 100) mod 2 = 1) then // 500, 700, 900 ...
+      Result := Result + 100;
+    Result := Result div 2;
+  end;
+  aBitmap := CreateBitmapFromRes(ImageName);
+  Result := 100;
+  if (aBitmap is TBitmap) and (aBitmap.PixelFormat in [pf1bit..pf24bit]) then
+  begin
+    aBitmap.TransparentColor := aBitmap.Canvas.Pixels[0, aBitmap.Height-1];
+    aBitmap.Transparent := True;
+  end;
+end;
+
+class function TIDEImages.CreateImage(ImageSize: Integer; ImageName: String
+  ): TCustomBitmap;
+begin
+  Result := CreateImage(ImageName, ImageSize);
+end;
+
 destructor TIDEImages.Destroy;
 begin
   FreeAndNil(FImages_12);
@@ -136,7 +256,14 @@ begin
   inherited Destroy;
 end;
 
-function TIDEImages.GetImageIndex(ImageSize: Integer; ImageName: String): Integer;
+function TIDEImages.GetImageIndex(ImageSize: Integer; ImageName: String
+  ): Integer;
+begin
+  Result := GetImageIndex(ImageName, ImageSize);
+end;
+
+function TIDEImages.GetImageIndex(ImageName: String; ImageSize: Integer
+  ): Integer;
 var
   List: TStringList;
 begin
@@ -157,48 +284,14 @@ begin
     Result := -1;
 end;
 
-function TIDEImages.LoadImage(ImageSize: Integer; ImageName: String): Integer;
-  function _AddBitmap(AList: TCustomImageList; AGrp: TGraphic): Integer;
-  begin
-    if AGrp is TCustomBitmap then
-      Result := AList.Add(TCustomBitmap(AGrp), nil)
-    else
-      Result := AList.AddIcon(AGrp as TCustomIcon);
-  end;
-  function _LoadImage(AList: TCustomImageList): Integer;
-  var
-    Grp, GrpScaled: TGraphic;
-    GrpScaledNewInstance: Boolean;
-    ScalePercent: Integer;
-  begin
-    ScalePercent := GetScalePercent;
-
-    Grp := nil;
-    try
-      if ScalePercent<>100 then
-      begin
-        Grp := CreateGraphicFromResourceName(HInstance, ImageName+'_'+IntToStr(ScalePercent));
-        if Grp<>nil then
-          Exit(_AddBitmap(AList, Grp));
-      end;
-
-      Grp := CreateGraphicFromResourceName(HInstance, ImageName);
-      GrpScaled := ScaleImage(Grp, GrpScaledNewInstance, AList.Width, AList.Height);
-      try
-        Result := _AddBitmap(AList, GrpScaled);
-      finally
-        if GrpScaledNewInstance then
-          GrpScaled.Free;
-      end;
-    finally
-      Grp.Free;
-    end;
-  end;
+function TIDEImages.LoadImage(ImageName: String; ImageSize: Integer): Integer;
 var
   List: TCustomImageList;
   Names: TStringList;
+  Grp: TGraphic;
+  Rc: TRect;
 begin
-  Result := GetImageIndex(ImageSize, ImageName);
+  Result := GetImageIndex(ImageName, ImageSize);
   if Result <> -1 then Exit;
 
   case ImageSize of
@@ -221,7 +314,20 @@ begin
     Exit;
   end;
   try
-    Result := _LoadImage(List);
+    Grp := CreateImage(ImageName, ImageSize);
+    try
+      if Grp=nil then
+        raise Exception.CreateFmt('TIDEImages.LoadImage: %s not found.', [ImageName]);
+      if Grp is TCustomBitmap then
+      begin
+        Rc := Rect(0, 0, List.Width, List.Height);
+        OffsetRect(Rc, (Grp.Width-List.Width) div 2, (Grp.Height-List.Height) div 2);
+        Result := List.AddSlice(TCustomBitmap(Grp), Rc);
+      end else
+        Result := List.AddIcon(Grp as TCustomIcon);
+    finally
+      Grp.Free;
+    end;
   except
     on E: Exception do begin
       DebugLn('While loading IDEImages: ' + e.Message);
@@ -232,32 +338,45 @@ begin
 end;
 
 class function TIDEImages.ScaleImage(const AImage: TGraphic; out
-  ANewInstance: Boolean; TargetWidth, TargetHeight: Integer): TGraphic;
+  ANewInstance: Boolean; TargetWidth, TargetHeight: Integer;
+  const AFactor: Double): TCustomBitmap;
 var
-  ScalePercent: Integer;
   Bmp: TBitmap;
+  TargetRect: TRect;
 begin
-  ANewInstance := False;
-  ScalePercent := GetScalePercent;
-  if ScalePercent=100 then
-    Exit(AImage);
+  if SameValue(AFactor, 1) and (AImage is TCustomBitmap) then
+  begin
+    ANewInstance := False;
+    Exit(TCustomBitmap(AImage));
+  end;
 
   Bmp := TBitmap.Create;
   try
     Result := Bmp;
     ANewInstance := True;
-    {$IFDEF LCLGtk2}
-    Bmp.PixelFormat := pf24bit;
-    Bmp.Canvas.Brush.Color := clBtnFace;
-    {$ELSE}
-    Bmp.PixelFormat := pf32bit;
-    Bmp.Canvas.Brush.Color := TColor($FFFFFFFF);
-    {$ENDIF}
+    if (AImage is TBitmap) and AImage.Transparent then
+    begin
+      Bmp.PixelFormat := pf24bit;
+      Bmp.Canvas.Brush.Color := TBitmap(AImage).TransparentColor;
+      Bmp.TransparentColor := TBitmap(AImage).TransparentColor;
+      Bmp.Transparent := TBitmap(AImage).Transparent;
+    end else
+    begin
+      {$IFDEF LCLGtk2}
+      Bmp.PixelFormat := pf24bit;
+      Bmp.Canvas.Brush.Color := clBtnFace;
+      Bmp.TransparentColor := clBtnFace;
+      Bmp.Transparent := True;
+      {$ELSE}
+      Bmp.PixelFormat := pf32bit;
+      Bmp.Canvas.Brush.Color := TColor($FFFFFFFF);
+      {$ENDIF}
+    end;
     Bmp.SetSize(TargetWidth, TargetHeight);
     Bmp.Canvas.FillRect(Bmp.Canvas.ClipRect);
-    Bmp.Canvas.StretchDraw(
-      Rect(0, 0, MulDiv(AImage.Width, ScalePercent, 100), MulDiv(AImage.Height, ScalePercent, 100)),
-      AImage);
+    TargetRect := Rect(0, 0, Round(AImage.Width*AFactor), Round(AImage.Height*AFactor));
+    OffsetRect(TargetRect, (TargetWidth-TargetRect.Right) div 2, (TargetHeight-TargetRect.Bottom) div 2);
+    Bmp.Canvas.StretchDraw(TargetRect, AImage);
   except
     FreeAndNil(Result);
     ANewInstance := False;

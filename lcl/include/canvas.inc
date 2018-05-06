@@ -1313,7 +1313,6 @@ begin
 
   if Style.Clipping then
   begin
-    IntersectRect(ARect, ARect, fRect);
     with ARect do
       InterSectClipRect(DC, Left, Top, Right, Bottom);
     Options := Options or DT_NOCLIP; // no clipping as we are handling it here
@@ -1763,12 +1762,39 @@ end;
   Gets the width and height of a text
  ------------------------------------------------------------------------------}
 function TCanvas.TextExtent(const Text: string): TSize;
+var
+  DCIndex: Integer;
+  ARect: TRect;
+
+  procedure SaveState;
+  begin
+    if DCIndex <> 0 then exit;
+    DCIndex := SaveDC(FHandle);
+  end;
+
+  procedure RestoreState;
+  begin
+    if DCIndex = 0 then exit;
+    RestoreDC(FHandle, DCIndex);
+  end;
+
 begin
   Result.cX := 0;
   Result.cY := 0;
   if Text='' then exit;
   RequiredState([csHandleValid, csFontValid]);
+
+  DCIndex := 0;
+  if Font.IsDefault then
+  begin
+    SaveState;
+    SelectObject(FHandle, OnGetSystemFont());
+  end;
+
+  ARect := Rect(0, 0, 0, 0);
   GetTextExtentPoint(FHandle, PChar(Text), Length(Text), Result);
+
+  RestoreState;
 end;
 
 {------------------------------------------------------------------------------

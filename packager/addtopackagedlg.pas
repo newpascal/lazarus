@@ -30,14 +30,15 @@ unit AddToPackageDlg;
 interface
 
 uses
-  Math, Classes, SysUtils, AVL_Tree,
+  Math, Classes, SysUtils, Laz_AVL_Tree,
   // LCL
   LCLProc, LCLType, Forms, Controls, Buttons, ExtDlgs, StdCtrls, ExtCtrls,
   Dialogs, ComCtrls, ButtonPanel,
   // LazUtils
   FileUtil, LazFileUtils,
   // IDEIntf
-  NewItemIntf, PackageIntf, FormEditingIntf, IDEWindowIntf, ComponentReg, IDEDialogs,
+  NewItemIntf, PackageIntf, FormEditingIntf, IDEWindowIntf, ComponentReg,
+  IDEDialogs, IDEImagesIntf,
   // IDE
   LazarusIDEStrConsts, InputHistory, IDEDefs, EnvironmentOpts,
   PackageSystem, PackageDefs, AddDirToPkgDlg, ProjPackChecks;
@@ -717,7 +718,7 @@ begin
   
   with FilesDirButton do begin
     Caption:=lisAddFilesInDirectory;
-    LoadGlyphFromResourceName(HInstance, 'pkg_files');
+    TIDEImages.AssignImage(Glyph, 'pkg_files');
   end;
 
   with FilesShortenButton do begin
@@ -730,7 +731,7 @@ begin
     Caption:=lisDelete;
     ShowHint:=true;
     Hint:=lisDeleteSelectedFiles;
-    LoadGlyphFromResourceName(HInstance, 'laz_delete');
+    TIDEImages.AssignImage(Glyph, 'laz_delete');
   end;
 
   LabelIconInfo.Caption:=lisNoneClickToChooseOne;

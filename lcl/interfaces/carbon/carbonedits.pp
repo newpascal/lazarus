@@ -277,10 +277,10 @@ begin
   if MaxLength > 0 then
   begin
     if GetText(S{%H-}) then
-      if LazUTF8.UTF8Length(S) > MaxLength then
+      if UTF8Length(S) > MaxLength then
       begin
         R := GetSelStart(SelStart{%H-});
-        S := LazUTF8.UTF8Copy(S, 1, MaxLength);
+        S := UTF8Copy(S, 1, MaxLength);
         if SetText(S) then
           if R then SetSelStart(SelStart);
       end;
@@ -787,6 +787,9 @@ end;
 
   List item selected event handler
  ------------------------------------------------------------------------------}
+type
+  TWinControlAccess = class(TWinControl);
+
 procedure TCarbonComboBox.ListItemSelected(AIndex: Integer);
 begin
   if FItemIndex <> AIndex then
@@ -794,7 +797,9 @@ begin
     FItemIndex := AIndex;
     LCLSendSelectionChangedMsg(LCLObject);
     // Fire OnChange event
-    LCLSendChangedMsg(LCLObject);
+    // Don't do it during handle creation: OnChange fired for Combobox with Readonly, with ItemIndex
+    if not (wcfCreatingHandle in TWinControlAccess(LCLObject).FWinControlFlags) then
+      LCLSendChangedMsg(LCLObject);
   end;
 end;
 
@@ -1768,9 +1773,9 @@ begin
     if not Assigned(ctx) then Exit;
     HIViewGetBounds(TCarbonMemo(AWidget).FBorder, cg{%H-});
     cg.origin.x:=0.5;
-    cg.origin.y:=0.5;
+    cg.origin.y:=1;
     cg.size.width:=cg.size.width-2;
-    cg.size.height:=cg.size.height-1;
+    cg.size.height:=cg.size.height-2;
 
     if TCarbonMemo(AWidget).FDrawBorder then
     begin
@@ -1782,7 +1787,7 @@ begin
         clips[1].origin.x:=0;
         clips[1].origin.y:=cg.size.height-ScrollSz;
         clips[1].size.width:=cg.size.width-ScrollSz+2;
-        clips[1].size.height:=ScrollSz+1;
+        clips[1].size.height:=ScrollSz+2;
         CGContextClipToRects(ctx, @clips, 2);
       end;
       FillChar(frm{%H-}, sizeof(frm), 0);
@@ -1932,7 +1937,7 @@ begin
       end
       else if lIsReadOnlyMemo and (lInputPasStr = 'AXNumberOfCharacters') then
       begin
-        lOutputInt := LazUTF8.UTF8Length(lLazMemo.Lines.Text);
+        lOutputInt := UTF8Length(lLazMemo.Lines.Text);
         lOutputNum := CFNumberCreate(nil, kCFNumberSInt64Type, @lOutputInt);
         SetEventParameter(AEvent, kEventParamAccessibleAttributeValue, typeCFNumberRef,
           SizeOf(lOutputNum), @lOutputNum);
@@ -2126,13 +2131,16 @@ var
   Attrs: Array [0..3] of TXNTypeAttributes;
   FontColor: RGBColor;
   SavedStyle: ATSUStyle;
+  Bold, Italic: Boolean;
 const
   SName = 'SetFont';
 begin
   // font name
   Attrs[0].tag := kATSUFontTag;
   Attrs[0].size := SizeOf(ATSUFontID);
-  Attrs[0].data.dataValue := FindCarbonFontID(AFont.Name);
+  Bold := fsBold in AFont.Style;
+  Italic := fsItalic in AFont.Style;
+  Attrs[0].data.dataValue := FindCarbonFontID(AFont.Name, Bold, Italic, AFont.Pitch = fpFixed);
 
   // font color
   FontColor := ColorToRGBColor(AFont.Color);
@@ -2286,7 +2294,7 @@ begin
   
   W := PWideChar(Data^);
 
-  Result := LazUTF8.UTF16ToUTF8(Copy(W, 0, GetHandleSize(Data) div 2));
+  Result := UTF16ToUTF8(Copy(W, 0, GetHandleSize(Data) div 2));
   // remove CRLF
   if (Result <> '') and (Result[Length(Result)] in [#10, #13]) then
     Delete(Result, Length(Result), 1);
@@ -2327,7 +2335,7 @@ const
   CarbonEoln = #13;
 begin
   if AIndex < 0 then AIndex := 0;
-  W := LazUTF8.UTF8ToUTF16(S);
+  W := UTF8ToUTF16(S);
 
   LineCnt:=GetLineCount;
   if LineCnt = 0 then

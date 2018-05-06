@@ -18,10 +18,15 @@ unit EduCompPalette;
 interface
 
 uses
-  Classes, SysUtils, LCLProc, FileUtil, LResources, Forms, Controls, Graphics,
-  Dialogs, ComCtrls, ExtCtrls, StdCtrls, AvgLvlTree,
-  FormEditingIntf, LazConfigStorage, IDEOptionsIntf, ComponentReg,
-  IDEImagesIntf, LazIDEIntf, LCLType,
+  Classes, SysUtils, Laz_AVL_Tree,
+  // LCL
+  LCLProc, LCLType, LResources, Forms, Controls, Graphics, Dialogs, ComCtrls,
+  ExtCtrls, StdCtrls,
+  // LazUtils
+  LazConfigStorage, AvgLvlTree,
+  // IdeIntf
+  FormEditingIntf, IDEOptionsIntf, ComponentReg, IDEImagesIntf,
+  // Education
   EduOptions;
 
 type
@@ -202,8 +207,8 @@ begin
     ComponentsTreeView.StateImages:=IDEImages.Images_16;
   end else
     ComponentsTreeView.Images.Clear;
-  ShowImgID:=IDEImages.LoadImage(16,'menu_run');
-  HideImgID:=IDEImages.LoadImage(16,'menu_stop');
+  ShowImgID:=IDEImages.LoadImage('menu_run');
+  HideImgID:=IDEImages.LoadImage('menu_stop');
   for i:=0 to IDEComponentPalette.Comps.Count-1 do begin
     Comp:=IDEComponentPalette.Comps[i];
     Page:=Comp.RealPage;
@@ -442,7 +447,7 @@ end;
 
 function TEduComponentPaletteOptions.Save(Config: TConfigStorage): TModalResult;
 var
-  Node: TAvgLvlTreeNode;
+  Node: TAvlTreeNode;
   Item: PStringToStringItem;
   Cnt: Integer;
 begin

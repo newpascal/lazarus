@@ -145,7 +145,7 @@ begin
     W := TextEdit.getText;
   end;
   if W <> '' then
-    SetInternalText(UTF16ToUTF8(W))
+    SetInternalText(W{%H-})
   else
     SetInternalText('');
   FTextChanged := False;
@@ -174,7 +174,7 @@ begin
   TextEdit := TQtTextEdit(FOwner.Handle);
   if ABlockSignals then
     TextEdit.BeginUpdate;
-  W := GetUtf8String(AStr);
+  W := AStr;
   if AClear then
   begin
     // never trigger changed signal when clearing text here.
@@ -272,16 +272,13 @@ begin
 end;
 
 procedure TQtMemoStrings.Put(Index: Integer; const S: string);
-var
-  W: WideString;
 begin
   {$ifdef VerboseQtMemoStrings}
   WriteLn('TQtMemoStrings.Put Index=',Index,' S=',S);
   {$endif}
   if FTextChanged then InternalUpdate;
   FStringList[Index] := S;
-  W := GetUTF8String(S);
-  TQtTextEdit(FOwner.Handle).setLineText(Index, W);
+  TQtTextEdit(FOwner.Handle).setLineText(Index, S{%H-});
 end;
 
 procedure TQtMemoStrings.SetTextStr(const Value: string);
@@ -292,7 +289,7 @@ begin
   WriteLn('TQtMemoStrings.SetTextStr Value=',Value);
   {$endif}
   SetInternalText(Value);
-  W := GetInternalText;
+  W := {%H-}GetInternalText;
   ExternalUpdate(W, True, False);
   FTextChanged := False;
 end;
@@ -353,7 +350,7 @@ begin
     {$endif}
     FStringList.Clear;
     SetInternalText(TStrings(Source).Text);
-    W := GetInternalText;
+    W := {%H-}GetInternalText;
     ExternalUpdate(W, True, False);
     FTextChanged := False;
     exit;
@@ -432,7 +429,7 @@ begin
     Index := FStringList.Add(S)
   else
     FStringList.Insert(Index, S);
-  W := GetUTF8String(S);
+  W := {%H-}S;
   TQtTextEdit(FOwner.Handle).insertLine(Index, W);
   FTextChanged := False; // FStringList is already updated, no need to update from WS.
 end;
@@ -510,8 +507,7 @@ begin
   FOwner.EndUpdate;
 end;
 
-constructor TQtComboStrings.Create(AWinControl: TWinControl;
-    AOwner: TQtComboBox);
+constructor TQtComboStrings.Create(AWinControl: TWinControl; AOwner: TQtComboBox);
 begin
   inherited Create;
   FWinControl := AWinControl;

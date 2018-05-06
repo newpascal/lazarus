@@ -31,12 +31,12 @@ interface
 
 uses
   // RTL + LCL
-  Classes, SysUtils, LCLProc, StdCtrls, ExtCtrls,
+  Classes, SysUtils, LCLProc, StdCtrls, ExtCtrls, Laz_AVL_Tree,
   // CodeTools
   BasicCodeTools, SourceLog, FileProcs, CodeToolManager, CodeToolsConfig, CodeCache,
   // LazUtils
-  FileUtil, LazFileUtils, LazFileCache, LazUTF8, lazutf8classes,
-  AvgLvlTree, Laz2_XMLCfg,
+  FileUtil, LazFileUtils, LazFileCache, LazUTF8, lazutf8classes, Laz2_XMLCfg,
+  AvgLvlTree, MacroIntf,
   // IDE
   IDECmdLine, LazConf;
 
@@ -109,6 +109,7 @@ function SwitchPathDelims(const Filename: string; Switch: boolean): string;
 function CheckPathDelim(const OldPathDelim: string; out Changed: boolean): TPathDelimSwitch;
 function IsCurrentPathDelim(Switch: TPathDelimSwitch): boolean;
 function ChompEndNumber(const s: string): string;
+function ShortDisplayFilename(const aFileName: string): string;
 
 // cmd line
 procedure SplitCmdLine(const CmdLine: string;
@@ -214,7 +215,6 @@ function UncommentLines(const s: string): string;
 function CrossReplaceChars(const Src: string; PrefixChar: char;
                            const SpecialChars: string): string;
 function SimpleSyntaxToRegExpr(const Src: string): string;
-function NameToValidIdentifier(const s: string): string;
 function BinaryStrToText(const s: string): string;
 function SplitString(const s: string; Delimiter: char): TStrings;
 procedure SplitString(const s: string; Delimiter: char; AddTo: TStrings;
@@ -924,6 +924,35 @@ begin
   Result:=copy(Result,1,NewLen);
 end;
 
+function ShortDisplayFilename(const aFileName: string): string;
+// Shorten a long filename for display.
+// Add '...' after the 2. path delimiter, then the end part of filename.
+const
+  Limit = 80;
+var
+  StartLen, EndLen, SepCnt: Integer;
+begin
+  if Length(aFileName) > Limit then
+  begin
+    StartLen := 1;
+    SepCnt := 0;
+    while StartLen < Length(aFileName) - (Limit div 2) do
+    begin
+      if aFileName[StartLen] in AllowDirectorySeparators then
+      begin
+        Inc(SepCnt);
+        if SepCnt = 2 then Break;
+      end;
+      Inc(StartLen);
+    end;
+    EndLen := Limit - StartLen - 3;
+    Result := Copy(aFileName, 1, StartLen) + '...'
+            + Copy(aFileName, Length(aFileName)-EndLen+1, EndLen);
+  end
+  else
+    Result := aFileName;
+end;
+
 function FindFirstFileWithExt(const Directory, Ext: string): string;
 var
   FileInfo: TSearchRec;
@@ -1035,7 +1064,7 @@ end;
 procedure SaveStringToStringTree(XMLConfig: TXMLConfig;
   Tree: TStringToStringTree; const Path: string);
 var
-  Node: TAvgLvlTreeNode;
+  Node: TAvlTreeNode;
   Item: PStringToStringItem;
   i: Integer;
   SubPath: String;
@@ -1089,7 +1118,7 @@ var
   i: Integer;
 begin
   for i:=List.Count-1 downto 1 do
-    if CompareRecentListItem(List[i],List[i-1],ListType) then
+    if (List[i]='') or CompareRecentListItem(List[i],List[i-1],ListType) then
       List.Delete(i);
 end;
 
@@ -1602,7 +1631,7 @@ function TabsToSpaces(const s: string; TabWidth: integer; UseUTF8: boolean): str
             Dest[DestPos]:=Src[SrcPos];
           inc(PhysicalX);
           if UseUTF8 then
-            CharLen:=UTF8CharacterLength(@s[SrcPos])
+            CharLen:=UTF8CodepointSize(@s[SrcPos])
           else
             CharLen:=1;
           for i:=1 to CharLen do begin
@@ -1631,6 +1660,12 @@ begin
   //DebugLn('TabsToSpaces ',dbgs(length(Result)));
 end;
 
+function SplitString(const s: string; Delimiter: char): TStrings;
+begin
+  Result:=TStringList.Create;
+  SplitString(s,Delimiter,Result,false);
+end;
+
 procedure SplitString(const s: string; Delimiter: char; AddTo: TStrings;
   ClearList: boolean);
 var
@@ -1638,7 +1673,8 @@ var
   StartPos: Integer;
   EndPos: Integer;
 begin
-  if ClearList then AddTo.Clear;
+  if ClearList then
+    AddTo.Clear;
   SLen:=length(s);
   StartPos:=1;
   EndPos:=1;
@@ -1908,32 +1944,6 @@ begin
 end;
 
 {-------------------------------------------------------------------------------
-  NameToValidIdentifier
-
-  Params: const s: string
-  Result: string
-
-  Replaces all non identifier characters into underscores '_'
--------------------------------------------------------------------------------}
-function NameToValidIdentifier(const s: string): string;
-var i: integer;
-begin
-  if s='' then begin
-    Result:='_';
-  end else begin
-    Result:=s;
-    if not (Result[1] in ['A'..'Z', 'a'..'z', '_']) then begin
-      Result[1]:='_';
-    end;
-    for i:=2 to length(Result) do begin
-      if not (Result[i] in ['A'..'Z', 'a'..'z', '0'..'9', '_']) then begin
-        Result[i]:='_';
-      end;
-    end;
-  end;
-end;
-
-{-------------------------------------------------------------------------------
   function BinaryStrToText(const s: string): string;
 
   Replaces special chars (<#32) into pascal char constants #xxx.
@@ -1982,15 +1992,6 @@ begin
   end;
   if NewPos-1<>NewLen then
     RaiseException('ERROR: BinaryStrToText: '+IntToStr(NewLen)+'<>'+IntToStr(NewPos-1));
-end;
-
-{-------------------------------------------------------------------------------
-  function SplitString(const s: string; Delimiter: char): TStrings;
--------------------------------------------------------------------------------}
-function SplitString(const s: string; Delimiter: char): TStrings;
-begin
-  Result:=TStringList.Create;
-  SplitString(s,Delimiter,Result,false);
 end;
 
 {-------------------------------------------------------------------------------

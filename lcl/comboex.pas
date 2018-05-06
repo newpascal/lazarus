@@ -30,8 +30,10 @@ unit ComboEx;
 interface
 
 uses
-  Classes, SysUtils, ImgList, Controls, StdCtrls, ComCtrls, ExtCtrls, Graphics,
-  GraphUtil, LCLIntf, LCLType, LMessages, LResources, Themes, types;
+  Classes, SysUtils, types,
+  LCLIntf, LCLType, LMessages, LResources, LazLoggerBase,
+  ImgList, Controls, StdCtrls, ComCtrls, ExtCtrls, Graphics, GraphUtil,
+  Themes, Forms;
 
 type
   {$PACKENUM 2}
@@ -138,7 +140,9 @@ type
     FItemsEx: TComboExItems;
     FStyle: TComboBoxExStyle;
     FStyleEx: TComboBoxExStyles;
+    FImagesWidth: Integer;
     procedure SetImages(AValue: TCustomImageList);
+    procedure SetImagesWidth(const aImagesWidth: Integer);
     procedure SetStyle(AValue: TComboBoxExStyle); reintroduce;
     procedure SetStyleEx(AValue: TComboBoxExStyles);
   protected const
@@ -172,6 +176,7 @@ type
     property AutoCompleteOptions: TAutoCompleteOptions read FAutoCompleteOptions
              write FAutoCompleteOptions default cDefAutoCompOpts;
     property Images: TCustomImageList read FImages write SetImages;
+    property ImagesWidth: Integer read FImagesWidth write SetImagesWidth default 0;
     property ItemsEx: TComboExItems read FItemsEx write FItemsEx;
     property Style: TComboBoxExStyle read FStyle write SetStyle default cDefStyle;
     property StyleEx: TComboBoxExStyles read FStyleEx write SetStyleEx default [];
@@ -202,6 +207,7 @@ type
     property Enabled;
     property Font;
     property Images;
+    property ImagesWidth;
     property ItemHeight;
     property ItemsEx;  { do not change order; ItemsEx must be before ItemIndex }
     property ItemIndex;
@@ -253,18 +259,19 @@ type
   end;
 
   { TCheckComboItemState }
-  TCheckComboItemState = record
+  TCheckComboItemState = class
+  public
     State: TCheckBoxState;
     Enabled: Boolean;
     Data: TObject;
   end;
-  PTCheckComboItemState = ^TCheckComboItemState;
 
   { TCustomCheckCombo }
   TCustomCheckCombo = class(TCustomComboBox)
   private
     FAllowGrayed: Boolean;
     FOnItemChange: TCheckItemChange;
+    procedure AsyncCheckItemStates(Data: PtrInt);
     function GetChecked(AIndex: Integer): Boolean;
     function GetCount: Integer;
     function GetItemEnabled(AIndex: Integer): Boolean;
@@ -292,6 +299,8 @@ type
     procedure FontChanged(Sender: TObject); override;
     procedure InitializeWnd; override;
     procedure InitItemStates;
+    procedure CheckItemStates;
+    procedure QueueCheckItemStates;
     procedure KeyDown(var Key: Word; Shift: TShiftState); override;
     procedure Loaded; override;
     procedure MouseLeave; override;

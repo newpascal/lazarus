@@ -17,8 +17,12 @@ unit IDEHelpIntf;
 interface
 
 uses
-  Classes, SysUtils, types, LCLProc, Forms, Controls, HelpIntfs, LazHelpIntf,
-  LMessages, LCLType, TextTools;
+  Classes, Types, SysUtils,
+  // LCL
+  LMessages, LCLType, LCLProc, Forms, Controls, Graphics,
+  HelpIntfs, LazHelpIntf, LCLIntf,
+  // IdeIntf
+  TextTools;
 
 type
   { THelpDBIRegExprMessage
@@ -189,7 +193,8 @@ type
     constructor Create; overload;
     destructor Destroy; override;
     function HintIsVisible: boolean;
-    function ShowHint(ScreenPos: TPoint; TheHint: string; const MouseOffset: Boolean = True): boolean;
+    function ShowHint(ScreenPos: TPoint; TheHint: string; const MouseOffset: Boolean = True;
+      HintFont: TFont = nil): boolean;
     procedure HideHint;
     procedure HideIfVisible;
   public
@@ -361,46 +366,63 @@ begin
 end;
 
 function THintWindowManager.ShowHint(ScreenPos: TPoint; TheHint: string;
-  const MouseOffset: Boolean): boolean;
-var
-  ms: TMemoryStream;
-  NewWidth, NewHeight: integer;
+  const MouseOffset: Boolean; HintFont: TFont): boolean;
 
   procedure DoText;
   var
     HintWinRect: TRect;
   begin
+    if HintFont<>nil then
+      HintTextWindow.Font := HintFont;
     HintWinRect := HintTextWindow.CalcHintRect(Screen.Width, TheHint, Nil);
     HintTextWindow.HintRect := HintWinRect;      // Adds borders.
     if MouseOffset then
       HintTextWindow.OffsetHintRect(ScreenPos)
-    else
-      HintTextWindow.OffsetHintRect(ScreenPos, 0);
+    else                   // shrink height only for fixed (no MouseOffset) hints
+      HintTextWindow.OffsetHintRect(ScreenPos, 0, True, False);
     HintTextWindow.ActivateHint(TheHint);
   end;
 
   procedure DoHtml;
+  var
+    ms: TMemoryStream;
+    NewWidth, NewHeight: integer;
+    R1, R2: TRect;
   begin
+    if HintFont<>nil then
+      HintRenderWindow.Font := HintFont;
     HtmlHelpProvider.BaseURL:=FBaseURL;
     ms:=TMemoryStream.Create;
-    try
-      if TheHint<>'' then
-        ms.Write(TheHint[1],length(TheHint));
+    try                               // TheHint<>'' is checked earlier.
+      Assert(TheHint<>'', 'THintWindowManager.ShowHint: TheHint is empty');
+      ms.Write(TheHint[1],length(TheHint));
       ms.Position:=0;
       HtmlHelpProvider.ControlIntf.SetHTMLContent(ms,'');
     finally
       ms.Free;
     end;
     HtmlHelpProvider.ControlIntf.GetPreferredControlSize(NewWidth,NewHeight);
+
     if NewWidth <= 0 then
       NewWidth := 500;
     if NewHeight <= 0 then
       NewHeight := 200;
+
     HintRenderWindow.HintRectAdjust := Rect(0, 0, NewWidth, NewHeight);
     if MouseOffset then
       HintRenderWindow.OffsetHintRect(ScreenPos)
     else
-      HintRenderWindow.OffsetHintRect(ScreenPos, 0);
+    begin
+      R1 := HintRenderWindow.HintRect;
+      HintRenderWindow.OffsetHintRect(ScreenPos, 0, True, False); // shrink height only for fixed (no MouseOffset) hints
+      R2 := HintRenderWindow.HintRect;
+      if R1.Bottom-R1.Top>R2.Bottom-R2.Top then // the height was decreased -> scrollbar will be shown, increase width
+      begin
+        Inc(R2.Right, GetSystemMetrics(SM_CXVSCROLL));
+        HintRenderWindow.HintRect := R2;
+        HintRenderWindow.OffsetHintRect(Point(0, 0), 0);
+      end;
+    end;
     HintRenderWindow.ActivateRendered;
   end;
 

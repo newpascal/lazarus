@@ -22,7 +22,7 @@ unit TAGraph;
 interface
 
 uses
-  Graphics, Classes, Controls, LCLType, SysUtils,
+  Graphics, Classes, Controls, LCLIntf, LCLType, SysUtils,
   TAChartAxis, TAChartAxisUtils, TAChartUtils, TADrawUtils, TAGUIConnector,
   TALegend, TATextElements, TATypes;
 
@@ -125,7 +125,7 @@ type
     function Dispatch(
       AChart: TChart; AEventId: TChartToolEventId;
       AShift: TShiftState; APoint: TPoint): Boolean; virtual; abstract; overload;
-      procedure Draw(AChart: TChart; ADrawer: IChartDrawer); virtual; abstract;
+    procedure Draw(AChart: TChart; ADrawer: IChartDrawer); virtual; abstract;
   end;
 
   TBasicChartSeriesEnumerator = class(TFPListEnumerator)
@@ -153,6 +153,12 @@ type
     property List: TIndexedComponentList read FList;
   end;
 
+  TChartAfterCustomDrawEvent = procedure (
+    ASender: TChart; ADrawer: IChartDrawer; const ARect: TRect) of object;
+  TChartBeforeCustomDrawEvent = procedure (
+    ASender: TChart; ADrawer: IChartDrawer; const ARect: TRect;
+    var ADoDefaultDrawing: Boolean) of object;
+
   TChartAfterDrawEvent = procedure (
     ASender: TChart; ACanvas: TCanvas; const ARect: TRect) of object;
   TChartBeforeDrawEvent = procedure (
@@ -164,7 +170,6 @@ type
     var ADoDefaultDrawing: Boolean) of object;
   TChartDrawEvent = procedure (
     ASender: TChart; ADrawer: IChartDrawer) of object;
-
 
   TChartRenderingParams = record
     FClipRect: TRect;
@@ -196,9 +201,13 @@ type
     FLogicalExtent: TDoubleRect;
     FMargins: TChartMargins;
     FMarginsExternal: TChartMargins;
+    FOnAfterCustomDrawBackground: TChartAfterCustomDrawEvent;
+    FOnAfterCustomDrawBackWall: TChartAfterCustomDrawEvent;
     FOnAfterDraw: TChartDrawEvent;
     FOnAfterDrawBackground: TChartAfterDrawEvent;
     FOnAfterDrawBackWall: TChartAfterDrawEvent;
+    FOnBeforeCustomDrawBackground: TChartBeforeCustomDrawEvent;
+    FOnBeforeCustomDrawBackWall: TChartBeforeCustomDrawEvent;
     FOnBeforeDrawBackground: TChartBeforeDrawEvent;
     FOnBeforeDrawBackWall: TChartBeforeDrawEvent;
     FOnChartPaint: TChartPaintEvent;
@@ -229,6 +238,8 @@ type
     FReticuleMode: TReticuleMode;
     FReticulePos: TPoint;
     FScale: TDoublePoint;    // Coordinates transformation
+    FSavedClipRect: TRect;
+    FClipRectLock: Integer;
 
     procedure CalculateTransformationCoeffs(const AMargin: TRect);
     procedure DrawReticule(ADrawer: IChartDrawer);
@@ -257,9 +268,13 @@ type
     procedure SetLogicalExtent(const AValue: TDoubleRect);
     procedure SetMargins(AValue: TChartMargins);
     procedure SetMarginsExternal(AValue: TChartMargins);
+    procedure SetOnAfterCustomDrawBackground(AValue: TChartAfterCustomDrawEvent);
+    procedure SetOnAfterCustomDrawBackWall(AValue: TChartAfterCustomDrawEvent);
     procedure SetOnAfterDraw(AValue: TChartDrawEvent);
     procedure SetOnAfterDrawBackground(AValue: TChartAfterDrawEvent);
     procedure SetOnAfterDrawBackWall(AValue: TChartAfterDrawEvent);
+    procedure SetOnBeforeCustomDrawBackground(AValue: TChartBeforeCustomDrawEvent);
+    procedure SetOnBeforeCustomDrawBackWall(AValue: TChartBeforeCustomDrawEvent);
     procedure SetOnBeforeDrawBackground(AValue: TChartBeforeDrawEvent);
     procedure SetOnBeforeDrawBackWall(AValue: TChartBeforeDrawEvent);
     procedure SetOnChartPaint(AValue: TChartPaintEvent);
@@ -297,6 +312,7 @@ type
     {$IFDEF LCLGtk2}
     procedure DoOnResize; override;
     {$ENDIF}
+    procedure Loaded; override;
     procedure Notification(
       AComponent: TComponent; AOperation: TOperation); override;
     procedure PrepareAxis(ADrawer: IChartDrawer);
@@ -322,7 +338,8 @@ type
   public
     procedure AddSeries(ASeries: TBasicChartSeries);
     procedure ClearSeries;
-    function Clone: TChart;
+    function Clone: TChart; overload;
+    function Clone(ANewOwner, ANewParent: TComponent): TChart; overload;
     procedure CopyToClipboardBitmap;
     procedure DeleteSeries(ASeries: TBasicChartSeries);
     procedure DisableRedrawing;
@@ -352,6 +369,10 @@ type
     function YImageToGraph(AY: Integer): Double; inline;
 
   public
+    procedure LockClipRect;
+    procedure UnlockClipRect;
+
+  public
     property ActiveToolIndex: Integer read FActiveToolIndex;
     property Broadcaster: TBroadcaster read FBroadcaster;
     property ChartHeight: Integer read GetChartHeight;
@@ -366,7 +387,7 @@ type
     property PrevLogicalExtent: TDoubleRect read FPrevLogicalExtent;
     property RenderingParams: TChartRenderingParams
       read GetRenderingParams write SetRenderingParams;
-    property ReticulePos: TPoint read FReticulePos write SetReticulePos;
+    property ReticulePos: TPoint read FReticulePos write SetReticulePos; deprecated;
     property SeriesCount: Integer read GetSeriesCount;
     property XGraphMax: Double read FCurrentExtent.b.X;
     property XGraphMin: Double read FCurrentExtent.a.X;
@@ -399,26 +420,40 @@ type
     property Proportional: Boolean
       read FProportional write SetProportional default false;
     property ReticuleMode: TReticuleMode
-      read FReticuleMode write SetReticuleMode default rmNone;
+      read FReticuleMode write SetReticuleMode default rmNone; deprecated 'Use DatapointCrosshairTool instead';
     property Series: TChartSeriesList read FSeries;
     property Title: TChartTitle read FTitle write SetTitle;
     property Toolset: TBasicChartToolset read FToolset write SetToolset;
 
   published
+    property OnAfterCustomDrawBackground: TChartAfterCustomDrawEvent
+      read FOnAfterCustomDrawBackground write SetOnAfterCustomDrawBackground;
+    property OnAfterCustomDrawBackWall: TChartAfterCustomDrawEvent
+      read FOnAfterCustomDrawBackWall write SetOnAfterCustomDrawBackWall;
     property OnAfterDraw: TChartDrawEvent read FOnAfterDraw write SetOnAfterDraw;
+      deprecated 'Use OnAfterCustomDraw instead';
     property OnAfterDrawBackground: TChartAfterDrawEvent
       read FOnAfterDrawBackground write SetOnAfterDrawBackground;
+      deprecated 'Use OnAfterCustomDrawBackground instead';
     property OnAfterDrawBackWall: TChartAfterDrawEvent
       read FOnAfterDrawBackWall write SetOnAfterDrawBackWall;
+      deprecated 'Use OnAfterCustomDrawBackWall instead';
     property OnAfterPaint: TChartEvent read FOnAfterPaint write FOnAfterPaint;
+    property OnBeforeCustomDrawBackground: TChartBeforeCustomDrawEvent
+      read FOnBeforeCustomDrawBackground write SetOnBeforeCustomDrawBackground;
     property OnBeforeDrawBackground: TChartBeforeDrawEvent
       read FOnBeforeDrawBackground write SetOnBeforeDrawBackground;
+      deprecated 'Use OnBeforeCustomDrawBackground instead';
+    property OnBeforeCustomDrawBackWall: TChartBeforeCustomDrawEvent
+      read FOnBeforeCustomDrawBackWall write SetOnBeforeCustomDrawBackwall;
     property OnBeforeDrawBackWall: TChartBeforeDrawEvent
       read FOnBeforeDrawBackWall write SetOnBeforeDrawBackWall;
+      deprecated 'Use OnBeforeCustomDrawBackWall instead';
     property OnDrawLegend: TChartDrawLegendEvent
       read FOnDrawLegend write SetOnDrawLegend;
     property OnDrawReticule: TDrawReticuleEvent
       read FOnDrawReticule write SetOnDrawReticule;
+      deprecated 'Use DatapointCrosshairTool instead';
     property OnExtentChanged: TChartEvent
       read FOnExtentChanged write FOnExtentChanged;
     property OnExtentChanging: TChartEvent
@@ -461,7 +496,7 @@ procedure RegisterSeriesClass(ASeriesClass: TSeriesClass; ACaptionPtr: PStr); ov
 
 var
   SeriesClassRegistry: TClassRegistry = nil;
-  OnInitBuiltinTools: function(AChart: TChart): TBasicChartToolset;
+  OnInitBuiltinTools: function(AChart: TChart): TBasicChartToolset = nil;
 
 implementation
 
@@ -470,9 +505,6 @@ implementation
 uses
   Clipbrd, Dialogs, GraphMath, LCLProc, LResources, Math, Types,
   TADrawerCanvas, TAGeometry, TAMath, TAStyles;
-
-//  TATools;  // needed to initialize OnInitBuiltinTools; added to avoid crash of converted Delphi projects
-// wp: removed again, causes compilation error with fpc 2.6.4
 
 function CompareZPosition(AItem1, AItem2: Pointer): Integer;
 begin
@@ -573,11 +605,19 @@ var
 begin
   ADrawer.PrepareSimplePen(Color);
   ADrawer.SetBrushParams(bsSolid, Color);
+
+  if Assigned(FOnBeforeCustomDrawBackground) then
+    OnBeforeCustomDrawBackground(Self, ADrawer, ARect, defaultDrawing)
+  else
   if Supports(ADrawer, IChartTCanvasDrawer, ic) and Assigned(OnBeforeDrawBackground) then
     OnBeforeDrawBackground(Self, ic.Canvas, ARect, defaultDrawing);
+
   if defaultDrawing then
     ADrawer.FillRect(ARect.Left, ARect.Top, ARect.Right, ARect.Bottom);
 //    ADrawer.Rectangle(ARect);
+
+  if Assigned(OnAfterCustomDrawBackground) then
+    OnAfterCustomDrawBackground(Self, ADrawer, ARect);
   if Supports(ADrawer, IChartTCanvasDrawer, ic) and Assigned(OnAfterDrawBackground) then
     OnAfterDrawBackground(Self, ic.Canvas, ARect);
 end;
@@ -599,6 +639,11 @@ begin
 end;
 
 function TChart.Clone: TChart;
+begin
+  Result := Clone(Owner, Parent);
+end;
+
+function TChart.Clone(ANewOwner, ANewParent: TComponent): TChart;
 var
   ms: TMemoryStream;
   cloned: TComponent = nil;
@@ -608,7 +653,7 @@ begin
     WriteComponentToStream(ms, Self);
     ms.Seek(0, soBeginning);
     ReadComponentFromBinaryStream(
-      ms, cloned, @FindComponentClass, Owner, Parent, Owner);
+      ms, cloned, @FindComponentClass, ANewOwner, ANewParent, Owner);
     Result := cloned as TChart;
   finally
     ms.Free;
@@ -682,7 +727,8 @@ begin
   FMargins := TChartMargins.Create(Self);
   FMarginsExternal := TChartMargins.Create(Self);
 
-  FBuiltinToolset := OnInitBuiltinTools(Self);
+  if OnInitBuiltinTools <> nil then
+    FBuiltinToolset := OnInitBuiltinTools(Self);
   FActiveToolIndex := -1;
 
   FLogicalExtent := EmptyExtent;
@@ -817,10 +863,15 @@ function TChart.DoMouseWheel(
 const
   EV: array [Boolean] of TChartToolEventId = (
     evidMouseWheelDown, evidMouseWheelUp);
+var
+  ts: TBasicChartToolset;
 begin
-  Result :=
-    GetToolset.Dispatch(Self, EV[AWheelDelta > 0], AShift, AMousePos) or
-    inherited DoMouseWheel(AShift, AWheelDelta, AMousePos);
+  ts := GetToolset;
+  if ts = nil then
+    result := false
+  else
+    Result := ts.Dispatch(Self, EV[AWheelDelta > 0], AShift, AMousePos) or
+      inherited DoMouseWheel(AShift, AWheelDelta, AMousePos);
 end;
 
 {$IFDEF LCLGtk2}
@@ -836,6 +887,7 @@ procedure TChart.Draw(ADrawer: IChartDrawer; const ARect: TRect);
 var
   ldd: TChartLegendDrawingData;
   s: TBasicChartSeries;
+  ts: TBasicChartToolset;
 begin
   Prepare;
 
@@ -862,8 +914,14 @@ begin
     PrepareAxis(ADrawer);
     if Legend.Visible and not Legend.UseSidebar then
       Legend.Prepare(ldd, FClipRect);
+
+    // Avoid jitter of chart area while dragging with PanDragTool.
+    if FClipRectLock > 0 then
+      FClipRect := FSavedClipRect;
+
     if (FPrevLogicalExtent <> FLogicalExtent) and Assigned(OnExtentChanging) then
       OnExtentChanging(Self);
+
     ADrawer.DrawingBegin(ARect);
     ADrawer.SetAntialiasingMode(AntialiasingMode);
     Clear(ADrawer, ARect);
@@ -882,7 +940,8 @@ begin
     ldd.FItems.Free;
   end;
   DrawReticule(ADrawer);
-  GetToolset.Draw(Self, ADrawer);
+  ts := GetToolset;
+  if ts <> nil then ts.Draw(Self, ADrawer);
 
   for s in Series do
     s.AfterDraw;
@@ -915,8 +974,12 @@ var
   ic: IChartTCanvasDrawer;
   scaled_depth: Integer;
 begin
+  if Assigned(OnBeforeCustomDrawBackWall) then
+    OnBeforeCustomDrawBackWall(self, ADrawer, FClipRect, defaultDrawing)
+  else
   if Supports(ADrawer, IChartTCanvasDrawer, ic) and Assigned(OnBeforeDrawBackWall) then
     OnBeforeDrawBackWall(Self, ic.Canvas, FClipRect, defaultDrawing);
+
   if defaultDrawing then
     with ADrawer do begin
       if FFrame.Visible then
@@ -927,6 +990,9 @@ begin
       with FClipRect do
         Rectangle(Left, Top, Right + 1, Bottom + 1);
     end;
+
+  if Assigned(OnAfterCustomDrawBackWall) then
+    OnAfterCustomDrawBackwall(Self, Drawer, FClipRect);
   if Supports(ADrawer, IChartTCanvasDrawer, ic) and Assigned(OnAfterDrawBackWall) then
     OnAfterDrawBackWall(Self, ic.Canvas, FClipRect);
 
@@ -1103,7 +1169,9 @@ var
   s: TBasicChartSeries;
   a: TChartAxis;
 begin
-  Extent.CheckBoundsOrder;
+  //Extent.CheckBoundsOrder;
+  // wp: avoid exception in IDE if min > max, but silently bring min/max
+  // into correct order
 
   for a in AxisList do
     if a.Transformations <> nil then
@@ -1218,15 +1286,18 @@ end;
 procedure TChart.KeyDownAfterInterface(var AKey: Word; AShift: TShiftState);
 var
   p: TPoint;
+  ts: TBasicChartToolset;
 begin
   p := ScreenToClient(Mouse.CursorPos);
-  if GetToolset.Dispatch(Self, evidKeyDown, AShift, p) then exit;
+  ts := GetToolset;
+  if (ts <> nil) and ts.Dispatch(Self, evidKeyDown, AShift, p) then exit;
   inherited;
 end;
 
 procedure TChart.KeyUpAfterInterface(var AKey: Word; AShift: TShiftState);
 var
   p: TPoint;
+  ts: TBasicChartToolset;
 begin
   p := ScreenToClient(Mouse.CursorPos);
   // To find a tool, toolset must see the shift state with the key still down.
@@ -1235,26 +1306,47 @@ begin
     VK_MENU: AShift += [ssAlt];
     VK_SHIFT: AShift += [ssShift];
   end;
-  if GetToolset.Dispatch(Self, evidKeyUp, AShift, p) then exit;
+  ts := GetToolset;
+  if (ts <> nil) and ts.Dispatch(Self, evidKeyUp, AShift, p) then exit;
   inherited;
+end;
+
+procedure TChart.Loaded;
+begin
+  inherited;
+  if not (csDesigning in ComponentState) then
+    DoubleBuffered := DoubleBuffered or (GetSystemMetrics(SM_REMOTESESSION)=0); // force DoubleBuffered if not used in remote session
+end;
+
+procedure TChart.LockClipRect;
+begin
+  FSavedClipRect := FClipRect;
+  inc(FClipRectLock);
 end;
 
 procedure TChart.MouseDown(
   Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+var
+  ts: TBasicChartToolset;
 begin
+  ts := GetToolset;
   if
     PtInRect(FClipRect, Point(X, Y)) and
-    GetToolset.Dispatch(Self, evidMouseDown, Shift, Point(X, Y))
+    (ts <> nil) and ts.Dispatch(Self, evidMouseDown, Shift, Point(X, Y))
   then
     exit;
   inherited;
 end;
 
 procedure TChart.MouseMove(Shift: TShiftState; X, Y: Integer);
+var
+  ts: TBasicChartToolset;
 begin
   if AutoFocus then
     SetFocus;
-  if GetToolset.Dispatch(Self, evidMouseMove, Shift, Point(X, Y)) then exit;
+  ts := GetToolset;
+  if (ts <> nil) and ts.Dispatch(Self, evidMouseMove, Shift, Point(X, Y)) then
+    exit;
   inherited;
 end;
 
@@ -1263,10 +1355,14 @@ procedure TChart.MouseUp(
 const
   MOUSE_BUTTON_TO_SHIFT: array [TMouseButton] of TShiftStateEnum = (
     ssLeft, ssRight, ssMiddle, ssExtra1, ssExtra2);
+var
+  ts: TBasicChartToolset;
 begin
   // To find a tool, toolset must see the shift state with the button still down.
   Include(AShift, MOUSE_BUTTON_TO_SHIFT[AButton]);
-  if GetToolset.Dispatch(Self, evidMouseUp, AShift, Point(AX, AY)) then exit;
+  ts := GetToolset;
+  if (ts <> nil) and ts.Dispatch(Self, evidMouseUp, AShift, Point(AX, AY)) then
+    exit;
   inherited;
 end;
 
@@ -1315,7 +1411,7 @@ begin
       SetBounds(FConnectorData);
       Draw(Drawer, FConnectorData.FDrawerBounds);
       EffectiveGUIConnector.Display(FConnectorData);
-  end;
+    end;
   if Assigned(OnAfterPaint) then
     OnAfterPaint(Self);
 end;
@@ -1612,9 +1708,23 @@ begin
   StyleChanged(Self);
 end;
 
+procedure TChart.SetOnAfterCustomDrawBackground(AValue: TChartAfterCustomDrawEvent);
+begin
+  if TMethod(FOnAfterCustomDrawBackground) = TMethod(AValue) then exit;
+  FOnAfterCustomDrawBackground := AValue;
+  StyleChanged(Self);
+end;
+
+procedure TChart.SetOnAfterCustomDrawBackWall(AValue: TChartAfterCustomDrawEvent);
+begin
+  if TMethod(FOnAfterCustomDrawBackWall) = TMethod(AValue) then exit;
+  FOnAfterCustomDrawBackWall := AValue;
+  StyleChanged(Self);
+end;
+
 procedure TChart.SetOnAfterDrawBackground(AValue: TChartAfterDrawEvent);
 begin
-  if TMethod(FOnAfterDrawBackground) = TMEthod(AValue) then exit;
+  if TMethod(FOnAfterDrawBackground) = TMethod(AValue) then exit;
   FOnAfterDrawBackground := AValue;
   StyleChanged(Self);
 end;
@@ -1623,6 +1733,20 @@ procedure TChart.SetOnAfterDrawBackWall(AValue: TChartAfterDrawEvent);
 begin
   if TMethod(FOnAfterDrawBackWall) = TMethod(AValue) then exit;
   FOnAfterDrawBackWall := AValue;
+  StyleChanged(Self);
+end;
+
+procedure TChart.SetOnBeforeCustomDrawBackground(AValue: TChartBeforeCustomDrawEvent);
+begin
+  if TMethod(FOnBeforeCustomDrawBackground) = TMethod(AValue) then exit;
+  FOnBeforeCustomDrawBackground := AValue;
+  StyleChanged(Self);
+end;
+
+procedure TChart.SetOnBeforeCustomDrawBackWall(AValue: TChartBeforeCustomDrawEvent);
+begin
+  if TMethod(FOnBeforeCustomDrawBackWall) = TMethod(AValue) then exit;
+  FOnBeforeCustomDrawBackWall := AValue;
   StyleChanged(Self);
 end;
 
@@ -1717,6 +1841,12 @@ begin
     ZoomFull;
   Invalidate;
   Broadcaster.Broadcast(Sender);
+end;
+
+procedure TChart.UnlockCliprect;
+begin
+  dec(FClipRectLock);
+  if FClipRectLock = 0 then Invalidate;
 end;
 
 procedure TChart.VisitSources(

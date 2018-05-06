@@ -6,14 +6,17 @@ interface
 
 uses
   // FCL + LCL
-  Classes, SysUtils,
-  Controls, Forms, Menus, LCLProc,
+  Classes, SysUtils, fgl,
+  Controls, Forms, Menus, Graphics, LCLProc,
   // IdeIntf
-  FormEditingIntf, ComponentEditors, PropEdits,
+  FormEditingIntf, ComponentEditors,
   // IDE
   MenuShortcuts, MenuTemplates;
 
 type
+
+  TShadowItemDisplayState = (dsNormal, dsSelected, dsDisabled);
+  TByteArray = Array of Byte;
 
   { TShadowItemBase }
 
@@ -21,37 +24,50 @@ type
   private
   protected
     FRealItem: TMenuItem;
+    FState: TShadowItemDisplayState;
   public
     constructor Create(AOwner: TComponent; aRealItem: TMenuItem); reintroduce;
     destructor Destroy; override;
+    function GetHeight: integer;
+    function GetWidth: integer; virtual; abstract;
+    procedure ShowDisabled;
+    procedure ShowNormal;
+    procedure ShowSelected;
   public
     property RealItem: TMenuItem read FRealItem write FRealItem;
   end;
+
+  TShadowItemList = specialize TFPGList<TShadowItemBase>;
 
   { TShadowBoxBase }
 
   TShadowBoxBase = class(TCustomControl)
   private
-    function GetHasRadioItems: boolean;
-    function GetRadioGroupsString: string;
+    function GetRadioGroupValues: TByteArray;
   protected
     FLevel: integer;
     FLastRIValue: boolean;
+    FParentBox: TShadowBoxBase;
     FParentMenuItem: TMenuItem;
-    FShadowList: TFPList;
-    function GetShadowCount: integer;
+    FShadowList: TShadowItemList;
+    function GetIsMainMenu: boolean; virtual; abstract;
+    function GetIsMenuBar: boolean; virtual; abstract;
   public
     constructor Create(AOwner: TComponent; aParentItem: TMenuItem); reintroduce;
     destructor Destroy; override;
   public
+    function GetInnerDims: TPoint;
+    property IsMainMenu: boolean read GetIsMainMenu;
+    property IsMenuBar: boolean read GetIsMenuBar;
     property Level: integer read FLevel;
     property LastRIValue: boolean read FLastRIValue write FLastRIValue;
     property ParentMenuItem: TMenuItem read FParentMenuItem;
-    property ShadowList: TFPList read FShadowList;
-    property ShadowCount: integer read GetShadowCount;
-    property HasRadioItems: boolean read GetHasRadioItems;
-    property RadioGroupsString: string read GetRadioGroupsString;
+    property ParentBox: TShadowBoxBase read FParentBox;
+    property ShadowList: TShadowItemList read FShadowList;
+    property RadioGroupValues: TByteArray read GetRadioGroupValues;
   end;
+
+  TShadowBoxList = specialize TFPGList<TShadowBoxBase>;
 
   { TShadowMenuBase }
 
@@ -60,9 +76,11 @@ type
   protected
     FEditorDesigner: TComponentEditorDesigner;
     FLookupRoot: TComponent;
+    FMainCanvas: TCanvas;
     FMenu: TMenu;
     FSelectedMenuItem: TMenuItem;
-    FBoxList: TFPList;
+    FBoxList: TShadowBoxList;
+    function GetStringWidth(const aText: string; isBold: boolean): integer;
   public
     constructor Create(AOwner: TComponent; aMenu: TMenu); reintroduce;
     destructor Destroy; override;
@@ -77,7 +95,7 @@ type
     property EditorDesigner: TComponentEditorDesigner read FEditorDesigner;
     property LookupRoot: TComponent read FLookupRoot;
     property SelectedMenuItem: TMenuItem read FSelectedMenuItem write FSelectedMenuItem;
-    property BoxList: TFPList read FBoxList;
+    property BoxList: TShadowBoxList read FBoxList;
   end;
 
   { TMenuDesignerBase }
@@ -125,6 +143,40 @@ begin
   inherited Destroy;
 end;
 
+function TShadowItemBase.GetHeight: integer;
+begin
+  if FRealItem.IsInMenuBar then
+    Result:=MenuBar_Height
+  else if FRealItem.IsLine then
+    Result:=Separator_Height
+  else
+    Result:=DropDown_Height;
+end;
+
+procedure TShadowItemBase.ShowDisabled;
+begin
+  if (FState <> dsDisabled) then begin
+    FState:=dsDisabled;
+    Invalidate;
+  end;
+end;
+
+procedure TShadowItemBase.ShowNormal;
+begin
+  if (FState <> dsNormal) then begin
+    FState:=dsNormal;
+    Invalidate;
+  end;
+end;
+
+procedure TShadowItemBase.ShowSelected;
+begin
+  if (FState <> dsSelected) then begin
+    FState:=dsSelected;
+    Invalidate;
+  end;
+end;
+
 { TShadowBoxBase }
 
 constructor TShadowBoxBase.Create(AOwner: TComponent; aParentItem: TMenuItem);
@@ -132,7 +184,7 @@ begin
   inherited Create(AOwner);
   Assert(aParentItem<>nil,'TShadowBox.CreateWithParentBox: aParentItem parameter is nil');
   FParentMenuItem:=aParentItem;
-  FShadowList:=TFPList.Create;
+  FShadowList:=TShadowItemList.Create;
 end;
 
 destructor TShadowBoxBase.Destroy;
@@ -141,42 +193,40 @@ begin
   inherited Destroy;
 end;
 
-function TShadowBoxBase.GetHasRadioItems: boolean;
-var
-  p: pointer;
-  si: TShadowItemBase absolute p;
-begin
-  for p in FShadowList do
-    if si.RealItem.RadioItem then
-      Exit(True);
-  Result:=False;
-end;
-
-function TShadowBoxBase.GetRadioGroupsString: string;
+function TShadowBoxBase.GetRadioGroupValues: TByteArray;
 var
   rgSet: set of byte = [];
   g: byte;
-  p: pointer;
-  si: TShadowItemBase absolute p;
+  si: TShadowItemBase;
   mi: TMenuItem;
 begin
-  Result:='';
-  for p in FShadowList do begin
+  SetLength(Result, 0);
+  for si in FShadowList do
+  begin
     mi:=si.RealItem;
     if mi.RadioItem then begin
       g:=mi.GroupIndex;
       if not (g in rgSet) then begin
         Include(rgSet, g);
-        AppendStr(Result, IntToStr(g) + ', ');
+        SetLength(Result, Length(Result)+1);
+        Result[Length(Result)-1] := g;
       end;
     end;
   end;
-  Delete(Result, Pred(Length(Result)), 2);
 end;
 
-function TShadowBoxBase.GetShadowCount: integer;
+function TShadowBoxBase.GetInnerDims: TPoint;
+var
+  si: TShadowItemBase;
+  w: integer;
 begin
-  Result:=FShadowList.Count;
+  FillChar(Result{%H-}, SizeOf(Result), 0);
+  for si in FShadowList do begin
+    Inc(Result.y, si.GetHeight);
+    w:=si.GetWidth;
+    if (Result.x < w) then
+      Result.x:=w;
+  end;
 end;
 
 { TShadowMenuBase }
@@ -187,7 +237,7 @@ begin
   FMenu := aMenu;
   FEditorDesigner := FindRootDesigner(FMenu) as TComponentEditorDesigner;
   FLookupRoot := FEditorDesigner.LookupRoot;
-  FBoxList := TFPList.Create;
+  FBoxList := TShadowBoxList.Create;
 end;
 
 destructor TShadowMenuBase.Destroy;
@@ -197,30 +247,35 @@ begin
   inherited Destroy;
 end;
 
+function TShadowMenuBase.GetStringWidth(const aText: string; isBold: boolean): integer;
+begin
+  if isBold then
+    FMainCanvas.Font.Style:=[fsBold]
+  else
+    FMainCanvas.Font.Style:=[];
+  Result:=FMainCanvas.TextWidth(aText);
+end;
+
 function TShadowMenuBase.GetParentBoxForMenuItem(aMI: TMenuItem): TShadowBoxBase;
 var
-  p: pointer;
-  sb: TShadowBoxBase absolute p;
-  ps: pointer;
-  si: TShadowItemBase absolute ps;
+  sb: TShadowBoxBase;
+  si: TShadowItemBase;
 begin
-  for p in FBoxList do
-    for ps in sb.ShadowList do
-      if (si.RealItem = aMI) then
+  for sb in FBoxList do
+    for si in sb.ShadowList do
+      if si.RealItem = aMI then
         Exit(sb);
   Result:=nil;
 end;
 
 function TShadowMenuBase.GetShadowForMenuItem(aMI: TMenuItem): TShadowItemBase;
 var
-  p: pointer;
-  sb: TShadowBoxBase absolute p;
-  ps: pointer;
-  si: TShadowItemBase absolute ps;
+  sb: TShadowBoxBase;
+  si: TShadowItemBase;
 begin
-  for p in FBoxList do
-    for ps in sb.ShadowList do
-      if (si.RealItem = aMI) then
+  for sb in FBoxList do
+    for si in sb.ShadowList do
+      if si.RealItem = aMI then
         Exit(si);
   Result:=nil;
 end;
@@ -248,13 +303,16 @@ end;
 
 procedure TMenuDesignerBase.FreeShadowMenu;
 begin
-  FreeAndNil(FShadowMenu);
+  if FShadowMenu=nil then exit;
+  FShadowMenu.Parent:=nil;
+  Application.ReleaseComponent(FShadowMenu);
+  FShadowMenu:=nil;
 end;
 
 procedure TMenuDesignerBase.UpdateTemplatesCount;
 begin
   FTemplatesSaved:=SavedTemplatesExist;
-  DebugLn('SavedTemplatesExist is %s',[booltostr(FTemplatesSaved)]);
+  DebugLn('Hint: (lazarus) [TMenuDesignerBase.UpdateTemplatesCount] SavedTemplatesExist is %s',[booltostr(FTemplatesSaved)]);
   FSavedTemplatesCount:=GetSavedTemplatesCount;
 end;
 

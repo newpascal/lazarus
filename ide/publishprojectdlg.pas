@@ -37,11 +37,12 @@ unit PublishProjectDlg;
 interface
 
 uses
-  Classes, SysUtils, LazFileUtils, Forms, Controls, Graphics, Buttons,
-  StdCtrls, Dialogs, LCLType,
-  IDEWindowIntf, IDEHelpIntf, IDEDialogs,
+  Classes, SysUtils,
+  LazFileUtils, Forms, Controls, Graphics, Buttons,
+  StdCtrls, Dialogs, LCLType, ExtCtrls, ButtonPanel,
+  IDEWindowIntf, IDEHelpIntf, IDEDialogs, IDEImagesIntf,
   ProjectDefs, PackageDefs, PublishModule, IDEOptionDefs, InputHistory,
-  LazarusIDEStrConsts, IDEProcs, ExtCtrls, ButtonPanel;
+  LazarusIDEStrConsts, IDEProcs;
 
 type
   { TPublishProjectDialog }
@@ -181,7 +182,7 @@ begin
   ButtonPanel1.CloseButton.Kind := bkCustom;
   ButtonPanel1.CloseButton.LoadGlyphFromStock(idButtonSave);
   if ButtonPanel1.CloseButton.Glyph.Empty then
-    ButtonPanel1.CloseButton.LoadGlyphFromResourceName(HInstance, 'laz_save');
+    TIDEImages.AssignImage(ButtonPanel1.CloseButton.Glyph, 'laz_save');
   ButtonPanel1.CloseButton.OnClick := @SaveSettingsButtonCLICK;
 
   ButtonPanel1.HelpButton.OnClick := @HelpButtonClick;
@@ -305,8 +306,7 @@ constructor TPublishProjectDialog.Create(TheOwner: TComponent);
 begin
   inherited Create(TheOwner);
   Position:=poScreenCenter;
-  IDEDialogLayoutList.ApplyLayout(Self,500,500);
-  if Height<500 then Height:=500;
+  IDEDialogLayoutList.ApplyLayout(Self);
   LoadHistoryLists;
 end;
 

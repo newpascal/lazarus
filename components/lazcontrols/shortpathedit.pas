@@ -5,7 +5,11 @@ unit ShortPathEdit;
 interface
 
 uses
-  Classes, SysUtils, EditBtn, LResources, Dialogs, LazFileUtils;
+  Classes, SysUtils,
+  // LCL
+  EditBtn, Dialogs,
+  // LazUtils
+  LazFileUtils;
 
 type
 
@@ -17,8 +21,8 @@ type
     FOnAcceptDir: TAcceptFileNameEvent;
   protected
     function CreateDialog: TCommonDialog; override;
-    procedure RunDialog; override;
   published
+    procedure RunDialog; override;
     property Directory: String read FDirectory write FDirectory;
     property OnAcceptDirectory: TAcceptFileNameEvent read FOnAcceptDir write FonAcceptDir;
   end;

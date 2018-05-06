@@ -1,17 +1,21 @@
+# Olexandr Pylypchuk <pilipchukap@rambler.ru>, 2017.
 msgid ""
 msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Project-Id-Version: \n"
 "POT-Creation-Date: \n"
-"PO-Revision-Date: \n"
-"Last-Translator: Igor Paliychuk <mansonigor@gmail.com>\n"
-"Language-Team: \n"
+"PO-Revision-Date: 2017-07-28 01:22+0300\n"
+"Last-Translator: Olexandr Pylypchuk <pilipchukap@rambler.ru>\n"
+"Language-Team: Ukrainian <kde-i18n-doc@kde.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Transfer-Encoding: 8bit\n"
+"Language: uk\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+"X-Generator: Lokalize 1.5\n"
 
 #: jcfuiconsts.lisaboutaboutjedicodeformat
 msgid "About JEDI Code Format"
-msgstr "Про Форматування Коду JEDI"
+msgstr "Про форматування коду JEDI"
 
 #: jcfuiconsts.lisaboutfindmoreinformationonthewebat
 msgid "Find more information on the web at: %s"
@@ -19,7 +23,7 @@ msgstr "Більш детальну інформацію можна отрима
 
 #: jcfuiconsts.lisaboutthisprogramisopensource
 msgid "This program is open source software. It is released under the Mozilla Public Licence (MPL).  http://www.mozilla.org/MPL"
-msgstr "Це є програмне забезпечення з відкритим початковим кодом. Воно поширюється за умовами Mozilla Public Licence (MPL). http://www.mozilla.org/MPL"
+msgstr "Це є програмне забезпечення з відкритим сирцевим кодом. Воно поширюється за умовами Mozilla Public Licence (MPL). http://www.mozilla.org/MPL"
 
 #: jcfuiconsts.lisaboutthisprogramisstillunderdevelopment
 msgid "This program is still under development. In spite of thorough testing and removal of reported bugs, no guarantees are given. Please make backups, or better yet use a source control system."
@@ -27,7 +31,7 @@ msgstr "Ця програма ще знаходиться в стадії роз
 
 #: jcfuiconsts.lisaboutversion
 msgid "Version $VERSION$%s$DATE$%s%sThis program attempts to standardise and make readable the layout of any Delphi Object-Pascal source code.%s%sCopyright Anthony Steele 1999-2008"
-msgstr "Версія $VERSION$%s$DATE$%s%sЦя програма намагається стандартизувати і зробити більш читабельним будь-який код на Об'єктному Паскалі Delphi.%s%s(C) Anthony Steele 1999-2008"
+msgstr "Версія $VERSION$%s$DATE$%s%sЦя програма намагається стандартизувати і зробити більш читабельним будь-який код на Delphi Object-Pascal.%s%s(C) Anthony Steele 1999-2008"
 
 #: jcfuiconsts.lisalignalign
 msgid "Align"
@@ -51,11 +55,11 @@ msgstr "Константа"
 
 #: jcfuiconsts.lisaligninterfaceonly
 msgid "Interface Only"
-msgstr "Лише Інтерфейс"
+msgstr "Лише інтерфейс"
 
 #: jcfuiconsts.lisalignmaxcolumn
 msgid "Max Column"
-msgstr "Максимальний Стовпчик"
+msgstr "Максимальний стовпчик"
 
 #: jcfuiconsts.lisalignmaxunaligned
 msgid "Max unaligned"
@@ -63,15 +67,15 @@ msgstr "Максимум невирівняних"
 
 #: jcfuiconsts.lisalignmaxvariance
 msgid "Max Variance"
-msgstr "Максимальна Розбіжність"
+msgstr "Максимальна розбіжність"
 
 #: jcfuiconsts.lisalignmaxvarianceinterface
 msgid "Max Variance Interface"
-msgstr "Макимальний Інтерфейс Розбіжностей"
+msgstr "Макимальний інтерфейс розбіжностей"
 
 #: jcfuiconsts.lisalignmincolumn
 msgid "Min Column"
-msgstr "Мінімальний Стовпчик"
+msgstr "Мінімальний стовпчик"
 
 #: jcfuiconsts.lisaligntypedefs
 msgid "Type defs"
@@ -83,7 +87,7 @@ msgstr "Визначення змінних"
 
 #: jcfuiconsts.lisalignwhattoalign
 msgid "What to Align"
-msgstr "Що Вирівнювати"
+msgstr "Що вирівнювати"
 
 #: jcfuiconsts.lisasmasm
 msgid "Asm"
@@ -119,11 +123,11 @@ msgstr "&Кількість розривів"
 
 #: jcfuiconsts.lisasmparamsindents
 msgid "&Params Indents"
-msgstr "&Відступи Параметрів"
+msgstr "&Відступи параметрів"
 
 #: jcfuiconsts.lisasmstatementindents
 msgid "&Statement Indents"
-msgstr "Відступи &Операторів"
+msgstr "Відступи &операторів"
 
 #: jcfuiconsts.lisblafterprocedureheader
 msgid "After procedure header"
@@ -131,7 +135,7 @@ msgstr "Після заголовка процедури"
 
 #: jcfuiconsts.lisblatstartandendofbeginendblock
 msgid "At start and end of Begin...End block"
-msgstr "На початку і в кінці блоку Begin...End"
+msgstr "На початку і в кінці блока Begin...End"
 
 #: jcfuiconsts.lisblblanklines
 msgid "Blank Lines"
@@ -195,7 +199,7 @@ msgstr "Видалити послідовні порожні рядки"
 
 #: jcfuiconsts.liscapsanywordanyword
 msgid "Any Word"
-msgstr "Будь-яке Слово"
+msgstr "Будь-яке слово"
 
 #: jcfuiconsts.liscapsanywordenable
 msgid "Enable"
@@ -306,7 +310,7 @@ msgstr "Використовувати новий рядок в блоках Cas
 
 #: jcfuiconsts.liscdcompilerdirectives
 msgid "Compiler Directives"
-msgstr "Директиви Компілятора"
+msgstr "Директиви компілятора"
 
 #: jcfuiconsts.liscdotherplaces
 msgid "Other places"
@@ -378,7 +382,7 @@ msgstr "%s в %s"
 
 #: jcfuiconsts.lisedjcfparseerror
 msgid "JCF Parse error"
-msgstr "Помилка Розбору JCF"
+msgstr "Помилка розбору JCF"
 
 #: jcfuiconsts.lisednear
 msgid "%s near %s"
@@ -402,11 +406,15 @@ msgstr "Ввімкнути пошук та заміну"
 
 #: jcfuiconsts.lisfindreplacefindandreplace
 msgid "Find and Replace"
-msgstr "Знайти та Замінити"
+msgstr "Знайти та замінити"
 
 #: jcfuiconsts.lisfindreplacewordlist
 msgid "Word list:"
 msgstr "Список слів:"
+
+#: jcfuiconsts.lisfrfileconfirmformat
+msgid "Show confirmation dialog before format"
+msgstr "Перед форматуванням показати діалог підтвердження"
 
 #: jcfuiconsts.lisfrfilesdatefilewritten
 msgid "Date file written: %s"
@@ -426,15 +434,19 @@ msgstr "Файл доступний для запису"
 
 #: jcfuiconsts.lisfrfilesfilenotfound
 msgid "File not found"
-msgstr "Файл не знайдений"
+msgstr "Файл не знайдено"
 
-#: jcfuiconsts.lisfrfilesformatfile
-msgid "Format File"
-msgstr "Файл Форматування"
+#: jcfuiconsts.lisfrfilesopenfolder
+msgid "Open folder"
+msgstr "Відкрити теку"
 
-#: jcfuiconsts.lisfrfilesformatfileis
-msgid "Format file is %s"
-msgstr "Файл Форматування: %s"
+#: jcfuiconsts.lisfrfilessettingsfile
+msgid "Settings File"
+msgstr "Файл налаштувань"
+
+#: jcfuiconsts.lisfrfilessettingsfileis
+msgid "Settings file is:"
+msgstr "Файл налаштувань є:"
 
 #: jcfuiconsts.lisfrfilesversionthatwrotethisfile
 msgid "Version that wrote this file: %s"
@@ -502,15 +514,19 @@ msgstr "Параметри"
 
 #: jcfuiconsts.lisjcfformatsettings
 msgid "JCF Format Settings"
-msgstr "Параметри Форматування JCF"
+msgstr "Параметри форматування JCF"
+
+#: jcfuiconsts.lisjedicodeformatallopenwindow
+msgid "JEDI Code Format of all open windows?"
+msgstr "Застосувати формат коду JEDI у всіх відкритих вікнах?"
 
 #: jcfuiconsts.lisjedicodeformatofareyousurethatyouwanttoformatallfi
 msgid "JEDI Code Format of %sAre you sure that you want to format all %s files in the project?"
-msgstr ""
+msgstr "Форматування коду JEDI для %sСправді відформатувати всі (%s) файли в проекті?"
 
 #: jcfuiconsts.lisjedicodeformatofstartformatting
 msgid "JEDI Code Format of %sStart formatting?"
-msgstr ""
+msgstr "Форматування коду JEDI для %sПочати форматування?"
 
 #: jcfuiconsts.lislbbreaklinesthatarelongerthanmaxlinelength
 msgid "&Break lines that are longer than max line length"
@@ -518,7 +534,7 @@ msgstr "&Розривати рядки що довші за макс. довжи
 
 #: jcfuiconsts.lislblinebreaking
 msgid "Line Breaking"
-msgstr "Розрив Рядків"
+msgstr "Розрив рядків"
 
 #: jcfuiconsts.lislbmaxlinelength
 msgid "Max line length"
@@ -554,7 +570,7 @@ msgstr "Залишати в спокої"
 
 #: jcfuiconsts.lisobfsmixedcase
 msgid "Mixed Case"
-msgstr "Змішаний Регістр"
+msgstr "Змішаний регістр"
 
 #: jcfuiconsts.lisobfsobfuscate
 msgid "Obfuscate"
@@ -562,7 +578,7 @@ msgstr "Погіршення читабельності"
 
 #: jcfuiconsts.lisobfsobfuscatemode
 msgid "&Obfuscate mode"
-msgstr "&Режим Погіршення читабельності"
+msgstr "&Режим погіршення читабельності"
 
 #: jcfuiconsts.lisobfsobfuscatewordcaps
 msgid "Obfuscate word &caps"
@@ -595,7 +611,7 @@ msgstr "Ввімкнути розбір виразів препроцесора"
 
 #: jcfuiconsts.lisprppreprocessor
 msgid "PreProcessor"
-msgstr "ПреПроцесор"
+msgstr "Препроцесор"
 
 #: jcfuiconsts.lisprpsymbolsdefinedforconditionalcompilation
 msgid "Symbols defined for conditional compilation:"
@@ -799,11 +815,11 @@ msgstr "Додавати begin і end до одиничних операторі
 
 #: jcfuiconsts.listransformaddorremovebeginandendfromsinglestatements
 msgid "Add or Remove &begin and end from single statements"
-msgstr "Додати або Видал&ити begin і end з одиничних операторів"
+msgstr "Додати або видал&ити begin і end з одиничних операторів"
 
 #: jcfuiconsts.listransformalphabetic
 msgid "Alphabetic"
-msgstr "Алфавітно"
+msgstr "За алфавітом"
 
 #: jcfuiconsts.listransformbreakoncomment
 msgid "Break on &comment"
@@ -835,7 +851,7 @@ msgstr "Видалити begin та end навколо одиничних опе
 
 #: jcfuiconsts.listransformreversealphabetic
 msgid "Reverse Alphabetic"
-msgstr "Зворотньо до Алфавіту"
+msgstr "Зворотно до алфавіту"
 
 #: jcfuiconsts.listransformshortesttolongest
 msgid "Shortest to longest"
@@ -867,11 +883,11 @@ msgstr "По&рядок сортування Uses"
 
 #: jcfuiconsts.lisusesinsertintoimplementation
 msgid "Insert into Implementation"
-msgstr "Вставити в Реалізацію"
+msgstr "Вставити в Implementation"
 
 #: jcfuiconsts.lisusesinsertintointerface
 msgid "Insert into Interface"
-msgstr "Вставити в Інтерфейс"
+msgstr "Вставити в Interface"
 
 #: jcfuiconsts.lisusesremove
 msgid "Remove"
@@ -891,7 +907,7 @@ msgstr "&Ігнорувати невикористовувані парамет�
 
 #: jcfuiconsts.liswarningswarnaboutunusedparameters
 msgid "Warn about &unused parameters"
-msgstr "Попереждувати про неви&користовувані параметри"
+msgstr "Попереджувати про неви&користовувані параметри"
 
 #: jcfuiconsts.liswarningswarnings
 msgid "Warnings"
@@ -899,5 +915,5 @@ msgstr "Попередження"
 
 #: jcfuiconsts.liswarningswarningson
 msgid "&Warnings On"
-msgstr "Ввімкнути &Попередження"
+msgstr "Ввімкнути &попередження"
 

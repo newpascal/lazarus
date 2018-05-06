@@ -30,8 +30,6 @@ function DbgWideStr(const StringWithSpecialChars: widestring): string; overload;
 procedure DumpExceptionBackTrace;
 
 function ConvertLineEndings(const s: string): string;
-procedure ReplaceSubstring(var s: string; StartPos, Count: SizeInt;
-                           const Insertion: string); inline; deprecated 'use LazUTF8.ReplaceSubstring instead';
 
 type
 
@@ -45,6 +43,7 @@ type
     FLogText: Text;
     FLogTextInUse, FLogTextFailed: Boolean;
     FUseStdOut: Boolean;
+    FWriteToFileLock: TRTLCriticalSection;
     procedure DoOpenFile;
     procedure DoCloseFile;
     function GetWriteTarget: TLazLoggerWriteTarget;
@@ -270,6 +269,7 @@ end;
 
 constructor TLazLoggerFileHandle.Create;
 begin
+  InitCriticalSection(FWriteToFileLock);
   FLogTextInUse := False;
   FLogTextFailed := False;
   {$ifdef WinCE}
@@ -287,6 +287,7 @@ destructor TLazLoggerFileHandle.Destroy;
 begin
   inherited Destroy;
   DoCloseFile;
+  DoneCriticalsection(FWriteToFileLock);
 end;
 
 procedure TLazLoggerFileHandle.OpenFile;
@@ -303,6 +304,8 @@ end;
 
 procedure TLazLoggerFileHandle.WriteToFile(const s: string);
 begin
+  EnterCriticalsection(FWriteToFileLock);
+  try
   DoOpenFile;
   if FActiveLogText = nil then exit;
 
@@ -310,10 +313,15 @@ begin
 
   if FCloseLogFileBetweenWrites then
     DoCloseFile;
+  finally
+    LeaveCriticalsection(FWriteToFileLock);
+  end;
 end;
 
 procedure TLazLoggerFileHandle.WriteLnToFile(const s: string);
 begin
+  EnterCriticalsection(FWriteToFileLock);
+  try
   DoOpenFile;
   if FActiveLogText = nil then exit;
 
@@ -321,6 +329,9 @@ begin
 
   if FCloseLogFileBetweenWrites then
     DoCloseFile;
+  finally
+    LeaveCriticalsection(FWriteToFileLock);
+  end;
 end;
 
 { TLazLoggerFile }
@@ -817,14 +828,8 @@ begin
   end;
 end;
 
-procedure ReplaceSubstring(var s: string; StartPos, Count: SizeInt;
-  const Insertion: string);
-begin
-  LazUTF8.ReplaceSubstring(s,StartPos,Count,Insertion);
-end;
-
 initialization
   LazDebugLoggerCreator := @CreateDebugLogger;
-  RecreateDebugLogger
+  RecreateDebugLogger;
 end.
 

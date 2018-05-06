@@ -29,8 +29,15 @@ unit opkman_common;
 interface
 
 uses
-  Classes, SysUtils, Dialogs, Forms, Controls, LazIDEIntf, LazFileUtils, contnrs,
-  opkman_const;
+  Classes, SysUtils, contnrs,
+  // LCL
+  Dialogs, Forms, Controls,
+  // LazUtils
+  LazFileUtils,
+  // IdeIntf
+  LazIDEIntf, PackageIntf,
+  // OpkMan
+  opkman_const, opkman_options;
 
 type
   TPackageAction = (paDownloadTo, paInstall, paUpdate);
@@ -116,13 +123,14 @@ procedure InitLocalRepository;
 function SecToHourAndMin(const ASec: LongInt): String;
 function FormatSize(Size: Int64): String;
 function FormatSpeed(Speed: LongInt): String;
+function GetPackageTypeString(aPackageType: TLazPackageType): String;
 function GetDirSize(const ADirName: String; var AFileCnt, ADirCnt: Integer): Int64;
 procedure FindPackages(const ADirName: String; APackageList: TStrings);
 procedure FindAllFilesEx(const ADirName: String; AFileList: TStrings);
 function FixProtocol(const AURL: String): String;
+function IsDirectoryEmpty(const ADirectory: String): Boolean;
 
 implementation
-uses opkman_options;
 
 function MessageDlgEx(const AMsg: string; ADlgType: TMsgDlgType;
   AButtons: TMsgDlgButtons; AParent: TForm): TModalResult;
@@ -131,10 +139,15 @@ var
 begin
   MsgFrm := CreateMessageDialog(AMsg, ADlgType, AButtons);
   try
-    MsgFrm.Position := poDefaultSizeOnly;
     MsgFrm.FormStyle := fsSystemStayOnTop;
-    MsgFrm.Left := AParent.Left + (AParent.Width - MsgFrm.Width) div 2;
-    MsgFrm.Top := AParent.Top + (AParent.Height - MsgFrm.Height) div 2;
+    if AParent <> nil then
+    begin
+      MsgFrm.Position := poDefaultSizeOnly;
+      MsgFrm.Left := AParent.Left + (AParent.Width - MsgFrm.Width) div 2;
+      MsgFrm.Top := AParent.Top + (AParent.Height - MsgFrm.Height) div 2;
+    end
+    else
+      MsgFrm.Position := poWorkAreaCenter;
     Result := MsgFrm.ShowModal;
   finally
     MsgFrm.Free
@@ -146,12 +159,12 @@ var
   LocalRepo, LocalRepoConfig: String;
 begin
   LocalRepo := AppendPathDelim(AppendPathDelim(LazarusIDE.GetPrimaryConfigPath) + cLocalRepository);
-  if not DirectoryExistsUTF8(LocalRepo) then
-    CreateDirUTF8(LocalRepo);
+  if not DirectoryExists(LocalRepo) then
+    CreateDir(LocalRepo);
 
   LocalRepoConfig := AppendPathDelim(LocalRepo + cLocalRepositoryConfig);
   if not DirectoryExists(LocalRepoConfig) then
-    CreateDirUTF8(LocalRepoConfig);
+    CreateDir(LocalRepoConfig);
   LocalRepositoryConfigFile := LocalRepoConfig + cLocalRepositoryConfigFile;
   LocalRepositoryUpdatesFile := LocalRepoConfig + cLocalRepositoryUpdatesFile;
 end;
@@ -196,6 +209,16 @@ begin
     Result := FormatFloat('#,##0.0 MB/s', Speed / MB)
   else
     Result := FormatFloat('#,##0.0 GB/s', Speed / GB);
+end;
+
+function GetPackageTypeString(aPackageType: TLazPackageType): String;
+begin
+  case aPackageType of
+    lptRunAndDesignTime: Result := rsMainFrm_VSTText_PackageType0;
+    lptDesignTime:       Result := rsMainFrm_VSTText_PackageType1;
+    lptRunTime:          Result := rsMainFrm_VSTText_PackageType2;
+    lptRunTimeOnly:      Result := rsMainFrm_VSTText_PackageType3;
+  end;
 end;
 
 function GetDirSize(const ADirName: String; var AFileCnt, ADirCnt: Integer): Int64;
@@ -431,6 +454,28 @@ begin
   Result := AURL;
   if (Pos('http://', Result) = 0) and (Pos('https://', Result) = 0) then
     Result := 'https://' + Result;
+end;
+
+function IsDirectoryEmpty(const ADirectory: String): Boolean;
+var
+  SearchRec: TSearchRec;
+  SearchRes: Longint;
+begin
+  Result := true;
+  SearchRes := FindFirst(IncludeTrailingPathDelimiter(ADirectory) + AllFilesMask, faAnyFile, SearchRec);
+  try
+    while SearchRes = 0 do
+    begin
+      if (SearchRec.Name <> '.') and (SearchRec.Name <> '..') then
+      begin
+        Result := False;
+        Break;
+      end;
+      SearchRes := FindNext(SearchRec);
+    end;
+  finally
+    SysUtils.FindClose(SearchRec);
+  end;
 end;
 
 end.

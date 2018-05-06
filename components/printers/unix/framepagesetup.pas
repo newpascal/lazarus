@@ -1,3 +1,11 @@
+{
+ *****************************************************************************
+  This file is part of the Printer4Lazarus package
+
+  See the file COPYING.modifiedLGPL.txt, included in this distribution,
+  for details about the license.
+ *****************************************************************************
+}
 unit framePageSetup;
 
 {$mode objfpc}{$H+}
@@ -5,28 +13,25 @@ unit framePageSetup;
 interface
 
 uses
-  Classes, SysUtils, Graphics, FileUtil, LResources, Forms, ExtCtrls, StdCtrls,
-  Printers, OsPrinters, LCLIntf, LCLProc, Controls, CupsLCL;
+  Classes, SysUtils,
+  // LCL
+  LCLIntf, LCLProc, LResources, Controls, Graphics, Forms, ExtCtrls, StdCtrls,
+  Spin, Printers,
+  // Printers
+  OsPrinters, CupsLCL;
 
 type
-  TPageSetupMode = (psmFull, psmPapers, psmMargins);
-  TPageSetupOption = (
-    psoMargins,         // margins and preview are visible
-    psoPapers,          // papers group visible
-    psoOrientation      // orientation group visible
-  );
-  TPageSetupOptions = set of TPageSetupOption;
-
   { TframePageSetup }
 
   TframePageSetup = class(TFrame)
     cbPaper: TComboBox;
     cbSource: TComboBox;
     panMargins: TPanel;
-    txtLeft: TEdit;
-    txtRight: TEdit;
-    txtTop: TEdit;
-    txtBottom: TEdit;
+    boxShadow: TShape;
+    txtLeft: TFloatSpinEdit;
+    txtTop: TFloatSpinEdit;
+    txtRight: TFloatSpinEdit;
+    txtBottom: TFloatSpinEdit;
     gpPaper: TGroupBox;
     gpOrientation: TGroupBox;
     gpMargins: TGroupBox;
@@ -51,16 +56,25 @@ type
       {%H-}MousePos: TPoint; var Handled: Boolean);
     procedure pbPreviewPaint(Sender: TObject);
     procedure radPortraitClick(Sender: TObject);
+    procedure txtLeftChange(Sender: TObject);
   private
-    { private declarations }
     FHeightTallest: Integer;
-    FHardMargins: TRect;
-    FKw,FKh,FZoom: Double;
-    FOptions: TPageSetupOptions;
+    FFactorX, FFactorY, FZoom: Double;
+    function NToInches: double;
+    procedure RotateMargins(AOrder: boolean);
   public
-    { public declarations }
-    procedure Initialize(AMode: TPageSetupMode);
+    UnitInches: boolean;
+    EnablePreview: boolean;
+    EnableMargins: boolean;
+    EnablePapers: boolean;
+    EnableOrientation: boolean;
+    CurPageWidth: double;
+    CurPageHeight: double;
+    procedure Initialize(AEnablePreview, AEnableMargins, AEnablePapers,
+      AEnableOrientation: boolean);
     procedure UpdatePageSize;
+    procedure UpdateMaxValues;
+    procedure SetDefaultMinMargins;
   end;
 
 implementation
@@ -69,69 +83,107 @@ implementation
 
 { TframePageSetup }
 
+function TframePageSetup.NToInches: double;
+begin
+  if UnitInches then
+    Result:= 1
+  else
+    Result:= 1/25.4;
+end;
+
+procedure TframePageSetup.RotateMargins(AOrder: boolean);
+var
+  m_l, m_t, m_r, m_b: double;
+begin
+  m_l:= txtLeft.Value;
+  m_t:= txtTop.Value;
+  m_r:= txtRight.Value;
+  m_b:= txtBottom.Value;
+
+  if AOrder then
+  begin
+    txtLeft.Value:= m_b;
+    txtTop.Value:= m_l;
+    txtRight.Value:= m_t;
+    txtBottom.Value:= m_r;
+  end
+  else
+  begin
+    txtLeft.Value:= m_t;
+    txtTop.Value:= m_r;
+    txtRight.Value:= m_b;
+    txtBottom.Value:= m_l;
+  end;
+
+  // same way must change MinValues
+  m_l:= txtLeft.MinValue;
+  m_t:= txtTop.MinValue;
+  m_r:= txtRight.MinValue;
+  m_b:= txtBottom.MinValue;
+
+  if AOrder then
+  begin
+    txtLeft.MinValue:= m_b;
+    txtTop.MinValue:= m_l;
+    txtRight.MinValue:= m_t;
+    txtBottom.MinValue:= m_r;
+  end
+  else
+  begin
+    txtLeft.MinValue:= m_t;
+    txtTop.MinValue:= m_r;
+    txtRight.MinValue:= m_b;
+    txtBottom.MinValue:= m_l;
+  end;
+end;
+
 procedure TframePageSetup.pbPreviewPaint(Sender: TObject);
 var
   R: TRect;
-  procedure DrawMargin(AIndex: Integer; ASize: Integer);
-  begin
-    with pbPreview do
-    case AIndex of
-      0: // Left
-        begin
-          Canvas.MoveTo(ASize, 1);
-          Canvas.LineTo(ASize, Height-1);
-        end;
-      1: //Top
-        begin
-          Canvas.MoveTo(1,ASize);
-          Canvas.LineTo(Width-1, ASize);
-        end;
-      2: // Right
-        begin
-          Canvas.MoveTo(Width-1-ASize, 1);
-          Canvas.LineTo(Width-1-ASize,Height-1);
-        end;
-      3: // Bottom
-        begin
-          Canvas.MoveTo(1,Height-1-Asize);
-          Canvas.LineTo(Width-1, Height-1-ASize);
-        end;
-    end;
-  end;
+  NLeft, NTop, NRight, NBottom: integer;
 begin
-
-  if Sender=nil then ;
-
-  if not (psoMargins in FOptions) then
+  if not EnablePreview then
     exit;
 
   with pbPreview do
   begin
-
-    // page frame
-    R := Rect(0,0,Width,Height);
+    Canvas.Pen.Style := psSolid;
     Canvas.Pen.Color := clBlack;
-    Canvas.Brush.Color:=clWhite;
-    Canvas.Rectangle(R);
+    Canvas.Brush.Color := clWhite;
+    Canvas.Rectangle(0, 0, Width, Height);
 
-    // hard margins
-    Canvas.Pen.Color := RGBToColor(255,204,204);
-    DrawMargin(0, FHardMargins.Left  );
-    DrawMargin(1, FHardMargins.Top   );
-    DrawMargin(2, FHardMargins.Right );
-    DrawMargin(3, FHardMargins.Bottom);
+    //if EnableMargins then // EnableMargins is for SpinEdits only
+    begin
+      NLeft := Round(txtLeft.Value * NToInches * Printer.XDPI * FFactorX * FZoom);
+      NTop := Round(txtTop.Value * NToInches * Printer.YDPI * FFactorY * FZoom);
+      NRight := Round(txtRight.Value * NToInches * Printer.XDPI * FFactorX * FZoom);
+      NBottom := Round(txtBottom.Value * NToInches * Printer.YDPI * FFactorY * FZoom);
+
+      R.Left := NLeft;
+      R.Top := NTop;
+      R.Right := Width-1-NRight;
+      R.Bottom := Height-1-NBottom;
+
+      Canvas.Pen.Color := clMedGray;
+      //Canvas.Pen.Style := psDash; // AT: setting line style don't work, line is solid
+      Canvas.Rectangle(R);
+    end;
   end;
 end;
 
 procedure TframePageSetup.radPortraitClick(Sender: TObject);
 begin
-  if sender=nil then ;
-
+  RotateMargins(radPortrait.Checked);
   if radPortrait.Checked then
     Printer.Orientation := poPortrait
   else
     Printer.Orientation := poLandsCape;
   UpdatePageSize;
+end;
+
+procedure TframePageSetup.txtLeftChange(Sender: TObject);
+begin
+  pbPreview.Update;
 end;
 
 procedure TframePageSetup.cbPaperChange(Sender: TObject);
@@ -149,10 +201,10 @@ procedure TframePageSetup.panPreviewResize(Sender: TObject);
 var
   TallH: Integer;
 begin
-  if not (psoMargins in FOptions) then
+  if not EnablePreview then
     exit;
 
-  TallH := Round(FheightTallest * FKh);
+  TallH := Round(FheightTallest * FFactorY);
 
   with PanPreview do
   if (Height<>C_BOTHSPACES) and (TallH>(Height-C_BOTHSPACES)) then
@@ -191,66 +243,80 @@ end;
 
 procedure TframePageSetup.UpdatePageSize;
 begin
-  if not (psoMargins in FOptions) then
+  if not EnablePreview then
     exit;
 
   with Printer.PaperSize.PaperRect.PhysicalRect do
   begin
-    PbPreview.Width := Round(Fkw * (Right - Left) * FZoom) + 2;
-    PbPreview.Height := Round(FKh * (Bottom - Top) * FZoom) + 2;
+    PbPreview.Width := Round(FFactorX * (Right - Left) * FZoom) + 2;
+    PbPreview.Height := Round(FFactorY * (Bottom - Top) * FZoom) + 2;
+
+    boxShadow.Width := pbPreview.Width;
+    boxShadow.Height := pbPreview.Height;
   end;
 
   with Printer.PaperSize.PaperRect do
   begin
-    FHardMargins.Left := Round(Fkw * (WorkRect.Left-PhysicalRect.Left) * FZoom);
-    FHardMargins.Right := Round(Fkw * (Physicalrect.Right-WorkRect.Right) * FZoom);
-    FHardMargins.Top := Round(FkH * (WorkRect.Top-PhysicalRect.Top) * FZoom);
-    FHardMargins.Bottom := Round(FkH * (PhysicalRect.Bottom-WorkRect.Bottom) * FZoom);
+    CurPageWidth := (PhysicalRect.Right-PhysicalRect.Left)/Printer.XDPI/NToInches;
+    CurPageHeight := (PhysicalRect.Bottom-PhysicalRect.Top)/Printer.YDPI/NToInches;
   end;
 
-  {$IFDEF DebugCUPS}
-  with FHardMargins do
-  begin
-    DebugLn(' Kh=%.2f Kw=%.2f',[FKh,FKw]);
-    DebugLn(' BoxLimits L=0 T=0 R=%d B=%d',[PbPreview.Width-1,PbPreview.Height-1]);
-    DebugLn('OrgMargins L=%d T=%d R=%d B=%d',[Left,Top,Right,Bottom]);
-  end;
-  {$ENDIF}
+  UpdateMaxValues;
 end;
 
-procedure TframePageSetup.Initialize(AMode: TPageSetupMode);
+procedure TframePageSetup.UpdateMaxValues;
+
+  procedure DoSetMax(Ctl: TFloatSpinEdit; Value: double);
+  begin
+    // because of TCustomFloatSpinEdit.GetLimitedValue
+    // we cannot set MinValue=MaxValue, all validation will break
+    if Ctl.MinValue > Value-0.2 then
+      Ctl.MinValue := Value-0.2;
+    Ctl.MaxValue := Value;
+  end;
+
+const
+  cMul = 0.45; // max margin is almost 1/2 of page size
+begin
+  DoSetMax(txtLeft, CurPageWidth * cMul);
+  DoSetMax(txtRight, CurPageWidth * cMul);
+  DoSetMax(txtTop, CurPageHeight * cMul);
+  DoSetMax(txtBottom, CurPageHeight * cMul);
+end;
+
+procedure TframePageSetup.Initialize(AEnablePreview, AEnableMargins, AEnablePapers,
+  AEnableOrientation: boolean);
 var
   i,j:Integer;
   R: TPaperRect;
 begin
-  case AMode of
-    psmMargins:
-      FOptions := [psoMargins];
-    psmPapers:
-      FOptions := [psoPapers,psoOrientation];
-    else
-      FOptions := [psoMargins,psoPapers,psoOrientation];
-  end;
+  EnablePreview:= AEnablePreview;
+  EnableMargins:= AEnableMargins;
+  EnablePapers:= AEnablePapers;
+  EnableOrientation:= AEnableOrientation;
 
-  if [psoMargins,psoPapers]*FOptions<>[] then
+  cbPaper.Items.Clear;
+  cbSource.Items.Clear;
+  cbPaper.ItemIndex := -1;
+  cbSource.ItemIndex := -1;
+
+  if EnablePapers then
   begin
+    SetupCupsCombo(cbSource, nil, 'InputSlot');
     SetupCupsCombo(cbPaper, nil, 'PageSize');
     if (cbPaper.Items.Count=0) then
     begin
       // no cups printer papers, use default ones
       cbPaper.Items := Printer.PaperSize.SupportedPapers;
       cbPaper.ItemIndex:= cbPaper.Items.IndexOf(Printer.PaperSize.PaperName);
-      cbPaper.Enabled:=true;
     end;
   end;
 
-  if psoPapers in FOptions then
-    SetupCupsCOmbo(cbSource, nil, 'InputSlot')
-  else
-    gpPaper.Visible := false;
+  cbPaper.Enabled := cbPaper.Items.Count>0;
+  cbSource.Enabled := cbSource.Items.Count>0;
 
   //TODO: support reverse variants too?
-  gpOrientation.Visible := (psoOrientation in FOptions);
+  gpOrientation.Enabled := EnableOrientation;
   case Printer.Orientation of
     poPortrait,poReversePortrait:
       radPortrait.Checked := true;
@@ -258,13 +324,16 @@ begin
       radLandscape.Checked := true;
   end;
 
-  if psoMargins in FOptions then
+  gpMargins.Enabled := EnableMargins;
+  panPreview.Visible:= EnablePreview;
+
+  if EnablePreview then
   begin
     // assume 100 pix = 8.5 inch (IOW, letter size width = 100 pixels)
     with ScreenInfo do
     begin
-      FKw := (100/8.5)/Printer.XDPI;
-      FKh := (100/8.5)*(PixelsPerInchY/PixelsPerInchX)/Printer.YDPI;
+      FFactorX := (100/8.5)/Printer.XDPI;
+      FFactorY := (100/8.5)*(PixelsPerInchY/PixelsPerInchX)/Printer.YDPI;
     end;
 
     // find the tallest paper
@@ -296,24 +365,18 @@ begin
     // zoom factor
     FZoom := 1.0;
     UpdatePageSize;
-
-  end else
-  begin
-    panPreview.Visible:=false;
-    gpMargins.Visible:=false;
   end;
+end;
 
-  if AMode=psmPapers then
+procedure TframePageSetup.SetDefaultMinMargins;
+begin
+  with Printer.PaperSize.PaperRect do
   begin
-    gpOrientation.Anchors:=[akTop,akRight,akBottom];
-    gpOrientation.Align:=alRight;
-    gpPaper.Anchors:=[akTop,akLeft];
-    gpPaper.Align:=alClient;
-    PanSetup.Align:=alClient;
-  end else
-  if AMode=psmMargins then
-    PanSetup.Height:=gpMargins.Height+C_BOTHSPACES;
-
+    txtLeft.MinValue := (WorkRect.Left-PhysicalRect.Left)/Printer.XDPI/NToInches;
+    txtTop.MinValue := (WorkRect.Top-PhysicalRect.Top)/Printer.YDPI/NToInches;
+    txtRight.MinValue := (PhysicalRect.Right-WorkRect.Right)/Printer.XDPI/NToInches;
+    txtBottom.MinValue := (PhysicalRect.Bottom-WorkRect.Bottom)/Printer.YDPI/NToInches;
+  end;
 end;
 
 end.

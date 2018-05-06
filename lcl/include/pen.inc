@@ -50,7 +50,7 @@ begin
   FResourceCacheDescriptorClass := TPenHandleCacheDescriptor;
 end;
 
-function TPenHandleCache.CompareDescriptors(Tree: TAvgLvlTree; Desc1,
+function TPenHandleCache.CompareDescriptors(Tree: TAvlTree; Desc1,
   Desc2: Pointer): integer;
 var
   Descriptor1: TPenHandleCacheDescriptor absolute Desc1;
@@ -74,7 +74,7 @@ end;
 
 function TPenHandleCache.FindPen(APen: TLCLHandle): TResourceCacheItem;
 var
-  ANode: TAvgLvlTreeNode;
+  ANode: TAvlTreeNode;
 begin
   ANode := FItems.FindKey(@APen,
                           TListSortCompare(@ComparePHandleWithResourceCacheItem));
@@ -88,7 +88,7 @@ function TPenHandleCache.FindPenDesc(const AExtPen: TExtLogPen;
   const APattern: TPenPattern): TPenHandleCacheDescriptor;
 var
   ExtPenAndPattern: TExtPenAndPattern;
-  ANode: TAvgLvlTreeNode;
+  ANode: TAvlTreeNode;
 begin
   ExtPenAndPattern.ExtPen := AExtPen;
   ExtPenAndPattern.Pattern := APattern;
@@ -389,10 +389,18 @@ begin
     if IsGeometric then
       elpWidth := Width
     else
-      //(https://msdn.microsoft.com/en-us/library/windows/desktop/dd162705(v=vs.85).aspx
-      //https://msdn.microsoft.com/en-us/library/windows/desktop/dd162711(v=vs.85).aspx
-      //Issue #0022646
-      elpWidth := 1;
+    begin
+      // issue #32465, regression from fixing #22646. Pure cosmetic
+      // pen is created via TLogPen, not via TExtLogPen
+      if ((elpPenStyle and PS_STYLE_MASK) = elpPenStyle) and
+          (elpPenStyle <> PS_USERSTYLE) then
+        elpWidth := 0
+      else
+        //(https://msdn.microsoft.com/en-us/library/windows/desktop/dd162705(v=vs.85).aspx
+        //https://msdn.microsoft.com/en-us/library/windows/desktop/dd162711(v=vs.85).aspx
+        //Issue #0022646
+        elpWidth := 1;
+    end;
     elpBrushStyle := BS_SOLID;
     elpColor := TColorRef(FColor);
   end;

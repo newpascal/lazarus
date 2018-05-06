@@ -73,18 +73,22 @@ procedure TToolButton.MouseDown(Button: TMouseButton; Shift: TShiftState;
   end;
 var
   NewFlags: TToolButtonFlags;
+  APointInArrow: Boolean;
 begin
   //debugln(['TToolButton.MouseDown ',DbgSName(Self)]);
   SetMouseInControl(True);
   NewFlags := FToolButtonFlags - [tbfPressed, tbfArrowPressed];
   if (Button = mbLeft) then
   begin
+    APointInArrow := PointInArrow(X, Y);
     //use some threshold to decide if the DropdownMenu should be opened again.
     //  When no DropdownMenu is assigned, FLastDropDownTick is always 0
     //  therefore the condition is always met.
-    if Enabled and not(GetTickCount64 < FLastDropDownTick + 100) then
+    if Enabled and not(
+          (GetTickCount64 < FLastDropDownTick + 100)
+      and (APointInArrow or (Style<>tbsDropDown))) then
     begin
-      if PointInArrow(X, Y) then
+      if APointInArrow then
         Include(NewFlags, tbfArrowPressed)
       else
         Include(NewFlags, tbfPressed);
@@ -290,7 +294,7 @@ var
   DropDownButtonRect: TRect;
   TextSize: TSize;
   TextPos: TPoint;
-  IconSize: TPoint;
+  IconSize: TSize;
   IconPos: TPoint;
   ImgList: TCustomImageList;
   ImgIndex: integer;
@@ -324,11 +328,11 @@ begin
     begin
       DropDownButtonRect := ButtonRect;
       if Style = tbsDropDown then
-        DropDownButtonRect.Left := DropDownButtonRect.Right-FToolBar.GetRealDropDownWidth
+        DropDownButtonRect.Left := DropDownButtonRect.Right-FToolBar.DropDownWidth
       else
       begin
-        DropDownButtonRect.Left := DropDownButtonRect.Right-FToolBar.GetRealButtonDropWidth;
-        DropDownButtonRect.Right := DropDownButtonRect.Left + FToolBar.GetRealDropDownWidth;
+        DropDownButtonRect.Left := DropDownButtonRect.Right-FToolBar.ButtonDropWidth;
+        DropDownButtonRect.Right := DropDownButtonRect.Left + FToolBar.DropDownWidth;
       end;
       MainBtnRect.Right := DropDownButtonRect.Left;
       if Style = tbsDropDown then
@@ -348,13 +352,13 @@ begin
       TextSize := GetTextSize;
 
     // calculate icon size
-    IconSize := Point(0,0);
+    IconSize := Size(0,0);
     GetCurrentIcon(ImgList, ImgIndex, ImgEffect);
     if (ImgList<>nil) then
     begin
-      IconSize := Point(ImgList.Width, ImgList.Height);
-      if IconSize.y <= 0 then
-        IconSize.X := 0;
+      IconSize := ImgList.SizeForPPI[FToolBar.ImagesWidth, Font.PixelsPerInch];
+      if IconSize.cy <= 0 then
+        IconSize.cx := 0;
     end;
 
     // calculate text and icon position
@@ -362,22 +366,22 @@ begin
     IconPos:=Point(0,0);
     if TextSize.cx > 0 then
     begin
-      if IconSize.X > 0 then
+      if IconSize.cx > 0 then
       begin
         if FToolBar.List then
         begin
           // icon left of text
-          IconPos.X:=(MainBtnRect.Left+MainBtnRect.Right-IconSize.x-TextSize.cx-2) div 2;
-          IconPos.Y:=(MainBtnRect.Top+MainBtnRect.Bottom-IconSize.y) div 2;
-          TextPos.X:=IconPos.X+IconSize.X+2;
+          IconPos.X:=(MainBtnRect.Left+MainBtnRect.Right-IconSize.cx-TextSize.cx-2) div 2;
+          IconPos.Y:=(MainBtnRect.Top+MainBtnRect.Bottom-IconSize.cy) div 2;
+          TextPos.X:=IconPos.X+IconSize.cx+2;
           TextPos.Y:=(MainBtnRect.Top+MainBtnRect.Bottom-TextSize.cy) div 2;
         end else
         begin
           // icon above text
-          IconPos.X:=(MainBtnRect.Left+MainBtnRect.Right-IconSize.x) div 2;
-          IconPos.Y:=(MainBtnRect.Top+MainBtnRect.Bottom-IconSize.y-TextSize.cy-2) div 2;
+          IconPos.X:=(MainBtnRect.Left+MainBtnRect.Right-IconSize.cx) div 2;
+          IconPos.Y:=(MainBtnRect.Top+MainBtnRect.Bottom-IconSize.cy-TextSize.cy-2) div 2;
           TextPos.X:=(MainBtnRect.Left+MainBtnRect.Right-TextSize.cx) div 2;
-          TextPos.Y:=IconPos.Y+IconSize.Y+2;
+          TextPos.Y:=IconPos.Y+IconSize.cy+2;
         end;
       end else
       begin
@@ -386,11 +390,11 @@ begin
         TextPos.Y:=(MainBtnRect.Top+MainBtnRect.Bottom-TextSize.cy) div 2;
       end;
     end else
-    if IconSize.x>0 then
+    if IconSize.cx>0 then
     begin
       // only icon
-      IconPos.X:=(MainBtnRect.Left+MainBtnRect.Right-IconSize.x) div 2;
-      IconPos.Y:=(MainBtnRect.Top+MainBtnRect.Bottom-IconSize.y) div 2;
+      IconPos.X:=(MainBtnRect.Left+MainBtnRect.Right-IconSize.cx) div 2;
+      IconPos.Y:=(MainBtnRect.Top+MainBtnRect.Bottom-IconSize.cy) div 2;
     end;
 
     // draw button
@@ -434,7 +438,8 @@ begin
 
     // draw icon
     if (ImgList<>nil) then
-      ImgList.Draw(Canvas, IconPos.X, IconPos.Y, ImgIndex, ImgEffect);
+      ImgList.ResolutionForPPI[FToolBar.ImagesWidth, Font.PixelsPerInch, GetCanvasScaleFactor]
+        .Draw(Canvas, IconPos.X, IconPos.Y, ImgIndex, ImgEffect);
 
     // draw text
     if (TextSize.cx > 0) then
@@ -470,7 +475,7 @@ function TToolButton.PointInArrow(const X, Y: Integer): Boolean;
 begin
   Result := (Style = tbsDropDown) and (FToolBar <> nil)
     and (Y >= 0) and (Y <= ClientHeight)
-    and (X > ClientWidth - FToolBar.GetRealDropDownWidth) and (X <= ClientWidth);
+    and (X > ClientWidth - FToolBar.DropDownWidth) and (X <= ClientWidth);
 end;
 
 procedure TToolButton.Loaded;
@@ -569,13 +574,18 @@ procedure TToolButton.MouseLeave;
 begin
   // DebugLn('TToolButton.MouseLeave ',Name);
   inherited MouseLeave;
-  if (not MouseCapture) and ([tbfPressed, tbfArrowPressed, tbfMouseInArrow] * FToolButtonFlags <> []) then
+
+  if not(tbfDropDownMenuShown in FToolButtonFlags) then
   begin
-    Exclude(FToolButtonFlags, tbfPressed);
-    Exclude(FToolButtonFlags, tbfArrowPressed);
-    Exclude(FToolButtonFlags, tbfMouseInArrow);
+    if (not MouseCapture)
+    and ([tbfPressed, tbfArrowPressed, tbfMouseInArrow] * FToolButtonFlags <> []) then
+    begin
+      Exclude(FToolButtonFlags, tbfPressed);
+      Exclude(FToolButtonFlags, tbfArrowPressed);
+      Exclude(FToolButtonFlags, tbfMouseInArrow);
+    end;
+    SetMouseInControl(false);
   end;
-  SetMouseInControl(false);
 end;
 
 procedure TToolButton.MouseMove(Shift: TShiftState; X, Y: Integer);
@@ -862,8 +872,8 @@ begin
   inherited GetPreferredSize(PreferredWidth, PreferredHeight, Raw, WithThemeSpace);
 
   if FToolbar = nil then Exit;
-  RealButtonWidth := FToolbar.GetRealButtonWidth;
-  RealButtonHeight := FToolbar.GetRealButtonHeight;
+  RealButtonWidth := FToolbar.ButtonWidth;
+  RealButtonHeight := FToolbar.ButtonHeight;
   if RealButtonHeight <= 0 then Exit;
   // buttonheight overrules in hor toolbar
   if FToolBar.IsVertical then
@@ -894,7 +904,14 @@ begin
   Result := (not (csDesigning in ComponentState)) and
     ((Assigned(DropdownMenu) and (DropdownMenu.AutoPopup)) or Assigned(MenuItem)) and Assigned(FToolBar);
   if Result then
-    Result := FToolBar.CheckMenuDropdown(Self);
+  begin
+    Include(FToolButtonFlags, tbfDropDownMenuShown);
+    try
+      Result := FToolBar.CheckMenuDropdown(Self);
+    finally
+      Exclude(FToolButtonFlags, tbfDropDownMenuShown);
+    end;
+  end;
 end;
 
 procedure TToolButton.Click;
@@ -1027,16 +1044,16 @@ begin
   begin
     if not TToolBar(AParent).IsVertical then begin
       if Style in [tbsButton,tbsDropDown,tbsButtonDrop,tbsCheck] then
-        NewWidth := TToolBar(AParent).GetRealButtonWidth
+        NewWidth := TToolBar(AParent).ButtonWidth
       else
         NewWidth := Width;
-      NewHeight := TToolBar(AParent).GetRealButtonHeight;
+      NewHeight := TToolBar(AParent).ButtonHeight;
     end else begin
       if Style in [tbsButton,tbsDropDown,tbsButtonDrop,tbsCheck] then
-        NewHeight := TToolBar(AParent).GetRealButtonHeight
+        NewHeight := TToolBar(AParent).ButtonHeight
       else
         NewHeight := Height;
-      NewWidth := TToolBar(AParent).GetRealButtonWidth;
+      NewWidth := TToolBar(AParent).ButtonWidth;
     end;
     SetBoundsKeepBase(Left, Top, NewWidth, NewHeight);
   end;
@@ -1103,7 +1120,7 @@ end;
 procedure TToolButton.CalculatePreferredSize(var PreferredWidth,
   PreferredHeight: integer; WithThemeSpace: Boolean);
 var
-  IconSize: TPoint;
+  IconSize: TSize;
   TextSize: TSize;
   TextPos: TPoint;
   IconPos: TPoint;
@@ -1134,14 +1151,14 @@ begin
     end;
 
     // calculate icon size
-    IconSize := Point(0, 0);
+    IconSize := Size(0, 0);
     if (Style in [tbsButton, tbsDropDown, tbsButtonDrop, tbsCheck]) then
     begin
       GetCurrentIcon(ImgList, ImgIndex, ImgEffect);
       if Assigned(ImgList) then
       begin
-        IconSize := Point(ImgList.Width, ImgList.Height);
-        if IconSize.y <= 0 then IconSize.X := 0;
+        IconSize := ImgList.SizeForPPI[FToolBar.ImagesWidth, FToolBar.Font.PixelsPerInch];
+        if IconSize.cy <= 0 then IconSize.cx := 0;
       end;
     end;
     // calculate text and icon position
@@ -1149,17 +1166,17 @@ begin
     IconPos := Point(0, 0);
     if TextSize.cx > 0 then
     begin
-      if IconSize.X > 0 then
+      if IconSize.cx > 0 then
       begin
         if FToolBar.List then
         begin
           // icon left of text
-          TextPos.X := IconPos.X + IconSize.X + 2;
+          TextPos.X := IconPos.X + IconSize.cx + 2;
         end
         else
         begin
           // icon above text
-          TextPos.Y := IconPos.Y + IconSize.Y + 2;
+          TextPos.Y := IconPos.Y + IconSize.cy + 2;
         end;
       end
       else
@@ -1168,26 +1185,26 @@ begin
       end;
     end
     else
-    if IconSize.x > 0 then
+    if IconSize.cx > 0 then
     begin
       // only icon
     end;
     
-    PreferredWidth := Max(IconPos.X + IconSize.X, TextPos.X + TextSize.cx);
-    PreferredHeight := Max(IconPos.Y + IconSize.Y, TextPos.Y + TextSize.cy);
-    //DebugLn(['TToolButton.CalculatePreferredSize Preferred=',PreferredWidth,',',PreferredHeight,' Icon=',IconPos.X,'+',IconSize.X,' Text=',TextPos.X,'+',TextSize.cx]);
-    //DebugLn(['TToolButton.CalculatePreferredSize Preferred=',PreferredWidth,',',PreferredHeight,' Icon=',IconPos.Y,'+',IconSize.Y,' Text=',TextPos.Y,'+',TextSize.cy]);
+    PreferredWidth := Max(IconPos.X + IconSize.cx, TextPos.X + TextSize.cx);
+    PreferredHeight := Max(IconPos.Y + IconSize.cy, TextPos.Y + TextSize.cy);
+    //DebugLn(['TToolButton.CalculatePreferredSize Preferred=',PreferredWidth,',',PreferredHeight,' Icon=',IconPos.X,'+',IconSize.Width,' Text=',TextPos.X,'+',TextSize.cx]);
+    //DebugLn(['TToolButton.CalculatePreferredSize Preferred=',PreferredWidth,',',PreferredHeight,' Icon=',IconPos.Y,'+',IconSize.Height,' Text=',TextPos.Y,'+',TextSize.cy]);
 
     // add button frame
     if (Style in [tbsButton, tbsDropDown, tbsButtonDrop, tbsCheck]) then
     begin
       inc(PreferredWidth, 4);
       inc(PreferredHeight, 4);
-      PreferredWidth := Max(PreferredWidth, FToolBar.GetRealButtonWidth);
-      PreferredHeight := Max(PreferredHeight, FToolBar.GetRealButtonHeight);
+      PreferredWidth := Max(PreferredWidth, FToolBar.ButtonWidth);
+      PreferredHeight := Max(PreferredHeight, FToolBar.ButtonHeight);
       case Style of
-        tbsDropDown: inc(PreferredWidth, FToolBar.GetRealDropDownWidth);
-        tbsButtonDrop:  inc(PreferredWidth, FToolBar.GetRealButtonDropWidth-cDefButtonDropDecArrowWidth);
+        tbsDropDown: inc(PreferredWidth, FToolBar.DropDownWidth);
+        tbsButtonDrop:  inc(PreferredWidth, FToolBar.ButtonDropWidth-cDefButtonDropDecArrowWidth);
       end;
     end
     else

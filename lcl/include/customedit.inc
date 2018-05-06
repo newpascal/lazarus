@@ -53,7 +53,8 @@ begin
   if WidgetSet.GetLCLCapability(lcTextHint) = LCL_CAPABILITY_YES then
     TWSCustomEditClass(WidgetSetClass).SetTextHint(Self, FTextHint)
   else
-    if CanShowEmulatedTextHint then ShowEmulatedTextHint;
+    if CanShowEmulatedTextHint then
+      ShowEmulatedTextHint(True);
 end;
 
 {------------------------------------------------------------------------------
@@ -81,10 +82,19 @@ begin
   FAutoSelect := True;
   FAutoSelected := False;
   FTextChangedByRealSetText := False;
+  FTextChangedLock := False;
   AutoSize := True;
   // Accessibility
   AccessibleRole := larTextEditorSingleline;
   FTextHint := '';
+end;
+
+procedure TCustomEdit.AddHandlerOnChange(const AnOnChangeEvent: TNotifyEvent;
+  AsFirst: Boolean);
+begin
+  if FOnChangeHandler=nil then
+    FOnChangeHandler := TMethodList.Create;
+  FOnChangeHandler.Add(TMethod(AnOnChangeEvent), not AsFirst);
 end;
 
 {------------------------------------------------------------------------------
@@ -256,6 +266,13 @@ procedure TCustomEdit.CutToClipboard;
 begin
   if HandleAllocated then
     TWSCustomEditClass(WidgetSetClass).Cut(Self);
+end;
+
+destructor TCustomEdit.Destroy;
+begin
+  FOnChangeHandler.Free;
+
+  inherited Destroy;
 end;
 
 procedure TCustomEdit.PasteFromClipboard;
@@ -556,6 +573,21 @@ begin
     ShowEmulatedTextHint;
 end;
 
+procedure TCustomEdit.RemoveAllHandlersOfObject(AnObject: TObject);
+begin
+  inherited RemoveAllHandlersOfObject(AnObject);
+
+  if FOnChangeHandler<>nil then
+    FOnChangeHandler.RemoveAllMethodsOfObject(AnObject);
+end;
+
+procedure TCustomEdit.RemoveHandlerOnChange(
+  const AnOnChangeEvent: TNotifyEvent);
+begin
+  if FOnChangeHandler<>nil then
+    FOnChangeHandler.Remove(TMethod(AnOnChangeEvent));
+end;
+
 function TCustomEdit.RealGetText: TCaption;
 begin
   if FEmulatedTextHintStatus=thsShowing then
@@ -576,6 +608,8 @@ var
   SStart, SLen: Integer;
 begin
   //debugln('TCustomEdit.TextChanged ',DbgSName(Self));
+  if FTextChangedLock then
+    Exit;
   if FCharCase in [ecUppercase, ecLowercase] then
   begin
     // use a local variable to reduce amounts of widgetset calls
@@ -590,7 +624,12 @@ begin
       CPos := CaretPos;
       SStart := SelStart;
       SLen := SelLength;
-      Text := Temp;
+      FTextChangedLock := True;
+      try
+        Text := Temp;
+      finally
+        FTextChangedLock := False;
+      end;
       SelStart  := SStart;
       SelLength := SLen;
       CaretPos  := CPos;
@@ -611,6 +650,8 @@ procedure TCustomEdit.Change;
 begin
   Changed;
   if Assigned(FOnChange) then FOnChange(Self);
+  if Assigned(FOnChangeHandler) then
+    FOnChangeHandler.CallNotifyEvents(Self);
 end;
 
 procedure TCustomEdit.DoEnter;
@@ -628,6 +669,12 @@ procedure TCustomEdit.DoExit;
 begin
   FAutoSelected := False;
   inherited DoExit;
+end;
+
+procedure TCustomEdit.EditingDone;
+begin
+  if not ReadOnly then
+    inherited EditingDone;
 end;
 
 procedure TCustomEdit.FontChanged(Sender: TObject);
@@ -680,22 +727,11 @@ begin
   end;
 end;
 
-procedure TCustomEdit.SetTextHintFontColor(const aTextHintFontColor: TColor);
-begin
-  DebugLn('TCustomEdit.TextHintFontColor is deprecated and will be removed in Lazarus 1.9');
-end;
-
-procedure TCustomEdit.SetTextHintFontStyle(const aTextHintFontStyle: TFontStyles
-  );
-begin
-  DebugLn('TCustomEdit.TextHintFontStyle is deprecated and will be removed in Lazarus 1.9');
-end;
-
-procedure TCustomEdit.ShowEmulatedTextHint;
+procedure TCustomEdit.ShowEmulatedTextHint(const ForceShow: Boolean);
 var
   HintFont: TFont;
 begin
-  if (FEmulatedTextHintStatus<>thsHidden) then
+  if (FEmulatedTextHintStatus<>thsHidden) and not ForceShow then
     Exit;
 
   FEmulatedTextHintStatus := thsChanging;
@@ -711,18 +747,6 @@ begin
   TWSCustomEditClass(WidgetSetClass).SetPasswordChar(Self, #0);
 
   FEmulatedTextHintStatus := thsShowing;
-end;
-
-function TCustomEdit.GetTextHintFontColor: TColor;
-begin
-  Result := clNone;
-  DebugLn('TCustomEdit.TextHintFontColor is deprecated and will be removed in Lazarus 1.9');
-end;
-
-function TCustomEdit.GetTextHintFontStyle: TFontStyles;
-begin
-  Result := [];
-  DebugLn('TCustomEdit.TextHintFontStyle is deprecated and will be removed in Lazarus 1.9');
 end;
 
 procedure TCustomEdit.HideEmulatedTextHint;

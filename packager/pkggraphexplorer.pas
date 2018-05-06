@@ -37,12 +37,16 @@ unit PkgGraphExplorer;
 interface
 
 uses
-  Classes, SysUtils, LCLProc, Forms, Controls, Buttons, ComCtrls,
-  StdCtrls, Menus, Dialogs, Graphics, LCLType, ExtCtrls, ButtonPanel,
-  AVL_Tree, contnrs, LCLIntf,
-  IDECommands, PackageIntf, IDEImagesIntf, LazIDEIntf,
+  Classes, SysUtils, contnrs, Laz_AVL_Tree,
+  // LCL
+  LCLProc, Forms, Controls, ComCtrls, StdCtrls, Menus,
+  LCLType, ExtCtrls, ButtonPanel, LCLIntf,
+  // IdeIntf
+  IDECommands, PackageIntf, IDEImagesIntf,
+  // LazControls
   LvlGraphCtrl,
-  LazConf, LazarusIDEStrConsts, IDEProcs, IDEOptionDefs, EnvironmentOpts,
+  // IDE
+  LazarusIDEStrConsts, IDEProcs, IDEOptionDefs,
   Project, PackageDefs, PackageSystem, PackageEditor, CleanPkgDeps;
   
 const
@@ -362,13 +366,13 @@ end;
 
 procedure TPkgGraphExplorerDlg.SetupComponents;
 begin
-  ImgIndexProject          := IDEImages.LoadImage(16, 'item_project');
-  ImgIndexPackage          := IDEImages.LoadImage(16, 'item_package');
-  ImgIndexInstalledPackage := IDEImages.LoadImage(16, 'pkg_installed');
-  ImgIndexInstallPackage   := IDEImages.LoadImage(16, 'pkg_package_autoinstall');
-  ImgIndexUninstallPackage := IDEImages.LoadImage(16, 'pkg_package_uninstall');
-  ImgIndexCyclePackage     := IDEImages.LoadImage(16, 'pkg_package_circle');
-  ImgIndexMissingPackage   := IDEImages.LoadImage(16, 'pkg_conflict');
+  ImgIndexProject          := IDEImages.LoadImage('item_project');
+  ImgIndexPackage          := IDEImages.LoadImage('item_package');
+  ImgIndexInstalledPackage := IDEImages.LoadImage('pkg_installed');
+  ImgIndexInstallPackage   := IDEImages.LoadImage('pkg_package_autoinstall');
+  ImgIndexUninstallPackage := IDEImages.LoadImage('pkg_package_uninstall');
+  ImgIndexCyclePackage     := IDEImages.LoadImage('pkg_package_circle');
+  ImgIndexMissingPackage   := IDEImages.LoadImage('pkg_conflict');
 
   PkgTreeView.Images:=IDEImages.Images_16;
 
@@ -697,8 +701,7 @@ begin
   end;
 end;
 
-function TPkgGraphExplorerDlg.FindLvlGraphNodeWithText(const s: string
-  ): TLvlGraphNode;
+function TPkgGraphExplorerDlg.FindLvlGraphNodeWithText(const s: string): TLvlGraphNode;
 begin
   Result:=LvlGraphControl1.Graph.GetNode(s,false);
 end;

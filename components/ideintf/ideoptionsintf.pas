@@ -121,7 +121,6 @@ type
   TAbstractIDEOptionsClass = class of TAbstractIDEOptions;
 
   TAbstractIDEEnvironmentOptions = class(TAbstractIDEOptions);
-  TAbstractIDEProjectOptions = class(TAbstractIDEOptions);
   TAbstractIDEHelpOptions = class(TAbstractIDEEnvironmentOptions);
 
   TOnAddToRecent = procedure(Sender: TObject; AFileName: string; var AAllow: Boolean) of object;
@@ -261,6 +260,7 @@ type
     procedure AddButtonSeparator; virtual; abstract;
     function AddControl(AControlClass: TControlClass): TControl; virtual; abstract; reintroduce;
     function FindEditor(AEditor: TAbstractIDEOptionsEditorClass): TAbstractIDEOptionsEditor; virtual; abstract;
+    function FindEditor(const IDEOptionsEditorClassName: string): TAbstractIDEOptionsEditor; virtual; abstract;
     function FindEditor(GroupIndex, AIndex: integer): TAbstractIDEOptionsEditor; virtual; abstract;
     function FindEditorClass(GroupIndex, AIndex: integer): TAbstractIDEOptionsEditorClass; virtual; abstract;
     procedure OpenEditor(AEditor: TAbstractIDEOptionsEditorClass); virtual; abstract;

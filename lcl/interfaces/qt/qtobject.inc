@@ -290,7 +290,10 @@ var
 begin
   {$IFDEF QtUseNativeEventLoop}
   ATimer := QTimer_create(QCoreApplication_instance());
-  QTimer_setInterval(ATimer, 0);
+  if (StyleName = 'gtk') or (StyleName = 'gtk+') then
+    QTimer_setInterval(ATimer, 1) {issue #31191}
+  else
+    QTimer_setInterval(ATimer, 0);
   QTimer_start(ATimer);
   FMainTimerID := QTimer_timerId(ATimer);
   QApplication_exec();
@@ -496,7 +499,7 @@ procedure TQtWidgetSet.AppSetTitle(const ATitle: string);
 var
   W: WideString;
 begin
-  W := GetUtf8String(ATitle);
+  W := {%H-}ATitle;
   QCoreApplication_setApplicationName(@W);
 end;
 
@@ -619,7 +622,7 @@ end;
 function TQtWidgetSet.EventFilter(Sender: QObjectH; Event: QEventH): Boolean; cdecl;
 var
   AObject: TQtObject;
-  W: TQtMainWindow;
+  W: TQtWidget;
   LCLEvent: QLCLMessageEventH;
   ASequence: QKeySequenceH;
   AKey: WideString;
@@ -647,7 +650,7 @@ var
     begin
       AWidget := QWidgetH(Sender);
       QObject_objectName(Sender, @AName);
-      if UTF8Copy(AName, 1, 16) = 'qtlclsystrayicon' then
+      if Copy(AName, 1, 16) = 'qtlclsystrayicon' then
       begin
         for i := 0 to SysTrayIconsList.Count - 1 do
         begin
@@ -693,7 +696,7 @@ var
               RGeom := TQtSystemTrayIcon(SysTrayIconsList.Items[i]).GetGeometry;
               if (QApplication_widgetAt(RGeom.Left, RGeom.Top) = AWidget) then
               begin
-                AName := 'qtlclsystrayicon_' + dbgHex(PtrUInt(AWidget));
+                AName := 'qtlclsystrayicon_' {%H-}+ dbgHex(PtrUInt(AWidget));
                 QObject_setObjectName(Sender, @AName);
                 TQtSystemTrayIcon(SysTrayIconsList.Items[i]).AttachSysTrayWidget(AWidget);
                 {$IFDEF DEBUGSYSTRAYICON}
@@ -766,8 +769,7 @@ begin
     QEventShortcutOverride: // issue #22827
     begin
       QKeyEvent_text(QKeyEventH(Event), @AKey);
-      if (QKeyEvent_modifiers(QKeyEventH(Event)) = QtAltModifier) and
-       (AKey <> '') then
+      if (QKeyEvent_modifiers(QKeyEventH(Event)) = QtAltModifier) and (AKey <> '') then
       begin
         ASequence := QKeySequence_create(QKeyEvent_modifiers(QKeyEventH(Event))
           or QKeyEvent_Key(QKeyEventH(Event)));
@@ -807,8 +809,9 @@ begin
         // eat next appdeactivate & appactivate since we are changing form
         // flags !
         if (StayOnTopList <> nil) then
-          W := TQtMainWindow(HWNDFromWidgetH(QApplication_activeWindow()))
-        else
+        begin
+          W := TQtWidget(GetActiveWindow);
+        end else
           W := nil;
         Application.IntfAppActivate;
         QtRestoreStayOnTop;
@@ -1280,11 +1283,11 @@ begin
     lcEmulatedMDI,
     lcCanDrawOutsideOnPaint: Result := LCL_CAPABILITY_NO;
     lcDragDockStartOnTitleClick: Result :=
-     {$ifdef MSWINDOWS} LCL_CAPABILITY_YES {$else} LCL_CAPABILITY_NO {$endif};
-     lcNeedMininimizeAppWithMainForm: Result :=
-     {$ifdef HASX11} LCL_CAPABILITY_YES {$else} LCL_CAPABILITY_NO {$endif};
-     {when issue #20475 is fixed, then set this to LCL_CAPABILITY_YES}
-     lcReceivesLMClearCutCopyPasteReliably: Result := LCL_CAPABILITY_NO;
+      {$ifdef MSWINDOWS} LCL_CAPABILITY_YES {$else} LCL_CAPABILITY_NO {$endif};
+    lcNeedMininimizeAppWithMainForm: Result :=
+      {$ifdef HASX11} LCL_CAPABILITY_YES {$else} LCL_CAPABILITY_NO {$endif};
+    {when issue #20475 is fixed, then set this to LCL_CAPABILITY_YES}
+    lcReceivesLMClearCutCopyPasteReliably: Result := LCL_CAPABILITY_NO;
     lcRadialGradientBrush: Result := LCL_CAPABILITY_YES;
     lcTransparentWindow: Result := LCL_CAPABILITY_YES;
   else
@@ -2086,7 +2089,7 @@ var
   WStr: WideString;
 begin
   QObject_objectName(QApplication_style, @WStr);
-  Result := UTF16ToUTF8(WStr);
+  Result := {%H-}WStr;
 end;
 
 //------------------------------------------------------------------------

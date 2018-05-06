@@ -39,8 +39,11 @@ unit BasicCodeTools;
 interface
 
 uses
-  Classes, SysUtils, AVL_Tree, SourceLog, KeywordFuncLists, FileProcs,
-  LazFileUtils, LazUTF8, strutils;
+  Classes, SysUtils, strutils, Laz_AVL_Tree,
+  // LazUtils
+  LazFileUtils, LazUTF8,
+  // Codetools
+  SourceLog, KeywordFuncLists, FileProcs;
 
 //----------------------------------------------------------------------------
 { These functions are used by the codetools }
@@ -189,6 +192,7 @@ function DottedIdentifierLength(Identifier: PChar): integer;
 function GetDottedIdentifier(Identifier: PChar): string;
 function IsDottedIdentifier(const Identifier: string): boolean;
 function CompareDottedIdentifiers(Identifier1, Identifier2: PChar): integer;
+function ChompDottedIdentifier(const Identifier: string): string;
 
 // space and special chars
 function TrimCodeSpace(const ACode: string): string;
@@ -234,6 +238,8 @@ type
     property IdentifierStartInUnitName: Integer read GetIdentifierStartInUnitName;
   end;
 
+  { TNameSpaceInfo }
+
   TNameSpaceInfo = class
   private
     FUnitName: string;
@@ -246,7 +252,7 @@ type
     property IdentifierStartInUnitName: Integer read FIdentifierStartInUnitName;
   end;
 
-
+function ExtractFileNamespace(const Filename: string): string;
 procedure AddToTreeOfUnitFilesOrNamespaces(
   var TreeOfUnitFiles, TreeOfNameSpaces: TAVLTree;
   const NameSpacePath, Filename: string;
@@ -268,6 +274,10 @@ function CompareUnitNameAndUnitFileInfo(UnitnamePAnsiString,
 function CompareNameSpaceAndNameSpaceInfo(NamespacePAnsiString,
                                         NamespaceInfo: Pointer): integer;
 
+// function filled by CodeToolManager to find inc files
+var
+  FindIncFileInCfgCache: function(const Name: string; out ExpFilename: string): boolean;
+
 //-----------------------------------------------------------------------------
 // functions / procedures
 
@@ -277,7 +287,13 @@ function CompareNameSpaceAndNameSpaceInfo(NamespacePAnsiString,
 
 // source type
 function FindSourceType(const Source: string;
-  var SrcNameStart, SrcNameEnd: integer): string;
+  var SrcNameStart, SrcNameEnd: integer; NestedComments: boolean = false): string;
+
+// identifier
+function ReadDottedIdentifier(const Source: string; var Position: integer;
+  NestedComments: boolean = false): string;
+function ReadDottedIdentifier(var Position: PChar; SrcEnd: PChar;
+  NestedComments: boolean = false): string;
 
 // program name
 function RenameProgramInSource(Source:TSourceLog;
@@ -288,7 +304,10 @@ function FindProgramNameInSource(const Source:string;
 // unit name
 function RenameUnitInSource(Source:TSourceLog;const NewUnitName:string):boolean;
 function FindUnitNameInSource(const Source:string;
-   var UnitNameStart,UnitNameEnd:integer):string;
+   out UnitNameStart,UnitNameEnd: integer; NestedComments: boolean = false):string;
+function FindModuleNameInSource(const Source:string;
+   out ModuleType: string; out NameStart,NameEnd: integer;
+   NestedComments: boolean = false):string;
 
 // uses sections
 function UnitIsUsedInSource(const Source,SrcUnitName:string):boolean;
@@ -485,15 +504,38 @@ begin
     Result:=false;
 end;
 
-function FindSourceType(const Source: string;
-  var SrcNameStart, SrcNameEnd: integer): string;
+function FindSourceType(const Source: string; var SrcNameStart,
+  SrcNameEnd: integer; NestedComments: boolean): string;
+var
+  u: String;
+  p, AtomStart: Integer;
 begin
   // read first atom for type
-  SrcNameEnd:=1;
-  Result:=ReadNextPascalAtom(Source,SrcNameEnd,SrcNameStart);
-  // read second atom for name
-  if Result<>'' then
-    ReadNextPascalAtom(Source,SrcNameEnd,SrcNameStart);
+  SrcNameStart:=0;
+  SrcNameEnd:=0;
+  p:=1;
+  Result:=ReadNextPascalAtom(Source,p,AtomStart,NestedComments);
+  u:=Uppercase(Result);
+  if (u='UNIT') or (u='PROGRAM') or (u='LIBRARY') or (u='PACKAGE') then begin
+    // read name
+    ReadNextPascalAtom(Source,p,AtomStart,NestedComments);
+    if p<=AtomStart then exit;
+    if not IsIdentStartChar[Source[AtomStart]] then exit;
+    SrcNameStart:=AtomStart;
+    SrcNameEnd:=p;
+    repeat
+      ReadRawNextPascalAtom(Source,p,AtomStart,NestedComments);
+      if (AtomStart=p+1) and (Source[AtomStart]='.') then begin
+        ReadRawNextPascalAtom(Source,p,AtomStart,NestedComments);
+        if p<=AtomStart then exit;
+        if not IsIdentStartChar[Source[AtomStart]] then exit;
+        SrcNameEnd:=p;
+      end else
+        break;
+    until false;
+  end else begin
+    Result:='';
+  end;
 end;
 
 function RenameUnitInSource(Source:TSourceLog;const NewUnitName:string):boolean;
@@ -506,13 +548,71 @@ begin
     Source.Replace(UnitNameStart,UnitNameEnd-UnitNameStart,NewUnitName);
 end;
 
-function FindUnitNameInSource(const Source:string;
-  var UnitNameStart,UnitNameEnd:integer):string;
+function FindUnitNameInSource(const Source: string; out UnitNameStart,
+  UnitNameEnd: integer; NestedComments: boolean): string;
+var
+  ModuleType: string;
 begin
-  if uppercasestr(FindSourceType(Source,UnitNameStart,UnitNameEnd))='UNIT' then
-    Result:=copy(Source,UnitNameStart,UnitNameEnd-UnitNameStart)
-  else
+  Result:=FindModuleNameInSource(Source,ModuleType,UnitNameStart,UnitNameEnd,NestedComments);
+  if CompareText(ModuleType,'UNIT')<>0 then
     Result:='';
+end;
+
+function FindModuleNameInSource(const Source: string; out ModuleType: string;
+  out NameStart, NameEnd: integer; NestedComments: boolean): string;
+var
+  u: String;
+  p, AtomStart: Integer;
+begin
+  // read first atom for type
+  Result:='';
+  NameStart:=0;
+  NameEnd:=0;
+  p:=1;
+  ModuleType:=ReadNextPascalAtom(Source,p,AtomStart,NestedComments);
+  u:=UpperCase(ModuleType);
+  if (u='UNIT') or (u='PROGRAM') or (u='LIBRARY') or (u='PACKAGE') then begin
+    // read name
+    ReadNextPascalAtom(Source,p,AtomStart,NestedComments);
+    if p<=AtomStart then exit;
+    if not IsIdentStartChar[Source[AtomStart]] then exit;
+    NameStart:=AtomStart;
+    NameEnd:=AtomStart;
+    Result:=ReadDottedIdentifier(Source,NameEnd,NestedComments);
+  end else
+    ModuleType:='';
+end;
+
+function ReadDottedIdentifier(const Source: string; var Position: integer;
+  NestedComments: boolean): string;
+var
+  p: PChar;
+begin
+  if (Position<1) or (Position>length(Source)) then exit('');
+  p:=@Source[Position];
+  Result:=ReadDottedIdentifier(p,PChar(Source)+length(Source),NestedComments);
+  Position:=p-PChar(Source)+1;
+end;
+
+function ReadDottedIdentifier(var Position: PChar; SrcEnd: PChar;
+  NestedComments: boolean): string;
+var
+  AtomStart, p: PChar;
+begin
+  Result:='';
+  p:=Position;
+  ReadRawNextPascalAtom(p,AtomStart,SrcEnd,NestedComments);
+  Position:=AtomStart;
+  if (AtomStart>=p) or not IsIdentStartChar[AtomStart^] then exit;
+  Result:=GetIdentifier(AtomStart);
+  repeat
+    ReadRawNextPascalAtom(p,AtomStart,SrcEnd,NestedComments);
+    if (AtomStart+1<>p) or (AtomStart^<>'.') then exit;
+    ReadRawNextPascalAtom(p,AtomStart,SrcEnd,NestedComments);
+    if (AtomStart>=p) or not IsIdentStartChar[AtomStart^] then exit;
+    Position:=AtomStart;
+    Result:=Result+'.'+GetIdentifier(AtomStart);
+  until false;
 end;
 
 function RenameProgramInSource(Source: TSourceLog;
@@ -1723,11 +1823,13 @@ begin
   while (IdentEnd<=length(Source))
   and (IsIdentChar[Source[IdentEnd]]) do
     inc(IdentEnd);
-  while (IdentStart<IdentEnd)
+  while (IdentStart<Position)
   and (not IsIdentStartChar[Source[IdentStart]]) do
     inc(IdentStart);
   if (IdentStart>1) and (Source[IdentStart-1]='&') then
     dec(IdentStart);
+  if (IdentStart>length(Source)) or not IsIdentStartChar[Source[IdentStart]] then
+    IdentEnd:=IdentStart;
 end;
 
 function GetIdentStartPosition(const Source: string; Position: integer
@@ -1840,6 +1942,8 @@ begin
   Result:=copy(Source,AtomStart,Position-AtomStart);
 end;
 
+{$IFOPT R+}{$DEFINE RangeChecking}{$ENDIF}
+{$R-}
 procedure ReadRawNextPascalAtom(const Source: string;
   var Position: integer; out AtomStart: integer; NestedComments: boolean;
   SkipDirectives: boolean);
@@ -1847,8 +1951,6 @@ var
   Len:integer;
   SrcPos, SrcStart, SrcAtomStart: PChar;
 begin
-  {$IFOPT R+}{$DEFINE RangeChecking}{$ENDIF}
-  {$R-}
   Len:=length(Source);
   if Position>Len then begin
     Position:=Len+1;
@@ -1860,8 +1962,8 @@ begin
   ReadRawNextPascalAtom(SrcPos,SrcAtomStart,SrcStart+len,NestedComments,SkipDirectives);
   Position:=SrcPos-SrcStart+1;
   AtomStart:=SrcAtomStart-SrcStart+1;
-  {$IFDEF RangeChecking}{$R+}{$UNDEF RangeChecking}{$ENDIF}
 end;
+{$IFDEF RangeChecking}{$R+}{$UNDEF RangeChecking}{$ENDIF}
 
 procedure ReadRawNextPascalAtom(var Position: PChar; out AtomStart: PChar;
   const SrcEnd: PChar; NestedComments: boolean; SkipDirectives: boolean);
@@ -4320,8 +4422,8 @@ function IdentifierPos(Search, Identifier: PChar): PtrInt;
 var
   i: Integer;
 begin
-  if (Search=nil) or (Search^=#0) then exit(-1);
   if Identifier=nil then exit(-1);
+  if (Search=nil) or (Search^=#0) then exit(0);
   Result:=0;
   while (IsIdentChar[Identifier[Result]]) do begin
     if UpChars[Search^]=UpChars[Identifier[Result]] then begin
@@ -4405,6 +4507,7 @@ function CompareStringConstants(p1, p2: PChar): integer;
 // 1: 'aa' 'ab' because bigger
 // 1: 'aa' 'a'  because longer
 begin
+  Result := 0;
   if (p1^='''') and (p2^='''') then begin
     inc(p1);
     inc(p2);
@@ -5035,6 +5138,15 @@ begin
   end;
 end;
 
+function ChompDottedIdentifier(const Identifier: string): string;
+var
+  p: Integer;
+begin
+  p:=length(Identifier);
+  while (p>0) and (Identifier[p]<>'.') do dec(p);
+  Result:=LeftStr(Identifier,p-1);
+end;
+
 function TrimCodeSpace(const ACode: string): string;
 // turn all lineends and special chars to space
 // space is combined to one char
@@ -5229,7 +5341,7 @@ var
     var
       l: LongInt;
     begin
-      l:=UTF8CharacterLength(@Src[APos]);
+      l:=UTF8CodepointSize(@Src[APos]);
       inc(APos);
       dec(l);
       while (l>0) and (APos<ParsedLen) do begin
@@ -5716,20 +5828,27 @@ begin
   System.Move(p^,Result[1],l);
 end;
 
+function ExtractFileNamespace(const Filename: string): string;
+begin
+  Result:=ExtractFileNameOnly(Filename);
+  if Result='' then exit;
+  Result:=ChompDottedIdentifier(Result);
+end;
+
 procedure AddToTreeOfUnitFilesOrNamespaces(var TreeOfUnitFiles,
   TreeOfNameSpaces: TAVLTree; const NameSpacePath, Filename: string;
   CaseInsensitive, KeepDoubles: boolean);
 
-  procedure FileAndNameSpaceFits(const UnitName: string; out FileNameFits, NameSpaceFits: Boolean);
+  procedure FileAndNameSpaceFits(const UnitName: string;
+    out FileNameFits, NameSpaceFits: Boolean);
   var
     CompareCaseInsensitive: Boolean;
   begin
     FileNameFits := False;
     NameSpaceFits := False;
     if NameSpacePath = '' then begin
-      //we search for files without namespace path
-      FileNameFits := pos('.', UnitName) = 0;
-      NameSpaceFits := not FileNameFits;
+      FileNameFits := true;
+      NameSpaceFits := true;
       Exit;
     end;
     if Length(UnitName) < Length(NameSpacePath) then Exit;
@@ -5751,6 +5870,7 @@ var
   UnitName: string;
 begin
   UnitName := ExtractFileNameOnly(Filename);
+  if not IsDottedIdentifier(UnitName) then exit;
   FileAndNameSpaceFits(UnitName, FileNameFits, NameSpaceFits);
   if FileNameFits then
     AddToTreeOfUnitFiles(TreeOfUnitFiles,FileName,UnitName,
@@ -5763,14 +5883,14 @@ end;
 function GatherUnitFiles(const BaseDir, SearchPath, Extensions,
   NameSpacePath: string; KeepDoubles, CaseInsensitive: boolean;
   var TreeOfUnitFiles, TreeOfNamespaces: TAVLTree): boolean;
-// BaseDir: base directory, used when SearchPath is relative
-// SearchPath: semicolon separated list of directories
-// Extensions: semicolon separated list of extensions (e.g. 'pas;.pp;ppu')
-// NameSpacePath: gather files only from this namespace path
-// KeepDoubles: false to return only the first match of each unit
-// CaseInsensitive: true to ignore case on comparing extensions
-// TreeOfUnitFiles: tree of TUnitFileInfo
-// TreeOfNamespaces: tree of TNameSpaceInfo
+{ BaseDir: base directory, used when SearchPath is relative
+ SearchPath: semicolon separated list of directories
+ Extensions: semicolon separated list of extensions (e.g. 'pas;.pp;ppu')
+ NameSpacePath: gather files only from this namespace path, empty '' for all
+ KeepDoubles: false to return only the first match of each unit
+ CaseInsensitive: true to ignore case on comparing extensions
+ TreeOfUnitFiles: tree of TUnitFileInfo
+ TreeOfNamespaces: tree of TNameSpaceInfo }
 var
   SearchedDirectories: TAVLTree; // tree of AnsiString
 

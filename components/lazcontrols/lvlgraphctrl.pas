@@ -15,10 +15,12 @@ unit LvlGraphCtrl;
 interface
 
 uses
-  Classes, SysUtils, types, math, typinfo,
-  FPimage, FPCanvas,
-  AvgLvlTree, LazLoggerBase, LMessages, LCLType, LResources,
-  GraphType, GraphMath, Graphics, Controls, ImgList, LCLIntf, Forms, Themes;
+  Classes, SysUtils, types, math, typinfo, FPimage, FPCanvas, Laz_AVL_Tree,
+  // LazUtils
+  LazLoggerBase, AvgLvlTree,
+  // LCL
+  LMessages, LCLType, LCLIntf, GraphType, GraphMath, Graphics, Controls, ImgList,
+  Forms, Themes;
 
 type
   TLazCtrlPalette = array of TFPColor;
@@ -93,9 +95,9 @@ type
     function OutEdgeCount: integer;
     property OutEdges[Index: integer]: TLvlGraphEdge read GetOutEdges;
     function GetVisibleSourceNodes: TLvlGraphNodeArray;
-    function GetVisibleSourceNodesAsAVLTree: TAvgLvlTree;
+    function GetVisibleSourceNodesAsAVLTree: TAvlTree;
     function GetVisibleTargetNodes: TLvlGraphNodeArray;
-    function GetVisibleTargetNodesAsAVLTree: TAvgLvlTree;
+    function GetVisibleTargetNodesAsAVLTree: TAvlTree;
     property IndexInLevel: integer read GetIndexInLevel write SetIndexInLevel;
     property Level: TLvlGraphLevel read FLevel write SetLevel;
     property Selected: boolean read FSelected write SetSelected;
@@ -136,9 +138,9 @@ type
     property Highlighted: boolean read FHighlighted write SetHighlighted;
     property DrawnAt: TRect read FDrawnAt;  // last drawn with scrolling
     function GetVisibleSourceNodes: TLvlGraphNodeArray;
-    function GetVisibleSourceNodesAsAVLTree: TAvgLvlTree;
+    function GetVisibleSourceNodesAsAVLTree: TAvlTree;
     function GetVisibleTargetNodes: TLvlGraphNodeArray;
-    function GetVisibleTargetNodesAsAVLTree: TAvgLvlTree;
+    function GetVisibleTargetNodesAsAVLTree: TAvlTree;
     function AsString: string;
   end;
   TLvlGraphEdgeClass = class of TLvlGraphEdge;
@@ -194,6 +196,7 @@ type
     FOnInvalidate: TNotifyEvent;
     FNodes: TFPList; // list of TLvlGraphNode
     fLevels: TFPList;
+    FCaseSensitive: Boolean;
     FOnSelectionChanged: TNotifyEvent;
     FOnStructureChanged: TOnLvlGraphStructureChanged;
     function GetLevelCount: integer;
@@ -227,6 +230,7 @@ type
     procedure ClearSelection;
     procedure SingleSelect(Node: TLvlGraphNode);
     function IsMultiSelection: boolean;
+    property CaseSensitive: Boolean read FCaseSensitive write FCaseSensitive;
 
     // edges
     function GetEdge(SourceCaption, TargetCaption: string;
@@ -595,10 +599,10 @@ function GetDistancePointPoint(X1,Y1,X2,Y2: integer): integer;
 // level graph
 procedure LvlGraphMinimizeCrossings(Graph: TLvlGraph); overload;
 procedure LvlGraphHighlightNode(Node: TLvlGraphNode;
-  HighlightedElements: TAvgLvlTree; FollowIn, FollowOut: boolean);
+  HighlightedElements: TAvlTree; FollowIn, FollowOut: boolean);
 function CompareLGNodesByCenterPos(Node1, Node2: Pointer): integer;
 procedure DrawCurvedLvlLeftToRightEdge(Canvas: TFPCustomCanvas; x1, y1, x2, y2: integer);
-function NodeAVLTreeToNodeArray(Nodes: TAvgLvlTree; RemoveHidden: boolean; FreeTree: boolean): TLvlGraphNodeArray;
+function NodeAVLTreeToNodeArray(Nodes: TAvlTree; RemoveHidden: boolean; FreeTree: boolean): TLvlGraphNodeArray;
 function NodeArrayAsString(Nodes: TLvlGraphNodeArray): String;
 
 // debugging
@@ -717,7 +721,7 @@ begin
   end;
 end;
 
-procedure LvlGraphHighlightNode(Node: TLvlGraphNode; HighlightedElements: TAvgLvlTree;
+procedure LvlGraphHighlightNode(Node: TLvlGraphNode; HighlightedElements: TAvlTree;
   FollowIn, FollowOut: boolean);
 var
   i: Integer;
@@ -927,10 +931,10 @@ begin
   Freemem(Points);
 end;
 
-function NodeAVLTreeToNodeArray(Nodes: TAvgLvlTree; RemoveHidden: boolean;
+function NodeAVLTreeToNodeArray(Nodes: TAvlTree; RemoveHidden: boolean;
   FreeTree: boolean): TLvlGraphNodeArray;
 var
-  AVLNode: TAvgLvlTreeNode;
+  AVLNode: TAvlTreeNode;
   Node: TLvlGraphNode;
   i: Integer;
 begin
@@ -1550,7 +1554,7 @@ var
   e: Integer;
   OtherNode: TMinXNode;
   k: Integer;
-  AVLNode: TAvgLvlTreeNode;
+  AVLNode: TAvlTreeNode;
   P2PItem: PPointerToPointerItem;
 begin
   AVLNode:=FGraphNodeToNode.Tree.FindLowest;
@@ -2462,6 +2466,7 @@ begin
   inherited Paint;
 
   Canvas.Font.Assign(Font);
+  Canvas.Font.PixelsPerInch := Font.PixelsPerInch;
 
   Include(FFlags,lgcFocusedPainting);
 
@@ -2478,7 +2483,7 @@ begin
   // background
   if Draw(lgdsBackground) then begin
     Canvas.Brush.Style:=bsSolid;
-    Canvas.Brush.Color:=clWhite;
+    Canvas.Brush.Color:=Color; //clWhite;
     Canvas.FillRect(ClientRect);
   end;
 
@@ -2568,11 +2573,11 @@ var
   n: Integer;
   CurNode: TLvlGraphNode;
   e: Integer;
-  HighlightedElements: TAvgLvlTree;
+  HighlightedElements: TAvlTree;
   Edge: TLvlGraphEdge;
 begin
   BeginUpdate;
-  HighlightedElements:=TAvgLvlTree.Create;
+  HighlightedElements:=TAvlTree.Create;
   try
     if Element is TLvlGraphNode then
       LvlGraphHighlightNode(TLvlGraphNode(Element),HighlightedElements,true,true)
@@ -2622,6 +2627,7 @@ constructor TCustomLvlGraphControl.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   ControlStyle:=ControlStyle+[csAcceptsControls];
+  Color := clWhite;
   FOptions:=DefaultLvlGraphCtrlOptions;
   FGraph:=TLvlGraph.Create;
   FGraph.OnInvalidate:=@GraphInvalidate;
@@ -2973,7 +2979,11 @@ var
   i: Integer;
 begin
   i:=NodeCount-1;
-  while (i>=0) and (aCaption<>Nodes[i].Caption) do dec(i);
+  if FCaseSensitive then
+    while (i>=0) and (aCaption<>Nodes[i].Caption) do dec(i)
+  else
+    while (i>=0) and not SameText(aCaption, Nodes[i].Caption) do dec(i);
+
   if i>=0 then begin
     Result:=Nodes[i];
   end else if CreateIfNotExists then begin
@@ -3062,7 +3072,7 @@ end;
 procedure TLvlGraph.CreateTopologicalLevels(HighLevels: boolean);
 {$DEFINE LvlGraphConsistencyCheck}
 var
-  ExtNodes: TAvgLvlTree; // tree of TGraphLevelerNode sorted by Node
+  ExtNodes: TAvlTree; // tree of TGraphLevelerNode sorted by Node
   MaxLevel: Integer;
 
   function GetExtNode(Node: TLvlGraphNode): TGraphLevelerNode;
@@ -3117,7 +3127,7 @@ begin
   {$IFDEF LvlGraphConsistencyCheck}
   ConsistencyCheck(false);
   {$ENDIF}
-  ExtNodes:=TAvgLvlTree.Create(@CompareGraphLevelerNodes);
+  ExtNodes:=TAvlTree.Create(@CompareGraphLevelerNodes);
   try
     // init ExtNodes
     // clear BackEdge flags
@@ -3181,7 +3191,7 @@ var
   l: Integer;
   LastNode: TLvlGraphNode;
   NextNode: TLvlGraphNode;
-  AVLNode: TAvgLvlTreeNode;
+  AVLNode: TAvlTreeNode;
   P2PItem: PPointerToPointerItem;
   MergeAtSourceNode: Boolean;
   SourceInfo: PNodeInfo;
@@ -3573,10 +3583,10 @@ begin
   Result:=NodeAVLTreeToNodeArray(GetVisibleSourceNodesAsAVLTree,true,true);
 end;
 
-function TLvlGraphEdge.GetVisibleSourceNodesAsAVLTree: TAvgLvlTree;
+function TLvlGraphEdge.GetVisibleSourceNodesAsAVLTree: TAvlTree;
 // return all visible nodes connected in Source direction
 var
-  Visited: TAvgLvlTree;
+  Visited: TAvlTree;
 
   procedure Search(Node: TLvlGraphNode);
   var
@@ -3594,8 +3604,8 @@ var
   end;
 
 begin
-  Result:=TAvgLvlTree.Create;
-  Visited:=TAvgLvlTree.Create;
+  Result:=TAvlTree.Create;
+  Visited:=TAvlTree.Create;
   try
     Search(Source);
   finally
@@ -3609,10 +3619,10 @@ begin
   Result:=NodeAVLTreeToNodeArray(GetVisibleTargetNodesAsAVLTree,true,true);
 end;
 
-function TLvlGraphEdge.GetVisibleTargetNodesAsAVLTree: TAvgLvlTree;
+function TLvlGraphEdge.GetVisibleTargetNodesAsAVLTree: TAvlTree;
 // return all visible nodes connected in Target direction
 var
-  Visited: TAvgLvlTree;
+  Visited: TAvlTree;
 
   procedure Search(Node: TLvlGraphNode);
   var
@@ -3630,8 +3640,8 @@ var
   end;
 
 begin
-  Result:=TAvgLvlTree.Create;
-  Visited:=TAvgLvlTree.Create;
+  Result:=TAvlTree.Create;
+  Visited:=TAvlTree.Create;
   try
     Search(Source);
   finally
@@ -3893,7 +3903,7 @@ begin
   Result:=NodeAVLTreeToNodeArray(GetVisibleSourceNodesAsAVLTree,true,true);
 end;
 
-function TLvlGraphNode.GetVisibleSourceNodesAsAVLTree: TAvgLvlTree;
+function TLvlGraphNode.GetVisibleSourceNodesAsAVLTree: TAvlTree;
 // return all visible nodes connected in Source direction
 
   procedure Search(Node: TLvlGraphNode);
@@ -3912,7 +3922,7 @@ function TLvlGraphNode.GetVisibleSourceNodesAsAVLTree: TAvgLvlTree;
 var
   i: Integer;
 begin
-  Result:=TAvgLvlTree.Create;
+  Result:=TAvlTree.Create;
   for i:=0 to InEdgeCount-1 do
     Search(InEdges[i].Source);
 end;
@@ -3923,10 +3933,10 @@ begin
   Result:=NodeAVLTreeToNodeArray(GetVisibleTargetNodesAsAVLTree,true,true);
 end;
 
-function TLvlGraphNode.GetVisibleTargetNodesAsAVLTree: TAvgLvlTree;
+function TLvlGraphNode.GetVisibleTargetNodesAsAVLTree: TAvlTree;
 // return all visible nodes connected in Target direction
 var
-  Visited: TAvgLvlTree;
+  Visited: TAvlTree;
 
   procedure Search(Node: TLvlGraphNode);
   var
@@ -3946,8 +3956,8 @@ var
 var
   i: Integer;
 begin
-  Result:=TAvgLvlTree.Create;
-  Visited:=TAvgLvlTree.Create;
+  Result:=TAvlTree.Create;
+  Visited:=TAvlTree.Create;
   try
     for i:=0 to OutEdgeCount-1 do
       Search(OutEdges[i].Target);

@@ -42,8 +42,8 @@ const
   cLocalRepositoryConfig = 'config';
   cLocalRepositoryConfigFile = 'options.xml';
   cLocalRepositoryUpdatesFile = 'updates_%s.xml';
-  cExcludedFilesDef = '*.,*.a,*.o,*.ppu,*.compiled,*.bak,*.or,*.rsj,*.~,*.exe,*.dbg,*.zip,*.json';
-  cExcludedFoldersDef = 'lib,backup,updates,compiled,.git,.svn';
+  cExcludedFilesDef = '*.,*.a,*.o,*.ppu,*.compiled,*.bak,*.or,*.rsj,*.~,*.exe,*.dbg,*.zip,*.so,*.dll,*.dylib';
+  cExcludedFoldersDef = 'lib,backup,updates,compiled,.git,.svn,units';
   cHelpPage = 'http://wiki.freepascal.org/Online_Package_Manager';
   cHelpPage_CreateRepositoryPackage = 'http://wiki.freepascal.org/Online_Package_Manager#Create_repository_package';
   cHelpPage_CreateExternalJSON = 'http://wiki.freepascal.org/Online_Package_Manager#Create_JSON_for_updates';
@@ -63,12 +63,12 @@ resourcestring
   rsLazarusPackageManager = 'Online Package Manager';
 
   //main form
-  rsPackagesFound = '(%s packages found)';
+  rsPackagesFound = '(%s repository packages found, containing %s lpk files, total size %s)';
   rsMainFrm_VSTHeaderColumn_PackageName = 'Packages';
-  rsMainFrm_VSTHeaderColumn_PackageFile = 'Package file (.lpk)';
+  rsMainFrm_VSTHeaderColumn_LazarusPackage = 'Lazarus Package (.lpk)';
   rsMainFrm_VSTHeaderColumn_Repository = 'Repository';
   rsMainFrm_VSTHeaderColumn_Installed = 'Installed';
-  rsMainFrm_VSTHeaderColumn_Update = 'Update';
+  rsMainFrm_VSTHeaderColumn_Update = 'External';
   rsMainFrm_VSTHeaderColumn_Data = 'Status/Data';
   rsMainFrm_VSTHeaderColumn_Button = '';
   rsMainFrm_VSTHeaderColumn_Rating = 'Rating';
@@ -90,7 +90,7 @@ resourcestring
   rsMainFrm_VSTText_RepositoryFileHash = 'Repository filehash';
   rsMainFrm_VSTText_RepositoryFileDate = 'Available since';
   rsMainFrm_VSTText_HomePageURL = 'Home page';
-  rsMainFrm_VSTText_DownloadURL = 'Update link (JSON)';
+  rsMainFrm_VSTText_DownloadURL = 'External link (JSON)';
   rsMainFrm_VSTText_SVNURL = 'SVN';
   rsMainFrm_VSTText_Install0 = 'No';
   rsMainFrm_VSTText_Install1 = 'Yes';
@@ -104,8 +104,8 @@ resourcestring
   rsMainFrm_VSTText_PackageState2 = 'Extracted';
   rsMainFrm_VSTText_PackageState3 = 'Installed';
   rsMainFrm_VSTText_PackageState4 = 'Up to date';
-  rsMainFrm_VSTText_PackageState5 = 'New version available (repository)';
-  rsMainFrm_VSTText_PackageState6 = 'New updates available';
+  rsMainFrm_VSTText_PackageState6 = 'New version available';
+  rsMainFrm_VSTText_PackageState7 = 'Ahead of OPM';
   rsMainFrm_VSTText_PackageCategory0  = 'Charts and Graphs';
   rsMainFrm_VSTText_PackageCategory1  = 'Cryptography';
   rsMainFrm_VSTText_PackageCategory2  = 'DataControls';
@@ -152,6 +152,10 @@ resourcestring
   rsMainFrm_TBInstall_Hint = 'Install packages';
   rsMainFrm_TBUpdate_Caption = 'Update';
   rsMainFrm_TBUpdate_Hint = 'Update packages from external URL';
+  rsMainFrm_TBUnInstall_Caption = 'Uninstall';
+  rsMainFrm_TBUnInstall_Hint = 'Uninstall packages';
+  rsMainFrm_TBOpenRepo_Caption = 'Local repo';
+  rsMainFrm_TBOpenRepo_Hint = 'Open local repository';
   rsMainFrm_TBCleanUp_Caption = 'Cleanup';
   rsMainFrm_TBCleanUp_Hint = 'Cleanup local repository';
   rsMainFrm_TBRepository_Caption = 'Create';
@@ -160,8 +164,11 @@ resourcestring
   rsMainFrm_TBOptions_Hint = 'Show options dialog';
   rsMainFrm_TBHelp_Caption = 'Help';
   rsMainFrm_TBHelp_Hint = 'Help (' + cHelpPage + ')';
+  rsMainFrm_miFromRepository = 'From repository';
+  rsMainFrm_miFromExternalSource = 'From external source';
   rsMainFrm_miCreateRepositoryPackage = 'Create repository package';
   rsMainFrm_miCreateJSONForUpdates = 'Create JSON for updates';
+  rsMainFrm_miCreateRepository = 'Create private repository';
   rsMainFrm_miJSONShow =  'Show JSON';
   rsMainFrm_miJSONHide = 'Hide JSON';
   rsMainFrm_miJSONSort = 'Sort';
@@ -172,17 +179,22 @@ resourcestring
   rsMainFrm_miSaveToFile = 'Save to file';
   rsMainFrm_miCopyToClpBrd = 'Copy to clipboard';
   rsMainFrm_miResetRating = 'Reset rating';
+  rsMainFrm_miSaveChecks = 'Save checked packages';
+  rsMainFrm_miLoadChecks = 'Load checked packages';
   rsMainFrm_PackagenameAlreadyExists = 'A package with the same name already exists!';
   rsMainFrm_PackageAlreadyInstalled = 'The following packages are already installed. Continue anyway?';
   rsMainFrm_PackageAlreadyDownloaded = 'The following repository packages already exist in the target folder. Continue?';
-  rsMainFrm_PackageUpdateWarning = 'Updating packages from external link is not without a risk!' + sLineBreak + 'Only update if you trust the package maintainer. Continue?';
-  rsMainFrm_PackageUpdate0 = 'The following repository packages are not installed or don''t have a valid external download link. The packages will be skipped. Continue?';
-  rsMainFrm_PackageUpdate1 = 'None of the checked repository packages is installed or has a valid external download link.';
+  rsMainFrm_PackageUpdateWarning = 'Installing packages from external link is not without a risk!' + sLineBreak + 'Only install if you trust the package maintainer. Continue?';
+  rsMainFrm_PackageUpdate0 = 'The following repository packages are not available externally. The packages will be skipped. Continue?';
+  rsMainFrm_PackageUpdate1 = 'None of the checked repository packages are available externally.';
   rsMainFrm_rsMessageNoPackage = 'No packages to show.';
   rsMainFrm_rsMessageParsingJSON = 'Parsing JSON. Please wait...';
   rsMainFrm_rsMessageDownload = 'Downloading package list. Please wait...';
   rsMainFrm_rsMessageChangingRepository = 'Changing repository. Please wait...';
   rsMainFrm_rsMessageNoRepository0 = 'Remote package repository not configured.' + sLineBreak + 'Do you wish to configure it now?';
+  rsMainFrm_rsMessageNothingChacked = 'Please check at least one package!';
+  rsMainFrm_resMessageChecksSaved = '%s packages successfully saved to file!';
+  rsMainFrm_resMessageChecksLoaded = '%s packages successfully loaded from file!';
   rsMainFrm_rsMessageError0 = 'Cannot download package list. Error message:';
   rsMainFrm_rsMessageError1 = 'Invalid JSON file.';
   rsMainFrm_rsMessageError2 = 'Remote server unreachable.';
@@ -191,8 +203,13 @@ resourcestring
   rsMainFrm_rsRepositoryCleanup1 = '%s packages deleted!';
   rsMainFrm_rsPackageDependency0 = 'Package "%s" depends on package "%s". '
     +'Resolve dependency?';
-  rsMainFrm_rsPackageDependency1 = 'Not resolving dependencies might lead to install failure!';
+  rsMainFrm_rsPackageDependency1 = 'Not resolving dependencies might lead to install failure! Continue?';
   rsMainFrm_rsPackageRating = 'Your vote for package "%s" is: %s. Thank you for voting!';
+  rsMainFrm_rsUninstall = '%sAre you sure you wish to uninstall the checked packages?' + sLineBreak +
+                          'Please note: in order for the changes to take effect you must rebuid the IDE.';
+  rsMainFrm_rsUninstall_Nothing = 'None of the checked packages are installed. Nothing to uninstall.';
+  rsMainFrm_rsUninstall_Error = 'Cannot uninstall package "%s"!';
+  rsMainFrm_rsDestDirError = 'Cannot create directory "%s". Operation aborted.';
 
   //progress form
   rsProgressFrm_Caption0 = 'Downloading packages';
@@ -240,6 +257,8 @@ resourcestring
   rsOptions_lbRemoteRepository_Caption = 'Remote repository';
   rsOptions_cbForceDownloadExtract_Caption = 'Always force download and extract';
   rsOptions_cbForceDownloadExtract_Hint = 'If this option is checked the packages are always re-downloaded/extracted before install';
+  rsOptions_lbConTimeOut_Caption = 'Connection timeout (seconds):';
+  rsOptions_lbConTimeOut_Hint = 'The number of seconds after which package manager drops connection';
   rsOptions_lbSelectProfile_Caption = 'Select profile';
   rsOptions_cbSelectProfile_Item0 = 'Regular user';
   rsOptions_cbSelectProfile_Item1 = 'Package maintainer';
@@ -273,8 +292,16 @@ resourcestring
   rsOptions_lbLastUpdate_Caption = 'Last update: ';
   rsOptions_LastUpdate_Never = 'never';
   rsOptions_lbDaysToShowNewPackages_Caption = 'Show different icon for newly added packages for (days):';
+  rsOptions_cbRegular_Caption = 'Show regular icon for newly added packages after install';
+  rsOptions_cbUseDefaultTheme_Caption = 'Use default theme manager';
+  rsOptions_rbHintFormOptions_Caption = 'Quick info for repository packages';
+  rsOptions_rbHintFormOptions_Item0 = 'Behaves like a regular hint window';
+  rsOptions_rbHintFormOptions_Item1 = 'It''s triggered by SHIFT, moves with the mouse';
+  rsOptions_rbHintFormOptions_Item2 = 'Off';
   rsOptions_lbFilterFiles_Caption = 'Excluded files (packages)';
   rsOptions_lbFilterDirs_Caption = 'Excluded folders (packages)';
+  rsOptions_bColors_Caption = 'Colors';
+  rsOptions_bpOptions_bHelp = 'Restore defaults';
   rsOptions_bAdd_Caption = 'Add';
   rsOptions_bEdit_Caption = 'Edit';
   rsOptions_bDelete_Caption = 'Delete';
@@ -336,6 +363,8 @@ resourcestring
   rsCreateRepositoryPackageFrm_bOptions_Hint = 'Open options dialog';
   rsCreateRepositoryPackageFrm_bCreate_Caption = 'Create';
   rsCreateRepositoryPackageFrm_bCreate_Hint = 'Create files locally';
+  rsCreateRepositoryPackageFrm_bCreate_Caption1 = 'Add';
+  rsCreateRepositoryPackageFrm_bCreate_Hint1 = 'Add package to repository';
   rsCreateRepositoryPackageFrm_bSubmit_Caption = 'Submit';
   rsCreateRepositoryPackageFrm_bSubmit_Hint = 'Submit files to remote server';
   rsCreateRepositoryPackageFrm_bCancel_Caption = 'Cancel';
@@ -377,6 +406,92 @@ resourcestring
   rsRepositories_InputBox_Caption0 = 'Add repository';
   rsRepositories_InputBox_Caption1 = 'Edit repository';
   rsRepositories_InputBox_Text = 'Type the repository address:';
+  rsRepositories_Info1 = 'The following repository: "%s" is already in the list.';
+
+  //create private repository
+  rsCreateRepositoryFrm_Caption = 'Create/Edit private repository';
+  rsCreateRepositoryFrm_bOpen_Caption = 'Open';
+  rsCreateRepositoryFrm_bOpen_Hint = 'Open private respository';
+  rsCreateRepositoryFrm_bCreate_Caption = 'Create';
+  rsCreateRepositoryFrm_bCreate_Hint = 'Create private repository';
+  rsCreateRepositoryFrm_bAdd_Caption = 'Add';
+  rsCreateRepositoryFrm_bAdd_Hint = 'Add package to the current repository';
+  rsCreateRepositoryFrm_bDelete_Caption = 'Delete';
+  rsCreateRepositoryFrm_bDelete_Hint = 'Delete package from the current repository';
+  rsCreateRepositoryFrm_bCancel_Caption = 'Cancel';
+  rsCreateRepositoryFrm_bCancel_Hint = 'Close this dialog';
+  rsCreateRepositoryFrm_miRepDetails_Caption = 'Edit repository details';
+  rsCreateRepositoryFrm_VSTPackages_Column0 = 'Repository/Packages';
+  rsCreateRepositoryFrm_VSTDetails_Column0 = 'Description';
+  rsCreateRepositoryFrm_VSTDetails_Column1 = 'Data';
+  rsCreateRepositoryFrm_RepositoryAddress = 'Address';
+  rsCreateRepositoryFrm_RepositoryDescription = 'Description';
+  rsCreateRepositoryFrm_VSTText_Category = 'Category';
+  rsCreateRepositoryFrm_VSTText_RepositoryFilename = 'Repository filename';
+  rsCreateRepositoryFrm_VSTText_RepositoryFileSize = 'Repository filesize';
+  rsCreateRepositoryFrm_VSTText_RepositoryFileHash = 'Repository filehash';
+  rsCreateRepositoryFrm_VSTText_RepositoryFileDate = 'Available since';
+  rsCreateRepositoryFrm_VSTText_HomePageURL = 'Home page';
+  rsCreateRepositoryFrm_VSTText_DownloadURL = 'Update link (JSON)';
+  rsCreateRepositoryFrm_VSTText_Version = 'Version';
+  rsCreateRepositoryFrm_VSTText_Description = 'Description';
+  rsCreateRepositoryFrm_VSTText_Author = 'Author';
+  rsCreateRepositoryFrm_VSTText_LazCompatibility = 'Lazarus compatibility';
+  rsCreateRepositoryFrm_VSTText_FPCCompatibility = 'FPC compatibility';
+  rsCreateRepositoryFrm_VSTText_SupportedWidgetsets = 'Supported widgetsets';
+  rsCreateRepositoryFrm_VSTText_Packagetype = 'Package type';
+  rsCreateRepositoryFrm_VSTText_Dependecies = 'Dependencies';
+  rsCreateRepositoryFrm_VSTText_License = 'License';
+  rsCreateRepositoryFrm_VSTText_PackageType0 = 'Designtime and runtime';
+  rsCreateRepositoryFrm_VSTText_PackageType1 = 'Designtime';
+  rsCreateRepositoryFrm_VSTText_PackageType2 = 'Runtime';
+  rsCreateRepositoryFrm_VSTText_PackageType3 = 'Runtime only, cannot be installed in IDE';
+  rsCreateRepositoryFrm_Error1 = 'Cannot open private repository: "%s". Error message: ' + sLineBreak + '"%s"';
+  rsCreateRepositoryFrm_Error3 = 'Cannot save private repository: "%s". Error message: ' + sLineBreak + '"%s"';
+  rsCreateRepositoryFrm_Error4 = 'Cannot add package to repository!';
+  rsCreateRepositoryFrm_Error5 = 'Cannot delete package: "%s"!';
+  rsCreateRepositoryFrm_Info1 = 'The following directory: "%s" is not empty.' + sLineBreak + 'It''s recommended to save the repository to an empty directory. Continue?';
+  rsCreateRepositoryFrm_Info3 = 'The following package: "%s" is already in the current repository.' + sLineBreak + 'Each repository and Lazarus package must be unique!';
+  rsCreateRepositoryFrm_Info5 = 'The following Lazarus package: "%s" is already in the current repository.' + sLineBreak + 'Each repository and Lazarus package must be unique!';
+  rsCreateRepositoryFrm_Info7 = 'Package successfully added to repository.';
+  rsCreateRepositoryFrm_Conf1 = 'Are you sure you wish to delete package: "%s"?';
+  rsCreateRepositoryFrm_Conf2 = 'The following file: "%s" already exists in the current repository. Overwrite?';
+
+  //repository details
+  rsRepositoryDetailsFrm_Caption = 'Repository details';
+  rsRepositoryDetailsFrm_lbName_Caption = 'Name';
+  rsRepositoryDetailsFrm_edName_Hint = 'Enter the repository name';
+  rsRepositoryDetailsFrm_lbAddress_Caption = 'Address';
+  rsRepositoryDetailsFrm_edAddress_Hint = 'Enter the repository address (e.g.: "http://localhost/packages/")';
+  rsRepositoryDetailsFrm_lbDescription_Caption = 'Description';
+  rsRepositoryDetailsFrm_mDescription_Hint = 'Enter the repository description';
+  rsRepositoryDetailsFrm_bOk_Caption = 'OK';
+  rsRepositoryDetailsFrm_bOk_Hint = 'Save and close the dialog';
+  rsRepositoryDetailsFrm_bCancel_Caption = 'Cancel';
+  rsRepositoryDetailsFrm_bCancel_Hint = 'Close the dialog without saving';
+  rsRepositoryDetailsFrm_Info1 = 'Please enter the repository name.';
+
+  //add package to repository
+  rsAddRepositoryPackageFrm_Caption = 'Add repository package';
+  rsAddRepositoryPackageFrm_rbCreateNew_Caption = 'Create a new repository package';
+  rsAddRepositoryPackageFrm_rbAddExisting_Caption = 'Add existing repository package from file';
+  rsAddRepositoryPackageFrm_bOk_Caption = 'OK';
+  rsAddRepositoryPackageFrm_bOk_Hint = 'Close the dialog and create the package';
+  rsAddRepositoryPackageFrm_bCancel_Caption = 'Cancel';
+  rsAddRepositoryPackageFrm_bCancel_Hint = 'Close the dialog';
+
+  //OPMinterface
+  rsOPMInterfaceRebuildConf = 'In order for the changes to take effect you must rebuild the IDE. Rebuild now?';
+
+  //OPMIntfPackageList
+  rsOPMIntfPackageListFrm_Caption = 'Install online packages';
+  rsOPMIntfPackageListFrm_pnInfo = 'Please check before install: Lazarus/FPC compatibility, widgetset support, license and version info';
+  rsOPMIntfPackageListFrm_VSTHeaderColumn_LazarusPackage = 'Lazarus Package';
+  rsOPMIntfPackageListFrm_VSTHeaderColumn_Data = 'Data';
+
+  //colors form
+  rsColors_Caption = 'Colors';
+  rsColors_CD_Title = 'Select color';
 
 implementation
 

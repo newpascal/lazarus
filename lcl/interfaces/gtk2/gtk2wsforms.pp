@@ -739,7 +739,8 @@ begin
   begin
     gtk_window_set_default_size(GtkWindow, Max(1,AForm.Width), Max(1,AForm.Height));
     gtk_widget_set_uposition(PGtkWidget(GtkWindow), AForm.Left, AForm.Top);
-    gtk_window_set_type_hint(GtkWindow, GDK_WINDOW_TYPE_HINT_DIALOG);
+    gtk_window_set_type_hint({%H-}PGtkWindow(AForm.Handle),
+       GtkWindowTypeHints[AForm.BorderStyle]);
     GtkWindowShowModal(AForm, GtkWindow);
   end else
   begin

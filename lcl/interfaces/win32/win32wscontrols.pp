@@ -35,17 +35,17 @@ uses
   InterfaceBase, LCLType, LCLIntf, LCLProc, LazUTF8, Themes, Forms;
 
 type
-  { TWin32WSDragImageList }
+  { TWin32WSDragImageListResolution }
 
-  TWin32WSDragImageList = class(TWSDragImageList)
+  TWin32WSDragImageListResolution = class(TWSDragImageListResolution)
   published
-    class function BeginDrag(const ADragImageList: TDragImageList; Window: HWND;
+    class function BeginDrag(const ADragImageList: TDragImageListResolution; Window: HWND;
       AIndex, X, Y: Integer): Boolean; override;
-    class function DragMove(const ADragImageList: TDragImageList; X, Y: Integer): Boolean; override;
-    class procedure EndDrag(const ADragImageList: TDragImageList); override;
-    class function HideDragImage(const ADragImageList: TDragImageList;
+    class function DragMove(const ADragImageList: TDragImageListResolution; X, Y: Integer): Boolean; override;
+    class procedure EndDrag(const ADragImageList: TDragImageListResolution); override;
+    class function HideDragImage(const ADragImageList: TDragImageListResolution;
       ALockedWindow: HWND; DoUnLock: Boolean): Boolean; override;
-    class function ShowDragImage(const ADragImageList: TDragImageList;
+    class function ShowDragImage(const ADragImageList: TDragImageListResolution;
       ALockedWindow: HWND; X, Y: Integer; DoLock: Boolean): Boolean; override;
   end;
 
@@ -361,6 +361,8 @@ end;
 class procedure TWin32WSWinControl.SetBorderStyle(const AWinControl: TWinControl; const ABorderStyle: TBorderStyle);
 begin
   RecreateWnd(AWinControl);
+  if AWinControl.HandleObjectShouldBeVisible then
+    AWinControl.HandleNeeded;
 end;
 
 class procedure TWin32WSWinControl.SetChildZPosition(
@@ -370,6 +372,7 @@ var
   AfterWnd: hWnd;
   n, StopPos: Integer;
   Child: TWinControl;
+  WindowInfo: PWin32WindowInfo;
 begin
   if not WSCheckHandleAllocated(AWincontrol, 'SetChildZPosition')
   then Exit;
@@ -403,9 +406,20 @@ begin
     if AfterWnd = 0 then Exit; // nothing to do
   end;
 
-  Windows.SetWindowPos(AChild.Handle, AfterWnd, 0, 0, 0, 0,
-    SWP_NOACTIVATE or SWP_NOMOVE or SWP_NOOWNERZORDER or
-    SWP_NOSIZE or SWP_NOSENDCHANGING or SWP_DEFERERASE);
+  WindowInfo := GetWin32WindowInfo(AChild.Handle);
+  if WindowInfo^.UpDown <> 0 then
+  begin
+    Windows.SetWindowPos(WindowInfo^.UpDown, AfterWnd, 0, 0, 0, 0,
+      SWP_NOACTIVATE or SWP_NOMOVE or SWP_NOOWNERZORDER or
+      SWP_NOSIZE or SWP_NOSENDCHANGING or SWP_DEFERERASE);
+    Windows.SetWindowPos(AChild.Handle, WindowInfo^.UpDown, 0, 0, 0, 0,
+      SWP_NOACTIVATE or SWP_NOMOVE or SWP_NOOWNERZORDER or
+      SWP_NOSIZE or SWP_NOSENDCHANGING or SWP_DEFERERASE);
+  end
+  else
+    Windows.SetWindowPos(AChild.Handle, AfterWnd, 0, 0, 0, 0,
+      SWP_NOACTIVATE or SWP_NOMOVE or SWP_NOOWNERZORDER or
+      SWP_NOSIZE or SWP_NOSENDCHANGING or SWP_DEFERERASE);
 end;
 
 {------------------------------------------------------------------------------
@@ -565,28 +579,29 @@ begin
       SW_INVALIDATE or SW_ERASE or SW_SCROLLCHILDREN);
 end;
 
-{ TWin32WSDragImageList }
+{ TWin32WSDragImageListResolution }
 
-class function TWin32WSDragImageList.BeginDrag(
-  const ADragImageList: TDragImageList; Window: HWND; AIndex, X, Y: Integer): Boolean;
+class function TWin32WSDragImageListResolution.BeginDrag(
+  const ADragImageList: TDragImageListResolution; Window: HWND; AIndex, X,
+  Y: Integer): Boolean;
 begin
   // No check to Handle should be done, because if there is no handle (no needed)
   // we must create it here. This is normal for imagelist (we can never need handle)
   Result := ImageList_BeginDrag(ADragImageList.Reference.Handle, AIndex, X, Y);
 end;
 
-class function TWin32WSDragImageList.DragMove(const ADragImageList: TDragImageList;
+class function TWin32WSDragImageListResolution.DragMove(const ADragImageList: TDragImageListResolution;
   X, Y: Integer): Boolean;
 begin
   Result := ImageList_DragMove(X, Y);
 end;
 
-class procedure TWin32WSDragImageList.EndDrag(const ADragImageList: TDragImageList);
+class procedure TWin32WSDragImageListResolution.EndDrag(const ADragImageList: TDragImageListResolution);
 begin
   ImageList_EndDrag;
 end;
 
-class function TWin32WSDragImageList.HideDragImage(const ADragImageList: TDragImageList;
+class function TWin32WSDragImageListResolution.HideDragImage(const ADragImageList: TDragImageListResolution;
   ALockedWindow: HWND; DoUnLock: Boolean): Boolean;
 begin
   if DoUnLock then
@@ -595,7 +610,7 @@ begin
     Result := ImageList_DragShowNolock(False);
 end;
 
-class function TWin32WSDragImageList.ShowDragImage(const ADragImageList: TDragImageList;
+class function TWin32WSDragImageListResolution.ShowDragImage(const ADragImageList: TDragImageListResolution;
   ALockedWindow: HWND; X, Y: Integer; DoLock: Boolean): Boolean;
 begin
   if DoLock then

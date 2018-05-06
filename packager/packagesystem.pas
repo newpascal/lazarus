@@ -41,24 +41,26 @@ interface
 {$DEFINE StopOnRegError}
 
 uses
-{$IFDEF IDE_MEM_CHECK}
+  {$IFDEF IDE_MEM_CHECK}
   MemCheck,
-{$ENDIF}
-  // FPC + LCL
-  Classes, SysUtils, strutils, Forms, Controls, Dialogs,
-  FileProcs, FileUtil, LCLProc, LazFileCache,
-  Laz2_XMLCfg, LazLogger, LazFileUtils, LazUTF8, laz2_XMLRead,
+  {$ENDIF}
+  // FPC
+  Classes, SysUtils, contnrs, strutils, Laz_AVL_Tree,
+  // LCL
+  Forms, Controls, Dialogs, LCLProc,
+  // LazUtils
+  FileUtil, LazFileCache, LazLogger, LazFileUtils, LazUTF8,
+  Laz2_XMLCfg, laz2_XMLRead, AvgLvlTree,
   // codetools
-  AVL_Tree, contnrs, DefineTemplates, CodeCache,
-  BasicCodeTools, CodeToolsStructs, NonPascalCodeTools, SourceChanger,
-  CodeToolManager, DirectoryCacher,
+  FileProcs, DefineTemplates, CodeToolManager, CodeCache, DirectoryCacher,
+  BasicCodeTools, NonPascalCodeTools, SourceChanger,
   // IDEIntf,
-  IDEExternToolIntf, IDEDialogs, IDEMsgIntf, PackageIntf,
-  CompOptsIntf, LazIDEIntf, MacroDefIntf, ProjectIntf, LazarusPackageIntf,
+  IDEExternToolIntf, IDEDialogs, IDEMsgIntf, CompOptsIntf, LazIDEIntf, MacroDefIntf,
+  ProjectIntf, PackageDependencyIntf, PackageLinkIntf, PackageIntf, LazarusPackageIntf,
   // IDE
   LazarusIDEStrConsts, IDECmdLine, EnvironmentOpts, IDEProcs, LazConf,
   TransferMacros, DialogProcs, IDETranslations, CompilerOptions, PackageLinks,
-  PackageDefs, ComponentReg;
+  PackageDefs, ComponentReg, MacroIntf;
   
 const
   MakefileCompileVersion = 2;
@@ -176,7 +178,6 @@ type
     FAbortRegistration: boolean;
     fChanged: boolean;
     FCodeToolsPackage: TLazPackage;
-    FDefaultPackage: TLazPackage;
     FErrorMsg: string;
     FFCLPackage: TLazPackage;
     FIDEIntfPackage: TLazPackage;
@@ -323,6 +324,8 @@ type
                       WithRequiredPackages, IgnoreDeleted: boolean): TPkgFile;
     function FindUnitInAllPackages(const TheUnitName: string;
                                    IgnoreDeleted: boolean): TPkgFile;
+    function FindUnitInInstalledPackages(const TheUnitName: string;
+                                   IgnoreDeleted: boolean): TPkgFile;
     function GetMapSourceDirectoryToPackage(IgnorePackage: TLazPackage = nil): TFilenameToPointerTree;
     function EstimateCompileLoad(APackage: TLazPackage): int64;
     function PackageCanBeReplaced(OldPackage, NewPackage: TLazPackage): boolean;
@@ -420,8 +423,6 @@ type
     procedure RegisterStaticBasePackages;
     procedure RegisterStaticPackage(APackage: TLazPackage;
                                     RegisterProc: TRegisterProc);
-    procedure RegisterDefaultPackageComponent(const Page, AUnitName: ShortString;
-                                              ComponentClass: TComponentClass);
     procedure CallRegisterProc(RegisterProc: TRegisterProc);
   public
     // dependency handling
@@ -462,7 +463,6 @@ type
     property DebuggerIntfPackage: TLazPackage read FDebuggerIntfPackage;
     property LazDebuggerGdbmiPackage: TLazPackage read FLazDebuggerGdbmiPackage;
     property LazarusBasePackages: TFPList read FLazarusBasePackages;
-    property DefaultPackage: TLazPackage read FDefaultPackage;// fall back package for buggy/obsoleted stuff
 
     // events
     property OnAddPackage: TPkgAddedEvent read FOnAddPackage write FOnAddPackage;
@@ -504,12 +504,6 @@ procedure WarnSuspiciousCompilerOptions(ViewCaption, Target, CompilerParams: str
 
 implementation
 
-procedure RegisterCustomIDEComponent(const Page, AUnitName: ShortString;
-  ComponentClass: TComponentClass);
-begin
-  PackageGraph.RegisterDefaultPackageComponent(Page,AUnitName,ComponentClass);
-end;
-
 procedure RegisterComponentsGlobalHandler(const Page: string;
   ComponentClasses: array of TComponentClass);
 begin
@@ -532,8 +526,10 @@ function ExtractFPCParamsForBuildAll(const CompParams: string): string;
   -i  information
   -o  name of the executable
   -s  quick build option, do not call assembler and linker
+  -T  target OS
   -v  verbosity
   -X  Executable
+  -k  linker flags
   }
 var
   EndPos: Integer;
@@ -544,7 +540,7 @@ begin
   while ReadNextFPCParameter(Result,EndPos,StartPos) do begin
     if (Result[StartPos]='-') and (StartPos<length(Result)) then begin
       case Result[StartPos+1] of
-      'l','F','B','e','i','o','s','v','X':
+      'l','F','B','e','i','o','s','T','v','X','k':
         begin
           while (StartPos>1) and (Result[StartPos-1] in [' ',#9]) do
             dec(StartPos);
@@ -685,9 +681,11 @@ begin
       if fpfValueChanged in Param.Flags then begin
         Msg:='';
         if Param.Kind in [fpkBoolean,fpkValue] then
-          Msg:='passing compiler option -'+Param.Name+' twice with different values'
+          Msg:=Format(lisPassingCompilerOptionTwiceWithDifferentValues, [Param.
+            Name])
         else if Param.Kind=fpkDefine then
-          Msg:='passing compiler define "'+Param.Name+'" twice with different values';
+          Msg:=Format(lisPassingCompilerDefineTwiceWithDifferentValues, [Param.
+            Name]);
         if Msg='' then continue;
         if Target<>'' then Msg:=Target+' '+Msg;
         IDEMessagesWindow.AddCustomMessage(mluNote,Msg,'',0,0,ViewCaption);
@@ -923,8 +921,8 @@ begin
 end;
 
 function TLazPackageGraph.OpenDependencyWithPackageLink(
-  Dependency: TPkgDependency; PkgLink: TPackageLink;
-  ShowAbort: boolean): TModalResult;
+  Dependency: TPkgDependency; PkgLink: TPackageLink; ShowAbort: boolean
+  ): TModalResult;
 var
   AFilename: String;
   NewPackage: TLazPackage;
@@ -1081,7 +1079,6 @@ begin
   if OnGetAllRequiredPackages=@GetAllRequiredPackages then
     OnGetAllRequiredPackages:=nil;
   Clear;
-  FreeAndNil(FDefaultPackage);
   FreeAndNil(FLazarusBasePackages);
   FreeAndNil(FItems);
   FreeAndNil(FTree);
@@ -1440,8 +1437,7 @@ function TLazPackageGraph.FindPackageProvidingName(
   FirstDependency: TPkgDependency;
   const Name: string): TLazPackage;
   
-  function Search(ADependency: TPkgDependency; out Found: TLazPackage
-    ): boolean;
+  function Search(ADependency: TPkgDependency; out Found: TLazPackage): boolean;
   begin
     Found:=nil;
     while ADependency<>nil do begin
@@ -1628,6 +1624,23 @@ begin
   Result:=nil;
 end;
 
+function TLazPackageGraph.FindUnitInInstalledPackages(
+  const TheUnitName: string; IgnoreDeleted: boolean): TPkgFile;
+var
+  Cnt: Integer;
+  i: Integer;
+  Pkg: TLazPackage;
+begin
+  Cnt:=Count;
+  for i:=0 to Cnt-1 do begin
+    Pkg:=Packages[i];
+    if Pkg.Installed=pitNope then continue;
+    Result:=FindUnit(Pkg,TheUnitName,false,IgnoreDeleted);
+    if Result<>nil then exit;
+  end;
+  Result:=nil;
+end;
+
 function TLazPackageGraph.GetMapSourceDirectoryToPackage(
   IgnorePackage: TLazPackage): TFilenameToPointerTree;
 var
@@ -1758,7 +1771,7 @@ begin
     // no package with same name open
     // -> try package links
     if fpfSearchInPkgLinks in Flags then
-      if PkgLinks.FindLinkWithDependency(Dependency)<>nil then exit;
+      if LazPackageLinks.FindLinkWithDependency(Dependency)<>nil then exit;
   end else begin
     // there is already a package with this name open, but the wrong version
   end;
@@ -1942,8 +1955,10 @@ begin
 
   // tell user
   IgnoreAll:=mrLast+1;
-  DlgResult:=IDEQuestionDialog(lisPkgSysPackageRegistrationError,
-               ErrorMsg, mtError, [mrIgnore, IgnoreAll, lisIgnoreAll, mrAbort]);
+  DlgResult:=IDEQuestionDialog(lisPkgSysPackageRegistrationError, ErrorMsg,
+                     mtError, [mrIgnore,
+                               IgnoreAll, lisIgnoreAll,
+                               mrAbort]);
   if DlgResult=IgnoreAll then
     QuietRegistration:=true;
   if DlgResult=mrAbort then
@@ -2190,9 +2205,6 @@ begin
   LoadLazarusBasePackage('LazDebuggerGdbmi');
   LoadLazarusBasePackage('LazControls');
   LoadLazarusBasePackage('CodeTools');
-  // the default package will be added on demand
-  if FDefaultPackage=nil then
-    FDefaultPackage:=CreateDefaultPackage;
 
   SortAutoInstallDependencies;
 
@@ -2315,8 +2327,7 @@ begin
                            lisPkgMangstaticPackagesConfigFile);
 end;
 
-function TLazPackageGraph.IsStaticBasePackage(PackageName: string
-  ): boolean;
+function TLazPackageGraph.IsStaticBasePackage(PackageName: string): boolean;
 begin
   PackageName:=lowercase(PackageName);
   Result:=(PackageName='fcl')
@@ -2586,7 +2597,7 @@ end;
 function TLazPackageGraph.FindPkgOutputInFPCSearchPath(APackage: TLazPackage;
   FirstDependency: TPkgDependency): TFPList;
 var
-  CfgCache: TFPCTargetConfigCache;
+  CfgCache: TPCTargetConfigCache;
 
   function CheckPkg(Pkg: TLazPackage; var PathList: TFPList): boolean;
   var
@@ -3255,9 +3266,9 @@ var
   UnitSetID: String;
   HasChanged: boolean;
   Cache: TFPCUnitSetCache;
-  CfgCache: TFPCTargetConfigCache;
+  CfgCache: TPCTargetConfigCache;
   Node: TAVLTreeNode;
-  Item: PStringToStringTreeItem;
+  Item: PStringToStringItem;
   Filename: String;
   UnitToSrcTree: TStringToStringTree;
   CurUnitName: String;
@@ -3281,7 +3292,7 @@ begin
     exit;
   UnitSetID:=CodeToolBoss.GetUnitSetIDForDirectory(Dir);
   if UnitSetID='' then exit;
-  Cache:=CodeToolBoss.FPCDefinesCache.FindUnitSetWithID(UnitSetID,HasChanged,false);
+  Cache:=CodeToolBoss.CompilerDefinesCache.FindUnitSetWithID(UnitSetID,HasChanged,false);
   if Cache=nil then exit;
   CfgCache:=Cache.GetConfigCache(false);
   if CfgCache=nil then exit;
@@ -3294,7 +3305,7 @@ begin
 
     Node:=CfgCache.Units.Tree.FindLowest;
     while Node<>nil do begin
-      Item:=PStringToStringTreeItem(Node.Data);
+      Item:=PStringToStringItem(Node.Data);
       Node:=CfgCache.Units.Tree.FindSuccessor(Node);
       Filename:=Item^.Value;
       if PkgOutDirs.Contains(ExtractFilePath(Filename)) then begin
@@ -4994,7 +5005,11 @@ var
 
 begin
   Result:=mrOk;
-  YesToAll:=False;
+  case EnvironmentOptions.AmbiguousFileAction of
+    afaIgnore: exit;
+    afaAutoDelete: YesToAll:=true;
+    else YesToAll:=false;
+  end;
   // search in every source directory for compiled versions of the units
   // A source directory is a directory with a used unit and it is not the output
   // directory
@@ -5224,7 +5239,7 @@ var
   begin
     if not HaveUpdatedGlobalPkgLinks then
     begin
-      PkgLinks.UpdateGlobalLinks;
+      LazPackageLinks.UpdateGlobalLinks;
       HaveUpdatedGlobalPkgLinks:=true;
     end;
   end;
@@ -5420,20 +5435,6 @@ begin
   // IDE built-in packages
   if Assigned(OnTranslatePackage) then OnTranslatePackage(CodeToolsPackage);
 
-  // register custom IDE components
-  RegistrationPackage:=DefaultPackage;
-  {$IFDEF CustomIDEComps}
-  if IDEComponentPalette<>nil then
-    IDEComponentPalette.RegisterCustomIDEComponents(@RegisterCustomIDEComponent);
-  {$ENDIF}
-  if DefaultPackage.FileCount=0 then begin
-    FreeThenNil(FDefaultPackage);
-  end else begin
-    DefaultPackage.Name:=CreateUniquePkgName('DefaultPackage',DefaultPackage);
-    AddPackage(DefaultPackage);
-  end;
-  RegistrationPackage:=nil;
-
   EndUpdate;
 end;
 
@@ -5448,22 +5449,6 @@ begin
   CallRegisterProc(RegisterProc);
   APackage.Registered:=true;
   RegistrationPackage:=nil;
-end;
-
-procedure TLazPackageGraph.RegisterDefaultPackageComponent(const Page,
-  AUnitName: ShortString; ComponentClass: TComponentClass);
-var
-  PkgFile: TPkgFile;
-  NewPkgFilename: String;
-begin
-  PkgFile:=FDefaultPackage.FindUnit(AUnitName,true);
-  if PkgFile=nil then begin
-    NewPkgFilename:=AUnitName+'.pas';
-    PkgFile:=FDefaultPackage.AddFile(NewPkgFilename,AUnitName,pftUnit,[],
-                                     cpOptional);
-  end;
-  FRegistrationFile:=PkgFile;
-  RegisterComponentsHandler(Page,[ComponentClass]);
 end;
 
 procedure TLazPackageGraph.CallRegisterProc(RegisterProc: TRegisterProc);
@@ -5540,12 +5525,12 @@ function TLazPackageGraph.OpenDependency(Dependency: TPkgDependency;
   var
     PkgLink: TPackageLink;
   begin
-    PkgLink:=PkgLinks.AddUserLink(AFilename,Dependency.PackageName);
+    PkgLink:=LazPackageLinks.AddUserLink(AFilename, Dependency.PackageName);
     if (PkgLink<>nil) then begin
       PkgLink.Reference;
       try
         if OpenDependencyWithPackageLink(Dependency,PkgLink,false)<>mrOk then
-          PkgLinks.RemoveUserLink(PkgLink);
+          LazPackageLinks.RemoveUserLink(PkgLink);
       finally
         PkgLink.Release;
       end;
@@ -5604,7 +5589,7 @@ begin
         IgnoreFiles:=nil;
         try
           repeat
-            PkgLink:=PkgLinks.FindLinkWithDependency(Dependency,IgnoreFiles);
+            PkgLink:=LazPackageLinks.FindLinkWithDependencyWithIgnore(Dependency,IgnoreFiles);
             if (PkgLink=nil) then break;
             //debugln(['TLazPackageGraph.OpenDependency PkgLink=',PkgLink.GetEffectiveFilename,' global=',PkgLink.Origin=ploGlobal]);
             PkgLink.Reference;
@@ -5614,7 +5599,7 @@ begin
               if IgnoreFiles=nil then
                 IgnoreFiles:=TFilenameToStringTree.Create(false);
               IgnoreFiles[PkgLink.GetEffectiveFilename]:='1';
-              PkgLinks.RemoveUserLink(PkgLink);
+              LazPackageLinks.RemoveUserLink(PkgLink);
             finally
               PkgLink.Release;
             end;
@@ -5673,7 +5658,7 @@ begin
           then begin
             // the lazarus directory is not set
             debugln(['Note: (lazarus) The Lazarus directory is not set. Pass parameter --lazarusdir.']);
-          end else if not DirPathExistsCached(PkgLinks.GetGlobalLinkDirectory)
+          end else if not DirPathExistsCached(LazPackageLinks.GetGlobalLinkDirectory)
           then begin
             debugln(['Note: (lazarus) The lpl directory is missing. Check that the Lazarus (--lazarusdir) directory is correct.']);
           end;
@@ -5764,7 +5749,7 @@ begin
       Result:='';
       BaseDir:=TrimFilename(APackage.Directory);
       repeat
-        PkgLink:=PkgLinks.FindLinkWithDependency(Dependency,IgnoreFiles);
+        PkgLink:=LazPackageLinks.FindLinkWithDependencyWithIgnore(Dependency,IgnoreFiles);
         if PkgLink=nil then break;
         Filename:=PkgLink.GetEffectiveFilename;
         if ParseLPK(Filename,Version) then begin
@@ -5793,7 +5778,7 @@ begin
 
     // nothing found via dependencies
     // search in links
-    PkgLink:=PkgLinks.FindLinkWithPkgName(APackage.Name,IgnoreFiles);
+    PkgLink:=LazPackageLinks.FindLinkWithPkgNameWithIgnore(APackage.Name,IgnoreFiles);
     if PkgLink<>nil then begin
       Result:=PkgLink.GetEffectiveFilename;
       exit;
@@ -5847,7 +5832,7 @@ begin
     end;
     AddPackage(BrokenPackage);
     //DebugLn('TLazPackageGraph.OpenInstalledDependency ',BrokenPackage.IDAsString,' ',dbgs(ord(BrokenPackage.AutoInstall)));
-    if (not Quiet) and DirPathExistsCached(PkgLinks.GetGlobalLinkDirectory)
+    if (not Quiet) and DirPathExistsCached(LazPackageLinks.GetGlobalLinkDirectory)
     then begin
       // tell the user
       CurResult:=IDEQuestionDialog(lisPkgSysPackageFileNotFound,
@@ -5952,7 +5937,7 @@ begin
   end;
   // iterate in package links
   if (fpfSearchInPkgLinks in Flags) then begin
-    PkgLinks.IteratePackages(fpfPkgLinkMustExist in Flags,Event);
+    LazPackageLinks.IteratePackages(fpfPkgLinkMustExist in Flags,Event);
   end;
 end;
 

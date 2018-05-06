@@ -19,7 +19,7 @@ interface
 {$ENDIF}
 
 uses
-  Classes, FPCanvas, {$IFDEF USE_FTFONT}FTFont,{$ENDIF}
+  Classes, FPCanvas, FPImage, {$IFDEF USE_FTFONT}FTFont,{$ENDIF}
   TAChartUtils, TADrawUtils;
 
 type
@@ -29,14 +29,17 @@ type
   TFPCanvasDrawer = class(TBasicDrawer, IChartDrawer)
   strict private
     FCanvas: TFPCustomCanvas;
-    {$IFDEF USE_FTFONT}FFont: TFreeTypeFont;{$ENDIF}
-
+    {$IFDEF USE_FTFONT}
+    FFont: TFreeTypeFont;
+    FMeasureFont: TFreeTypeFont;
+    // FreeType measures text size in rotated orientation. But we need it
+    // in horizontal horientation. FMeasureFont is always horizontal.
+    {$ENDIF}
     procedure EnsureFont;
     procedure SetBrush(ABrush: TFPCustomBrush);
     procedure SetFont(AFont: TFPCustomFont);
     procedure SetPen(APen: TFPCustomPen);
   strict protected
-    function GetFontAngle: Double; override;
     function SimpleTextExtent(const AText: String): TPoint; override;
     procedure SimpleTextOut(AX, AY: Integer; const AText: String); override;
   public
@@ -50,6 +53,11 @@ type
     procedure Ellipse(AX1, AY1, AX2, AY2: Integer);
     procedure FillRect(AX1, AY1, AX2, AY2: Integer);
     function GetBrushColor: TChartColor;
+    function GetFontAngle: Double; override;
+    function GetFontColor: TFPColor; override;
+    function GetFontName: String; override;
+    function GetFontSize: Integer; override;
+    function GetFontStyle: TChartFontStyles; override;
     procedure Line(AX1, AY1, AX2, AY2: Integer);
     procedure Line(const AP1, AP2: TPoint);
     procedure LineTo(AX, AY: Integer); override;
@@ -59,7 +67,7 @@ type
     procedure Polyline(
       const APoints: array of TPoint; AStartIndex, ANumPts: Integer);
     procedure PrepareSimplePen(AColor: TChartColor);
-    procedure PutPixel(AX, AY: Integer; AColor: TChartColor);
+    procedure PutPixel(AX, AY: Integer; AColor: TChartColor); override;
     procedure RadialPie(
       AX1, AY1, AX2, AY2: Integer;
       AStartAngle16Deg, AAngleLength16Deg: Integer);
@@ -124,7 +132,10 @@ end;
 
 destructor TFPCanvasDrawer.Destroy;
 begin
-  {$IFDEF USE_FTFONT}FreeAndNil(FFont);{$ENDIF}
+  {$IFDEF USE_FTFONT}
+  FreeAndNil(FFont);
+  FreeAndNil(FMeasureFont);
+  {$ENDIF}
   inherited Destroy;
 end;
 
@@ -136,11 +147,18 @@ end;
 procedure TFPCanvasDrawer.EnsureFont;
 begin
   {$IFDEF USE_FTFONT}
-  if FFont <> nil then exit;
-  FFont := TFreeTypeFont.Create;
-  FFont.Resolution := 72;
-  FFont.AntiAliased := false;
-  FCanvas.Font := FFont;
+  if FFont = nil then begin
+    FFont := TFreeTypeFont.Create;
+    FFont.Resolution := 72;
+    FFont.AntiAliased := true; //false;
+    FCanvas.Font := FFont;
+  end;
+
+  if FMeasureFont = nil then begin
+    FMeasureFont := TFreeTypeFont.Create;
+    FMeasureFont.Resolution := 72;
+    FMeasureFont.AntiAliased := false;
+  end;
   {$ENDIF}
 end;
 
@@ -157,7 +175,38 @@ end;
 
 function TFPCanvasDrawer.GetFontAngle: Double;
 begin
-  Result := 0.0;
+  {$IFDEF USE_FTFONT}
+  Result := FFont.Angle;  // Freetype font angle is in rad.
+  {$ELSE}
+  Result := 0;
+  {$ENDIF}
+end;
+
+function TFPCanvasDrawer.GetFontColor: TFPColor;
+begin
+  Result := FCanvas.Font.FPColor;
+end;
+
+function TFPCanvasDrawer.GetFontName: String;
+begin
+  Result := FCanvas.Font.Name;
+end;
+
+function TFPCanvasDrawer.GetFontSize: Integer;
+begin
+  if FCanvas.Font.Size = 0 then
+    Result := DEFAULT_FONT_SIZE
+  else
+    Result := FCanvas.Font.Size;
+end;
+
+function TFPCanvasDrawer.GetFontStyle: TChartFontStyles;
+begin
+  Result := [];
+  if FCanvas.Font.Bold then Include(Result, cfsBold);
+  if FCanvas.Font.Italic then Include(Result, cfsItalic);
+  if FCanvas.Font.Underline then Include(Result, cfsUnderline);
+  if FCanvas.Font.Strikethrough then Include(Result, cfsStrikeout);
 end;
 
 procedure TFPCanvasDrawer.Line(AX1, AY1, AX2, AY2: Integer);
@@ -259,9 +308,12 @@ begin
   EnsureFont;
   {$IFDEF USE_FTFONT}
   AssignFPCanvasHelper(FFont, AFont);
+  AssignFPCanvasHelper(FMeasureFont, AFont);
   // DoCopyProps performs direct variable assignment, so call SetName by hand.
   FFont.Name := AFont.Name;
   FFont.Angle := OrientToRad(FGetFontOrientationFunc(AFont));
+  FMeasureFont.Name := AFont.Name;
+  FMeasureFont.Angle := 0;
   {$ELSE}
   Unused(AFont);
   {$ENDIF}
@@ -279,25 +331,43 @@ begin
 end;
 
 function TFPCanvasDrawer.SimpleTextExtent(const AText: String): TPoint;
+var
+  fnt: TFreeTypeFont;
 begin
   EnsureFont;
+  {$IFDEF USE_FTFONT}
+  FCanvas.Font := FMeasureFont;
+  FMeasureFont.GetTextSize(AText, Result.X, Result.Y);
+  FCanvas.Font := FFont;
+  // FreeType measures the exact pixel height of characters. But the LCL font
+  // has some space above and below. --> increase height bei 25%
+  Result.Y := Result.Y * 5 div 4;
+  {$ELSE}
   FCanvas.GetTextSize(AText, Result.X, Result.Y);
+  {$ENDIF}
 end;
 
 procedure TFPCanvasDrawer.SimpleTextOut(AX, AY: Integer; const AText: String);
 {$IFDEF USE_FTFONT}
 var
   p: TPoint;
+  h: Integer;
 {$ENDIF}
 begin
   EnsureFont;
   {$IFDEF USE_FTFONT}
   // FreeType uses lower-left instead of upper-left corner as starting position.
-  p := RotatePoint(Point(0, FCanvas.GetTextHeight(AText)), -FFont.Angle);
-  FCanvas.TextOut(p.X + AX, p.Y + AY , AText);
+  // --> we must correct for text height to find correct text starting point
+  h := SimpleTextExtent('Tg').y;
+  // Approximately correct for the difference in text height in LCL
+  // (incl enpty space below character) and freetype (exact text height).
+  h := h * 3 div 4;
+  // Rotate text height according to font direction
+  p := RotatePoint(Point(0, h), -FFont.Angle);
+  FCanvas.TextOut(p.X + AX, p.Y + AY, AText);
   {$ELSE}
   Unused(AX, AY);
-  Unused(AText);
+  Unused(AText);    // wp: why not call FCanvas.TextOut ???
   {$ENDIF}
 end;
 

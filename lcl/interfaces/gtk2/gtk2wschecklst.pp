@@ -69,6 +69,19 @@ const
 
 { TGtk2WSCheckListBox }
 
+function Gtk2WS_CheckListBoxSelectionChanged({%H-}Widget: PGtkWidget;
+  WidgetInfo: PWidgetInfo): gboolean; cdecl;
+var
+  Mess: TLMessage;
+begin
+  Result := False;
+  if WidgetInfo^.ChangeLock > 0 then
+    Exit;
+  FillChar(Mess{%H-},SizeOf(Mess),0);
+  Mess.msg := LM_SELCHANGE;
+  DeliverMessage(WidgetInfo^.LCLObject, Mess);
+end;
+
 procedure Gtk2WS_CheckListBoxDataFunc({%H-}tree_column: PGtkTreeViewColumn;
   cell: PGtkCellRenderer; tree_model: PGtkTreeModel; iter: PGtkTreeIter; {%H-}data: Pointer); cdecl;
 var
@@ -214,7 +227,12 @@ begin
     False: gtk_tree_selection_set_mode(Selection, GTK_SELECTION_SINGLE);
   end;
 
-  Set_RC_Name(AWinControl, P);  
+  g_signal_connect_after(Selection, 'changed',
+    G_CALLBACK(@Gtk2WS_CheckListBoxSelectionChanged), WidgetInfo);
+
+  Set_RC_Name(AWinControl, P);
+  if not AWinControl.HandleObjectShouldBeVisible and not (csDesigning in AWinControl.ComponentState) then
+    gtk_widget_hide(p);
   SetCallbacks(p, WidgetInfo);
 end;
 

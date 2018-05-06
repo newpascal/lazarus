@@ -187,7 +187,7 @@ var
   i : integer;
   HandlerType: TMenuItemHandlerType;
 begin
-  //debugln('TMenuItem.Destroy A ',dbgsName(Self));
+  //debugln('TMenuItem.Destroy A ',dbgsName(Self),' ',Caption);
   FMenuItemHandlers[mihtDestroy].CallNotifyEvents(Self);
   if FBitmap <> nil then
     FreeAndNil(FBitmap);
@@ -236,23 +236,36 @@ end;
 
 
  ------------------------------------------------------------------------------}
-function TMenuItem.GetImageList: TCustomImageList;
+procedure TMenuItem.GetImageList(out aImages: TCustomImageList; out
+  aImagesWidth: Integer);
 var
   LItem: TMenuItem;
   LMenu: TMenu;
 begin
-  Result := nil;
+  aImages := nil;
   LItem := Parent;
   while (LItem <> nil) and (LItem.SubMenuImages = nil) do
     LItem := LItem.Parent;
   if LItem <> nil then
-    Result := LItem.SubMenuImages
-  else
+  begin
+    aImages := LItem.SubMenuImages;
+    aImagesWidth := LItem.SubMenuImagesWidth;
+  end else
   begin
     LMenu := GetParentMenu;
     if LMenu <> nil then
-      Result := LMenu.Images;
+    begin
+      aImages := LMenu.Images;
+      aImagesWidth := LMenu.ImagesWidth;
+    end;
   end;
+end;
+
+function TMenuItem.GetImageList: TCustomImageList;
+var
+  x: Integer;
+begin
+  GetImageList(Result, x);
 end;
 
 {------------------------------------------------------------------------------
@@ -282,6 +295,48 @@ begin
   else
   if Assigned(DesignerMenuItemClick) then
     DesignerMenuItemClick(Self);
+end;
+
+function TMenuItem.DoDrawItem(ACanvas: TCanvas; ARect: TRect;
+  AState: TOwnerDrawState): Boolean;
+var
+  AParentMenu: TMenu;
+begin
+  Result := False;
+  if Assigned(FOnDrawItem) then
+  begin
+    FOnDrawItem(Self, ACanvas, ARect, AState);
+    Result := True;
+  end else
+  begin
+    AParentMenu := GetParentMenu;
+    if Assigned(AParentMenu.OnDrawItem) then
+    begin
+      AParentMenu.OnDrawItem(Self, ACanvas, ARect, AState);
+      Result := True;
+    end;
+  end;
+end;
+
+function TMenuItem.DoMeasureItem(ACanvas: TCanvas; var AWidth,
+  AHeight: Integer): Boolean;
+var
+  AParentMenu: TMenu;
+begin
+  Result := False;
+  if Assigned(FOnMeasureItem) then
+  begin
+    FOnMeasureItem(Self, ACanvas, AWidth, AHeight);
+    Result := True;
+  end else
+  begin
+    AParentMenu := GetParentMenu;
+    if Assigned(AParentMenu.OnMeasureItem) then
+    begin
+      AParentMenu.OnMeasureItem(Self, ACanvas, AWidth, AHeight);
+      Result := True;
+    end;
+  end;
 end;
 
 procedure TMenuItem.CheckChildrenHandles;
@@ -422,6 +477,7 @@ end;
 function TMenuItem.GetBitmap: TBitmap;
 var
   iml: TCustomImageList;
+  imw: Integer;
 begin
   if FBitmap = nil then
   begin
@@ -429,9 +485,9 @@ begin
 
     if ImageIndex >= 0 then
     begin
-      iml := GetImageList;
+      GetImageList(iml, imw);
       if (iml <> nil) and (ImageIndex < iml.Count) then
-        iml.GetBitmap(ImageIndex, FBitmap);
+        iml.ResolutionForPPI[imw, 96, 1].Resolution.GetBitmap(ImageIndex, FBitmap);
     end;
     
     FBitmap.OnChange := @BitmapChange;
@@ -505,7 +561,8 @@ begin
   else Result :=
      FBitmapIsValid and
      (FBitmap <> nil) and (not FBitmap.Empty) and
-     (FBitmap.Width > 0) and (FBitmap.Height > 0);
+     (FBitmap.Width > 0) and (FBitmap.Height > 0) and
+     (ImageIndex < 0);
 end;
 
 {------------------------------------------------------------------------------
@@ -643,6 +700,11 @@ begin
   if not HandleAllocated then CreateHandle;
 end;
 
+function SystemShowMenuGlyphs: Boolean; inline;
+begin
+  Result := ThemeServices.GetOption(toShowMenuImages) = 1;
+end;
+
 {------------------------------------------------------------------------------
   function TMenuItem.HasIcon: boolean;
 
@@ -651,15 +713,10 @@ end;
 function TMenuItem.HasIcon: boolean;
 
   function CanShowIcon: Boolean;
-
-    function SystemShowGlyphs: Boolean; inline;
-    begin
-      Result := ThemeServices.GetOption(toShowMenuImages) = 1;
-    end;
-
   begin
+    Result := True;
     if csDesigning in ComponentState then
-      Exit(True);
+      Exit;
     case GlyphShowMode of
       gsmAlways:
         Result := True;
@@ -670,21 +727,22 @@ function TMenuItem.HasIcon: boolean;
           case Application.ShowMenuGlyphs of
             sbgAlways: Result := True;
             sbgNever: Result := False;
-            sbgSystem: Result := SystemShowGlyphs;
+            sbgSystem: Result := SystemShowMenuGlyphs;
           end;
         end;
       gsmSystem:
-        Result := SystemShowGlyphs;
+        Result := SystemShowMenuGlyphs;
     end;
   end;
 
 var
   AImageList: TCustomImageList;
+  AImageListWidth: Integer;
 begin
   Result := CanShowIcon;
   if not Result then
     Exit;
-  AImageList := GetImageList;
+  GetImageList(AImageList, AImageListWidth);
   Result := (AImageList <> nil) and (ImageIndex >= 0) and (ImageIndex < AImageList.Count);
   if not Result then
     Result := (FBitmap <> nil) and not FBitmap.Empty;
@@ -937,20 +995,24 @@ end;
 {------------------------------------------------------------------------------
   function TMenuItem.GetIconSize: TPoint;
  ------------------------------------------------------------------------------}
-function TMenuItem.GetIconSize: TPoint;
+function TMenuItem.GetIconSize(ADC: HDC): TPoint;
 var
   AImageList: TCustomImageList;
+  PPI, AImageListWidth: Integer;
+  Size: TSize;
 begin
   FillChar(Result, SizeOf(Result), 0);
   if HasIcon then
   begin
-    AImageList := GetImageList;
+    GetImageList(AImageList, AImageListWidth);
     if (AImageList <> nil) and (FImageIndex >= 0) then // using size of ImageList
     begin
       if (FImageIndex >= AImageList.Count) then
         Exit;
-      Result.x := AImageList.Width;
-      Result.y := AImageList.Height;
+      PPI := GetDeviceCaps(ADC, LOGPIXELSX);
+      Size := AImageList.SizeForPPI[AImageListWidth, PPI];
+      Result.x := Size.cx;
+      Result.y := Size.cy;
     end
     else // using size of Bitmap
     begin
@@ -1243,6 +1305,13 @@ begin
   UpdateImages;
 end;
 
+procedure TMenuItem.SetSubMenuImagesWidth(const aSubMenuImagesWidth: Integer);
+begin
+  if FSubMenuImagesWidth = aSubMenuImagesWidth then Exit;
+  FSubMenuImagesWidth := aSubMenuImagesWidth;
+  UpdateImages;
+end;
+
 {------------------------------------------------------------------------------
   Method:  TMenuItem.SetImageIndex
   Params:  Value:
@@ -1511,7 +1580,11 @@ begin
       ImageIndex := Self.ImageIndex;
       Visible := Self.Visible;
     end
-  end else
+  end
+  else
+  if Dest is TMenuItem then
+    MenuItem_Copy(Self, Dest as TMenuItem)
+  else
     inherited AssignTo(Dest);
 end;
 

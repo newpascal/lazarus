@@ -110,7 +110,7 @@ begin
     Parent := AddPathsGroupBox;
     Caption := '...';
     AutoSize := False;
-    Width := 50;
+    Width := Height;
     Anchors := [akRight];
     AnchorParallel(akRight, 6, AddPathsGroupBox);
     AnchorParallel(akTop, 0, UnitPathEdit);
@@ -133,7 +133,7 @@ begin
     Parent := AddPathsGroupBox;
     Caption := '...';
     AutoSize := False;
-    Width := 50;
+    Width := Height;
     Anchors := [akRight];
     AnchorParallel(akRight, 6, AddPathsGroupBox);
     AnchorParallel(akTop, 0, IncludePathEdit);
@@ -151,7 +151,7 @@ begin
     Parent := AddPathsGroupBox;
     Caption := '...';
     AutoSize := False;
-    Width := 50;
+    Width := Height;
     Anchors := [akRight];
     AnchorParallel(akRight, 6, AddPathsGroupBox);
     AnchorParallel(akTop, 0, ObjectPathEdit);
@@ -169,7 +169,7 @@ begin
     Parent := AddPathsGroupBox;
     Caption := '...';
     AutoSize := False;
-    Width := 50;
+    Width := Height;
     Anchors := [akRight];
     AnchorParallel(akRight, 6, AddPathsGroupBox);
     AnchorParallel(akTop, 0, LibraryPathEdit);

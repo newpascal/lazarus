@@ -32,11 +32,14 @@ unit ExtractProcDlg;
 interface
 
 uses
-  Classes, SysUtils, LCLProc, AVL_Tree, Forms, Controls, Graphics,
-  Dialogs, ExtCtrls, Buttons, StdCtrls, ButtonPanel,
-  BasicCodeTools, CodeTree, CodeCache, CodeToolManager,
-  ExtractProcTool,
+  Classes, SysUtils, Laz_AVL_Tree,
+  // LCL
+  Forms, Controls, Dialogs, ExtCtrls, StdCtrls, ButtonPanel, LCLProc,
+  // Codetools
+  BasicCodeTools, CodeTree, CodeCache, CodeToolManager, ExtractProcTool,
+  // IdeIntf
   IDEHelpIntf, IDEDialogs,
+  // IDE
   LazarusIDEStrConsts, IDEProcs, MiscOptions;
 
 type
@@ -86,15 +89,15 @@ type
 function ShowExtractProcDialog(Code: TCodeBuffer;
   const BlockBegin, BlockEnd: TPoint;
   out NewSource: TCodeBuffer;
-  out NewX, NewY, NewTopLine: integer): TModalResult;
+  out NewX, NewY, NewTopLine, BlockTopLine, BlockBottomLine: integer): TModalResult;
 
 implementation
 
 {$R *.lfm}
 
 function ShowExtractProcDialog(Code: TCodeBuffer; const BlockBegin,
-  BlockEnd: TPoint; out NewSource: TCodeBuffer; out NewX, NewY,
-  NewTopLine: integer): TModalResult;
+  BlockEnd: TPoint; out NewSource: TCodeBuffer; out NewX, NewY, NewTopLine,
+  BlockTopLine, BlockBottomLine: integer): TModalResult;
 var
   ExtractProcDialog: TExtractProcDialog;
   MethodPossible: Boolean;
@@ -112,6 +115,8 @@ begin
   NewX:=0;
   NewY:=0;
   NewTopLine:=0;
+  BlockTopLine:=0;
+  BlockBottomLine:=0;
   if CompareCaret(BlockBegin,BlockEnd)<=0 then begin
     IDEMessageDialog(lisNoCodeSelected,
       lisPleaseSelectSomeCodeToExtractANewProcedureMethod,
@@ -158,7 +163,7 @@ begin
 
     // extract procedure/method
     if not CodeToolBoss.ExtractProc(Code,BlockBegin,BlockEnd,ProcType,ProcName,
-      MissingIdentifiers,NewSource,NewX,NewY,NewTopLine,
+      MissingIdentifiers,NewSource,NewX,NewY,NewTopLine, BlockTopLine, BlockBottomLine,
       FunctionResultVariableStartPos)
     then begin
       Result:=mrCancel;

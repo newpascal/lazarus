@@ -139,6 +139,18 @@ begin
     end
     else
       DataChange(Self);
+  end
+  else
+  // Workaround for TDBRadiogroup not having a ReadOnly property (i.e. ItemIndex
+  // can be changed even if Dataset is ReadOnly)
+  // See issues https://bugs.freepascal.org/view.php?id=31993
+  // and https://bugs.freepascal.org/view.php?id=32077
+  if (not FDataLink.CanModify) and
+     ((FDataLink.Field = nil) or (FDataLink.Field.AsString <> NewValue)) then
+  begin
+    if FValue = '' then FValue := 'x' else FValue := '';
+      // Otherwise, SetValue in next line would exit immediately
+    Value:= OldValue;
   end;
 end;
 

@@ -87,12 +87,16 @@ function CheckLazarusDirectoryQuality(ADirectory: string; out Note: string): TSD
 function SearchLazarusDirectoryCandidates(StopIfFits: boolean): TSDFileInfoList;
 procedure SetupLazarusDirectory;
 
-// Compiler
+// FreePascal Compiler
 function CheckCompilerQuality(AFilename: string; out Note: string;
   TestSrcFilename: string): TSDFilenameQuality;
 function SearchCompilerCandidates(StopIfFits: boolean;
   const TestSrcFilename: string): TSDFileInfoList;
 procedure SetupCompilerFilename;
+
+// Pas2js compiler
+function CheckPas2jsQuality(AFilename: string; out Note: string;
+  TestSrcFilename: string): TSDFilenameQuality;
 
 // FPC Source
 function CheckFPCSrcDirQuality(ADirectory: string; out Note: string;
@@ -312,7 +316,7 @@ end;
 function CheckCompilerQuality(AFilename: string; out Note: string;
   TestSrcFilename: string): TSDFilenameQuality;
 var
-  CfgCache: TFPCTargetConfigCache;
+  CfgCache: TPCTargetConfigCache;
 
   function CheckPPU(const AnUnitName: string): boolean;
   begin
@@ -349,7 +353,7 @@ begin
   // do not execute unusual exe files
   ShortFilename:=ExtractFileNameOnly(AFilename);
   if (CompareFilenames(ShortFilename,'fpc')<>0)
-  and (CompareFilenames(copy(ShortFilename,1,3),'ppc')<>0)
+  and (CompareFilenames(LeftStr(ShortFilename,3),'ppc')<>0)
   then begin
     Note:=lisUnusualCompilerFileNameUsuallyItStartsWithFpcPpcOr;
     exit(sddqIncomplete);
@@ -357,7 +361,7 @@ begin
 
   if TestSrcFilename<>'' then
   begin
-    CfgCache:=CodeToolBoss.FPCDefinesCache.ConfigCaches.Find(
+    CfgCache:=CodeToolBoss.CompilerDefinesCache.ConfigCaches.Find(
                                                        AFilename,'','','',true);
     if CfgCache.NeedsUpdate then
       CfgCache.Update(TestSrcFilename);
@@ -545,7 +549,7 @@ begin
   end else begin
     debugln(' Searching compiler ...');
   end;
-  List:=SearchCompilerCandidates(true, CodeToolBoss.FPCDefinesCache.TestFilename);
+  List:=SearchCompilerCandidates(true, CodeToolBoss.CompilerDefinesCache.TestFilename);
   try
     if (List=nil) or (List.BestDir.Quality=sddqInvalid) then begin
       debugln(['SetupCompilerFilename: no proper compiler found.']);
@@ -580,6 +584,58 @@ begin
       end;
     end;
   end;
+end;
+
+function CheckPas2jsQuality(AFilename: string; out Note: string;
+  TestSrcFilename: string): TSDFilenameQuality;
+var
+  i: LongInt;
+  ShortFilename: String;
+  CfgCache: TPCTargetConfigCache;
+begin
+  Result:=sddqInvalid;
+  AFilename:=TrimFilename(AFilename);
+  if not FileExistsCached(AFilename) then
+  begin
+    Note:=lisFileNotFound4;
+    exit;
+  end;
+  if DirPathExistsCached(AFilename) then
+  begin
+    Note:=lisFileIsDirectory;
+    exit;
+  end;
+  if not FileIsExecutableCached(AFilename) then
+  begin
+    Note:=lisFileIsNotAnExecutable;
+    exit;
+  end;
+
+  // do not execute unusual exe files
+  ShortFilename:=ExtractFileNameOnly(AFilename);
+  if (CompareText(LeftStr(ShortFilename,6),'pas2js')<>0)
+  then begin
+    Note:=lisUnusualPas2jsCompilerFileNameUsuallyItStartsWithPa;
+    exit(sddqIncomplete);
+  end;
+
+  if TestSrcFilename<>'' then
+  begin
+    CfgCache:=CodeToolBoss.CompilerDefinesCache.ConfigCaches.Find(
+                                                       AFilename,'','','',true);
+    if CfgCache.NeedsUpdate then
+      CfgCache.Update(TestSrcFilename);
+    i:=CfgCache.IndexOfUsedCfgFile;
+    if i<0 then
+    begin
+      Note:=lisFpcCfgIsMissing;
+      exit;
+    end;
+    //if not CheckPas('classes') then exit;
+  end;
+
+  Note:=lisOk;
+  Result:=sddqCompatible;
 end;
 
 function CheckFPCSrcDirQuality(ADirectory: string; out Note: string;
@@ -737,6 +793,10 @@ begin
     // check environment variable FPCDIR
     AFileName := GetEnvironmentVariableUTF8('FPCDIR');
     if Check(AFilename,Result) then exit;
+
+    // check relative to FPCDIR
+    if AFileName <> '' then
+      if Check(AFilename + '/../fpcsrc', Result) then exit;
 
     // check history
     Dirs:=EnvironmentOptions.FPCSourceDirHistory;

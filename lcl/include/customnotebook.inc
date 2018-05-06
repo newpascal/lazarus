@@ -270,6 +270,7 @@ begin
 
   FImageListChangeLink := TChangeLink.Create;
   FImageListChangeLink.OnChange := @DoImageListChange;
+  FImageListChangeLink.OnDestroyResolutionHandle := @DoImageListDestroyResolutionHandle;
 
   FPageIndex := -1;
 
@@ -353,27 +354,8 @@ begin
   FImageListChangeLink.Free;
   Pages.Clear;
   FreeAndNil(FAccess);
+  Application.RemoveAsyncCalls(Self);
   inherited Destroy;
-end;
-
-{------------------------------------------------------------------------------
-  function TCustomTabControl.TabIndexAtClientPos(ClientPos: TPoint): integer;
-
-  Returns the index of the page of the tab at the client position.
-  For example:
-    Index:=NoteBook1.TabIndexAtClientPos(
-               NoteBook1.ScreenToClient(Mouse.CursorPos));
- ------------------------------------------------------------------------------}
-function TCustomTabControl.TabIndexAtClientPos(ClientPos: TPoint): integer;
-begin
-  if HandleAllocated then begin
-    Result := TWSCustomTabControlClass(WidgetSetClass).GetTabIndexAtPos(Self, ClientPos);
-    // Result is the index in visible tabs because invisible tabs are removed
-    //  from the native control. Calculate the real tab index here.
-    Result := TabToPageIndex(Result);
-  end
-  else
-    Result := -1;
 end;
 
 function TCustomTabControl.TabRect(AIndex: Integer): TRect;
@@ -547,6 +529,11 @@ begin
   PageIndex := IndexOf(AValue); // -1 for unpaged
 end;
 
+procedure TCustomTabControl.SetImageListAsync(Data: PtrInt);
+begin
+  DoImageListChange(Self);
+end;
+
 procedure TCustomTabControl.SetImages(const AValue: TCustomImageList);
 begin
   if FImages = AValue then Exit;
@@ -561,6 +548,14 @@ begin
     FImages.FreeNotification(Self);
     FImages.RegisterChanges(FImageListChangeLink);
   end;
+  DoImageListChange(Self);
+  UpdateTabProperties;
+end;
+
+procedure TCustomTabControl.SetImagesWidth(const aImagesWidth: Integer);
+begin
+  if FImagesWidth = aImagesWidth then Exit;
+  FImagesWidth := aImagesWidth;
   DoImageListChange(Self);
   UpdateTabProperties;
 end;
@@ -808,11 +803,13 @@ begin
   begin
     if Shift = [ssCtrl] then 
     begin
+      Key := 0;
       PageIndex := (PageIndex + 1) mod PageCount;
       Exit;
     end
     else if Shift = [ssCtrl, ssShift] then 
     begin
+      Key := 0;
       PageIndex := (PageIndex + PageCount - 1) mod PageCount;
       Exit;
     end;
@@ -1060,6 +1057,19 @@ begin
     Result := destPage.DialogChar(Message);
 end;
 
+procedure TCustomTabControl.DoAutoAdjustLayout(
+  const AMode: TLayoutAdjustmentPolicy; const AXProportion,
+  AYProportion: Double);
+begin
+  inherited DoAutoAdjustLayout(AMode, AXProportion, AYProportion);
+
+  if AMode in [lapAutoAdjustWithoutHorizontalScrolling, lapAutoAdjustForDPI] then
+  begin
+    if Assigned(Images) then
+      DoImageListChange(Self);
+  end;
+end;
+
 procedure TCustomTabControl.InternalSetPageIndex(AValue: Integer);
 begin
   FPageIndex := AValue;
@@ -1194,7 +1204,13 @@ end;
 procedure TCustomTabControl.DoImageListChange(Sender: TObject);
 begin
   if HandleAllocated then
-    TWSCustomTabControlClass(WidgetSetClass).SetImageList(Self, Images);
+    TWSCustomTabControlClass(WidgetSetClass).SetImageList(Self, Images.ResolutionForPPI[ImagesWidth, Font.PixelsPerInch, 1].Resolution); // to-do: support scaling factor
 end;
 
+procedure TCustomTabControl.DoImageListDestroyResolutionHandle(
+  Sender: TCustomImageList; AWidth: Integer; AReferenceHandle: TLCLHandle);
+begin
+  TWSCustomTabControlClass(WidgetSetClass).SetImageList(Self, nil);
+  Application.QueueAsyncCall(@SetImageListAsync, 0);
+end;
 

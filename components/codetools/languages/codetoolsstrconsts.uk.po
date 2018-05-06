@@ -1,16 +1,17 @@
+# Olexandr Pylypchuk <pilipchukap@rambler.ru>, 2017.
 msgid ""
 msgstr ""
 "Project-Id-Version: lazaruside\n"
 "POT-Creation-Date: \n"
-"PO-Revision-Date: 2016-05-27 01:06+0200\n"
+"PO-Revision-Date: 2017-10-13 23:08+0300\n"
 "Last-Translator: Olexandr Pylypchuk <pilipchukap@rambler.ru>\n"
-"Language-Team: \n"
+"Language-Team: Ukrainian <kde-i18n-doc@kde.org>\n"
 "Language: uk\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
-"X-Generator: Poedit 1.6.4\n"
+"X-Generator: Lokalize 1.5\n"
 
 #: codetoolsstrconsts.crsbracketnotfound
 msgid "bracket ) not found"
@@ -80,6 +81,10 @@ msgstr "не знайдено дужку %s"
 msgid "bracket open expected, but %s found"
 msgstr "очікується відкрита дужка, але знайдено %s"
 
+#: codetoolsstrconsts.ctscannotaddaunittotheimplementationbecauseonlyaunith
+msgid "cannot add a unit to the implementation, because only a unit has one"
+msgstr "неможливо додати модуль у розділ Implementation, тому що вона є лиш у модуля"
+
 #: codetoolsstrconsts.ctscharacterconstantoutofrange
 msgid "character constant out of range"
 msgstr "символьна константа поза допустимими межами"
@@ -98,6 +103,10 @@ msgstr "опис класу без предка"
 
 #: codetoolsstrconsts.ctsclassnotfound
 msgid "class \"%s\" not found"
+msgstr "не знайдено клас \"%s\""
+
+#: codetoolsstrconsts.ctsclassnotfound2
+msgid "class not found \"%s\""
 msgstr "не знайдено клас \"%s\""
 
 #: codetoolsstrconsts.ctsclassofdefinitionnotresolved
@@ -138,7 +147,7 @@ msgstr "константа"
 
 #: codetoolsstrconsts.ctsconverterdirectory
 msgid "Converter Directory"
-msgstr "Тека Конвертера"
+msgstr "Тека конвертера"
 
 #: codetoolsstrconsts.ctscursorposoutsideofcode
 msgid "cursor pos outside of code"
@@ -518,6 +527,10 @@ msgstr "неправильний перемикач режиму \"%s\""
 msgid "invalid operator %s"
 msgstr "невірний оператор %s"
 
+#: codetoolsstrconsts.ctsinvalidpositionforinsertionofstatements
+msgid "invalid position for insertion of statements"
+msgstr "неправильна позиція для вставляння інструкцій"
+
 #: codetoolsstrconsts.ctsinvalidsubrange
 msgid "invalid subrange"
 msgstr "неправильний піддіапазон"
@@ -554,6 +567,10 @@ msgstr "головна тека Lazarus"
 msgid "Lazarus Sources"
 msgstr "Сирці Lazarus"
 
+#: codetoolsstrconsts.ctsmethodhasnodeclaration
+msgid "method \"%s\" has no declaration"
+msgstr "метод \"%s\" не оголошено"
+
 #: codetoolsstrconsts.ctsmethodname
 msgid "method name"
 msgstr "назва методу"
@@ -564,7 +581,7 @@ msgstr "Підпис методу %s не знайдено у класі"
 
 #: codetoolsstrconsts.ctsmethodtypedefinitionnotfound
 msgid "method type definition not found"
-msgstr "не знайдений опис типу методу"
+msgstr "не знайдено опис типу методу"
 
 #: codetoolsstrconsts.ctsmissing
 msgid "missing :="
@@ -604,7 +621,7 @@ msgstr "не знайдене тіло нової процедури"
 
 #: codetoolsstrconsts.ctsnocontextnodefoundatcursor
 msgid "no context node found at cursor"
-msgstr "не знайдений контекстний елемент біля курсору"
+msgstr "не знайдено контекстний елемент біля курсору"
 
 #: codetoolsstrconsts.ctsnodefaultspecifierdefinedtwice
 msgid "nodefault specifier defined twice"
@@ -612,7 +629,7 @@ msgstr "модифікатор nodefault визначено двічі"
 
 #: codetoolsstrconsts.ctsnopascalcodefound
 msgid "no pascal code found (first token is %s)"
-msgstr "не знайдений код паскаля (перший елемент - %s)"
+msgstr "не знайдено код Паскалю (перший елемент - %s)"
 
 #: codetoolsstrconsts.ctsnoscanneravailable
 msgid "No scanner available"
@@ -836,6 +853,10 @@ msgstr "знайдено неочікуване ключове слово \"%s\"
 msgid "unexpected keyword \"%s\" found while reading blocks backwards"
 msgstr "знайдено неочікуване ключове слово \"%s\" при читанні блоків у зворотному порядку"
 
+#: codetoolsstrconsts.ctsunexpectedsectionkeyword
+msgid "unexpected section keyword %s found"
+msgstr "знайдено неочікуване ключове слово розділу %s"
+
 #: codetoolsstrconsts.ctsunexpectedsubrangeoperatorfound
 msgid "unexpected subrange operator '..' found"
 msgstr "знайдено неочікуваний оператор піддіапазону '..'"
@@ -855,10 +876,6 @@ msgstr "Невідома функція %s"
 #: codetoolsstrconsts.ctsunknownmainfilename
 msgid "(unknown mainfilename)"
 msgstr "(невідома назва головного файлу)"
-
-#: codetoolsstrconsts.ctsunknownsectionkeyword
-msgid "unknown section keyword %s found"
-msgstr "знайдене невідоме ключове слово секції %s"
 
 #: codetoolsstrconsts.ctsunknownsubdescriptor
 msgid "(unknown subdescriptor %s)"

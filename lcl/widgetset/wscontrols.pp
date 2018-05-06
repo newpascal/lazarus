@@ -51,20 +51,20 @@ const
  { dctFont  } clBtnText
   );
 type
-  { TWSDragImageList }
+  { TWSDragImageListResolution }
 
-  TWSDragImageList = class(TWSCustomImageList)
+  TWSDragImageListResolution = class(TWSCustomImageListResolution)
   published
-    class function BeginDrag(const ADragImageList: TDragImageList; Window: HWND; AIndex, X, Y: Integer): Boolean; virtual;
-    class function DragMove(const ADragImageList: TDragImageList; X, Y: Integer): Boolean; virtual;
-    class procedure EndDrag(const ADragImageList: TDragImageList); virtual;
-    class function HideDragImage(const ADragImageList: TDragImageList;
+    class function BeginDrag(const ADragImageList: TDragImageListResolution; Window: HWND; AIndex, X, Y: Integer): Boolean; virtual;
+    class function DragMove(const ADragImageList: TDragImageListResolution; X, Y: Integer): Boolean; virtual;
+    class procedure EndDrag(const ADragImageList: TDragImageListResolution); virtual;
+    class function HideDragImage(const ADragImageList: TDragImageListResolution;
       ALockedWindow: HWND; DoUnLock: Boolean): Boolean; virtual;
-    class function ShowDragImage(const ADragImageList: TDragImageList;
+    class function ShowDragImage(const ADragImageList: TDragImageListResolution;
       ALockedWindow: HWND; X, Y: Integer; DoLock: Boolean): Boolean; virtual;
   end;
 
-  TWSDragImageListClass = class of TWSDragImageList;
+  TWSDragImageListResolutionClass = class of TWSDragImageListResolution;
 
   { TWSLazAccessibleObject }
 
@@ -89,6 +89,7 @@ type
     class function GetDefaultColor(const AControl: TControl; const ADefaultColorType: TDefaultColorType): TColor; virtual;
     class procedure ConstraintWidth(const AControl: TControl; const AConstraints: TObject; var aWidth: integer); virtual;
     class procedure ConstraintHeight(const AControl: TControl; const AConstraints: TObject; var aHeight: integer); virtual;
+    class function GetCanvasScaleFactor(const AControl: TControl): Double; virtual;
   end;
 
   TWSControlClass = class of TWSControl;
@@ -108,6 +109,7 @@ type
     class procedure GetPreferredSize(const AWinControl: TWinControl; var PreferredWidth, PreferredHeight: integer; WithThemeSpace: Boolean); virtual;
     class function  GetDefaultClientRect(const AWinControl: TWinControl; const aLeft, aTop, aWidth, aHeight: integer; var aClientRect: TRect): boolean; virtual;
     class function GetDesignInteractive(const AWinControl: TWinControl; AClientPos: TPoint): Boolean; virtual;
+    class function GetDoubleBuffered(const AWinControl: TWinControl): Boolean; virtual;
     class function  GetText(const AWinControl: TWinControl; var AText: String): Boolean; virtual;
     class function  GetTextLen(const AWinControl: TWinControl; var ALength: Integer): Boolean; virtual;
 
@@ -154,11 +156,11 @@ type
 
   { TWSImageList }
 
-  TWSImageList = class(TWSDragImageList)
+  TWSImageList = class(TWSDragImageListResolution)
   published
   end;
 
-procedure RegisterDragImageList;
+procedure RegisterDragImageListResolution;
 procedure RegisterLazAccessibleObject;
 procedure RegisterControl;
 procedure RegisterWinControl;
@@ -234,6 +236,12 @@ class procedure TWSControl.ConstraintHeight(const AControl: TControl;
   const AConstraints: TObject; var aHeight: integer);
 begin
 
+end;
+
+class function TWSControl.GetCanvasScaleFactor(const AControl: TControl
+  ): Double;
+begin
+  Result := 1;
 end;
 
 { TWSWinControl }
@@ -326,6 +334,12 @@ begin
   Result := False;
 end;
 
+class function TWSWinControl.GetDoubleBuffered(
+  const AWinControl: TWinControl): Boolean;
+begin
+  Result := AWinControl.DoubleBuffered;
+end;
+
 class procedure TWSWinControl.Invalidate(const AWinControl: TWinControl);
 begin
 end;
@@ -402,31 +416,32 @@ begin
   AWinControl.Invalidate;
 end;
 
-{ TWSDragImageList }
+{ TWSDragImageListResolution }
 
-class function TWSDragImageList.BeginDrag(const ADragImageList: TDragImageList;
-  Window: HWND; AIndex, X, Y: Integer): Boolean;
+class function TWSDragImageListResolution.BeginDrag(
+  const ADragImageList: TDragImageListResolution; Window: HWND; AIndex, X,
+  Y: Integer): Boolean;
 begin
   Result := False;
 end;
 
-class function TWSDragImageList.DragMove(const ADragImageList: TDragImageList;
+class function TWSDragImageListResolution.DragMove(const ADragImageList: TDragImageListResolution;
   X, Y: Integer): Boolean;
 begin
   Result := False;
 end;
 
-class procedure TWSDragImageList.EndDrag(const ADragImageList: TDragImageList);
+class procedure TWSDragImageListResolution.EndDrag(const ADragImageList: TDragImageListResolution);
 begin
 end;
 
-class function TWSDragImageList.HideDragImage(const ADragImageList: TDragImageList;
+class function TWSDragImageListResolution.HideDragImage(const ADragImageList: TDragImageListResolution;
   ALockedWindow: HWND; DoUnLock: Boolean): Boolean;
 begin
   Result := False;
 end;
 
-class function TWSDragImageList.ShowDragImage(const ADragImageList: TDragImageList;
+class function TWSDragImageListResolution.ShowDragImage(const ADragImageList: TDragImageListResolution;
   ALockedWindow: HWND; X, Y: Integer; DoLock: Boolean): Boolean;
 begin
   Result := False;
@@ -434,13 +449,13 @@ end;
 
 { WidgetSetRegistration }
 
-procedure RegisterDragImageList;
+procedure RegisterDragImageListResolution;
 const
   Done: Boolean = False;
 begin
   if Done then exit;
-  if not WSRegisterDragImageList then
-    RegisterWSComponent(TDragImageList, TWSDragImageList);
+  if not WSRegisterDragImageListResolution then
+    RegisterWSComponent(TDragImageListResolution, TWSDragImageListResolution);
   Done := True;
 end;
 

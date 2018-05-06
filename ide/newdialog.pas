@@ -39,10 +39,18 @@ unit NewDialog;
 interface
 
 uses
-  Buttons, SysUtils, Classes, ComCtrls, Controls, Dialogs,
-  Forms, StdCtrls, ExtCtrls, FileProcs, ButtonPanel,
-  IDEWindowIntf, IDEImagesIntf, NewItemIntf, PackageIntf, ProjectIntf,
-  LazIDEIntf, IDEHelpIntf, IDEDialogs, LazUTF8,
+  SysUtils, Classes,
+  // LCL
+  ComCtrls, Controls, Dialogs, Forms, StdCtrls, ExtCtrls,
+  ButtonPanel, ListViewFilterEdit,
+  // LazUtils
+  LazUTF8,
+  // CodeTools
+  FileProcs,
+  // IdeIntf
+  IDEWindowIntf, IDEImagesIntf, NewItemIntf, ProjectIntf,
+  LazIDEIntf, IDEHelpIntf, IDEDialogs,
+  // IDE
   InputHistory, LazarusIDEStrConsts, Project, MainIntf;
 
 type
@@ -123,9 +131,14 @@ type
     DescriptionLabel: TLabel;
     ItemsTreeView: TTreeView;
     InheritableComponentsListView: TListView;
+    CompFilterEdit: TListViewFilterEdit;
     Panel1: TPanel;
     Splitter1: TSplitter;
+    procedure FormClose(Sender: TObject; var {%H-}CloseAction: TCloseAction);
+    procedure FormCreate(Sender: TObject);
     procedure HelpButtonClick(Sender: TObject);
+    procedure InheritableComponentsListViewSelectItem(Sender: TObject;
+      {%H-}Item: TListItem; {%H-}Selected: Boolean);
     procedure ItemsTreeViewSelectionChanged(Sender: TObject);
     procedure OKButtonClick(Sender: TObject);
   private
@@ -159,7 +172,7 @@ var
 begin
   NewItem := nil;
   NewOtherDialog := TNewOtherDialog.Create(nil, AOnlyModules);
-  Result  := NewOtherDialog.ShowModal;
+  Result := NewOtherDialog.ShowModal;
   if Result = mrOk then
     NewItem := NewOtherDialog.NewItem;
   IDEDialogLayoutList.SaveLayout(NewOtherDialog);
@@ -244,7 +257,7 @@ procedure TNewOtherDialog.FillProjectInheritableItemsList;
 var
   aComponentList: TStringList;
   i: integer;
-  alistItem: TListItem;
+  ListItem: TListViewDataItem;
   AnUnitInfo: TUnitInfo;
 Begin
   try
@@ -256,24 +269,25 @@ Begin
       if (not Project1.Units[i].IsPartOfProject)
       or (not FilenameIsPascalUnit(Project1.Units[i].Filename)) then
         continue;
-
       if Project1.Units[i].ComponentName<>'' then
         aComponentList.AddObject(Project1.Units[i].ComponentName, Project1.Units[i]);
     end;
-
     // Sort lists (by component name)
     aComponentList.Sort;
 
     // Populate components listview, keeping references to each UnitInfo
     for i := 0 to aComponentList.Count-1 do
     begin
-      alistItem := InheritableComponentsListView.Items.Add;
-      alistItem.Caption := aComponentList[i];
-      AnUnitInfo:=TUnitInfo(aComponentList.Objects[i]);
-      alistItem.SubItems.Add(AnUnitInfo.ShortFilename);
-      aListItem.Data := aComponentList.Objects[i];
+      AnUnitInfo := TUnitInfo(aComponentList.Objects[i]);
+      //ListItem.Initialize(2);
+      ListItem.Data := Nil;
+      SetLength(ListItem.StringArray, 2);
+      ListItem.StringArray[0] := aComponentList[i];
+      ListItem.StringArray[1] := AnUnitInfo.ShortFilename;
+      ListItem.Data := aComponentList.Objects[i];
+      CompFilterEdit.Items.Add(ListItem);
     end;
-
+    CompFilterEdit.InvalidateFilter;
   finally
     aComponentList.Free;
   end;
@@ -315,10 +329,24 @@ begin
 end;
 
 procedure TNewOtherDialog.ItemsTreeViewSelectionChanged(Sender: TObject);
+var
+  Node: TTreeNode;
 begin
-  ButtonPanel.OKButton.Enabled := (ItemsTreeView.Selected <> nil) and
-    (TObject(ItemsTreeView.Selected.Data) is TNewIDEItemTemplate);
+  Node := ItemsTreeView.Selected;
+  // For inherited comps OKButton is enabled also later when a ListView item is selected.
+  if Assigned(Node) and (TObject(Node.Data) is TNewItemProjectFile) and
+      (TNewItemProjectFile(Node.Data).Descriptor is TFileDescInheritedComponent)
+  then
+    ButtonPanel.OKButton.Enabled := Assigned(InheritableComponentsListView.Selected)
+  else
+    ButtonPanel.OKButton.Enabled := Assigned(Node) and (TObject(Node.Data) is TNewIDEItemTemplate);
   UpdateDescription;
+end;
+
+procedure TNewOtherDialog.InheritableComponentsListViewSelectItem(
+  Sender: TObject; Item: TListItem; Selected: Boolean);
+begin
+  ButtonPanel.OKButton.Enabled := Assigned((Sender as TListView).Selected);
 end;
 
 procedure TNewOtherDialog.HelpButtonClick(Sender: TObject);
@@ -326,11 +354,21 @@ begin
   LazarusHelp.ShowHelpForIDEControl(Self);
 end;
 
+procedure TNewOtherDialog.FormClose(Sender: TObject; var CloseAction: TCloseAction);
+begin
+  IDEDialogLayoutList.SaveLayout(Self);
+end;
+
+procedure TNewOtherDialog.FormCreate(Sender: TObject);
+begin
+  IDEDialogLayoutList.ApplyLayout(Self, 750, 410);
+end;
+
 procedure TNewOtherDialog.SetupComponents;
 begin
   ItemsTreeView.Images := IDEImages.Images_16;
-  ImageIndexTemplate := IDEImages.LoadImage(16, 'template');
-  ImageIndexFolder := IDEImages.LoadImage(16, 'folder');
+  ImageIndexTemplate := IDEImages.LoadImage('template');
+  ImageIndexFolder := IDEImages.LoadImage('folder');
 
   DescriptionGroupBox.Caption := lisCodeHelpDescrTag;
   DescriptionLabel.Caption := '';
@@ -347,6 +385,7 @@ var
   aNewItemTemplate: TNewIDEItemTemplate;
 begin
   ANode := ItemsTreeView.Selected;
+  CompFilterEdit.Visible := false;
   InheritableComponentsListView.Visible := false;
   if (ANode <> nil) and (ANode.Data <> nil) then
   begin
@@ -360,11 +399,9 @@ begin
       begin
         if TNewItemProjectFile(aNewItemTemplate).Descriptor is TFileDescInheritedComponent
         then begin
+          CompFilterEdit.Visible := true;
           InheritableComponentsListView.Visible := true;
-          InheritableComponentsListView.Height:=InheritableComponentsListView.Parent.ClientHeight-50;
-          if InheritableComponentsListView.Items.Count>0 then
-            InheritableComponentsListView.Selected := InheritableComponentsListView.Items[0];
-        end
+        end;
       end;
     end;
   end
@@ -396,8 +433,8 @@ begin
   SetupComponents;
   FillItemsTree(AOnlyModules);
   FillProjectInheritableItemsList;
+  CompFilterEdit.Visible := false;
   InheritableComponentsListView.Visible := false;
-  IDEDialogLayoutList.ApplyLayout(Self, 570, 400);
 
   Node:=FindItem(InputHistories.NewFileType);
   if Node=nil then

@@ -126,7 +126,9 @@ msgid "Cannot write file%s%s%s%sYou can press \"Retry\" to refresh this translat
 msgstr ""
 
 #: pocheckerconsts.scheckforduplicateuntranslatedvalues
-msgid "Check for duplicate untranslated values"
+#, fuzzy
+#| msgid "Check for duplicate untranslated values"
+msgid "Check for duplicate originals"
 msgstr "原文のままで翻訳されていない項目の検査"
 
 #: pocheckerconsts.scheckforincompatibleformatarguments
@@ -134,7 +136,9 @@ msgid "Check for incompatible format arguments"
 msgstr "互換性のない書式引数の検査"
 
 #: pocheckerconsts.scheckformismatchesinuntranslatedstrings
-msgid "Check for mismatches in untranslated strings"
+#, fuzzy
+#| msgid "Check for mismatches in untranslated strings"
+msgid "Check for mismatches of originals"
 msgstr "原文の不一致検査"
 
 #: pocheckerconsts.scheckmissingidentifiers
@@ -145,17 +149,13 @@ msgstr "欠けている識別子を検査"
 msgid "Check number of items"
 msgstr "項目数の検査"
 
-#: pocheckerconsts.scheckstatistics
-msgid "Check percentage of (un)translated and fuzzy strings"
-msgstr "翻訳／未翻訳、未確定文字列の割合を検査"
-
 #: pocheckerconsts.sclearlistbox
 msgid "Clear"
 msgstr ""
 
-#: pocheckerconsts.scopycaption
-msgid "Copy to clipboard"
-msgstr "クリップボードへコピー"
+#: pocheckerconsts.scopy
+msgid "&Copy"
+msgstr ""
 
 #: pocheckerconsts.screatingiconxofy
 msgid "Creating icon nr. %d of %d"
@@ -170,8 +170,14 @@ msgid "[Line %d] %s"
 msgstr "[行 %d] %s"
 
 #: pocheckerconsts.sduplicateoriginals
-msgid "The (untranslated) value \"%s\" is used for more than 1 entry:"
+#, fuzzy
+#| msgid "The (untranslated) value \"%s\" is used for more than 1 entry:"
+msgid "Original value \"%s\" is used for more than 1 entry:"
 msgstr "原文のままで翻訳されていない項目 \"%s\" が1ヶ所以上存在します："
+
+#: pocheckerconsts.sduplicateoriginalstab
+msgid "Duplicate Originals"
+msgstr ""
 
 #: pocheckerconsts.serroroncleanup
 msgid ""
@@ -195,14 +201,26 @@ msgstr ""
 msgid "Errors / warnings reported by %s for:"
 msgstr "以下のファイルに対する %s によるエラー／警告の結果："
 
+#: pocheckerconsts.sfile
+msgid "File %s"
+msgstr ""
+
 #: pocheckerconsts.sfilesnotfoundandremoved
 msgid ""
 "The following non-existent files were removed from the list:\n"
 "%s\n"
 msgstr ""
 
+#: pocheckerconsts.sfuzzystrings
+msgid "Fuzzy strings"
+msgstr ""
+
 #: pocheckerconsts.sfuzzystringstotal
 msgid "Fuzzy strings (total: %s)"
+msgstr ""
+
+#: pocheckerconsts.sgeneralinfo
+msgid "General Info"
 msgstr ""
 
 #: pocheckerconsts.sgrapstatformcaption
@@ -217,13 +235,17 @@ msgstr "GUI po ファイル検査ツール"
 msgid "Identifier [%s] not found in %s"
 msgstr "識別子 [%s] が %s 内にありません"
 
-#: pocheckerconsts.signorefuzzytranslations
-msgid "Ignore translated strings marked as \"fuzzy\""
-msgstr ""
-
 #: pocheckerconsts.sincompatibleformatargs
 msgid "[Line: %d] Incompatible and/or invalid format() arguments for:"
 msgstr "[行：%d] 互換性のないもしくは無効な format() の引数："
+
+#: pocheckerconsts.slanguage
+msgid "Language:"
+msgstr ""
+
+#: pocheckerconsts.slastsearchpath
+msgid "Last search path:"
+msgstr ""
 
 #: pocheckerconsts.slineinfilename
 msgid "[Line %d] in %s:"
@@ -236,10 +258,6 @@ msgstr "[行：%d]"
 #: pocheckerconsts.smissingmasteridentifier
 msgid "Identifier [%s] found in %s, but it does not exist in %s"
 msgstr "識別子 [%s] が %s 内で見つかりましたが、%s 内には存在しません"
-
-#: pocheckerconsts.snoerrorsfound
-msgid "No errors found"
-msgstr "エラーはありません"
 
 #: pocheckerconsts.snofileslefttocheck
 msgid "There are no files left to check."
@@ -341,9 +359,9 @@ msgstr "結果"
 msgid "&Run Selected Tests"
 msgstr "選択したテストを実行(&R)"
 
-#: pocheckerconsts.ssavecaption
-msgid "Save to file"
-msgstr "ファイルへ保存"
+#: pocheckerconsts.ssaveas
+msgid "Save &As ..."
+msgstr ""
 
 #: pocheckerconsts.ssaveerror
 msgid ""
@@ -402,8 +420,12 @@ msgstr ""
 #: pocheckerconsts.stotalerrors
 #, fuzzy
 #| msgid "Total errors / warnings found: %d"
-msgid "Total errors found: %d"
+msgid "Total errors: %d"
 msgstr "エラー／警告の総数：%d"
+
+#: pocheckerconsts.stotalerrorsnonfuzzy
+msgid "Total errors: %d (formatting errors in non-fuzzy strings: %d)"
+msgstr ""
 
 #: pocheckerconsts.stotalfuzzystrings
 msgid "Total fuzzy strings: %s"
@@ -418,8 +440,14 @@ msgid "Total untranslated strings: %s"
 msgstr ""
 
 #: pocheckerconsts.stotalwarnings
-msgid "Total warnings found: %d"
+#, fuzzy
+#| msgid "Total warnings found: %d"
+msgid "Total warnings: %d"
 msgstr "警告の総数：%d"
+
+#: pocheckerconsts.stranslatedstrings
+msgid "Translated strings"
+msgstr ""
 
 #: pocheckerconsts.stranslatedstringstotal
 msgid "Translated strings (total: %s [%.1f%%])"
@@ -430,10 +458,8 @@ msgid "Translation"
 msgstr "訳文"
 
 #: pocheckerconsts.stranslationstatistics
-#, fuzzy
-#| msgid "Translation statistics for:"
-msgid "Translation statistics per language:"
-msgstr "翻訳状況："
+msgid "Translation Statistics"
+msgstr ""
 
 #: pocheckerconsts.stroublesomefiles
 msgid "Troublesome files"
@@ -445,6 +471,10 @@ msgstr ""
 
 #: pocheckerconsts.sunselectlistbox
 msgid "Unselect all files"
+msgstr ""
+
+#: pocheckerconsts.suntranslatedstrings
+msgid "Untranslated strings"
 msgstr ""
 
 #: pocheckerconsts.suntranslatedstringstotal

@@ -1,0 +1,400 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Project-Id-Version: X\n"
+"POT-Creation-Date: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: 郑建平@夏宗萍 aka  robsean  <robsean@126.com>\n"
+"Language-Team: http://www.microsystem.studio\n"
+"MIME-Version: 1.0\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: zh_CN\n"
+"X-Generator: Poedit 1.8.7.1\n"
+"X-Poedit-SourceCharset: UTF-8\n"
+
+#: tachartstrconsts.descolor
+msgid "Color"
+msgstr "颜色"
+
+#: tachartstrconsts.desdatapointeditor
+msgid "DataPoints editor"
+msgstr "DataPoints编辑器"
+
+#: tachartstrconsts.desdeleterow
+msgid "Delete row"
+msgstr "删除行"
+
+#: tachartstrconsts.desinsertrow
+msgid "Insert row"
+msgstr "插入行"
+
+#: tachartstrconsts.destext
+msgid "Text"
+msgstr "文本"
+
+#: tachartstrconsts.rsadd
+msgid "Add"
+msgstr "添加"
+
+#: tachartstrconsts.rsareaseries
+msgid "Area series"
+msgstr "面积图系列"
+
+#: tachartstrconsts.rsautoscale
+msgid "Auto scale"
+msgstr "自动缩放"
+
+#: tachartstrconsts.rsbarseries
+msgid "Bar series"
+msgstr "条形图系列"
+
+#: tachartstrconsts.rsbottom
+msgid "Bottom"
+msgstr ""
+
+#: tachartstrconsts.rsboxandwhiskerseries
+msgid "Box-and-whiskers series"
+msgstr "盒须图系列"
+
+#: tachartstrconsts.rsbsbdiagonal
+msgid "backward-diagonal hatch"
+msgstr ""
+
+#: tachartstrconsts.rsbsclear
+msgid "no fill"
+msgstr ""
+
+#: tachartstrconsts.rsbscross
+msgid "crossed"
+msgstr ""
+
+#: tachartstrconsts.rsbsdiagcross
+msgid "diagonally crossed"
+msgstr ""
+
+#: tachartstrconsts.rsbsfdiagonal
+msgid "forward-diagonal hatch"
+msgstr ""
+
+#: tachartstrconsts.rsbshorizontal
+msgid "horizontally hatched"
+msgstr ""
+
+#: tachartstrconsts.rsbsimage
+msgid "image fill"
+msgstr ""
+
+#: tachartstrconsts.rsbspattern
+msgid "pattern fill"
+msgstr ""
+
+#: tachartstrconsts.rsbsplineseries
+msgid "B-Spline series"
+msgstr "B-样条系列"
+
+#: tachartstrconsts.rsbssolid
+msgid "solid fill"
+msgstr ""
+
+#: tachartstrconsts.rsbsvertical
+msgid "vertically hatched"
+msgstr ""
+
+#: tachartstrconsts.rsbubbleseries
+msgid "Bubble series"
+msgstr "散点图系列"
+
+#: tachartstrconsts.rscirclesymbol
+msgid "Circle"
+msgstr ""
+
+#: tachartstrconsts.rscolormapseries
+msgid "Color map series"
+msgstr "彩色图系列"
+
+#: tachartstrconsts.rsconstantline
+msgid "Constant line"
+msgstr "恒线(Constant)"
+
+#: tachartstrconsts.rscrosssymbol
+msgid "Plus"
+msgstr ""
+
+#: tachartstrconsts.rscubicsplineseries
+msgid "Cubic spline series"
+msgstr "立体样条系列"
+
+#: tachartstrconsts.rscumulativenormaldistribution
+msgid "Cumulative normal distribution"
+msgstr "累积正态分布"
+
+#: tachartstrconsts.rsdatapointclick
+msgid "Data point click"
+msgstr "数据点点击"
+
+#: tachartstrconsts.rsdatapointcrosshair
+msgid "Data point crosshair"
+msgstr "数据点十字线"
+
+#: tachartstrconsts.rsdatapointdrag
+msgid "Data point drag"
+msgstr "数据点拖拽"
+
+#: tachartstrconsts.rsdatapointhint
+msgid "Data point hint"
+msgstr "数据点提示"
+
+#: tachartstrconsts.rsdelete
+msgid "Delete"
+msgstr "删除"
+
+#: tachartstrconsts.rsdiagcrosssymbol
+msgid "Cross"
+msgstr ""
+
+#: tachartstrconsts.rsdiamondsymbol
+msgid "Diamond"
+msgstr ""
+
+#: tachartstrconsts.rsdistancemeasurement
+msgid "Distance measurement"
+msgstr "距离测量"
+
+#: tachartstrconsts.rsdowntrianglesymbol
+msgid "Down triangle"
+msgstr ""
+
+#: tachartstrconsts.rserrinvalidresulttype
+msgid "Expression result type must be integer or float. Got \"%s\"."
+msgstr ""
+
+#: tachartstrconsts.rsexpressioncolormapseries
+msgid "Math expression color map series"
+msgstr ""
+
+#: tachartstrconsts.rsexpressionseries
+msgid "Math expression series"
+msgstr ""
+
+#: tachartstrconsts.rsfieldseries
+msgid "Vector field series"
+msgstr ""
+
+#: tachartstrconsts.rsfullstarsymbol
+msgid "Star (full)"
+msgstr ""
+
+#: tachartstrconsts.rsfunctionseries
+msgid "Function series"
+msgstr "函数系列"
+
+#: tachartstrconsts.rshexagonsymbol
+msgid "Hexagon"
+msgstr ""
+
+#: tachartstrconsts.rshidden
+msgid "hidden"
+msgstr ""
+
+#: tachartstrconsts.rshighbracketsymbol
+msgid "High bracket"
+msgstr ""
+
+#: tachartstrconsts.rshorbarsymbol
+msgid "Horizontal bar"
+msgstr ""
+
+#: tachartstrconsts.rsinvalidlogbase
+msgid "Logarithm base must be > 0 and <> 1."
+msgstr "对数技术必须>0和<>1."
+
+#: tachartstrconsts.rsinverted
+msgid "inverted"
+msgstr ""
+
+#: tachartstrconsts.rsleastsquaresfitseries
+msgid "Least-squares fit series"
+msgstr "最小二乘拟合系列"
+
+#: tachartstrconsts.rsleft
+msgid "Left"
+msgstr ""
+
+#: tachartstrconsts.rsleftbracketsymbol
+msgid "Left bracket"
+msgstr ""
+
+#: tachartstrconsts.rslefttrianglesymbol
+msgid "Left triangle"
+msgstr ""
+
+#: tachartstrconsts.rslinear
+msgid "Linear"
+msgstr "线性的(Linear)"
+
+#: tachartstrconsts.rslineseries
+msgid "Line series"
+msgstr "折线图系列"
+
+#: tachartstrconsts.rslogarithmic
+msgid "Logarithmic"
+msgstr "对数的"
+
+#: tachartstrconsts.rslowbracketsymbol
+msgid "Low bracket"
+msgstr ""
+
+#: tachartstrconsts.rsmanhattanplotseries
+msgid "Manhattan plot series"
+msgstr "曼哈顿图系列"
+
+#: tachartstrconsts.rsmovedown
+msgid "Down"
+msgstr "下移"
+
+#: tachartstrconsts.rsmoveup
+msgid "Up"
+msgstr "上移"
+
+#: tachartstrconsts.rsnosymbol
+msgid "(none)"
+msgstr ""
+
+#: tachartstrconsts.rsopenhighlowcloseseries
+msgid "Open-high-low-close series"
+msgstr "股票图系列"
+
+#: tachartstrconsts.rspanningbyclick
+msgid "Panning by click"
+msgstr "通过点击平移"
+
+#: tachartstrconsts.rspanningbydrag
+msgid "Panning by drag"
+msgstr "通过拖拽平移"
+
+#: tachartstrconsts.rspanningbymousewheel
+msgid "Panning by mouse wheel"
+msgstr "通过鼠标滚轮平移"
+
+#: tachartstrconsts.rsparametriccurveseries
+msgid "Parametric curve series"
+msgstr "参数曲线"
+
+#: tachartstrconsts.rspieseries
+msgid "Pie series"
+msgstr "饼图系列"
+
+#: tachartstrconsts.rspointsymbol
+msgid "Point"
+msgstr ""
+
+#: tachartstrconsts.rspolarseries
+msgid "Polar series"
+msgstr "极线系列(Polar)"
+
+#: tachartstrconsts.rspsclear
+msgid "no line"
+msgstr ""
+
+#: tachartstrconsts.rspsdash
+msgid "dashed line"
+msgstr ""
+
+#: tachartstrconsts.rspsdashdot
+msgid "dash-dot"
+msgstr ""
+
+#: tachartstrconsts.rspsdashdotdot
+msgid "dash-dot-dot"
+msgstr ""
+
+#: tachartstrconsts.rspsdot
+msgid "dotted line"
+msgstr ""
+
+#: tachartstrconsts.rspsinsideframe
+msgid "solid (inside frame)"
+msgstr ""
+
+#: tachartstrconsts.rspspattern
+msgid "patterned line"
+msgstr ""
+
+#: tachartstrconsts.rspssolid
+msgid "solid line"
+msgstr ""
+
+#: tachartstrconsts.rsrectanglesymbol
+msgid "Rectangle"
+msgstr ""
+
+#: tachartstrconsts.rsright
+msgid "Right"
+msgstr ""
+
+#: tachartstrconsts.rsrightbracketsymbol
+msgid "Right bracket"
+msgstr ""
+
+#: tachartstrconsts.rsrighttrianglesymbol
+msgid "Right triangle"
+msgstr ""
+
+#: tachartstrconsts.rsstarsymbol
+msgid "Star (lines)"
+msgstr ""
+
+#: tachartstrconsts.rstop
+msgid "Top"
+msgstr ""
+
+#: tachartstrconsts.rstrianglesymbol
+msgid "Triangle"
+msgstr ""
+
+#: tachartstrconsts.rsuserdefined
+msgctxt "tachartstrconsts.rsuserdefined"
+msgid "User-defined"
+msgstr "用户定义"
+
+#: tachartstrconsts.rsuserdefinedtool
+msgctxt "tachartstrconsts.rsuserdefinedtool"
+msgid "User-defined"
+msgstr "用户定义"
+
+#: tachartstrconsts.rsuserdrawnseries
+msgid "User-drawn series"
+msgstr "用户绘制系列"
+
+#: tachartstrconsts.rsvertbarsymbol
+msgid "Vertical bar"
+msgstr ""
+
+#: tachartstrconsts.rszoombyclick
+msgid "Zoom by click"
+msgstr "通过点击放大"
+
+#: tachartstrconsts.rszoombydrag
+msgid "Zoom by drag"
+msgstr "通过拖拽放大"
+
+#: tachartstrconsts.rszoombymousewheel
+msgid "Zoom by mouse-wheel"
+msgstr "通过鼠标滚轮拖拽放大"
+
+#: tachartstrconsts.sesserieseditortitle
+msgid "Edit series"
+msgstr "编辑系列"
+
+#: tachartstrconsts.tasaxistransformseditortitle
+msgid "Edit axis transformations"
+msgstr "编辑轴转换"
+
+#: tachartstrconsts.tasfailedsubcomponentrename
+msgid "Failed to rename components: %s"
+msgstr "重命名组件:%s失败"
+
+#: tachartstrconsts.tastoolseditortitle
+msgid "Edit tools"
+msgstr "编辑工具"
+

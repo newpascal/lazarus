@@ -291,6 +291,7 @@ function GtkAllocationFromRect(R: TRect): TGtkAllocation;
 
 function GdkKeyToLCLKey(AValue: Word): Word;
 function GdkModifierStateToLCL(AState: TGdkModifierType; const AIsKeyEvent: Boolean): PtrInt;
+function GdkModifierStateToShiftState(AState: TGdkModifierType): TShiftState;
 
 procedure SetWindowCursor(AWindow: PGdkWindow; ACursor: HCursor;
   ARecursive: Boolean; ASetDefault: Boolean);
@@ -682,6 +683,34 @@ begin
     Result := Result or MK_CONTROL;
 end;
 
+function GdkModifierStateToShiftState(AState: TGdkModifierType): TShiftState;
+begin
+  Result := [];
+  if AState and GDK_BUTTON1_MASK <> 0 then
+    Include(Result, ssLeft);
+
+  if AState and GDK_BUTTON2_MASK <> 0 then
+    Include(Result, ssRight);
+
+  if AState and GDK_BUTTON3_MASK <> 0 then
+    Include(Result, ssMiddle);
+
+  if AState and GDK_BUTTON4_MASK <> 0 then
+    Include(Result, ssExtra1);
+
+  if AState and GDK_BUTTON5_MASK <> 0 then
+    Include(Result, ssExtra2);
+
+  if AState and GDK_SHIFT_MASK <> 0 then
+    Include(Result, ssShift);
+
+  if AState and GDK_CONTROL_MASK <> 0 then
+    Include(Result, ssCtrl);
+
+  if AState and GDK_META_MASK <> 0 then
+    Include(Result, ssAlt);
+end;
+
 procedure AddCharsetEncoding(CharSet: Byte; CharSetReg, CharSetCod: CharSetStr;
   ToEnum:boolean=true; CrPart:boolean=false; CcPart:boolean=false);
 var
@@ -1013,6 +1042,31 @@ begin
       StyleObject^.Widget := TGtkFixed.new;
       lgs := lgsFrame;
     end else
+    if CompareText(WName, LazGtkStyleNames[lgsVerticalScrollbar]) = 0 then
+    begin
+      StyleObject^.Widget := TGtkScrollbar.new(GTK_ORIENTATION_VERTICAL, nil);
+      lgs := lgsVerticalScrollbar;
+    end else
+    if CompareText(WName, LazGtkStyleNames[lgsHorizontalScrollbar]) = 0 then
+    begin
+      StyleObject^.Widget := TGtkScrollbar.new(GTK_ORIENTATION_HORIZONTAL, nil);
+      lgs := lgsHorizontalScrollbar;
+    end else
+    if CompareText(WName, LazGtkStyleNames[lgsMenuBar]) = 0 then
+    begin
+      StyleObject^.Widget := TGtkMenuBar.new;
+      lgs := lgsMenuBar;
+    end else
+    if CompareText(WName, LazGtkStyleNames[lgsMenu]) = 0 then
+    begin
+      StyleObject^.Widget := TGtkMenu.new;
+      lgs := lgsMenu;
+    end else
+    if CompareText(WName, LazGtkStyleNames[lgsMenuitem]) = 0 then
+    begin
+      StyleObject^.Widget := TGtkMenuItem.new;
+      lgs := lgsMenuItem;
+    end else
     begin
     end;
     if Gtk3IsWidget(StyleObject^.Widget) then
@@ -1028,6 +1082,9 @@ begin
       //TODO: copy stuff from gtk2proc
       UpdateSysColorMap(StyleObject^.Widget, lgs);
       Result := StyleObject^.Widget;
+    end else
+    begin
+      // DebugLn('BUG: GetStyleWithName() created style is not GtkWidget ',WName);
     end;
   end;
 end;

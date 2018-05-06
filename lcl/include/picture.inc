@@ -49,10 +49,18 @@ begin
   Add(TCursorImage.GetFileExtensions, rsCursor, TCursorImage);
   Add(TIcon.GetFileExtensions, rsIcon, TIcon);
   Add(TIcnsIcon.GetFileExtensions, rsIcns, TIcnsIcon);
+  {$IFNDEF DisableLCLJPEG}
   Add(TJpegImage.GetFileExtensions, rsJpeg, TJpegImage);
+  {$ENDIF}
+  {$IFNDEF DisableLCLTIFF}
   Add(TTiffImage.GetFileExtensions, rsTiff, TTiffImage);
+  {$ENDIF}
+  {$IFNDEF DisableLCLGIF}
   Add(TGIFImage.GetFileExtensions, rsGIF, TGIFImage);
+  {$ENDIF}
+  {$IFNDEF DisableLCLPNM}
   Add(TPortableAnyMapGraphic.GetFileExtensions, rsPortablePixmap, TPortableAnyMapGraphic);
+  {$ENDIF}
 end;
 
 procedure TPicFileFormatsList.Clear;
@@ -244,11 +252,12 @@ const
 begin
   inherited Create;
   Add(PredefinedClipboardFormat(pcfBitmap), TBitmap);
-  Add(PredefinedClipboardFormat(pcfDelphiBitmap), TBitmap);
   Add(PredefinedClipboardFormat(pcfPixmap), TPixmap);
   //Add(PredefinedClipboardFormat(pcfIcon), TCustomIcon);
   Add(ClipboardRegisterFormat(sMimeTypePng), TPortableNetworkGraphic);
+  {$IFNDEF DisableLCLJPEG}
   Add(ClipboardRegisterFormat(sMimeTypeJpg), TJPegImage);
+  {$ENDIF}
 end;
 
 procedure TPicClipboardFormats.Clear;
@@ -419,11 +428,13 @@ begin
   Result := TPortableNetworkGraphic(Graphic);
 end;
 
+{$IFNDEF DisableLCLPNM}
 function TPicture.GetPNM: TPortableAnyMapGraphic;
 begin
   ForceType(TPortableAnyMapGraphic);
   Result := TPortableAnyMapGraphic(Graphic);
 end;
+{$ENDIF}
 
 function TPicture.GetPixmap: TPixmap;
 begin
@@ -437,11 +448,13 @@ begin
   Result := TIcon(Graphic);
 end;
 
+{$IFNDEF DisableLCLJPEG}
 function TPicture.GetJpeg: TJpegImage;
 begin
   ForceType(TJpegImage);
   Result := TJpegImage(Graphic);
 end;
+{$ENDIF}
 
 procedure TPicture.SetBitmap(Value: TBitmap);
 begin
@@ -453,10 +466,12 @@ begin
   SetGraphic(AValue);
 end;
 
+{$IFNDEF DisableLCLPNM}
 procedure TPicture.SetPNM(const AValue: TPortableAnyMapGraphic);
 begin
   SetGraphic(AValue);
 end;
+{$ENDIF}
 
 procedure TPicture.SetPixmap(Value: TPixmap);
 begin
@@ -468,10 +483,12 @@ begin
   SetGraphic(Value);
 end;
 
+{$IFNDEF DisableLCLJPEG}
 procedure TPicture.SetJpeg(Value: TJpegImage);
 begin
   SetGraphic(Value);
 end;
+{$ENDIF}
 
 procedure TPicture.SetGraphic(Value: TGraphic);
 var
@@ -732,7 +749,7 @@ begin
   SetGraphic(nil);
 end;
 
-function TPicture.FindGraphicClassWithFileExt(const Ext: string;
+class function TPicture.FindGraphicClassWithFileExt(const Ext: string;
   ExceptionOnNotFound: boolean): TGraphicClass;
 var
   FileExt: String;
@@ -833,7 +850,7 @@ procedure TPicture.DefineProperties(Filer: TFiler);
   var
     Ancestor: TPicture;
   begin
-    if Assigned(Filer.Ancestor) and (Filer.Ancestor is TPicture) then
+    if Filer.Ancestor is TPicture then
     begin
       Ancestor := TPicture(Filer.Ancestor);
       if not Assigned(Graphic) then

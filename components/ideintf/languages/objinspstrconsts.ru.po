@@ -5,7 +5,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Project-Id-Version: \n"
 "POT-Creation-Date: \n"
-"PO-Revision-Date: 2016-11-01 01:26+0300\n"
+"PO-Revision-Date: 2018-01-30 01:02+0300\n"
 "Last-Translator: Maxim Ganetsky <maxkill@mail.ru>\n"
 "Language-Team: \n"
 "Language: ru\n"
@@ -79,7 +79,7 @@ msgstr "Найти"
 
 #: objinspstrconsts.cactionlisteditorunknowncategory
 msgid "(Unknown)"
-msgstr "(Неизвестно)"
+msgstr "(Неизвестная)"
 
 #: objinspstrconsts.cgcheckduplicate
 msgid "On Add, Check for Duplicate in Items"
@@ -295,6 +295,10 @@ msgstr "Установить значение"
 msgid "Unable to find parser for tool \"%s\""
 msgstr "Невозможно найти анализатор для средства \"%s\""
 
+#: objinspstrconsts.lisunabletofindparserwithname
+msgid "Unable to find parser with name \"%s\""
+msgstr "Невозможно найти анализатор с именем \"%s\""
+
 #: objinspstrconsts.nbcesaddpage
 msgctxt "objinspstrconsts.nbcesaddpage"
 msgid "Add Page"
@@ -409,10 +413,6 @@ msgstr "Ко&мпоненты"
 #: objinspstrconsts.oisbtnproperties
 msgid "&Properties"
 msgstr "С&войства"
-
-#: objinspstrconsts.oiscadd
-msgid "&Add"
-msgstr "&Добавить"
 
 #: objinspstrconsts.oiscancel
 msgctxt "objinspstrconsts.oiscancel"
@@ -598,6 +598,10 @@ msgstr "Integer"
 #: objinspstrconsts.oisinterface
 msgid "Interface"
 msgstr "Interface"
+
+#: objinspstrconsts.oisinvalid
+msgid "(Invalid)"
+msgstr "(Некорректное)"
 
 #: objinspstrconsts.oisinvalidpropertyvalue
 msgid "Invalid property value"
@@ -836,6 +840,10 @@ msgstr "Установить по умолчанию: %s"
 #: objinspstrconsts.oissettodefaulthint
 msgid "Set property value to Default"
 msgstr "Установить значение свойства по умолчанию"
+
+#: objinspstrconsts.oisshowalloutputlines
+msgid "Show all output lines"
+msgstr "Показать все строки вывода"
 
 #: objinspstrconsts.oisshowclasses
 msgid "Show classes"
@@ -1301,6 +1309,14 @@ msgstr "Редактор секций..."
 msgid "&Add ..."
 msgstr "&Добавить ..."
 
+#: objinspstrconsts.sccsiledtaddmoreresolutions
+msgid "Add more resolutions ..."
+msgstr "Добавить других разрешений ..."
+
+#: objinspstrconsts.sccsiledtaddnewresolution
+msgid "New resolution ..."
+msgstr "Новое разрешение ..."
+
 #: objinspstrconsts.sccsiledtadjustment
 msgid "Adjustment"
 msgstr "Выравнивание"
@@ -1309,6 +1325,10 @@ msgstr "Выравнивание"
 msgctxt "objinspstrconsts.sccsiledtapply"
 msgid "&Apply"
 msgstr "&Применить"
+
+#: objinspstrconsts.sccsiledtcannotdeleteresolution
+msgid "Cannot delete default resolution."
+msgstr "Невозможно удалить разрешение по умолчанию."
 
 #: objinspstrconsts.sccsiledtcaption
 msgid "ImageList Editor"
@@ -1332,6 +1352,14 @@ msgctxt "objinspstrconsts.sccsiledtdelete"
 msgid "&Delete"
 msgstr "&Удалить"
 
+#: objinspstrconsts.sccsiledtdeleteresolution
+msgid "Delete resolution ..."
+msgstr "Удалить разрешение ..."
+
+#: objinspstrconsts.sccsiledtdeleteresolutionconfirmation
+msgid "Select the resolution to delete."
+msgstr "Выберите разрешение для удаления."
+
 #: objinspstrconsts.sccsiledtgrplcaption
 msgid "Images"
 msgstr "Изображения"
@@ -1339,6 +1367,10 @@ msgstr "Изображения"
 #: objinspstrconsts.sccsiledtgrprcaption
 msgid "Selected Image"
 msgstr "Выбранное изображение"
+
+#: objinspstrconsts.sccsiledtimagewidthofnewresolution
+msgid "Image width of the new resolution:"
+msgstr "Ширина изображения в новом разрешении:"
 
 #: objinspstrconsts.sccsiledtmovedown
 msgctxt "objinspstrconsts.sccsiledtmovedown"
@@ -1369,6 +1401,10 @@ msgstr "Прозрачный цвет:"
 #: objinspstrconsts.sccsiledtreplace
 msgid "&Replace ..."
 msgstr "&Заменить ..."
+
+#: objinspstrconsts.sccsiledtreplaceallresolutions
+msgid "Replace all resolutions ..."
+msgstr "Заменить все разрешения ..."
 
 #: objinspstrconsts.sccsiledtsave
 msgctxt "objinspstrconsts.sccsiledtsave"

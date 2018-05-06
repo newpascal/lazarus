@@ -31,11 +31,12 @@ begin
   {$IFDEF VerboseObject}
     DebugLn('TCocoaWidgetSet.AppInit');
   {$ENDIF}
-
   WakeMainThread := @OnWakeMainThread;
+  ScreenInfo.PixelsPerInchX := CocoaBasePPI;
+  ScreenInfo.PixelsPerInchY := CocoaBasePPI;
 
   { Creates the application NSApp object }
-  FNSApp := NSApplication.sharedApplication;
+  FNSApp := TCocoaApplication.sharedApplication;
   FNSApp_Delegate := TAppDelegate.alloc.init;
   FNSApp.setDelegate(FNSApp_Delegate);
 
@@ -78,7 +79,10 @@ procedure TCocoaWidgetSet.AppRun(const ALoop: TApplicationMainLoop);
 begin
   NSApp.finishLaunching;
   if Assigned(ALoop) then
-    ALoop;
+  begin
+    TCocoaApplication(NSApp).aloop:=ALoop;
+    NSApp.run();
+  end;
 end;
 
 {------------------------------------------------------------------------------
@@ -362,9 +366,9 @@ begin
   if Obj.isKindOfClass(NSWindow) then
     Win := NSWindow(Obj)
   else if Obj.isKindOfClass(NSView) then
-    Win := NSView(Handle).window
+    Win := NSWindow(NSView(Handle).window)
   else if GetNSObjectView(Obj) <> nil then
-    Win := GetNSObjectView(Obj).window
+    Win := NSWindow(GetNSObjectView(Obj).window)
   else
     Exit(nil);
   Result := NSEvent.otherEventWithType_location_modifierFlags_timestamp_windowNumber_context_subtype_data1_data2(
@@ -479,26 +483,23 @@ begin
     NSApp.setMainMenu(lNSMenu);
     if (ALCLMenu = nil) or not ALCLMenu.HandleAllocated then Exit;
 
+    // Find the Apple menu, if the user provided any by setting the Caption to 
     // Some older docs say we should use setAppleMenu to obtain the Services/Hide/Quit items,
     // but its now private and in 10.10 it doesn't seam to do anything
+    // NSApp.setAppleMenu(NSMenu(lMenuObj));
     for i := 0 to ALCLMenu.Items.Count-1 do
     begin
       lCurItem := ALCLMenu.Items.Items[i];
-      if not lCurItem.HandleAllocated or (lCurItem.Caption <> '') then Continue;
+      if not lNSMenu.isKindOfClass_(TCocoaMenu) then Break;
+      if not lCurItem.HandleAllocated then Continue;
 
       lMenuObj := NSObject(lCurItem.Handle);
-      if lMenuObj.isKindOfClass_(TCocoaMenuItem) and NSMenuItem(lMenuObj).hasSubmenu and
-        (NSMenuItem(lMenuObj).submenu <> nil) then
+      if not lMenuObj.isKindOfClass_(TCocoaMenuItem) then Continue;
+      if TCocoaMenuItem(lMenuObj).isValidAppleMenu() then
       begin
-        TCocoaMenuItem(lMenuObj).attachAppleMenuItems();
-        //NSApp.setAppleMenu(NSMenuItem(lMenuObj).submenu);
-        Exit;
+        TCocoaMenu(lNSMenu).overrideAppleMenu(TCocoaMenuItem(lMenuObj));
+        Break;
       end;
-      {else if lMenuObj.isKindOfClass_(NSMenu) then
-      begin
-        //NSApp.setAppleMenu(NSMenu(lMenuObj));
-        Exit;
-      end;}
     end;
 
     // for modal windows work around bug, but doesn't work :(
@@ -520,7 +521,7 @@ begin
   Result := False;
   {$ifndef COCOA_USE_NATIVE_MODAL}
   if CurModalForm = nil then Exit;
-  lNSObj := AControl.window();
+  lNSObj := NSWindow(AControl.window());
   if lNSObj = nil then Exit;
   if not lNSObj.isKindOfClass_(TCocoaWindow) then Exit;
   if lNSWin.LCLForm = CurModalForm then Exit;
@@ -632,6 +633,32 @@ begin
   Application.IntfDropFiles(lFiles);
   if Application.MainForm<>nil then
     Application.MainForm.IntfDropFiles(lFiles);
+end;
+
+procedure TAppDelegate.applicationDidHide(notification: NSNotification);
+begin
+  Application.IntfAppMinimize;
+end;
+
+procedure TAppDelegate.applicationDidUnhide(notification: NSNotification);
+begin
+  Application.IntfAppRestore;
+end;
+
+procedure TAppDelegate.applicationDidBecomeActive(notification: NSNotification);
+begin
+  Application.IntfAppActivate;
+end;
+
+procedure TAppDelegate.applicationDidResignActive(notification: NSNotification);
+begin
+  Application.IntfAppDeactivate;
+end;
+
+procedure TAppDelegate.applicationDidChangeScreenParameters(notification: NSNotification);
+begin
+  Screen.UpdateMonitors;
+  Screen.UpdateScreen;
 end;
 
 {------------------------------------------------------------------------------

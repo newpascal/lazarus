@@ -33,9 +33,9 @@ uses
   // RTL
   Classes, SysUtils,
   // CodeTools
-  CodeToolsStructs, KeywordFuncLists,
+  KeywordFuncLists,
   // LazUtils
-  FileUtil, LazFileUtils,
+  FileUtil, LazFileUtils, AvgLvlTree,
   // IDEIntf
   IDEExternToolIntf;
 

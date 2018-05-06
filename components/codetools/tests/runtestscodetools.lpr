@@ -29,20 +29,17 @@ uses
   Classes, sysutils, consoletestrunner, dom, fpcunit, LazLogger,
   CodeToolManager, CodeToolsConfig,
   TestGlobals,
-  TestBasicCodetools, TestCTRangeScan, TestMethodJumpTool, TestStdCodetools,
-  TestFindDeclaration, TestCompleteBlock, TestRefactoring,
   // non Pascal
   TestCfgScript, TestCTH2Pas, TestCTXMLFixFragments,
-  // compile test files to make sure they are valid Pascal
-  fdt_classhelper,
   {$IF FPC_FULLVERSION >= 30101}
-  fdt_typehelper,
   {$ENDIF}
-  fdt_nestedclasses,
   {$IFDEF Darwin}
   fdt_objccategory, fdt_objcclass,
   {$ENDIF}
-  fdt_classof, fdt_with, rt_explodewith, fdt_generics, TestPascalParser;
+  TestBasicCodetools, TestCTRangeScan, TestPascalParser, TestMethodJumpTool,
+  TestStdCodetools, TestFindDeclaration, TestIdentCompletion, TestCompleteBlock,
+  TestRefactoring, TestCodeCompletion, TestCompReaderWriterPas,
+  fdt_arrays;
 
 const
   ConfigFilename = 'codetools.config';
@@ -58,7 +55,11 @@ type
   protected
     Options: TCodeToolsOptions;
     procedure AppendLongOpts; override;
+    {$IF FPC_FULLVERSION>=30100}
+    function ParseOptions: Boolean; override;
+    {$ELSE}
     procedure ParseOptions; override;
+    {$ENDIF}
     procedure WriteCustomHelp; override;
 
     procedure ExtendXmlDocument(Doc: TXMLDocument); override;
@@ -75,9 +76,15 @@ begin
   LongOpts.Add('submitter:');
 end;
 
+{$IF FPC_FULLVERSION>=30100}
+function TCTTestRunner.ParseOptions: Boolean;
+begin
+  Result:=inherited ParseOptions;
+{$ELSE}
 procedure TCTTestRunner.ParseOptions;
 begin
   inherited ParseOptions;
+{$ENDIF}
 
   if Options=nil then
     Options:=TCodeToolsOptions.Create;
@@ -85,7 +92,7 @@ begin
     // To not parse the FPC sources every time, the options are saved to a file.
     Options.LoadFromFile(ConfigFilename);
   end;
-  DebugLn(['EnvironmentVariables: PP, FPCDIR, LAZARUSDIR, FPCTARGET, FPCTARGETCPU']);
+  DebugLn(['Possible EnvVars: PP, FPCDIR, LAZARUSDIR, FPCTARGET, FPCTARGETCPU']);
   Options.InitWithEnvironmentVariables;
 
   if HasOption('submitter') then

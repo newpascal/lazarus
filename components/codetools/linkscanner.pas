@@ -47,7 +47,7 @@ uses
   MemCheck,
   {$ENDIF}
   // RTL + FCL
-  Classes, SysUtils, math, AVL_Tree,
+  Classes, SysUtils, math, Laz_AVL_Tree,
   // CodeTools
   CodeToolsStrConsts, CodeToolMemManager, FileProcs, ExprEval, SourceLog,
   KeywordFuncLists, BasicCodeTools,
@@ -157,10 +157,12 @@ type
     cmTP,
     cmOBJFPC,
     cmMacPas,
-    cmISO
+    cmISO,
+    cmExtPas
     );
   { TCompilerModeSwitch - see fpc/compiler/globtype.pas  tmodeswitch }
   TCompilerModeSwitch = (
+    //cms_FPC,cms_ObjFPC,cms_Delphi,cms_TP7,cms_Mac,cms_ISO,cms_ExtPas,
     cmsAdd_pointer,        { ? }
     cmsClass,              { delphi class model }
     cmsObjpas,             { load objpas unit }
@@ -194,8 +196,16 @@ type
                              fields in Java) }
     cmsDefault_unicodestring, { makes the default string type in $h+ mode unicodestring rather than
                                 ansistring; similarly, char becomes unicodechar rather than ansichar }
-    cmsTypeHelpers,
-    cmsBlocks
+    cmsTypeHelpers,        { allows the declaration of "type helper" (non-Delphi) or "record helper"
+                                  (Delphi) for primitive types }
+    cmsCBlocks,            { support for http://en.wikipedia.org/wiki/Blocks_(C_language_extension) }
+    cmsISOlike_IO,         { I/O as it required by an ISO compatible compiler }
+    cmsISOLike_Program_Para, { program parameters as it required by an ISO compatible compiler }
+    cmsISOLike_Mod,        { mod operation as it is required by an iso compatible compiler }
+    cmsPrefixedAttributes, { allow Delphi attributes, disable FPC [] proc modifier }
+    cmsExternalClass,      { pas2js: allow  class external [pkgname] name [symbol] }
+    cmsIgnoreAttributes,   { pas2js: ignore attributes }
+    cmsIgnoreInterfaces    { pas2js: ignore class interfaces }
     );
   TCompilerModeSwitches = set of TCompilerModeSwitch;
 const
@@ -209,13 +219,15 @@ const
     [cmsClass,cmsObjpas,cmsResult,cmsString_pchar,
      cmsPointer_2_procedure,cmsAutoderef,cmsTp_procvar,cmsInitfinal,cmsDefault_ansistring,
      cmsOut,cmsDefault_para,cmsDuplicate_names,cmsHintdirective,
-     cmsProperty,cmsDefault_inline,cmsExcept,cmsAdvancedRecords],
+     cmsProperty,cmsDefault_inline,cmsExcept,cmsAdvancedRecords,
+     cmsPrefixedAttributes],
     // cmDELPHIUNICODE
     [cmsClass,cmsObjpas,cmsResult,cmsString_pchar,
      cmsPointer_2_procedure,cmsAutoderef,cmsTp_procvar,cmsInitfinal,
      cmsOut,cmsDefault_para,cmsDuplicate_names,cmsHintdirective,
      cmsProperty,cmsDefault_inline,cmsExcept,cmsAdvancedRecords,
-     cmsSystemcodepage,cmsDefault_unicodestring],
+     cmsSystemcodepage,cmsDefault_unicodestring,
+     cmsPrefixedAttributes],
     // cmGPC
     [cmsTp_procvar],
     // cmTP
@@ -225,12 +237,18 @@ const
      cmsRepeat_forward,cmsCvar_support,cmsInitfinal,cmsOut,cmsDefault_para,
      cmsHintdirective,cmsProperty,cmsDefault_inline,cmsExcept],
     // cmMacPas
-    [cmsCvar_support,cmsMac_procvar,cmsNestedProcVars,cmsNonLocalGoto,
-     cmsISOLike_unary_minus,cmsDefault_inline],
+    [cmsCvar_support,cmsMac_procvar,cmsNestedProcVars,
+     cmsNonLocalGoto,cmsISOLike_unary_minus,cmsDefault_inline],
     // cmISO
     [cmsTp_procvar,cmsDuplicate_names,cmsNestedProcVars,cmsNonLocalGoto,
-     cmsISOLike_unary_minus]
+     cmsISOLike_unary_minus],
+    // cmExtPas
+    [cmsTp_procvar,cmsDuplicate_names,cmsNestedProcVars,cmsNonLocalGoto,
+     cmsISOLike_unary_minus,cmsISOlike_IO,
+     cmsISOLike_Program_Para,
+     cmsISOLike_Mod]
     );
+  cmAllModesWithGeneric = [cmDELPHI,cmDELPHIUNICODE,cmOBJFPC];
 
 type
   // see fpcsrc/compiler/globtype.pas toptimizerswitch
@@ -260,7 +278,10 @@ const
   );
 
 type
-  TPascalCompiler = (pcFPC, pcDelphi);
+  TPascalCompiler = (
+    pcFPC,
+    pcDelphi,
+    pcPas2js);
   
 type
   TLSSkippingDirective = (
@@ -397,9 +418,13 @@ type
     );
 
   { Error handling }
+
+  { ELinkScannerError }
+
   ELinkScannerError = class(Exception)
     Sender: TLinkScanner;
-    constructor Create(ASender: TLinkScanner; const AMessage: string);
+    Id: int64;
+    constructor Create(ASender: TLinkScanner; TheId: int64; const AMessage: string);
   end;
   
   ELinkScannerErrors = class of ELinkScannerError;
@@ -409,10 +434,12 @@ type
   ELinkScannerAbort = class(ELinkScannerError);
   ELinkScannerConsistency = class(ELinkScannerError);
 
+  { ELinkScannerEditError }
+
   ELinkScannerEditError = class(ELinkScannerError)
     Buffer: Pointer;
     BufferPos: integer;
-    constructor Create(ASender: TLinkScanner; const AMessage: string;
+    constructor Create(ASender: TLinkScanner; TheId: int64; const AMessage: string;
       ABuffer: Pointer; ABufferPos: integer);
   end;
 
@@ -471,8 +498,8 @@ type
     procedure SetScanTill(const Value: TLinkScannerRange);
     function GetIgnoreMissingIncludeFiles: boolean;
     procedure SetIgnoreMissingIncludeFiles(const Value: boolean);
-    function TokenIs(const AToken: shortstring): boolean;
-    function UpTokenIs(const AToken: shortstring): boolean;
+    function TokenIs(const AToken: string): boolean;
+    function UpTokenIs(const AToken: string): boolean;
   private
     // parsing
     CommentStyle: TCommentStyle;
@@ -491,7 +518,7 @@ type
     procedure ReadCurlyComment;
     procedure ReadLineComment;
     procedure ReadRoundComment;
-    procedure CommentEndNotFound;
+    procedure CommentEndNotFound(id: int64);
     procedure EndComment; inline;
     procedure IncCommentLevel; inline;
     procedure DecCommentLevel; inline;
@@ -513,7 +540,7 @@ type
     FDirectivesCount: integer;
     FDirectivesCapacity: integer;
     FDirectivesSorted: PPLSDirective; // array of PLSDirective to items of FDirectives
-    FDirectiveName: shortstring;
+    FDirectiveName: string;
     FDirectiveCleanPos: integer;
     FDirectivesStored: boolean;
     FMacrosOn: boolean;
@@ -532,6 +559,7 @@ type
     function GetDirectives(Index: integer): PLSDirective; inline;
     function GetDirectivesSorted(Index: integer): PLSDirective; inline;
     procedure SetCompilerMode(const AValue: TCompilerMode);
+    procedure SetPascalCompiler(const AValue: TPascalCompiler);
     procedure SkipTillEndifElse(SkippingUntil: TLSSkippingDirective);
     procedure SortDirectives;
     function InternalIfDirective: boolean;
@@ -587,14 +615,15 @@ type
     LastErrorIsValid: boolean;
     LastErrorBehindIgnorePosition: boolean;
     LastErrorCheckedForIgnored: boolean;
+    LastErrorId: int64;
     CleanedIgnoreErrorAfterPosition: integer;// ignore if valid and >=
-    procedure RaiseExceptionFmt(const AMessage: string; Args: array of const);
-    procedure RaiseException(const AMessage: string);
-    procedure RaiseExceptionClass(const AMessage: string;
+    procedure RaiseExceptionFmt(id: int64; const AMessage: string; const Args: array of const);
+    procedure RaiseException(id: int64; const AMessage: string);
+    procedure RaiseExceptionClass(id: int64; const AMessage: string;
       ExceptionClass: ELinkScannerErrors);
-    procedure RaiseEditException(const AMessage: string; ABuffer: Pointer;
+    procedure RaiseEditException(id: int64; const AMessage: string; ABuffer: Pointer;
       ABufferPos: integer);
-    procedure RaiseConsistencyException(const AMessage: string);
+    procedure RaiseConsistencyException(id: int64; const AMessage: string);
     procedure ClearLastError;
     procedure RaiseLastError;
     procedure DoCheckAbort;
@@ -720,7 +749,7 @@ type
     property CompilerMode: TCompilerMode read FCompilerMode write SetCompilerMode;
     property CompilerModeSwitches: TCompilerModeSwitches
                          read FCompilerModeSwitches write FCompilerModeSwitches;
-    property PascalCompiler: TPascalCompiler read FPascalCompiler write FPascalCompiler;
+    property PascalCompiler: TPascalCompiler read FPascalCompiler write SetPascalCompiler;
     property ScanTill: TLinkScannerRange read FScanTill write SetScanTill;
         
     procedure Clear;
@@ -753,7 +782,7 @@ type
 
 const
   // upper case
-  CompilerModeNames: array[TCompilerMode] of shortstring=(
+  CompilerModeNames: array[TCompilerMode] of string=(
     'FPC',
     'DELPHI',
     'DELPHIUNICODE',
@@ -761,11 +790,12 @@ const
     'TP',
     'OBJFPC',
     'MACPAS',
-    'ISO'
+    'ISO',
+    'EXTPAS'
     );
 
   // upper case (see fpc/compiler/globtype.pas  modeswitchstr )
-  CompilerModeSwitchNames: array[TCompilerModeSwitch] of shortstring=(
+  CompilerModeSwitchNames: array[TCompilerModeSwitch] of string=(
     'POINTERARITHMETICS',
     'CLASS',
     'OBJPAS',
@@ -797,24 +827,32 @@ const
     'FINALFIELDS',
     'UNICODESTRINGS',
     'TYPEHELPERS',
-    'BLOCKS'
+    'CBLOCKS',
+    'ISOIO',
+    'ISOPROGRAMPARAS',
+    'ISOMOD',
+    'PREFIXEDATTRIBUTES',
+    'EXTERNALCLASS',
+    'IGNOREATTRIBUTES',
+    'IGNOREINTERFACES'
     );
 
   // upper case
-  PascalCompilerNames: array[TPascalCompiler] of shortstring=(
-        'FPC', 'DELPHI'
-     );
+  PascalCompilerNames: array[TPascalCompiler] of string=(
+    'FPC', 'DELPHI', 'PAS2JS'
+    );
 
 const
-  DirectiveSequenceName: array [TSequenceDirective] of ShortString =
+  DirectiveSequenceName: array [TSequenceDirective] of string =
     ('SCOPEDENUMS');
 var
-  CompilerModeVars: array[TCompilerMode] of shortstring;
+  CompilerModeVars: array[TCompilerMode] of string;
 
   PSourceLinkMemManager: TPSourceLinkMemManager;
   PSourceChangeStepMemManager: TPSourceChangeStepMemManager;
 
 function StrToCompilerMode(const aName: string): TCompilerMode;
+function StrToPascalCompiler(const aName: string): TPascalCompiler;
 
 procedure AddCodeToUniqueList(ACode: Pointer; UniqueSortedCodeList: TFPList);
 function IndexOfCodeInUniqueList(ACode: Pointer;
@@ -828,7 +866,6 @@ function dbgs(s: TLSDirectiveState): string; overload;
 function dbgs(s: TLSDirectiveKind): string; overload;
 
 implementation
-
 
 // useful procs ----------------------------------------------------------------
 
@@ -925,6 +962,14 @@ begin
   Result:=cmFPC;
 end;
 
+function StrToPascalCompiler(const aName: string): TPascalCompiler;
+begin
+  for Result:=low(Result) to high(Result) do
+    if SysUtils.CompareText(aName,PascalCompilerNames[Result])=0 then
+      exit;
+  Result:=pcFPC;
+end;
+
 procedure AddCodeToUniqueList(ACode: Pointer; UniqueSortedCodeList: TFPList);
 var l,m,r: integer;
 begin
@@ -945,23 +990,7 @@ begin
   UniqueSortedCodeList.Insert(m,ACode);
 end;
 
-function CompareUpToken(const UpToken: shortstring; const Txt: string;
-  TxtStartPos, TxtEndPos: integer): boolean;
-var len, i: integer;
-begin
-  Result:=false;
-  len:=TxtEndPos-TxtStartPos;
-  if len<>length(UpToken) then exit;
-  i:=1;
-  while i<len do begin
-    if (UpToken[i]<>UpChars[Txt[TxtStartPos]]) then exit;
-    inc(i);
-    inc(TxtStartPos);
-  end;
-  Result:=true;
-end;
-
-function CompareUpToken(const UpToken: ansistring; const Txt: string;
+function CompareUpToken(const UpToken: string; const Txt: string;
   TxtStartPos, TxtEndPos: integer): boolean;
 var len, i: integer;
 begin
@@ -1246,10 +1275,12 @@ begin
     exit(false);
   repeat
     // read unit name
-    ReadNextToken;
-    if (TokenType<>lsttWord)
-    or WordIsKeyWord.DoItCaseInsensitive(@Src[SrcPos]) then exit(false);
-    ReadNextToken;
+    repeat
+      ReadNextToken;
+      if (TokenType<>lsttWord)
+      or WordIsKeyWord.DoItCaseInsensitive(@Src[SrcPos]) then exit(false);
+      ReadNextToken;
+    until TokenType<>lsttPoint;
     if TokenIs('in') then begin
       // read "in" filename
       ReadNextToken;
@@ -1443,7 +1474,7 @@ function TLinkScanner.LinkSize(Index: integer): integer;
 
   procedure IndexOutOfBounds;
   begin
-    RaiseConsistencyException('TLinkScanner.LinkSize  index '
+    RaiseConsistencyException(20170422125948,'TLinkScanner.LinkSize  index '
        +IntToStr(Index)+' out of bounds: 0..'+IntToStr(LinkCount-1));
   end;
 
@@ -1696,7 +1727,7 @@ procedure TLinkScanner.SetSource(ACode: Pointer);
 
   procedure RaiseUnableToGetCode;
   begin
-    RaiseConsistencyException('unable to get source with Code='+DbgS(Code));
+    RaiseConsistencyException(20170422125957,'unable to get source with Code='+DbgS(Code));
   end;
 
 var SrcLog: TSourceLog;
@@ -1767,6 +1798,8 @@ begin
   end;
 end;
 
+{$IFOPT R+}{$DEFINE RangeChecking}{$ENDIF}
+{$R-}
 procedure TLinkScanner.ReadNextToken;
 var
   c1: char;
@@ -1775,8 +1808,6 @@ var
   p: PChar;
 begin
   //DebugLn([' TLinkScanner.ReadNextToken SrcPos=',SrcPos,' SrcLen=',SrcLen,' "',dbgstr(Src,SrcPos,5),'"']);
-  {$IFOPT R+}{$DEFINE RangeChecking}{$ENDIF}
-  {$R-}
   if (SrcPos>SrcLen) and ReturnFromIncludeFileAndIsEnd then exit;
   //DebugLn([' TLinkScanner.ReadNextToken SrcPos=',SrcPos,' SrcLen=',SrcLen,' "',copy(Src,SrcPos,5),'"']);
   // Skip all spaces and comments
@@ -1981,8 +2012,8 @@ begin
     then inc(p);
     SrcPos:=p-PChar(Src)+1;
   end;
-  {$IFDEF RangeChecking}{$R+}{$UNDEF RangeChecking}{$ENDIF}
 end;
+{$IFDEF RangeChecking}{$R+}{$UNDEF RangeChecking}{$ENDIF}
 
 procedure TLinkScanner.Scan(Range: TLinkScannerRange; CheckFilesOnDisk: boolean);
 var
@@ -2036,7 +2067,7 @@ begin
   SourceName:='';
   CommentStyle:=CommentNone;
   CommentLevel:=0;
-  PascalCompiler:=pcFPC;
+  FPascalCompiler:=pcFPC;
   CompilerMode:=cmFPC;
   FNestedComments:=cmsNested_comment in DefaultCompilerModeSwitches[CompilerMode];
   IfLevel:=0;
@@ -2051,9 +2082,14 @@ begin
 
   // compiler
   s:=FInitValues.Variables[PascalCompilerDefine];
-  for pc:=Low(TPascalCompiler) to High(TPascalCompiler) do
-    if (s=PascalCompilerNames[pc]) then
-      PascalCompiler:=pc;
+  if s<>'' then begin
+    for pc:=Low(TPascalCompiler) to High(TPascalCompiler) do
+      if (s=PascalCompilerNames[pc]) then
+        PascalCompiler:=pc;
+  end else if InitialValues.IsDefined('pas2js') then
+    PascalCompiler:=pcPas2js
+  else if InitialValues.IsDefined('delphi') and not InitialValues.IsDefined('fpc') then
+    PascalCompiler:=pcDelphi;
 
   // compiler mode
   for cm:=Low(TCompilerMode) to High(TCompilerMode) do
@@ -2181,7 +2217,7 @@ begin
   SrcPos:=p-PChar(Src)+1;
   CommentEndPos:=SrcPos;
   CommentInnerEndPos:=SrcPos-1;
-  if (CommentLevel>0) then CommentEndNotFound;
+  if (CommentLevel>0) then CommentEndNotFound(20170422130048);
   // handle compiler switches
   if Src[CommentInnerStartPos]='$' then
     HandleDirective;
@@ -2252,17 +2288,17 @@ begin
   SrcPos:=p-PChar(Src)+1;
   CommentEndPos:=SrcPos;
   CommentInnerEndPos:=SrcPos-2;
-  if (CommentLevel>0) then CommentEndNotFound;
+  if (CommentLevel>0) then CommentEndNotFound(20170422130050);
   // handle compiler switches
   if Src[CommentInnerStartPos]='$' then
     HandleDirective;
   EndComment;
 end;
 
-procedure TLinkScanner.CommentEndNotFound;
+procedure TLinkScanner.CommentEndNotFound(id: int64);
 begin
   SrcPos:=CommentStartPos;
-  RaiseException(ctsCommentEndNotFound);
+  RaiseException(id,ctsCommentEndNotFound);
 end;
 
 procedure TLinkScanner.UpdateCleanedSource(NewCopiedSrcPos: integer);
@@ -2271,7 +2307,7 @@ procedure TLinkScanner.UpdateCleanedSource(NewCopiedSrcPos: integer);
   procedure RaiseInvalid;
   begin
     debugln(['TLinkScanner.UpdateCleanedSource inconsistency found: Srclen=',SrcLen,'=',length(Src),' FCleanedSrc=',CleanedLen,'/',length(FCleanedSrc),' CopiedSrcPos=',CopiedSrcPos,' NewCopiedSrcPos=',NewCopiedSrcPos,' AddLen=',NewCopiedSrcPos-CopiedSrcPos]);
-    RaiseConsistencyException('TLinkScanner.UpdateCleanedSource inconsistency found AddLen='+dbgs(NewCopiedSrcPos-CopiedSrcPos));
+    RaiseConsistencyException(20170422130054,'TLinkScanner.UpdateCleanedSource inconsistency found AddLen='+dbgs(NewCopiedSrcPos-CopiedSrcPos));
   end;
 
 var AddLen: integer;
@@ -2299,7 +2335,7 @@ procedure TLinkScanner.AddSourceChangeStep(ACode: pointer; AChangeStep: integer)
 
   procedure RaiseCodeNil;
   begin
-    RaiseConsistencyException('TLinkScanner.AddSourceChangeStep ACode=nil');
+    RaiseConsistencyException(20170422130109,'TLinkScanner.AddSourceChangeStep ACode=nil');
   end;
 
 var l,r,m: integer;
@@ -2328,7 +2364,7 @@ begin
   //DebugLn('   ADDING ',DbgS(ACode),',',FSourceChangeSteps.Count);
 end;
 
-function TLinkScanner.TokenIs(const AToken: shortstring): boolean;
+function TLinkScanner.TokenIs(const AToken: string): boolean;
 var ATokenLen: integer;
   i: integer;
 begin
@@ -2343,7 +2379,7 @@ begin
   end;
 end;
 
-function TLinkScanner.UpTokenIs(const AToken: shortstring): boolean;
+function TLinkScanner.UpTokenIs(const AToken: string): boolean;
 var ATokenLen: integer;
   i: integer;
 begin
@@ -3113,6 +3149,14 @@ begin
     end;
     if (cmsObjpas in CompilerModeSwitches) and (PascalCompiler=pcFPC) then
       FHiddenUsedUnits:=FHiddenUsedUnits+',ObjPas';
+    if (CompilerMode=cmMacPas) then
+      FHiddenUsedUnits:=FHiddenUsedUnits+',MacPas';
+    if (CompilerMode=cmISO) then
+      FHiddenUsedUnits:=FHiddenUsedUnits+',ISO7185';
+    if (CompilerMode=cmExtPas) then
+      FHiddenUsedUnits:=FHiddenUsedUnits+',ISO7185,ExtPas';
+    if (cmsCBlocks in CompilerModeSwitches) and (PascalCompiler=pcFPC) then
+      FHiddenUsedUnits:=FHiddenUsedUnits+',BlockRTL';
     if (cmsDefault_unicodestring in CompilerModeSwitches) then
       FHiddenUsedUnits:=FHiddenUsedUnits+',UUChar';
     if CompilerMode=cmISO then
@@ -3356,7 +3400,7 @@ begin
   else if (FDirectiveName='ALIGN') then
     // set record align size
   else begin
-    RaiseExceptionFmt(ctsInvalidFlagValueForDirective,
+    RaiseExceptionFmt(20170422130112,ctsInvalidFlagValueForDirective,
         [copy(Src,ValStart,SrcPos-ValStart),FDirectiveName]);
   end;
   Result:=ReadNextSwitchDirective;
@@ -3377,7 +3421,7 @@ begin
   else if CompareUpToken('OFF',Src,ValStart,SrcPos) then
     SetDirectiveValueWithSequence(ADirective, '0')
   else begin
-    RaiseExceptionFmt(ctsInvalidFlagValueForDirective,
+    RaiseExceptionFmt(20170422130115,ctsInvalidFlagValueForDirective,
         [copy(Src,ValStart,SrcPos-ValStart),FDirectiveName]);
   end;
   Result:=ReadNextSwitchDirective;
@@ -3398,7 +3442,7 @@ begin
   else if CompareUpToken('OFF',Src,ValStart,SrcPos) then
     FMacrosOn:=false
   else
-    RaiseExceptionFmt(ctsInvalidFlagValueForDirective,
+    RaiseExceptionFmt(20170422130118,ctsInvalidFlagValueForDirective,
         [copy(Src,ValStart,SrcPos-ValStart),FDirectiveName]);
   Result:=true;
 end;
@@ -3436,49 +3480,69 @@ begin
         break;
       end;
     if not ModeValid then
-      RaiseExceptionFmt(ctsInvalidMode,[copy(Src,ValStart,SrcPos-ValStart)]);
+      RaiseExceptionFmt(20170422130122,ctsInvalidMode,[copy(Src,ValStart,SrcPos-ValStart)]);
   end;
   Result:=true;
 end;
 
 function TLinkScanner.ModeSwitchDirective: boolean;
 // $MODESWITCH objectivec1
+// $MODESWITCH objectivec1 on|off
 // $MODESWITCH systemcodepage-
 var
-  ValStart: LongInt;
+  p, ValStart: PChar;
   ModeSwitch: TCompilerModeSwitch;
-  s: TCompilerModeSwitches;
+  Switches: TCompilerModeSwitches;
+  Enable: Boolean;
 begin
   if StoreDirectives then
     FDirectives[FDirectivesCount-1].Kind:=lsdkModeSwitch;
   ReadSpace;
-  ValStart:=SrcPos;
-  while (SrcPos<=SrcLen) and (IsIdentChar[Src[SrcPos]]) do
-    inc(SrcPos);
+  p:=@Src[SrcPos];
+  ValStart:=p;
+  while IsIdentChar[p^] do inc(p);
   Result:=false;
   for ModeSwitch := Succ(Low(ModeSwitch)) to High(ModeSwitch) do begin
-    if CompareUpToken(CompilerModeSwitchNames[ModeSwitch],Src,ValStart,SrcPos)
+    if CompareIdentifiers(@CompilerModeSwitchNames[ModeSwitch][1],ValStart)=0
     then begin
       Result:=true;
-      s:=[ModeSwitch];
-      case ModeSwitch of
-      cmsObjectiveC2: Include(s,cmsObjectiveC1);
+      Switches:=[ModeSwitch];
+      Enable:=true;
+      if p^='-' then
+        Enable:=false
+      else if IsSpaceChar[p^] then begin
+        repeat
+          inc(p);
+        until not IsSpaceChar[p^];
+        if CompareIdentifiers(p,'off')=0 then
+          Enable:=false;
       end;
-      if (SrcPos<=SrcLen) and (Src[SrcPos]='-') then begin
-        FCompilerModeSwitches:=FCompilerModeSwitches-s;
+      case ModeSwitch of
+      cmsObjectiveC2: Include(Switches,cmsObjectiveC1);
+      end;
+      if Enable then begin
+        FCompilerModeSwitches:=FCompilerModeSwitches+Switches;
         case ModeSwitch of
-        cmsDefault_unicodestring:  Values.Undefine('FPC_UNICODESTRINGS');
+        cmsDefault_unicodestring:
+          begin
+            Values.Variables['FPC_UNICODESTRINGS'] := '1';
+            Values.Variables['UNICODE'] := '1';
+          end;
         end;
       end else begin
-        FCompilerModeSwitches:=FCompilerModeSwitches+s;
+        FCompilerModeSwitches:=FCompilerModeSwitches-Switches;
         case ModeSwitch of
-        cmsDefault_unicodestring:  Values.Variables['FPC_UNICODESTRINGS'] := '1';
+        cmsDefault_unicodestring:
+          begin
+            Values.Undefine('FPC_UNICODESTRINGS');
+            Values.Undefine('UNICODE');
+          end;
         end;
       end;
       exit;
     end;
   end;
-  RaiseExceptionFmt(ctsInvalidModeSwitch,[copy(Src,ValStart,SrcPos-ValStart)]);
+  RaiseExceptionFmt(20170422130125,ctsInvalidModeSwitch,[GetIdentifier(ValStart)]);
 end;
 
 function TLinkScanner.ThreadingDirective: boolean;
@@ -3591,7 +3655,7 @@ function TLinkScanner.EndifDirective: boolean;
 
   procedure RaiseAWithoutB;
   begin
-    RaiseExceptionFmt(ctsAwithoutB,['$ENDIF','$IF'])
+    RaiseExceptionFmt(20170422130128,ctsAwithoutB,['$ENDIF','$IF'])
   end;
   
 begin
@@ -3617,7 +3681,7 @@ function TLinkScanner.EndCDirective: boolean;
 
   procedure RaiseAWithoutB;
   begin
-    RaiseExceptionFmt(ctsAwithoutB,['$ENDC','$IFC'])
+    RaiseExceptionFmt(20170422130131,ctsAwithoutB,['$ENDC','$IFC'])
   end;
 
 begin
@@ -3641,7 +3705,7 @@ function TLinkScanner.IfEndDirective: boolean;
 
   procedure RaiseAWithoutB;
   begin
-    RaiseExceptionFmt(ctsAwithoutB,['$IfEnd','$ElseIf'])
+    RaiseExceptionFmt(20170422130134,ctsAwithoutB,['$IfEnd','$ElseIf'])
   end;
 
 begin
@@ -3664,7 +3728,7 @@ function TLinkScanner.ElseDirective: boolean;
 
   procedure RaiseAWithoutB;
   begin
-    RaiseExceptionFmt(ctsAwithoutB,['$ELSE','$IF']);
+    RaiseExceptionFmt(20170422130138,ctsAwithoutB,['$ELSE','$IF']);
   end;
 
 begin
@@ -3692,7 +3756,7 @@ function TLinkScanner.ElseCDirective: boolean;
 
   procedure RaiseAWithoutB;
   begin
-    RaiseExceptionFmt(ctsAwithoutB,['$ELSEC','$IFC']);
+    RaiseExceptionFmt(20170422130140,ctsAwithoutB,['$ELSEC','$IFC']);
   end;
 
 begin
@@ -3721,7 +3785,7 @@ function TLinkScanner.ElseIfDirective: boolean;
 
   procedure RaiseAWithoutB;
   begin
-    RaiseExceptionFmt(ctsAwithoutB,['$ELSEIF','$IF']);
+    RaiseExceptionFmt(20170422130143,ctsAwithoutB,['$ELSEIF','$IF']);
   end;
 
 begin
@@ -3745,7 +3809,7 @@ function TLinkScanner.ElIfCDirective: boolean;
 
   procedure RaiseAWithoutB;
   begin
-    RaiseExceptionFmt(ctsAwithoutB,['$ELIFC','$IFC']);
+    RaiseExceptionFmt(20170422130146,ctsAwithoutB,['$ELIFC','$IFC']);
   end;
 
 begin
@@ -3872,7 +3936,7 @@ begin
         IncFilename:=copy(IncFilename,2,length(IncFilename)-2)
       else begin
         SrcPos:=CommentInnerEndPos;
-        RaiseException('missing ''');
+        RaiseException(20170422130149,'missing ''');
       end;
     end;
     ForcePathDelims(IncFilename);
@@ -3991,6 +4055,14 @@ var
       if Result then exit;
     end;
 
+    // then search the include file in directories defines in fpc.cfg (by -Fi option)
+    if FindIncFileInCfgCache(AFilename,ExpFilename) then
+    begin
+      NewCode:=LoadSourceCaseLoUp(ExpFilename);
+      Result:=(NewCode<>nil);
+      if Result then exit;
+    end;
+
     // then search the include file in the include path
     if not HasPathDelims then begin
       if MissingIncludeFile=nil then
@@ -4090,7 +4162,7 @@ begin
     end;
     if (not IgnoreMissingIncludeFiles) then begin
       // ToDo: add an event to let application improve the error message
-      RaiseExceptionFmt(ctsIncludeFileNotFound,[AFilename])
+      RaiseExceptionFmt(20170422130152,ctsIncludeFileNotFound,[AFilename])
     end else begin
       // add a dummy link
       AddLink(SrcPos,nil,slkMissingIncludeFile);
@@ -4149,7 +4221,7 @@ procedure TLinkScanner.PushIncludeLink(ACleanedPos, ASrcPos: integer;
   
   procedure RaiseIncludeCircleDetected;
   begin
-    RaiseException(ctsIncludeCircleDetected);
+    RaiseException(20170422130154,ctsIncludeCircleDetected);
   end;
   
 var NewLink: PSourceLink;
@@ -4510,13 +4582,36 @@ begin
 end;
 
 procedure TLinkScanner.SetCompilerMode(const AValue: TCompilerMode);
+var
+  OldModeSwitches, EnabledModeSwitches,
+    DisabledModeSwitches: TCompilerModeSwitches;
 begin
   if FCompilerMode=AValue then exit;
   Values.Undefine(CompilerModeVars[FCompilerMode]);
   FCompilerMode:=AValue;
+  OldModeSwitches:=FCompilerModeSwitches;
   FCompilerModeSwitches:=DefaultCompilerModeSwitches[CompilerMode];
   FNestedComments:=cmsNested_comment in CompilerModeSwitches;
   Values.Variables[CompilerModeVars[FCompilerMode]]:='1';
+
+  EnabledModeSwitches:=FCompilerModeSwitches-OldModeSwitches;
+  DisabledModeSwitches:=OldModeSwitches-FCompilerModeSwitches;
+  if cmsDefault_unicodestring in EnabledModeSwitches then begin
+    Values.Variables['FPC_UNICODESTRINGS'] := '1';
+    Values.Variables['UNICODE'] := '1';
+  end else if cmsDefault_unicodestring in DisabledModeSwitches then begin
+    Values.Undefine('FPC_UNICODESTRINGS');
+    Values.Undefine('UNICODE');
+  end;
+end;
+
+procedure TLinkScanner.SetPascalCompiler(const AValue: TPascalCompiler);
+begin
+  if FPascalCompiler=AValue then Exit;
+  FPascalCompiler:=AValue;
+  case PascalCompiler of
+  pcPas2js: ;
+  end;
 end;
 
 procedure TLinkScanner.SetDirectiveValueWithSequence(
@@ -4537,7 +4632,7 @@ function TLinkScanner.InternalIfDirective: boolean;
 
   procedure RaiseMissingExpr;
   begin
-    RaiseException('missing expression');
+    RaiseException(20170422130156,'missing expression');
   end;
 
 var
@@ -4552,7 +4647,7 @@ begin
   //DebugLn(['TLinkScanner.InternalIfDirective ExprResult=',ExprResult]);
   if Values.ErrorPosition>=0 then begin
     inc(SrcPos,Values.ErrorPosition);
-    RaiseException(Values.ErrorMsg)
+    RaiseException(20170422130200,Values.ErrorMsg)
   end else if ExprResult then begin
     // expression evaluates to true => stop skipping and parse block
     if FDirectivesCount>0 then
@@ -4756,7 +4851,7 @@ function TLinkScanner.WholeRangeIsWritable(CleanStartPos, CleanEndPos: integer;
   procedure EditError(const AMessage: string; ACode: Pointer);
   begin
     if ErrorOnFail then
-      RaiseEditException(AMessage,ACode,0);
+      RaiseEditException(20170422130202,AMessage,ACode,0);
   end;
   
 var
@@ -4877,37 +4972,39 @@ begin
   if Assigned(OnSetGlobalWriteLock) then OnSetGlobalWriteLock(false);
 end;
 
-procedure TLinkScanner.RaiseExceptionFmt(const AMessage: string;
-  Args: array of const);
+procedure TLinkScanner.RaiseExceptionFmt(id: int64; const AMessage: string;
+  const Args: array of const);
 begin
-  RaiseException(Format(AMessage,args));
+  RaiseException(id,Format(AMessage,args));
 end;
 
-procedure TLinkScanner.RaiseException(const AMessage: string);
+procedure TLinkScanner.RaiseException(id: int64; const AMessage: string);
 begin
-  RaiseExceptionClass(AMessage,ELinkScannerError);
+  RaiseExceptionClass(id,AMessage,ELinkScannerError);
 end;
 
-procedure TLinkScanner.RaiseExceptionClass(const AMessage: string;
+procedure TLinkScanner.RaiseExceptionClass(id: int64; const AMessage: string;
   ExceptionClass: ELinkScannerErrors);
 begin
   LastErrorMessage:=AMessage;
   LastErrorSrcPos:=SrcPos;
   LastErrorCode:=Code;
   LastErrorCheckedForIgnored:=false;
+  LastErrorId:=id;
   LastErrorIsValid:=true;
-  raise ExceptionClass.Create(Self,AMessage);
+  raise ExceptionClass.Create(Self,id,AMessage);
 end;
 
-procedure TLinkScanner.RaiseEditException(const AMessage: string;
+procedure TLinkScanner.RaiseEditException(id: int64; const AMessage: string;
   ABuffer: Pointer; ABufferPos: integer);
 begin
-  raise ELinkScannerEditError.Create(Self,AMessage,ABuffer,ABufferPos);
+  raise ELinkScannerEditError.Create(Self,id,AMessage,ABuffer,ABufferPos);
 end;
 
-procedure TLinkScanner.RaiseConsistencyException(const AMessage: string);
+procedure TLinkScanner.RaiseConsistencyException(id: int64;
+  const AMessage: string);
 begin
-  RaiseExceptionClass(AMessage,ELinkScannerConsistency);
+  RaiseExceptionClass(id,AMessage,ELinkScannerConsistency);
 end;
 
 procedure TLinkScanner.ClearLastError;
@@ -4920,7 +5017,7 @@ procedure TLinkScanner.RaiseLastError;
 begin
   SrcPos:=LastErrorSrcPos;
   Code:=LastErrorCode;
-  RaiseException(LastErrorMessage);
+  RaiseException(20170422130205,LastErrorMessage);
 end;
 
 procedure TLinkScanner.DoCheckAbort;
@@ -4928,7 +5025,7 @@ begin
   if not Assigned(OnProgress) then exit;
   if OnProgress(Self) then exit;
   // raise abort exception
-  RaiseExceptionClass('Abort',ELinkScannerAbort);
+  RaiseExceptionClass(20170422130207,'Abort',ELinkScannerAbort);
 end;
 
 function TLinkScanner.MainFilename: string;
@@ -4941,11 +5038,12 @@ end;
 
 { ELinkScannerError }
 
-constructor ELinkScannerError.Create(ASender: TLinkScanner;
+constructor ELinkScannerError.Create(ASender: TLinkScanner; TheId: int64;
   const AMessage: string);
 begin
   inherited Create(AMessage);
   Sender:=ASender;
+  id:=TheId;
 end;
 
 { TPSourceLinkMemManager }
@@ -5117,10 +5215,10 @@ end;
 
 { ELinkScannerEditError }
 
-constructor ELinkScannerEditError.Create(ASender: TLinkScanner;
+constructor ELinkScannerEditError.Create(ASender: TLinkScanner; TheId: int64;
   const AMessage: string; ABuffer: Pointer; ABufferPos: integer);
 begin
-  inherited Create(ASender,AMessage);
+  inherited Create(ASender,TheId,AMessage);
   Buffer:=ABuffer;
   BufferPos:=ABufferPos;
 end;

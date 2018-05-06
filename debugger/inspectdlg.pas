@@ -765,9 +765,9 @@ begin
   FGridData.OnMouseDown := @DataGridMouseDown;
 
   ToolBar1.Images := IDEImages.Images_16;
-  btnBackward.ImageIndex := IDEImages.LoadImage(16, 'arrow_left');
+  btnBackward.ImageIndex := IDEImages.LoadImage('arrow_left');
   btnBackward.Caption := '';
-  btnForward.ImageIndex := IDEImages.LoadImage(16, 'arrow_right');
+  btnForward.ImageIndex := IDEImages.LoadImage('arrow_right');
   btnForward.Caption := '';
 
   btnUseInstance.Enabled := False;
@@ -863,7 +863,7 @@ begin
     begin
       FreeAndNil(FDBGInfo);
       Clear;
-      StatusBar1.SimpleText:=Format(lisInspectUnavailable, [ShortenedExpression]);
+      StatusBar1.SimpleText:=Format(lisInspectUnavailableError, [ShortenedExpression, FHumanReadable]);
       Exit;
     end;
     case FDBGInfo.Kind of

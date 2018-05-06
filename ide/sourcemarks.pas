@@ -38,10 +38,14 @@ unit SourceMarks;
 interface
 
 uses
-  Classes, SysUtils, AVL_Tree, Graphics, Controls, LCLProc,
-  MenuIntf,
+  Classes, SysUtils, Laz_AVL_Tree,
+  // LCL
+  Graphics, Controls, LCLProc,
+  // SynEdit
   SynEdit, SynEditMarks, SynEditMarkupGutterMark,
-  SrcEditorIntf, IDEExternToolIntf,
+  // IdeIntf
+  MenuIntf, SrcEditorIntf, IDEExternToolIntf, IDEImagesIntf,
+  // IDE
   etSrcEditMarks;
   
 type
@@ -59,12 +63,14 @@ type
      ahaGutter,            ahaRightMargin,        ahaSpecialVisibleChars,
      ahaTopInfoHint,
      ahaIfDefBlockInactive, ahaIfDefBlockActive, ahaIfDefBlockTmpActive,
-     ahaIfDefNodeInactive, ahaIfDefNodeActive, ahaIfDefNodeTmpActive
+     ahaIfDefNodeInactive, ahaIfDefNodeActive, ahaIfDefNodeTmpActive,
+     ahaIdentComplWindow, ahaIdentComplWindowBorder, ahaIdentComplWindowSelection, ahaIdentComplWindowHighlight,
+     ahaOutlineLevel1Color, ahaOutlineLevel2Color, ahaOutlineLevel3Color, ahaOutlineLevel4Color, ahaOutlineLevel5Color, ahaOutlineLevel6Color, ahaOutlineLevel7Color, ahaOutlineLevel8Color, ahaOutlineLevel9Color, ahaOutlineLevel10Color
      );
 
   TAhaGroupName = (
     agnDefault, agnLanguage, agnText, agnLine, agnGutter, agnTemplateMode, agnSyncronMode,
-    agnIfDef
+    agnIfDef, agnIdentComplWindow, agnOutlineColors
   );
 
   TSourceEditorBase = class;
@@ -190,6 +196,7 @@ type
     FCurrentLineImg: Integer;
     FCurrentLineDisabledBreakPointImg: Integer;
     FExtToolsMarks: TETMarks;
+    fPendingBreakPointImg: Integer;
     FSourceLineImg: Integer;
     FImgList: TImageList;
     fInactiveBreakPointImg: Integer;
@@ -226,7 +233,7 @@ type
     procedure GetMarksForLine(ASrcEdit: TSourceEditorBase; ALine: integer;
                               out Marks: PSourceMark; out MarkCount: integer);
   public
-    property ImgList: TImageList read FImgList write FImgList;
+    property ImgList: TImageList read FImgList;
     property Items[Index: integer]: TSourceMark read GetItems; default;
     property OnAction: TMarksActionEvent read FOnAction write FOnAction;
     property ExtToolsMarks: TETMarks read FExtToolsMarks;
@@ -236,6 +243,7 @@ type
     property InactiveBreakPointImg: Integer read fInactiveBreakPointImg;
     property InvalidBreakPointImg: Integer read fInvalidBreakPointImg;
     property InvalidDisabledBreakPointImg: Integer read fInvalidDisabledBreakPointImg;
+    property PendingBreakPointImg: Integer read fPendingBreakPointImg;
     property MultiBreakPointImg: Integer read fMultiBreakPointImg;
     property UnknownBreakPointImg: Integer read fUnknownBreakPointImg;
     property UnknownDisabledBreakPointImg: Integer read fUnknownDisabledBreakPointImg;
@@ -539,11 +547,14 @@ var
   ImgIDWarning: Integer;
   ImgIDNote: Integer;
   ImgIDHint: Integer;
+  ImgListSize: Integer;
 begin
   // create default mark icons
-  ImgList:=TImageList.Create(Self);
-  ImgList.Width:=11;
-  ImgList.Height:=11;
+  FImgList:=TImageList.Create(Self);
+  ImgListSize := TIDEImages.ScaledSize(11);
+  ImgList.Width := ImgListSize;
+  ImgList.Height := ImgListSize;
+  ImgList.Scaled := False;
 
   // synedit expects the first 10 icons for the bookmarks
   for i := 0 to 9 do
@@ -557,6 +568,8 @@ begin
   fInvalidBreakPointImg:=AddImage('InvalidBreakPoint');
   // load invalid disabled breakpoint image
   fInvalidDisabledBreakPointImg := AddImage('InvalidDisabledBreakPoint');
+  // load pending active breakpoint image
+  fPendingBreakPointImg := AddImage('PendingBreakPoint');
   // load unknown breakpoint image
   fUnknownBreakPointImg:=AddImage('UnknownBreakPoint');
   // load unknown disabled breakpoint image
@@ -804,7 +817,7 @@ end;
 
 function TSourceMarks.AddImage(const ResName: string): integer;
 begin
-  Result := ImgList.AddResourceName(HInstance, Resname);
+  Result := TIDEImages.AddImageToImageList(ImgList, Resname, 11);
 end;
 
 initialization

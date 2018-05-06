@@ -1634,6 +1634,8 @@ function TIDESpecialCommand.GetCaption: string;
 begin
   if FCaption<>'' then
     Result:=FCaption
+  else if (FCommand<>nil) and (FCommand.LocalizedName<>'') then
+    Result:=FCommand.LocalizedName
   else
     Result:=FName;
 end;
@@ -1827,7 +1829,7 @@ end;
 procedure TIDESpecialCommand.SetResourceName(const aResourceName: string);
 begin
   if aResourceName <> '' then
-    ImageIndex := IDEImages.LoadImage(16, aResourceName)
+    ImageIndex := IDEImages.LoadImage(aResourceName)
   else
     ImageIndex := -1;
 end;

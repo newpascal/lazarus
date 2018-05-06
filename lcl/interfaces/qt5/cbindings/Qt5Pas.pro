@@ -117,7 +117,10 @@ HEADERS +=  \
            qsize_c.h \
            qstring_c.h \
            qstringlist_c.h \
+           qsurface_c.h \           
+           qsurfaceformat_c.h \
            qrect_c.h \
+           qmargins_c.h \                      
            qdatetime_c.h \
            qbytearray_c.h \
            qlocale_c.h \
@@ -125,6 +128,7 @@ HEADERS +=  \
            qiodevice_hook.h \
            qprocess_c.h \
            qprocess_hook.h \
+           qbuffer_c.h \           
            qfiledevice_c.h \
            qfile_c.h \
            qfileinfo_c.h \
@@ -148,6 +152,10 @@ HEADERS +=  \
            qapplication_hook.h \
            qwhatsthis_c.h \
            qsizepolicy_c.h \
+           qscreen_c.h \
+           qscreen_hook.h \
+           qwindow_c.h \
+           qwindow_hook.h \           
            qwidget_c.h \
            qwidget_hook.h \
            qlayoutitem_c.h \
@@ -174,6 +182,7 @@ HEADERS +=  \
            qbrush_c.h \
            qpen_c.h \
            qpolygon_c.h \
+           qbackingstore_c.h \
            qpainter_c.h \
            qpaintengine_c.h \
            qpaintdevice_c.h \
@@ -370,6 +379,8 @@ HEADERS +=  \
            qdrag_hook_c.h \
            qguiapplication_hook_c.h \
            qapplication_hook_c.h \
+           qscreen_hook_c.h \           
+           qwindow_hook_c.h \
            qwidget_hook_c.h \
            qlayout_hook_c.h \
            qstackedlayout_hook_c.h \
@@ -463,12 +474,16 @@ SOURCES +=  \
            qsize_c.cpp \
            qstring_c.cpp \
            qstringlist_c.cpp \
+           qsurface_c.cpp \
+           qsurfaceformat_c.cpp \
            qrect_c.cpp \
+           qmargins_c.cpp \           
            qdatetime_c.cpp \
            qbytearray_c.cpp \
            qlocale_c.cpp \
            qiodevice_c.cpp \
            qprocess_c.cpp \
+           qbuffer_c.cpp \           
            qfiledevice_c.cpp \
            qfile_c.cpp \
            qfileinfo_c.cpp \
@@ -487,6 +502,8 @@ SOURCES +=  \
            qapplication_c.cpp \
            qwhatsthis_c.cpp \
            qsizepolicy_c.cpp \
+           qscreen_c.cpp \
+           qwindow_c.cpp \           
            qwidget_c.cpp \
            qlayoutitem_c.cpp \
            qlayout_c.cpp \
@@ -506,6 +523,7 @@ SOURCES +=  \
            qbrush_c.cpp \
            qpen_c.cpp \
            qpolygon_c.cpp \
+           qbackingstore_c.cpp \
            qpainter_c.cpp \
            qpaintengine_c.cpp \
            qpaintdevice_c.cpp \
@@ -640,6 +658,8 @@ SOURCES +=  \
            qdrag_hook_c.cpp \
            qguiapplication_hook_c.cpp \
            qapplication_hook_c.cpp \
+           qscreen_hook_c.cpp \           
+           qwindow_hook_c.cpp \
            qwidget_hook_c.cpp \
            qlayout_hook_c.cpp \
            qstackedlayout_hook_c.cpp \

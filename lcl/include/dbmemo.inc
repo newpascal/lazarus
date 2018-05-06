@@ -100,7 +100,12 @@ procedure TDBMemo.UpdateData(Sender: TObject);
 begin
   if not FDBMemoLoaded then exit;
   if not FDataLink.CanModify then exit;
-  FDataLink.Field.AsString:=Text;
+  
+  // issue #33498: possibility to change field text in OnSetText 
+  if Assigned(FDatalink.Field.OnSetText) then
+    FDataLink.Field.Text := Text
+  else
+    FDataLink.Field.AsString := Text;
 end;
 
 constructor TDBMemo.Create(TheOwner: TComponent);
@@ -191,9 +196,9 @@ begin
   end;
 end;
 
-procedure TDBMemo.WndProc(var AMessage: TLMessage);
+procedure TDBMemo.WndProc(var Message: TLMessage);
 begin
-  case AMessage.Msg of
+  case Message.Msg of
     LM_CLEAR,
     LM_CUT,
     LM_PASTE:
@@ -206,10 +211,12 @@ begin
         FDatalink.Edit;
         FDataLink.Modified;
         FDataLink.OnDataChange := @DataChange;
-        inherited WndProc(AMessage);
-      end;
+        inherited WndProc(Message);
+      end
+      else
+        Message.Result := 1; // prevent calling default window proc
   end;
-  inherited WndProc(AMessage);
+  inherited WndProc(Message);
 end;
 
 class procedure TDBMemo.WSRegisterClass;
@@ -234,7 +241,11 @@ begin
   if not FDBMemoLoaded and (FDataLink.Field<>nil)
   and FDataLink.Field.IsBlob then begin
     try
-      Lines.Text:=FDataLink.Field.AsString;
+      // issue #33598: Possibility to change field text in OnGetText
+      if Assigned(FDataLink.Field.OnGetText) then
+        Lines.Text := FDataLink.Field.Text
+      else 
+        Lines.Text := FDataLink.Field.AsString;
       FDBMemoLoaded:=True;
     except
       on E:EInvalidOperation do

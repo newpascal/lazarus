@@ -583,12 +583,12 @@ begin
 
     FamilyName := StrPas(LogFont.lfFaceName);
 
-    if (CompareText(FamilyName, 'default') <> 0) then
+    if not IsFontNameDefault(FamilyName) then
       QtFont.setFamily(FamilyName)
     else
       QtFont.setFamily(UTF16ToUTF8(GetDefaultAppFontName));
 
-    if (LogFont.lfQuality >= Low(QStyleStategy)) and (LogFont.lfQuality <= High(QStyleStategy)) then
+    if LogFont.lfQuality <= High(QStyleStategy) then
       QtFont.setStyleStrategy(QStyleStategy[LogFont.lfQuality]);
     Result := HFONT(QtFont);
   except
@@ -1378,7 +1378,9 @@ begin
   ClipRect := Rect(0, 0, 0, 0);
   B := QtDC.getClipping;
   if (Flags and DT_NOCLIP = DT_NOCLIP) and
-    (Flags and DT_WORDBREAK = DT_WORDBREAK) then
+    (Flags and DT_WORDBREAK = DT_WORDBREAK) and
+    {if DT_CALCRECT is inlcuded we should avoid wrong calculation}
+    (Flags and DT_CALCRECT = 0) then
   begin
     if B then
       ClipRect := QtDC.getClipRegion.getBoundingRect;
@@ -2180,7 +2182,7 @@ var
     CurX := X;
     while CurCount > 0 do
     begin
-      CharLen := UTF8CharacterLength(CurStr);
+      CharLen := UTF8CodepointSize(CurStr);
       if AClipped then
       begin
         W := GetUTF8String(Copy(CurStr, 1, CharLen));
@@ -2441,13 +2443,19 @@ var
   SubW: TQtWidget;
   Area: QMdiAreaH;
 begin
+  Result := 0;
   Widget := QApplication_activeWindow;
+  {return modal if activeWindow is nil issue #33409}
+  if Widget = nil then
+    Widget := QApplication_activeModalWidget;
+  if Widget = nil then
+    Widget := QApplication_activePopupWidget;
   if Widget <> nil then
   begin
     W := QtObjectFromWidgetH(Widget);
-    if W <> nil then
+    if Assigned(W) and IsValidHandle(HWND(W)) then
     begin
-      if TQtMainWindow(W).MDIAreaHandle <> nil then
+      if (TQtWidget(W) is TQtMainWindow) and Assigned(TQtMainWindow(W).MDIAreaHandle) then
       begin
         Area := QMdiAreaH(TQtMainWindow(W).MDIAreaHandle.Widget);
         SubW := QtObjectFromWidgetH(QMdiArea_activeSubWindow(Area));
@@ -2458,8 +2466,7 @@ begin
       end else
         Result := HWND(W);
     end;
-  end else
-    Result := 0;
+  end;
 end;
 
 
@@ -3052,7 +3059,8 @@ begin
   if not Result then Exit;
   Desktop := QApplication_desktop();
   Dec(Monitor);
-  Result := (Monitor >= 0) and (Monitor < PtrUInt(QDesktopWidget_numScreens(Desktop)));
+  // Note: Monitor is PtrUInt and is always >= 0.
+  Result := Monitor < PtrUInt(QDesktopWidget_numScreens(Desktop));
   if not Result then Exit;
   QDesktopWidget_screenGeometry(Desktop, @lpmi^.rcMonitor, Monitor);
   QDesktopWidget_availableGeometry(Desktop, @lpmi^.rcWork, Monitor);
@@ -4608,9 +4616,9 @@ function TQtWidgetSet.GradientFill(DC: HDC; Vertices: PTriVertex;
     with Mesh do
     begin
       Result :=
-        (Vertex1 < Cardinal(NumVertices)) and (Vertex2 >= 0) and
-        (Vertex2 < Cardinal(NumVertices)) and (Vertex2 >= 0) and
-        (Vertex3 < Cardinal(NumVertices)) and (Vertex3 >= 0);
+        (Vertex1 < Cardinal(NumVertices)) and
+        (Vertex2 < Cardinal(NumVertices)) and
+        (Vertex3 < Cardinal(NumVertices));
 
       if (Vertex1 = Vertex2) or
         (Vertex1 = Vertex3) or
@@ -4681,8 +4689,8 @@ function TQtWidgetSet.GradientFill(DC: HDC; Vertices: PTriVertex;
     with Mesh do
     begin
       Result :=
-        (UpperLeft < Cardinal(NumVertices)) and (UpperLeft >= 0) and
-        (LowerRight < Cardinal(NumVertices)) and (LowerRight >= 0);
+        (UpperLeft < Cardinal(NumVertices)) and
+        (LowerRight < Cardinal(NumVertices));
       if (LowerRight = UpperLeft) or not Result then
         Exit;
 
@@ -4785,6 +4793,74 @@ begin
   CritSection:=TCriticalSection(ACritSec);
 end;
 
+function TQtWidgetSet.InitStockFont(AFont: TObject; AStockFont: TStockFont
+  ): Boolean;
+var
+  Font: TFont absolute AFont;
+  AMenu: QMenuH;
+  QtFont: QFontH;
+  AName: WideString;
+begin
+  Result := False;
+  if AStockFont = sfMenu then
+  begin
+    AName := 'MenuTitle';
+    AMenu := QMenu_create(@AName, nil);
+    try
+      QtFont := QWidget_font(AMenu);
+      QFont_family(QtFont, @AName);
+      Font.Name := UTF16ToUTF8(AName);
+      if QFont_pointSize(QtFont) > 0 then
+        Font.Size := QFont_pointSize(QtFont)
+      else
+        Font.Height := QFont_pixelSize(QtFont);
+      if QFont_bold(QtFont) then
+        Font.Style := Font.Style + [fsBold];
+      if QFont_italic(QtFont) then
+        Font.Style := Font.Style + [fsItalic];
+      if QFont_underline(QtFont) then
+        Font.Style := Font.Style + [fsUnderline];
+      if QFont_strikeOut(QtFont) then
+        Font.Style := Font.Style + [fsStrikeOut];
+      Font.Color := clMenuText;
+      Result := True;
+    finally
+      QWidget_destroy(AMenu);
+    end;
+  end else
+  begin
+    QtFont := QFont_create;
+    try
+      if AStockFont = sfHint then
+        QToolTip_font(QtFont)
+      else
+        QApplication_font(QtFont);
+      QFont_family(QtFont, @AName);
+      Font.Name := UTF16ToUTF8(AName);
+      if QFont_pointSize(QtFont) > 0 then
+        Font.Size := QFont_pointSize(QtFont)
+      else
+        Font.Height := QFont_pixelSize(QtFont);
+      if QFont_bold(QtFont) then
+        Font.Style := Font.Style + [fsBold];
+      if QFont_italic(QtFont) then
+        Font.Style := Font.Style + [fsItalic];
+      if QFont_underline(QtFont) then
+        Font.Style := Font.Style + [fsUnderline];
+      if QFont_strikeOut(QtFont) then
+        Font.Style := Font.Style + [fsStrikeOut];
+
+      {comment font.color for check if hintfont works correct}
+      if AStockFont = sfHint then
+        Font.Color := clInfoText;
+
+      Result := True;
+    finally
+      QFont_destroy(QtFont);
+    end;
+  end;
+end;
+
 function TQtWidgetSet.IntersectClipRect(dc: hdc; Left, Top, Right, Bottom: Integer): Integer;
 var
   QtDC: TQtDeviceContext absolute dc;
@@ -4829,7 +4905,9 @@ end;
 
 function TQtWidgetSet.IsIconic(Handle: HWND): boolean;
 begin
-  Result := TQtWidget(Handle).isMinimized;
+  Result := False;
+  if IsValidHandle(Handle) then
+    Result := TQtWidget(Handle).isMinimized;
 end;
 
 function TQtWidgetSet.IsWindow(handle: HWND): boolean;
@@ -4839,17 +4917,23 @@ end;
 
 function TQtWidgetSet.IsWindowEnabled(Handle: HWND): boolean;
 begin
-  Result := TQtWidget(Handle).getEnabled and TQtWidget(Handle).getVisible;
+  Result := False;
+  if IsValidHandle(Handle) then
+    Result := TQtWidget(Handle).getEnabled and TQtWidget(Handle).getVisible;
 end;
 
 function TQtWidgetSet.IsWindowVisible(Handle: HWND): boolean;
 begin
-  Result := TQtWidget(Handle).getVisible;
+  Result := False;
+  if IsValidHandle(Handle) then
+    Result := TQtWidget(Handle).getVisible;
 end;
 
 function TQtWidgetSet.IsZoomed(Handle: HWND): boolean;
 begin
-  Result := TQtWidget(Handle).isMaximized;
+  Result := False;
+  if IsValidHandle(Handle) then
+    Result := TQtWidget(Handle).isMaximized;
 end;
 
 {------------------------------------------------------------------------------
@@ -4903,8 +4987,7 @@ end;
   Returns: True if invalidate is successfull.
   Invalidates region of widget.
  ------------------------------------------------------------------------------}
-function TQtWidgetSet.InvalidateRgn(aHandle: HWND; Rgn: HRGN; Erase: Boolean
-  ): Boolean;
+function TQtWidgetSet.InvalidateRgn(aHandle: HWND; Rgn: HRGN; Erase: Boolean): Boolean;
 begin
   {$ifdef VerboseQtWinAPI}
     WriteLn('[WinAPI InvalidateRgn]');
@@ -4915,6 +4998,7 @@ begin
     TQtWidget(aHandle).UpdateRegion(TQtRegion(Rgn).FHandle)
   else
     TQtWidget(aHandle).Update;
+  Result := True;
 end;
 
 {------------------------------------------------------------------------------
@@ -5272,7 +5356,7 @@ var
   Event: QLCLMessageEventH;
 begin
   Result := False;
-  if Handle <> 0 then
+  if IsValidHandle(Handle) then
   begin
     Event := QLCLMessageEvent_create(QEventLCLMessage, Msg, wParam, lParam, 0);
     QCoreApplication_postEvent(Widget.Widget, Event, 1 {high priority});
@@ -5729,7 +5813,7 @@ var
   Event: QLCLMessageEventH;
 begin
   Result := 0;
-  if (HandleWnd <> 0) and (Widget.Widget <> nil) then
+  if IsValidHandle(HandleWnd) and (Widget.Widget <> nil) then
   begin
     Event := QLCLMessageEvent_create(QEventLCLMessage, Msg, wParam, lParam, 0);
     try
@@ -5924,18 +6008,18 @@ begin
 end;
 
 function TQtWidgetSet.GetForegroundWindow: HWND;
-var
-  W: QWidgetH;
 begin
   {$IFDEF HASX11}
+  {$note this should return current system active window, not
+    application one, if our app isn''t active.
+    This is per MSDN and pretty win32 specific}
   if WindowManagerName = 'metacity' then
-    W := X11GetActivewindow
+    Result := HwndFromWidgetH(X11GetActivewindow)
   else
-    W := QApplication_activeWindow();
+    Result := GetActiveWindow;
   {$ELSE}
-  W := QApplication_activeWindow();
+  Result := GetActiveWindow;
   {$ENDIF}
-  Result := HwndFromWidgetH(W);
 end;
 
 function TQtWidgetSet.SetForegroundWindow(HWnd: HWND): boolean;
@@ -6011,6 +6095,7 @@ begin
   begin
     if fnMapMode <> TQtDeviceContext(DC).vMapMode then
     begin
+      AWindowExt := Point(0, 0);
       case fnMapMode of
         MM_ANISOTROPIC:; // user's choice
         MM_ISOTROPIC:; // adjusted after each SetViewPortExtEx call (see MSDN for details)
@@ -6680,7 +6765,8 @@ begin
     begin
       with SrcQDC.getDeviceSize do
         TmpPixmap := QPixmap_create(x, y);
-      QPixmap_grabWindow(TmpPixmap, QWidget_winId(SrcQDC.Parent), 0, 0);
+      QScreen_grabWindow(QGuiApplication_primaryScreen, TmpPixmap, QWidget_winId(SrcQDC.Parent), 0, 0);
+      // QPixmap_grabWindow(TmpPixmap, QWidget_winId(SrcQDC.Parent), 0, 0);
       Image := QImage_create();
       QPixmap_toImage(TmpPixmap, Image);
       QPixmap_destroy(TmpPixmap);

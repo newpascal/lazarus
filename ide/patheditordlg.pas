@@ -21,9 +21,18 @@ unit PathEditorDlg;
 interface
 
 uses
-  Classes, SysUtils, types, Forms, Controls, Buttons, StdCtrls, Dialogs, Graphics,
-  Menus, ButtonPanel, ExtCtrls, FileUtil, LazFileUtils, MacroIntf, IDEImagesIntf,
-  LCLType, TransferMacros, LazarusIDEStrConsts, ShortPathEdit, Clipbrd, LCLProc;
+  Classes, SysUtils, types,
+  // LCL
+  LCLType, LCLProc, Forms, Controls, Buttons, StdCtrls, Dialogs, Menus, Graphics,
+  ButtonPanel, Clipbrd,
+  // LazUtils
+  FileUtil, LazFileUtils,
+  // LazControls
+  ShortPathEdit,
+  // IdeIntf
+  MacroIntf, IDEImagesIntf,
+  // IDE
+  TransferMacros, GenericListSelect, LazarusIDEStrConsts, IDEProcs;
 
 type
 
@@ -33,6 +42,8 @@ type
     AddTemplateButton: TBitBtn;
     ButtonPanel1: TButtonPanel;
     CopyMenuItem: TMenuItem;
+    MoveDownButton: TSpeedButton;
+    MoveUpButton: TSpeedButton;
     OpenDialog1: TOpenDialog;
     SaveDialog1: TSaveDialog;
     ExportMenuItem: TMenuItem;
@@ -44,19 +55,15 @@ type
     AddButton: TBitBtn;
     DeleteInvalidPathsButton: TBitBtn;
     DirectoryEdit: TShortPathEdit;
-    Splitter1: TSplitter;
     DeleteButton: TBitBtn;
     PathListBox: TListBox;
-    MoveDownButton: TBitBtn;
-    MoveUpButton: TBitBtn;
-    TemplatesListBox: TListBox;
-    TemplateGroupBox: TGroupBox;
     PathGroupBox: TGroupBox;
     BrowseDialog: TSelectDirectoryDialog;
     procedure AddButtonClick(Sender: TObject);
     procedure AddTemplateButtonClick(Sender: TObject);
     procedure CopyMenuItemClick(Sender: TObject);
     procedure ExportMenuItemClick(Sender: TObject);
+    procedure FormDestroy(Sender: TObject);
     procedure PasteMenuItemClick(Sender: TObject);
     procedure DeleteInvalidPathsButtonClick(Sender: TObject);
     procedure DeleteButtonClick(Sender: TObject);
@@ -79,8 +86,10 @@ type
   private
     FBaseDirectory: string;
     FEffectiveBaseDirectory: string;
+    FTemplateList: TStringList;
+    procedure AddPath(aPath: String; aObject: TObject);
     function GetPath: string;
-    function GetTemplates: string;
+    //function GetTemplates: string;
     function BaseRelative(const APath: string): String;
     function PathAsAbsolute(const APath: string): String;
     function PathMayExist(APath: string): TObject;
@@ -94,7 +103,7 @@ type
     property BaseDirectory: string read FBaseDirectory write SetBaseDirectory;
     property EffectiveBaseDirectory: string read FEffectiveBaseDirectory;
     property Path: string read GetPath write SetPath;
-    property Templates: string read GetTemplates write SetTemplates;
+    property Templates: string {read GetTemplates} write SetTemplates;
   end;
 
   TOnPathEditorExecuted = function (Context: String; var NewPath: String): Boolean of object;
@@ -180,23 +189,17 @@ begin
   SetLength(Result,j-1);
 end;
 
-function PathToText(const APath: string): string;
-var
-  i: integer;
-begin
-  Result:='';
-  for i:=1 to length(APath) do
-    if APath[i]=';' then
-      Result:=Result+LineEnding
-    else
-      Result:=Result+APath[i];
-end;
-
 procedure SetPathTextAndHint(aPath: String; aEdit: TCustomEdit);
+var
+  sl: TStrings;
 begin
   aEdit.Text := aPath;
-  if Pos(';', aPath) > 0 then        // Zero or one separate paths.
-    aEdit.Hint := PathToText(aPath)
+  if Pos(';', aPath) > 0 then
+  begin
+    sl := SplitString(aPath, ';');
+    aEdit.Hint := sl.Text;
+    sl.Free;
+  end
   else
     aEdit.Hint := lisDelimiterIsSemicolon;
 end;
@@ -231,29 +234,27 @@ begin
     Result:=TObject(1);
 end;
 
-procedure TPathEditorDialog.AddButtonClick(Sender: TObject);
+procedure TPathEditorDialog.AddPath(aPath: String; aObject: TObject);
 var
   y: integer;
-  RelPath: String;
 begin
-  with PathListBox do begin
-    y:=ItemIndex+1;
-    if y=0 then
-      y:=Count;
-    RelPath:=BaseRelative(DirectoryEdit.Text);
-    Items.InsertObject(y, RelPath, PathMayExist(DirectoryEdit.Text));
-    ItemIndex:=y;
-    UpdateButtons;
-  end;
+  y:=PathListBox.ItemIndex+1;
+  if y=0 then
+    y:=PathListBox.Count;
+  PathListBox.Items.InsertObject(y, aPath, aObject);
+  PathListBox.ItemIndex:=y;
+  UpdateButtons;
+end;
+
+procedure TPathEditorDialog.AddButtonClick(Sender: TObject);
+begin
+  AddPath(BaseRelative(DirectoryEdit.Text), PathMayExist(DirectoryEdit.Text));
 end;
 
 procedure TPathEditorDialog.ReplaceButtonClick(Sender: TObject);
-var
-  RelPath: String;
 begin
   with PathListBox do begin
-    RelPath:=BaseRelative(DirectoryEdit.Text);
-    Items[ItemIndex]:=RelPath;
+    Items[ItemIndex]:=BaseRelative(DirectoryEdit.Text);
     Items.Objects[ItemIndex]:=PathMayExist(DirectoryEdit.Text);
     UpdateButtons;
   end;
@@ -286,19 +287,20 @@ end;
 
 procedure TPathEditorDialog.AddTemplateButtonClick(Sender: TObject);
 var
-  i, y: integer;
+  TemplateForm: TGenericListSelectForm;
+  i: Integer;
 begin
-  y:=-1;
-  for i:=0 to TemplatesListBox.Items.Count-1 do begin
-    if TemplatesListBox.Selected[i]
-    and (PathListBox.Items.IndexOf(TemplatesListBox.Items[i])=-1) then begin
-      PathListBox.Items.AddObject(TemplatesListBox.Items[i], TObject(1));
-      y:=PathListBox.Count-1;
-    end;
-  end;
-  if y>=1 then begin
-    PathListBox.ItemIndex:=y;
-    UpdateButtons;
+  TemplateForm := TGenericListSelectForm.Create(Nil);
+  try
+    // Let a user select only templates which are not in the list already.
+    for i := 0 to FTemplateList.Count-1 do
+      if PathListBox.Items.IndexOf(FTemplateList[i]) = -1 then
+        TemplateForm.ListBox.Items.Add(FTemplateList[i]);
+    if TemplateForm.ShowModal = mrOK then
+      with TemplateForm.ListBox do
+        AddPath(Items[ItemIndex], TObject(1));
+  finally
+    TemplateForm.Free;
   end;
 end;
 
@@ -356,7 +358,6 @@ begin
       PathListBox.Items.InsertObject(y, BaseRelative(s), PathMayExist(s));
     end;
   end;
-  //PathListBox.ItemIndex := y;
   UpdateButtons;
 end;
 
@@ -420,12 +421,11 @@ procedure TPathEditorDialog.FormCreate(Sender: TObject);
 const
   Filt = 'Text file (*.txt)|*.txt|All files (*)|*';
 begin
+  FTemplateList := TStringList.Create;
   Caption:=dlgDebugOptionsPathEditorDlgCaption;
-
   PathGroupBox.Caption:=lisPathEditSearchPaths;
   MoveUpButton.Hint:=lisPathEditMovePathUp;
   MoveDownButton.Hint:=lisPathEditMovePathDown;
-
   ReplaceButton.Caption:=lisReplace;
   ReplaceButton.Hint:=lisPathEditorReplaceHint;
   AddButton.Caption:=lisAdd;
@@ -434,31 +434,40 @@ begin
   DeleteButton.Hint:=lisPathEditorDeleteHint;
   DeleteInvalidPathsButton.Caption:=lisPathEditDeleteInvalidPaths;
   DeleteInvalidPathsButton.Hint:=lisPathEditorDeleteInvalidHint;
-
-  TemplateGroupBox.Caption:=lisPathEditPathTemplates;
   AddTemplateButton.Caption:=lisCodeTemplAdd;
   AddTemplateButton.Hint:=lisPathEditorTemplAddHint;
 
   PopupMenu1.Images:=IDEImages.Images_16;
   CopyMenuItem.Caption:=lisCopyAllItemsToClipboard;
-  CopyMenuItem.ImageIndex:=IDEImages.LoadImage(16, 'laz_copy');
+  CopyMenuItem.ImageIndex:=IDEImages.LoadImage('laz_copy');
   PasteMenuItem.Caption:=lisMenuPasteFromClipboard;
-  PasteMenuItem.ImageIndex:=IDEImages.LoadImage(16, 'laz_paste');
+  PasteMenuItem.ImageIndex:=IDEImages.LoadImage('laz_paste');
   ExportMenuItem.Caption:=lisExportAllItemsToFile;
-  ExportMenuItem.ImageIndex:=IDEImages.LoadImage(16, 'laz_save');
+  ExportMenuItem.ImageIndex:=IDEImages.LoadImage('laz_save');
   ImportMenuItem.Caption:=lisImportFromFile;
-  ImportMenuItem.ImageIndex:=IDEImages.LoadImage(16, 'laz_open');
+  ImportMenuItem.ImageIndex:=IDEImages.LoadImage('laz_open');
 
   OpenDialog1.Filter:=Filt;
   SaveDialog1.Filter:=Filt;
 
-  MoveUpButton.LoadGlyphFromResourceName(HInstance, 'arrow_up');
-  MoveDownButton.LoadGlyphFromResourceName(HInstance, 'arrow_down');
-  ReplaceButton.LoadGlyphFromResourceName(HInstance, 'menu_reportingbug');
-  AddButton.LoadGlyphFromResourceName(HInstance, 'laz_add');
-  DeleteButton.LoadGlyphFromResourceName(HInstance, 'laz_delete');
-  DeleteInvalidPathsButton.LoadGlyphFromResourceName(HInstance, 'menu_clean');
-  AddTemplateButton.LoadGlyphFromResourceName(HInstance, 'laz_add');
+  TIDEImages.AssignImage(MoveUpButton.Glyph, 'arrow_up');
+  TIDEImages.AssignImage(MoveDownButton.Glyph, 'arrow_down');
+  TIDEImages.AssignImage(ReplaceButton.Glyph, 'menu_reportingbug');
+  TIDEImages.AssignImage(AddButton.Glyph, 'laz_add');
+  TIDEImages.AssignImage(DeleteButton.Glyph, 'laz_delete');
+  TIDEImages.AssignImage(DeleteInvalidPathsButton.Glyph, 'menu_clean');
+  TIDEImages.AssignImage(AddTemplateButton.Glyph, 'laz_add');
+end;
+
+procedure TPathEditorDialog.FormDestroy(Sender: TObject);
+begin
+  FTemplateList.Free;
+end;
+
+procedure TPathEditorDialog.FormShow(Sender: TObject);
+begin
+  PathListBox.ItemIndex:=-1;
+  UpdateButtons;
 end;
 
 procedure TPathEditorDialog.FormResize(Sender: TObject);
@@ -469,13 +478,6 @@ begin
   if PathGroupBoxHeight<10 then
     PathGroupBoxHeight:=10;
   PathGroupBox.Height:=PathGroupBoxHeight;
-end;
-
-procedure TPathEditorDialog.FormShow(Sender: TObject);
-begin
-  PathListBox.ItemIndex:=-1;
-  TemplatesListBox.ItemIndex:=-1;
-  UpdateButtons;
 end;
 
 procedure TPathEditorDialog.MoveDownButtonClick(Sender: TObject);
@@ -528,24 +530,19 @@ end;
 
 function TPathEditorDialog.GetPath: string;
 begin
+  // ToDo: Join PathListBox.Items directly without Text property.
   Result:=TextToPath(PathListBox.Items.Text);
-end;
-
-function TPathEditorDialog.GetTemplates: string;
-begin
-  Result:=TextToPath(TemplatesListBox.Items.Text);
 end;
 
 procedure TPathEditorDialog.SetPath(const AValue: string);
 var
-  sl: TStringList;
+  sl: TStrings;
   i: Integer;
 begin
   DirectoryEdit.Text:='';
   PathListBox.Items.Clear;
-  sl:=TstringList.Create();
+  sl := SplitString(AValue, ';');
   try
-    sl.Text:=PathToText(AValue);
     for i:=0 to sl.Count-1 do
       PathListBox.Items.AddObject(sl[i], PathMayExist(sl[i]));
     PathListBox.ItemIndex:=-1;
@@ -553,17 +550,17 @@ begin
     sl.Free;
   end;
 end;
-
-procedure TPathEditorDialog.SetTemplates(const AValue: string);
-var
-  NewVis: Boolean;
+{
+function TPathEditorDialog.GetTemplates: string;
 begin
-  TemplatesListBox.Items.Text := PathToText(AValue);
-  NewVis := TemplatesListBox.Count > 0;
-  if NewVis = TemplateGroupBox.Visible then Exit;
-  TemplateGroupBox.Visible := NewVis;
-  if NewVis then
-    TemplateGroupBox.Top:=0;
+  raise Exception.Create('TPathEditorDialog.GetTemplates is called.');
+  //Result := TextToPath(FTemplateList.Text);
+end;
+}
+procedure TPathEditorDialog.SetTemplates(const AValue: string);
+begin
+  SplitString(GetForcedPathDelims(AValue), ';', FTemplateList, True);
+  AddTemplateButton.Enabled := FTemplateList.Count > 0;
 end;
 
 procedure TPathEditorDialog.UpdateButtons;
@@ -576,8 +573,6 @@ begin
       and (PathListBox.Items.IndexOf(BaseRelative(DirectoryEdit.Text))=-1);
   ReplaceButton.Enabled:=AddButton.Enabled and (PathListBox.ItemIndex>-1) ;
   DeleteButton.Enabled:=PathListBox.SelCount=1; // or ItemIndex>-1; ?
-  AddTemplateButton.Enabled:=(TemplatesListBox.SelCount>1) or ((TemplatesListBox.ItemIndex>-1)
-      and (PathListBox.Items.IndexOf(TemplatesListBox.Items[TemplatesListBox.ItemIndex])=-1));
   // Delete non-existent paths button. Check if there are any.
   InValidPathsExist:=False;
   for i:=0 to PathListBox.Items.Count-1 do
@@ -608,7 +603,7 @@ begin
   FCurrentPathEditor:=PathEditorDialog;
   try
     inherited Click;
-    FCurrentPathEditor.Templates := GetForcedPathDelims(FTemplates);
+    FCurrentPathEditor.Templates := FTemplates;
     FCurrentPathEditor.Path := AssociatedEdit.Text;
     FCurrentPathEditor.ShowModal;
     DoOnPathEditorExecuted;

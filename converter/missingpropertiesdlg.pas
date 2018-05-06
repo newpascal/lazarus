@@ -36,13 +36,13 @@ uses
   Classes, SysUtils, contnrs,
   LCLProc, Forms, Controls, Grids, LResources, Dialogs, Buttons, StdCtrls, ExtCtrls,
   // LazUtils
-  LazFileUtils, LazUTF8Classes, LazUTF8,
+  LazFileUtils, LazUTF8Classes, LazUTF8, AvgLvlTree,
   // components
   SynHighlighterLFM, SynEdit, SynEditMiscClasses,
   // codetools
-  CodeCache, CodeToolManager, CodeToolsStructs, CodeCompletionTool, LFMTrees,
+  CodeCache, CodeToolManager, CodeCompletionTool, LFMTrees,
   // IdeIntf
-  IDEExternToolIntf, ComponentReg,
+  IDEExternToolIntf, ComponentReg, IDEImagesIntf,
   // IDE
   LazarusIDEStrConsts, EditorOptions, CheckLFMDlg, Project, SourceMarks,
   // Converter
@@ -741,7 +741,7 @@ begin
   PropertiesText.Caption:=lisProperties;
   TypesText.Caption:=lisTypes;
   ReplaceAllButton.Caption:=lisReplaceRemoveUnknown;
-  ReplaceAllButton.LoadGlyphFromResourceName(HInstance, 'laz_refresh');
+  TIDEImages.AssignImage(ReplaceAllButton.Glyph, 'laz_refresh');
   EditorOpts.GetHighlighterSettings(SynLFMSyn1);
   EditorOpts.GetSynEditSettings(LFMSynEdit);
 end;

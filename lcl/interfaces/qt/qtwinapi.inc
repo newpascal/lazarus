@@ -68,7 +68,7 @@ end;
   This function is Called:
   - Once on every OnPaint event
  ------------------------------------------------------------------------------}
-function TQtWidgetSet.BeginPaint(Handle: hWnd; var PS: TPaintStruct): hdc;
+function TQtWidgetSet.BeginPaint(Handle: hWnd; Var PS: TPaintStruct): hdc;
 var
   Widget: TQtWidget;
   DC: TQtDeviceContext;
@@ -588,12 +588,12 @@ begin
 
     FamilyName := StrPas(LogFont.lfFaceName);
 
-    if (CompareText(FamilyName, 'default') <> 0) then
+    if not IsFontNameDefault(FamilyName) then
       QtFont.setFamily(FamilyName)
     else
-      QtFont.setFamily(UTF16ToUTF8(GetDefaultAppFontName));
+      QtFont.setFamily(GetDefaultAppFontName{%H-});
 
-    if (LogFont.lfQuality >= Low(QStyleStategy)) and (LogFont.lfQuality <= High(QStyleStategy)) then
+    if LogFont.lfQuality <= High(QStyleStategy) then
       QtFont.setStyleStrategy(QStyleStategy[LogFont.lfQuality]);
     Result := HFONT(QtFont);
   except
@@ -1311,7 +1311,7 @@ end;
 function TQtWidgetSet.DrawText(DC: HDC; Str: PChar; Count: Integer;
   var ARect: TRect; Flags: Cardinal): Integer;
 var
-  WideStr: WideString;
+  WStr: WideString;
   R: TRect;
   QtDC: TQtDeviceContext;
   F: Integer;
@@ -1376,14 +1376,16 @@ begin
   QtDC :=TQtDeviceContext(DC);
 
   if Count >= 0 then
-    WideStr := GetUtf8String(Copy(Str, 1, Count))
+    WStr := {%H-}Copy(Str, 1, Count)
   else
-    WideStr := GetUtf8String(Str);
+    WStr := Str;
 
   ClipRect := Rect(0, 0, 0, 0);
   B := QtDC.getClipping;
   if (Flags and DT_NOCLIP = DT_NOCLIP) and
-    (Flags and DT_WORDBREAK = DT_WORDBREAK) then
+    (Flags and DT_WORDBREAK = DT_WORDBREAK) and
+    {if DT_CALCRECT is inlcuded we should avoid wrong calculation}
+    (Flags and DT_CALCRECT = 0) then
   begin
     if B then
       ClipRect := QtDC.getClipRegion.getBoundingRect;
@@ -1407,7 +1409,7 @@ begin
 
   F := DTFlagsToQtFlags(Flags);
 
-  QtDC.Metrics.BoundingRect(@R, @ARect, F, @WideStr);
+  QtDC.Metrics.BoundingRect(@R, @ARect, F, @WStr);
 
   //TODO: result should be different when DT_VCENTER or DT_BOTTOM is set
   Result := R.Bottom - R.Top;
@@ -1488,12 +1490,12 @@ begin
   begin
     // windows are removing trailing spaces in this case
     // and we are doing same thing too.
-    WideStr := TrimLeft(WideStr);
+    WStr := TrimLeft(WStr);
     with ARect do
-      WideStr := QtDC.Metrics.elidedText(WideStr, QtElideRight, Right - Left, 0);
+      WStr := QtDC.Metrics.elidedText(WStr, QtElideRight, Right - Left, 0);
   end;
 
-  QtDC.DrawText(ARect.Left + Pt.X, ARect.Top + Pt.Y, ARect.Right-ARect.Left, ARect.Bottom-ARect.Top, F, @WideStr);
+  QtDC.DrawText(ARect.Left + Pt.X, ARect.Top + Pt.Y, ARect.Right-ARect.Left, ARect.Bottom-ARect.Top, F, @WStr);
 end;
 
 {------------------------------------------------------------------------------
@@ -1763,7 +1765,7 @@ var
       for j := 0 to Result - 1 do
       begin
         QStringList_at(StrLst, @WStr, j);
-        List.Add(UTF16ToUTF8(WStr));
+        List.Add(WStr{%H-});
       end;
     finally
       QStringList_destroy(StrLst);
@@ -1819,7 +1821,7 @@ var
       for j := 0 to QStringList_size(NewList) - 1 do
       begin
         QStringList_at(NewList, @WStr, j);
-        List.Add(UTF16ToUTF8(WStr));
+        List.Add(WStr{%H-});
       end;
       Result := List.Count;
     finally
@@ -1836,7 +1838,7 @@ var
     if (AIndex >= 0) and (AIndex < QStringList_size(StylesList)) then
     begin
       QStringList_at(StylesList, @WStr, AIndex);
-      Result := UTF16ToUTF8(WStr);
+      Result := {%H-}WStr;
     end;
   end;
 
@@ -1851,7 +1853,7 @@ var
     QStringList_clear(AList);
     if Assigned(CharSetList) then
       CharSetList.Clear;
-    WStr := UTF8ToUTF16(AFontName);
+    WStr := {%H-}AFontName;
     QFontDatabase_writingSystems(FontDB, @Arr, @WStr);
     Result := length(Arr) > 0;
     for j := 0 to High(Arr) do
@@ -1870,7 +1872,7 @@ var
     Font: QFontH;
     WStr: WideString;
   begin
-    WStr := UTF8ToUTF16(AFontName);
+    WStr := {%H-}AFontName;
     Font := QFont_create(@WStr);
     ALogFontA.lfItalic := Byte(QFont_italic(Font));
     ALogFontA.lfWeight := QFont_weight(Font);
@@ -2193,7 +2195,7 @@ end;
 function TQtWidgetSet.ExtTextOut(DC: HDC; X, Y: Integer; Options: Longint;
   Rect: PRect; Str: PChar; Count: Longint; Dx: PInteger): Boolean;
 var
-  WideStr: WideString;
+  WStr: WideString;
   QtDC: TQtDeviceContext absolute DC;
   R, R1: TRect;
   Pt: TPoint;
@@ -2214,17 +2216,13 @@ var
     CurX := X;
     while CurCount > 0 do
     begin
-      CharLen := UTF8CharacterLength(CurStr);
+      CharLen := UTF8CodepointSize(CurStr);
+      W := {%H-}Copy(CurStr, 1, CharLen);
       if AClipped then
-      begin
-        W := GetUTF8String(Copy(CurStr, 1, CharLen));
         QtDC.drawText(CurX, Y, Rect^.Right - Rect^.Left, Rect^.Bottom - Rect^.Top,
-          QtTextDontClip, @W);
-      end else
-      begin
-        W := GetUTF8String(Copy(CurStr, 1, CharLen));
+                      QtTextDontClip, @W)
+      else
         QtDC.drawText(CurX, Y, @W);
-      end;
       inc(CurX, CurDx^);
       inc(CurDx);
       inc(CurStr, CharLen);
@@ -2245,12 +2243,12 @@ begin
   if ((Options and (ETO_OPAQUE + ETO_CLIPPED)) <> 0) and (Rect = nil) then
   begin
     if Count >= 0 then
-      WideStr := GetUtf8String(Copy(Str, 1, Count))
+      WStr := {%H-}Copy(Str, 1, Count)
     else
-      WideStr := GetUtf8String(Str);
+      WStr := Str;
 
     R := QtDC.getClipRegion.getBoundingRect;
-    QtDC.font.Metrics.boundingRect(@R1, @R, 0, @WideStr);
+    QtDC.font.Metrics.boundingRect(@R1, @R, 0, @WStr);
     B := True;
     Rect := @R1;
   end;
@@ -2276,7 +2274,7 @@ begin
       QPaintEngine_testDirty(QtDC.PaintEngine, QPaintEngineDirtyBrushOrigin) then
     begin
       R := Rect^;
-      QtDC.font.Metrics.boundingRect(@R1, @R, QtTextSingleLine, @WideStr);
+      QtDC.font.Metrics.boundingRect(@R1, @R, QtTextSingleLine, @WStr);
       if Options and ETO_CLIPPED = 0 then
         Pt := Point(Rect^.Left - X, Rect^.Top - Y)
       else
@@ -2292,9 +2290,9 @@ begin
     if Options and ETO_RTLREADING <> 0 then
       QPainter_setLayoutDirection(QtDC.Widget, QtRightToLeft);
     if Count >= 0 then
-      WideStr := GetUtf8String(Copy(Str, 1, Count))
+      WStr := {%H-}Copy(Str, 1, Count)
     else
-      WideStr := GetUtf8String(Str);
+      WStr := Str;
 
     if (Options and ETO_CLIPPED <> 0) then
     begin
@@ -2305,7 +2303,7 @@ begin
           DoDrawCharByChar(True)
         else
           QtDC.drawText(X, Y, Rect^.Right - Rect^.Left, Rect^.Bottom - Rect^.Top,
-            QtTextDontClip, @WideStr);
+            QtTextDontClip, @WStr);
       finally
         QtDC.Restore;
       end;
@@ -2314,7 +2312,7 @@ begin
       if Dx <> nil then
         DoDrawCharByChar(False)
       else
-        QtDC.drawText(X, Y, @WideStr);
+        QtDC.drawText(X, Y, @WStr);
     end;
     if Options and ETO_RTLREADING <> 0 then
       QPainter_setLayoutDirection(QtDC.Widget, ALayout);
@@ -2498,13 +2496,19 @@ var
   SubW: TQtWidget;
   Area: QMdiAreaH;
 begin
+  Result := 0;
   Widget := QApplication_activeWindow;
-  if Widget <> nil then
+  {return modal if activeWindow is nil issue #33409}
+  if Widget = nil then
+    Widget := QApplication_activeModalWidget;
+  if Widget = nil then
+    Widget := QApplication_activePopupWidget;
+  if Assigned(Widget) then
   begin
     W := QtObjectFromWidgetH(Widget);
-    if W <> nil then
+    if Assigned(W) and IsValidHandle(HWND(W)) then
     begin
-      if TQtMainWindow(W).MDIAreaHandle <> nil then
+      if (TQtWidget(W) is TQtMainWindow) and (TQtMainWindow(W).MDIAreaHandle <> nil) then
       begin
         Area := QMdiAreaH(TQtMainWindow(W).MDIAreaHandle.Widget);
         SubW := QtObjectFromWidgetH(QMdiArea_activeSubWindow(Area));
@@ -2515,8 +2519,7 @@ begin
       end else
         Result := HWND(W);
     end;
-  end else
-    Result := 0;
+  end;
 end;
 
 
@@ -3109,7 +3112,8 @@ begin
   if not Result then Exit;
   Desktop := QApplication_desktop();
   Dec(Monitor);
-  Result := (Monitor >= 0) and (Monitor < PtrUInt(QDesktopWidget_numScreens(Desktop)));
+  // Note: Monitor is PtrUInt and is always >= 0.
+  Result := Monitor < PtrUInt(QDesktopWidget_numScreens(Desktop));
   if not Result then Exit;
   QDesktopWidget_screenGeometry(Desktop, @lpmi^.rcMonitor, Monitor);
   QDesktopWidget_availableGeometry(Desktop, @lpmi^.rcWork, Monitor);
@@ -3246,7 +3250,7 @@ begin
       else
         ALogFont^.lfQuality := DEFAULT_QUALITY;
       end;
-      ALogFont^.lfFaceName := UTF16ToUTF8(AFont.getFamily);
+      ALogFont^.lfFaceName := AFont.getFamily;
     end;
   end
   {------------------------------------------------------------------------------
@@ -3589,7 +3593,7 @@ end;
 
  ------------------------------------------------------------------------------}
 function TQtWidgetSet.GetScrollInfo(Handle: HWND; BarFlag: Integer;
-  var ScrollInfo: TScrollInfo): Boolean;
+  Var ScrollInfo: TScrollInfo): Boolean;
 var
   QtScrollBar: TQtScrollBar;
 begin
@@ -4267,7 +4271,7 @@ begin
     if Str = nil then
       AStr := ''
     else
-      AStr := GetUtf8String(Str);
+      AStr := Str;
     Size.cx := 0;
     Size.cY := Font.Metrics.Height;
     if (AStr = '') then
@@ -4334,7 +4338,7 @@ end;
  ------------------------------------------------------------------------------}
 function TQtWidgetSet.GetTextExtentPoint(DC: HDC; Str: PChar; Count: Integer; var Size: TSize): Boolean;
 var
-  WideStr: WideString;
+  WStr: WideString;
   QtDC: TQtDeviceContext absolute DC;
 begin
   {$ifdef VerboseQtWinAPI}
@@ -4350,8 +4354,8 @@ begin
   Size.cy := 0;
   if (Count <= 0) or (Str = nil) or (StrPas(Str) = '') then
     exit;
-  WideStr := GetUtf8String(Str);
-  Size.cx := QtDC.Metrics.width(@WideStr, Count);
+  WStr := Str;
+  Size.cx := QtDC.Metrics.width(@WStr, Count);
   Size.cy := QtDC.Metrics.height;
 
   Result := True;
@@ -4665,9 +4669,9 @@ function TQtWidgetSet.GradientFill(DC: HDC; Vertices: PTriVertex;
     with Mesh do
     begin
       Result :=
-        (Vertex1 < Cardinal(NumVertices)) and (Vertex2 >= 0) and
-        (Vertex2 < Cardinal(NumVertices)) and (Vertex2 >= 0) and
-        (Vertex3 < Cardinal(NumVertices)) and (Vertex3 >= 0);
+        (Vertex1 < Cardinal(NumVertices)) and
+        (Vertex2 < Cardinal(NumVertices)) and
+        (Vertex3 < Cardinal(NumVertices));
 
       if (Vertex1 = Vertex2) or
         (Vertex1 = Vertex3) or
@@ -4738,8 +4742,8 @@ function TQtWidgetSet.GradientFill(DC: HDC; Vertices: PTriVertex;
     with Mesh do
     begin
       Result :=
-        (UpperLeft < Cardinal(NumVertices)) and (UpperLeft >= 0) and
-        (LowerRight < Cardinal(NumVertices)) and (LowerRight >= 0);
+        (UpperLeft < Cardinal(NumVertices)) and
+        (LowerRight < Cardinal(NumVertices));
       if (LowerRight = UpperLeft) or not Result then
         Exit;
 
@@ -4858,7 +4862,7 @@ begin
     try
       QtFont := QWidget_font(AMenu);
       QFont_family(QtFont, @AName);
-      Font.Name := UTF16ToUTF8(AName);
+      Font.Name := AName{%H-};
       if QFont_pointSize(QtFont) > 0 then
         Font.Size := QFont_pointSize(QtFont)
       else
@@ -4885,7 +4889,7 @@ begin
       else
         QApplication_font(QtFont);
       QFont_family(QtFont, @AName);
-      Font.Name := UTF16ToUTF8(AName);
+      Font.Name := AName{%H-};
       if QFont_pointSize(QtFont) > 0 then
         Font.Size := QFont_pointSize(QtFont)
       else
@@ -4954,7 +4958,9 @@ end;
 
 function TQtWidgetSet.IsIconic(Handle: HWND): boolean;
 begin
-  Result := TQtWidget(Handle).isMinimized;
+  Result := False;
+  if IsValidHandle(Handle) then
+    Result := TQtWidget(Handle).isMinimized;
 end;
 
 function TQtWidgetSet.IsWindow(handle: HWND): boolean;
@@ -4964,17 +4970,23 @@ end;
 
 function TQtWidgetSet.IsWindowEnabled(Handle: HWND): boolean;
 begin
-  Result := TQtWidget(Handle).getEnabled and TQtWidget(Handle).getVisible;
+  Result := False;
+  if IsValidHandle(Handle) then
+    Result := TQtWidget(Handle).getEnabled and TQtWidget(Handle).getVisible;
 end;
 
 function TQtWidgetSet.IsWindowVisible(Handle: HWND): boolean;
 begin
-  Result := TQtWidget(Handle).getVisible;
+  Result := False;
+  if IsValidHandle(Handle) then
+    Result := TQtWidget(Handle).getVisible;
 end;
 
 function TQtWidgetSet.IsZoomed(Handle: HWND): boolean;
 begin
-  Result := TQtWidget(Handle).isMaximized;
+  Result := False;
+  if IsValidHandle(Handle) then
+    Result := TQtWidget(Handle).isMaximized;
 end;
 
 {------------------------------------------------------------------------------
@@ -5028,8 +5040,7 @@ end;
   Returns: True if invalidate is successfull.
   Invalidates region of widget.
  ------------------------------------------------------------------------------}
-function TQtWidgetSet.InvalidateRgn(aHandle: HWND; Rgn: HRGN; Erase: Boolean
-  ): Boolean;
+function TQtWidgetSet.InvalidateRgn(aHandle: HWND; Rgn: HRGN; Erase: Boolean): Boolean;
 begin
   {$ifdef VerboseQtWinAPI}
     WriteLn('[WinAPI InvalidateRgn]');
@@ -5040,6 +5051,7 @@ begin
     TQtWidget(aHandle).UpdateRegion(TQtRegion(Rgn).FHandle)
   else
     TQtWidget(aHandle).Update;
+  Result := True;
 end;
 
 {------------------------------------------------------------------------------
@@ -5233,8 +5245,8 @@ var
   DialogType, DefButton, DefIcon : Cardinal;
 begin
   Result := 0;
-  Str := GetUtf8String(lpText);
-  TitleStr := GetUtf8String(lpCaption);
+  Str := lpText;
+  TitleStr := lpCaption;
   //TODO: TRANSLATIONS for buttons text, use TQtMessageBox
   if HWND <> 0 then
     AParent := TQtWidget(Hwnd).Widget
@@ -6054,18 +6066,18 @@ begin
 end;
 
 function TQtWidgetSet.GetForegroundWindow: HWND;
-var
-  W: QWidgetH;
 begin
   {$IFDEF HASX11}
+  {$note this should return current system active window, not
+    application one, if our app isn''t active.
+    This is per MSDN and pretty win32 specific}
   if WindowManagerName = 'metacity' then
-    W := X11GetActivewindow
+    Result := HwndFromWidgetH(X11GetActivewindow)
   else
-    W := QApplication_activeWindow();
+    Result := GetActiveWindow;
   {$ELSE}
-  W := QApplication_activeWindow();
+  Result := GetActiveWindow;
   {$ENDIF}
-  Result := HwndFromWidgetH(W);
 end;
 
 function TQtWidgetSet.SetForegroundWindow(HWnd: HWND): boolean;
@@ -6141,6 +6153,7 @@ begin
   begin
     if fnMapMode <> TQtDeviceContext(DC).vMapMode then
     begin
+      AWindowExt := Point(0, 0);
       case fnMapMode of
         MM_ANISOTROPIC:; // user's choice
         MM_ISOTROPIC:; // adjusted after each SetViewPortExtEx call (see MSDN for details)
@@ -7006,7 +7019,7 @@ end;
 function TQtWidgetSet.TextOut(DC: HDC; X, Y: Integer; Str: Pchar; Count: Integer
   ): Boolean;
 var
-  WideStr: WideString;
+  WStr: WideString;
 begin
   {$ifdef VerboseQtWinAPI}
     WriteLn('[WinAPI TextOut]');
@@ -7017,11 +7030,11 @@ begin
   if not IsValidDC(DC) then Exit;
 
   if Count >= 0 then
-    WideStr := GetUtf8String(Copy(Str, 1, Count))
+    WStr := {%H-}Copy(Str, 1, Count)
   else
-    WideStr := GetUtf8String(Str);
+    WStr := Str;
 
-  TQtDeviceContext(DC).drawText(X, Y, @WideStr);
+  TQtDeviceContext(DC).drawText(X, Y, @WStr);
 
   Result := True;
 end;

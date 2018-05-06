@@ -510,9 +510,11 @@ begin
   AY:=DRect.Top + 3;
   aH:=Canvas.TextHeight('Wg');
 
-  Canvas.TextRect(DRect, DRect.Left + 3, AY, Text);
-  inc(AY, aH + 3);
-
+  if Text<>'' then
+  begin
+    Canvas.TextRect(DRect, DRect.Left + 3, AY, Text);
+    inc(AY, aH + 3);
+  end;
   i:=0;
 
   Details := ThemeServices.GetElementDetails(tbRadioButtonUncheckedNormal);
@@ -736,11 +738,12 @@ end;
 
 procedure TlrButtonPanel.PaintDesignControl;
 var
-  AY, AX, aH, aW:integer;
+  AY, AX, aH, aW, W1:integer;
   R1:TRect;
   i:TPanelButton;
 
   B:TPanelBitBtn;
+  TR: TTextStyle;
 begin
   AY:=(DRect.Top + DRect.Bottom) div 2;
   aH:=Canvas.TextHeight(Text) div 2;
@@ -768,7 +771,13 @@ begin
       end;
       if Assigned(B) then
       begin
-        R1.Left:=R1.Right - B.Width;
+        if B.Width <= 0 then
+          W1:=75
+        else
+          W1:=B.Width;
+
+        R1.Left:=R1.Right - W1;
+
         DrawFrameControl(Canvas.Handle, R1, DFC_BUTTON, DFCS_BUTTONPUSH);
 
         AX:=(R1.Left +  R1.Right) div 2;
@@ -776,10 +785,13 @@ begin
         aW:=Canvas.TextWidth(B.Caption);
         aH:=Canvas.TextHeight(B.Caption) div 2;
 
-        if aW>B.Width then
-          Canvas.TextRect(R1, 0, AY - aH, B.Caption)
+        FillChar(TR,SizeOf(TR),0);
+        TR.ShowPrefix := true;
+
+        if aW>W1 then
+          Canvas.TextRect(R1, 0, AY - aH, B.Caption, TR)
         else
-          Canvas.TextRect(R1, AX - (aW div 2), AY - aH, B.Caption)
+          Canvas.TextRect(R1, AX - (aW div 2), AY - aH, B.Caption, TR)
 
       end;
       R1.Right:=R1.Left - 6;
@@ -1490,21 +1502,26 @@ var
   FSaveView:TfrView;
   FSavePage:TfrPage;
   CmdList, ErrorList:TStringList;
+  FSaveBand: TfrBand;
 begin
   if (DocMode = dmPrinting) and (Script.Count>0) and (Trim(Script.Text)<>'') and (Assigned(CurReport))then
   begin
     FSaveView:=CurView;
     FSavePage:=CurPage;
+    FSaveBand:=CurBand;
+
     CmdList:=TStringList.Create;
     ErrorList:=TStringList.Create;
     try
       CurView := Self;
       CurPage:=OwnerPage;
+      CurBand:=nil;
       frInterpretator.PrepareScript(Script, CmdList, ErrorList);
       frInterpretator.DoScript(CmdList);
     finally
       CurPage:=FSavePage;
       CurView := FSaveView;
+      CurBand:=FSaveBand;
       FreeAndNil(CmdList);
       FreeAndNil(ErrorList);
     end;

@@ -17,6 +17,11 @@ type
   private
     FCancelKind: TBitBtnKind;
     function CreateButtons(AVerticalLayout: Boolean; ASpacing: Integer): Integer;
+  protected
+    procedure DoAutoAdjustLayout(const AMode: TLayoutAdjustmentPolicy;
+      const AXProportion, AYProportion: Double); override;
+    procedure ChangeScale(Multiplier, Divider: Integer); override;
+    procedure FontChanged(Sender: TObject); override;
   public
     IsSmallDevice: Boolean;
   
@@ -92,22 +97,26 @@ end;
 
 procedure TPromptDialog.Paint;
 var
-  UseMaskHandle: HBitmap;
+  ATextStyle: TTextStyle;
 begin
   inherited Paint;
   
   // Draws the text
+  Canvas.Font := Font;
+  Canvas.Font.PixelsPerInch := Font.PixelsPerInch;
   Canvas.Brush := Brush;
-  Canvas.TextRect(TextBox, TextBox.Left, TextBox.Top, MSG, TextStyle);
+  ATextStyle := TextStyle;
+  if Canvas.Font.PixelsPerInch<>Screen.PixelsPerInch then
+    ATextStyle.SystemFont := False;
+
+  Canvas.TextRect(TextBox, TextBox.Left, TextBox.Top, MSG, ATextStyle);
 
   // Draws the icon
   if Assigned (FBitmap) and not IsSmallDevice then
   begin
-    UseMaskHandle := FBitmap.MaskHandle;
-    MaskBlt(Canvas.GetUpdatedHandle([csHandleValid]),
-            cBitmapX, cBitmapY, FBitmap.Width, FBitmap.Height,
-            FBitmap.Canvas.GetUpdatedHandle([csHandleValid]),
-            0, 0, UseMaskHandle, 0, 0);
+    Canvas.StretchDraw(
+      Rect(cBitmapX, cBitmapY, cBitmapX+ScaleScreenToFont(FBitmap.Width), cBitmapY+ScaleScreenToFont(FBitmap.Height)),
+      FBitmap);
   end;
 end;
 
@@ -199,10 +208,42 @@ begin
     LayoutDialog;
 end;
 
+procedure TPromptDialog.ChangeScale(Multiplier, Divider: Integer);
+begin
+  inherited ChangeScale(Multiplier, Divider);
+
+  TextBox.Left := MulDiv(TextBox.Left, Multiplier, Divider);
+  TextBox.Top := MulDiv(TextBox.Top, Multiplier, Divider);
+  TextBox.Right := MulDiv(TextBox.Right, Multiplier, Divider);
+  TextBox.Bottom := MulDiv(TextBox.Bottom, Multiplier, Divider);
+end;
+
 destructor TPromptDialog.Destroy;
 begin
   FBitmap.Free;
   inherited destroy;
+end;
+
+procedure TPromptDialog.DoAutoAdjustLayout(
+  const AMode: TLayoutAdjustmentPolicy; const AXProportion,
+  AYProportion: Double);
+begin
+  inherited DoAutoAdjustLayout(AMode, AXProportion, AYProportion);
+
+  if AMode in [lapAutoAdjustWithoutHorizontalScrolling, lapAutoAdjustForDPI] then
+  begin
+    TextBox.Left := Round(TextBox.Left*AXProportion);
+    TextBox.Top := Round(TextBox.Top*AYProportion);
+    TextBox.Right := Round(TextBox.Right*AXProportion);
+    TextBox.Bottom := Round(TextBox.Bottom*AYProportion);
+  end;
+end;
+
+procedure TPromptDialog.FontChanged(Sender: TObject);
+begin
+  inherited FontChanged(Sender);
+
+  TextStyle.SystemFont := False;
 end;
 
 function TPromptDialog.GetMessageText: string;
@@ -521,14 +562,20 @@ begin
     end;
 end;
 
-function CreateMessageDialog(const Msg: string; DlgType: TMsgDlgType; Buttons: TMsgDlgButtons): TForm;
+function CreateMessageDialog(const aMsg: string; DlgType: TMsgDlgType;
+  Buttons: TMsgDlgButtons): TForm;
+begin
+  Result := CreateMessageDialog('', aMsg, DlgType, Buttons);
+end;
+
+function CreateMessageDialog(const aCaption, aMsg: string; DlgType: TMsgDlgType; Buttons: TMsgDlgButtons): TForm;
 var
   PDlg: TPromptDialog;
   Btns: PLongInt;
   CancelValue, DefaultIndex, ButtonCount: Longint;
 begin
   Btns := GetPromptUserButtons(Buttons, CancelValue, DefaultIndex, ButtonCount, False, mbOk);
-  PDlg := TPromptDialog.CreateMessageDialog('', Msg, DialogIds[DlgType], Btns, ButtonCount, DefaultIndex);
+  PDlg := TPromptDialog.CreateMessageDialog(aCaption, aMsg, DialogIds[DlgType], Btns, ButtonCount, DefaultIndex);
   Result := TForm(PDlg);
   ReallocMem(Btns, 0);
 end;

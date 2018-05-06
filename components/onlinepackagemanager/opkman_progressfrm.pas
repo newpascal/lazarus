@@ -27,15 +27,18 @@ unit opkman_progressfrm;
 interface
 
 uses
-  Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, ComCtrls,
-  StdCtrls, ExtCtrls, opkman_serializablepackages, opkman_installer, opkman_VirtualTrees;
+  SysUtils, Classes, VirtualTrees,
+  // LCL
+  Forms, Controls, Graphics, Dialogs, ComCtrls, StdCtrls, ExtCtrls, ButtonPanel,
+  // OpkMan
+  opkman_installer, opkman_common, opkman_const, opkman_downloader, opkman_zipper,
+  opkman_options;
 
 type
 
   { TProgressFrm }
 
   TProgressFrm = class(TForm)
-    bCancel: TButton;
     cbExtractOpen: TCheckBox;
     imTree: TImageList;
     lbElapsed: TLabel;
@@ -50,15 +53,14 @@ type
     lbSpeedData: TLabel;
     pb: TProgressBar;
     pbTotal: TProgressBar;
+    bpCancel: TButtonPanel;
     pnLabels: TPanel;
-    pnButtons: TPanel;
     tmWait: TTimer;
     procedure bCancelClick(Sender: TObject);
     procedure FormClose(Sender: TObject; var CloseAction: TCloseAction);
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure FormKeyPress(Sender: TObject; var Key: char);
-    procedure FormResize(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure tmWaitTimer(Sender: TObject);
   private
@@ -102,7 +104,7 @@ var
   ProgressFrm: TProgressFrm;
 
 implementation
-uses opkman_common, opkman_const, opkman_downloader, opkman_zipper;
+
 {$R *.lfm}
 
 { TProgressFrm }
@@ -143,6 +145,8 @@ end;
 
 procedure TProgressFrm.FormCreate(Sender: TObject);
 begin
+  if not Options.UseDefaultTheme then
+    Self.Color := clBtnFace;
   FVST := TVirtualStringTree.Create(nil);
   with FVST do
   begin
@@ -150,7 +154,8 @@ begin
     Align := alClient;
     Anchors := [akLeft, akTop, akRight];
     Images := imTree;
-    Color := clBtnFace;
+    if not Options.UseDefaultTheme then
+      Color := clBtnFace;
     DefaultNodeHeight := 25;
     Indent := 0;
     TabOrder := 1;
@@ -199,11 +204,6 @@ begin
     FSuccess := False;
     Close;
   end;
-end;
-
-procedure TProgressFrm.FormResize(Sender: TObject);
-begin
-  bCancel.Left := (Self.Width - bCancel.Width) div 2;
 end;
 
 procedure TProgressFrm.DoOnPackageDownloadProgress(Sender: TObject; AFrom, ATo: String;
@@ -259,7 +259,7 @@ begin
     FSuccess := False;
     PackageDownloader.OnPackageDownloadProgress := nil;
     PackageDownloader.OnPackageDownloadError := nil;
-    PackageDownloader.CancelDownloadPackages;
+    PackageDownloader.Cancel;
     Close;
   end;
 end;
@@ -267,7 +267,8 @@ end;
 procedure TProgressFrm.DoOnPackageDownloadCompleted(Sender: TObject);
 begin
   FCanClose := True;
-  FSuccess := True;
+  if FMdlRes <> mrNo then
+    FSuccess := True;
   Close;
 end;
 
@@ -329,7 +330,8 @@ procedure TProgressFrm.DoOnZipCompleted(Sender: TObject);
 begin
   Application.ProcessMessages;
   FCanClose := True;
-  FSuccess := True;
+  if FMdlRes <> mrNo then
+    FSuccess := True;
   Close;
 end;
 
@@ -432,7 +434,8 @@ end;
 procedure TProgressFrm.DoOnPackageInstallCompleted(Sender: TObject; ANeedToRebuild: Boolean; AInstallStatus: TInstallStatus);
 begin
   FCanClose := True;
-  FSuccess := True;
+  if FMdlRes <> mrNo then
+    FSuccess := True;
   FNeedToRebuild := ANeedToRebuild;
   FInstallStatus := AInstallStatus;
   Application.ProcessMessages;
@@ -499,14 +502,14 @@ end;
 procedure TProgressFrm.bCancelClick(Sender: TObject);
 begin
   Self.Caption := rsProgressFrm_Info4;
-  bCancel.Enabled := False;
+  bpCancel.CancelButton.Enabled := False;
   FCanClose := True;
   case FType of
     0: begin
          FSuccess := False;
          PackageDownloader.OnPackageDownloadProgress := nil;
          PackageDownloader.OnPackageDownloadError := nil;
-         PackageDownloader.CancelDownloadPackages;
+         PackageDownloader.Cancel;
        end;
     1: begin
          FSuccess := False;
@@ -524,7 +527,7 @@ begin
          FSuccess := False;
          PackageDownloader.OnPackageUpdateProgress := nil;
          PackageDownloader.OnPackageDownloadError := nil;
-         PackageDownloader.CancelUpdatePackages;
+         PackageDownloader.Cancel;
        end;
    end;
   Close;
@@ -576,10 +579,10 @@ begin
   lbSpeedData.Caption := rsProgressFrm_lbSpeedCalc_Caption;
   lbElapsed.Caption := rsProgressFrm_lbElapsed_Caption;
   lbRemaining.Caption := rsProgressFrm_lbRemaining_Caption;
-  pb.Top := lbReceived.Top + lbReceived.Height + 1;
-  pbTotal.Top := lbReceivedTotal.Top + lbReceivedTotal.Height + 1;
-  bCancel.Top := (pnButtons.Height - bCancel.Height) div 2;
-  cbExtractOpen.Top := bCancel.Top + (bCancel.Height - cbExtractOpen.Height) div 2;
+  //pb.Top := lbReceived.Top + lbReceived.Height + 1;
+  //pbTotal.Top := lbReceivedTotal.Top + lbReceivedTotal.Height + 1;
+  //bCancel.Top := (bpCancel.Height - bCancel.Height) div 2;
+  //cbExtractOpen.Top := bCancel.Top + (bCancel.Height - cbExtractOpen.Height) div 2;
   Application.ProcessMessages;
 end;
 

@@ -26,8 +26,11 @@ unit opkman_packagelistfrm;
 interface
 
 uses
-  Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, ExtCtrls,
-  StdCtrls, opkman_VirtualTrees;
+  SysUtils,
+  // LCL
+  Forms, Controls, Graphics, ExtCtrls, StdCtrls, VirtualTrees,
+  // OpkMan
+  opkman_const, opkman_serializablepackages, opkman_options, opkman_visualtree;
 
 type
 
@@ -60,6 +63,7 @@ type
     procedure VSTCompareNodes(Sender: TBaseVirtualTree; Node1,
       Node2: PVirtualNode; Column: TColumnIndex; var Result: Integer);
     procedure VSTFreeNode(Sender: TBaseVirtualTree; Node: PVirtualNode);
+    function IsNodeVisible(const APackageName: String): Boolean;
   public
     procedure PopulateList(const ATyp: Integer; const AExtra: String = '');
     property Count: Integer read GetCount;
@@ -69,7 +73,6 @@ var
   PackageListFrm: TPackageListFrm;
 
 implementation
-uses opkman_const, opkman_serializablepackages;
 
 {$R *.lfm}
 
@@ -112,7 +115,7 @@ begin
   case ATyp of
     0: Caption := rsPackageListFrm_Caption0;
     1: Caption := rsPackageListFrm_Caption1;
-    2: Caption := rsPackageListFrm_Caption2;
+    2: Caption := rsPackageListFrm_Caption0;
   end;
   bYes.Caption := rsPackageListFrm_bYes_Caption;
   bNo.Caption := rsPackageListFrm_bNo_Caption;
@@ -128,7 +131,7 @@ var
   I, J: Integer;
   Node: PVirtualNode;
   Data: PData;
-  PackageFile: TPackageFile;
+  LazarusPkg: TLazarusPackage;
   ChkCnt, InvCnt: Integer;
 begin
   SetupControls(ATyp);
@@ -136,16 +139,18 @@ begin
   InvCnt := 0;
   for I := 0 to SerializablePackages.Count - 1 do
   begin
+    if not IsNodeVisible(SerializablePackages.Items[I].DisplayName) then
+      Continue;
     if ATyp = 0 then
     begin
-      for J := 0 to SerializablePackages.Items[I].PackageFiles.Count - 1  do
+      for J := 0 to SerializablePackages.Items[I].LazarusPackages.Count - 1  do
       begin
-        PackageFile := TPackageFile(SerializablePackages.Items[I].PackageFiles.Items[J]);
-        if (PackageFile.Checked) and (psInstalled in PackageFile.PackageStates) then
+        LazarusPkg := TLazarusPackage(SerializablePackages.Items[I].LazarusPackages.Items[J]);
+        if (LazarusPkg.Checked) and (psInstalled in LazarusPkg.PackageStates) then
         begin
           Node := FVST.AddChild(nil);
           Data := FVST.GetNodeData(Node);
-          Data^.FName := PackageFile.Name + '(' + PackageFile.InstalledFileVersion + ')';
+          Data^.FName := LazarusPkg.Name + '(' + LazarusPkg.InstalledFileVersion + ')';
           Data^.FImageIndex := 1;
         end;
       end;
@@ -192,7 +197,7 @@ begin
     bOk.Visible := True;
     lbMessage.Caption := rsMainFrm_PackageUpdate1;
   end;
-  FVST.SortTree(0, opkman_VirtualTrees.sdAscending);
+  FVST.SortTree(0, sdAscending);
 end;
 
 procedure TPackageListFrm.FormClose(Sender: TObject;
@@ -204,6 +209,8 @@ end;
 
 procedure TPackageListFrm.FormCreate(Sender: TObject);
 begin
+  if not Options.UseDefaultTheme then
+    Self.Color := clBtnFace;
   FVST := TVirtualStringTree.Create(nil);
   with FVST do
   begin
@@ -211,7 +218,8 @@ begin
     Align := alClient;
     Anchors := [akLeft, akTop, akRight];
     Images := imTree;
-    Color := clBtnFace;
+    if not Options.UseDefaultTheme then
+      Color := clBtnFace;
     DefaultNodeHeight := 25;
     Indent := 0;
     TabOrder := 1;
@@ -289,6 +297,25 @@ var
 begin
   Data := FVST.GetNodeData(Node);
   Finalize(Data^);
+end;
+
+function TPackageListFrm.IsNodeVisible(const APackageName: String): Boolean;
+var
+  Node: PVirtualNode;
+  Data: opkman_visualtree.PData;
+begin
+  Result := False;
+  Node := VisualTree.VST.GetFirst;
+  while Assigned(Node) do
+  begin
+    Data := VisualTree.VST.GetNodeData(Node);
+    if (Data^.DataType = 1) and (Data^.PackageDisplayName = APackageName) then
+    begin
+      Result := VisualTree.VST.IsVisible[Node];
+      Break;
+    end;
+    Node := VisualTree.VST.GetNext(Node);
+  end;
 end;
 
 end.

@@ -252,16 +252,24 @@ end;
 
 
 procedure TSynPoSyn.StringProc;
+var
+  FirstQuotePos, LastQuotePos: longint;
 begin
+  FirstQuotePos := Run;
+  LastQuotePos := FirstQuotePos;
   fTokenID := tkString;
-  repeat
+  while FLine[Run] <> #0 do
+  begin
     case FLine[Run] of
-      #0, #10, #13: break;
-      '\': if FLine[Run + 1] = #34 then Inc(Run); { \" means a literal " in the line}
+      #10, #13: break;
+      #34: if (Run <= 0) or (FLine[Run - 1] <> '\') then LastQuotePos := Run;
     end;
     inc(Run);
-  until FLine[Run] = #34;
-  if FLine[Run] <> #0 then inc(Run);
+  end;
+  if FirstQuotePos <> LastQuotePos then
+    Run := LastQuotePos;
+  if FLine[Run] <> #0 then
+    inc(Run);
 end;
 
 

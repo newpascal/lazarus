@@ -280,12 +280,15 @@ begin
       Buttons[CurButtonType]:=CurButton;
       if CurButtonType in [nbPrior,nbNext] then
         CurButton.NavStyle:=CurButton.NavStyle+[nsAllowTimer];
-      //Load default images
-      CurButton.LoadGlyphFromResourceName(hInstance, DBNavButtonResourceName[CurButtonType]);
-      //Apply custom images if available
       if Assigned(FImages) and (Ord(CurButtontype) < FImages.Count) then
-        FImages.GetBitmap(Ord(CurButtonType), CurButton.Glyph);
-      CurButton.NumGlyphs:=1;
+      begin //Apply custom images if available
+        CurButton.Images := FImages;
+        CurButton.ImageIndex := Ord(CurButtonType)
+      end else
+      begin //Load default images
+        CurButton.Images := LCLGlyphs;
+        CurButton.ImageIndex := LCLGlyphs.GetImageIndex(DBNavButtonResourceName[CurButtonType]);
+      end;
       CurButton.Parent:=Self;
       CurButton.OnClick:=@ButtonClickHandler;
       CurButton.ControlStyle := CurButton.ControlStyle + [csNoDesignSelectable];
@@ -313,12 +316,15 @@ begin
       FocusableButtons[CurButtonType]:=CurFocusableButton;
       if CurButtonType in [nbPrior,nbNext] then
         CurFocusableButton.NavStyle:=CurFocusableButton.NavStyle+[nsAllowTimer];
-      //Load default images
-      CurFocusableButton.LoadGlyphFromResourceName(hInstance, DBNavButtonResourceName[CurButtonType]);
-      //Apply custom images if available
       if Assigned(FImages) and (Ord(CurButtontype) < FImages.Count) then
-        FImages.GetBitmap(Ord(CurButtonType), CurFocusableButton.Glyph);
-      CurFocusableButton.NumGlyphs:=1;
+      begin //Apply custom images if available
+        CurFocusableButton.Images := FImages;
+        CurFocusableButton.ImageIndex := Ord(CurButtonType);
+      end else
+      begin //Load default images
+        CurFocusableButton.Images := LCLGlyphs;
+        CurFocusableButton.ImageIndex := LCLGlyphs.GetImageIndex(DBNavButtonResourceName[CurButtonType]);
+      end;
       CurFocusableButton.TabStop := True;
       CurFocusableButton.Parent:=Self;
       CurFocusableButton.OnClick:=@ButtonClickHandler;

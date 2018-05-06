@@ -39,21 +39,24 @@ unit CodeHelp;
 interface
 
 uses
-  // RTL + FCL + LCL
-  Classes, SysUtils, LCLType, LCLProc, Forms, Controls, FileUtil, Dialogs,
+  // RTL + FCL
+  Classes, SysUtils, Laz_AVL_Tree,
+  // LCL
+  LCLProc, Forms, Controls, Dialogs,
   // CodeTools
   CodeAtom, CodeTree, CodeToolManager, FindDeclarationTool, BasicCodeTools,
   KeywordFuncLists, PascalParserTool, CodeCache, CacheCodeTools, CustomCodeTool,
-  FileProcs, DefineTemplates, CodeToolsStructs,
+  FileProcs, DefineTemplates,
   // LazUtils
-  AvgLvlTree, LazFileUtils, LazUTF8, LazFileCache, Laz2_DOM, Laz2_XMLRead, Laz2_XMLWrite,
+  AvgLvlTree, FileUtil, LazFileUtils, LazUTF8, LazFileCache,
+  Laz2_DOM, Laz2_XMLRead, Laz2_XMLWrite,
   // SynEdit
   SynHighlighterPas,
   // IDEIntf
   IDECommands, IDEMsgIntf, MacroIntf, PackageIntf, LazHelpIntf, ProjectIntf,
   IDEDialogs, IDEHelpIntf, LazIDEIntf, IDEExternToolIntf,
   // IDE
-  EditorOptions, LazarusIDEStrConsts, CompilerOptions, IDEProcs, PackageDefs,
+  EditorOptions, LazarusIDEStrConsts, IDEProcs, PackageDefs,
   EnvironmentOpts, TransferMacros, PackageSystem, DialogProcs, KeyMapping;
 
 const
@@ -220,10 +223,10 @@ type
     );
 
   TCodeHelpHintOption = (
-    chhoSmallStep,    // do the next step. Use this to run on idle.
+    chhoSmallStep,         // do the next step. Use this to run on idle.
     chhoDeclarationHeader, // add a header with source position and type of identifier
-    chhoNoComments,    // do not add the pasdoc comments
-    chhoShowFocusHint  // show the shortcut ecFocusHint
+    chhoComments,          // add the pasdoc comments
+    chhoShowFocusHint      // show the shortcut ecFocusHint
   );
   TCodeHelpHintOptions = set of TCodeHelpHintOption;
     
@@ -231,10 +234,10 @@ type
 
   TCodeHelpManager = class(TComponent)
   private
-    FDocs: TAvgLvlTree;// tree of loaded TLazFPDocFile
+    FDocs: TAvlTree;// tree of loaded TLazFPDocFile
     FHandlers: array[TCodeHelpManagerHandler] of TMethodList;
     FPasHighlighter: TSynPasSyn;
-    FSrcToDocMap: TAvgLvlTree; // tree of TCHSourceToFPDocFile sorted for SourceFilename
+    FSrcToDocMap: TAvlTree; // tree of TCHSourceToFPDocFile sorted for SourceFilename
     FDeclarationCache: TDeclarationInheritanceCache;
     procedure AddHandler(HandlerType: TCodeHelpManagerHandler;
                          const AMethod: TMethod; {%H-}AsLast: boolean = false);
@@ -882,8 +885,11 @@ function TLazFPDocFile.GetValuesFromNode(Node: TDOMNode): TFPDocElementValues;
 // simple function to return the values as string
 var
   S: String;
+  i: TFPDocItem;
 begin
   //DebugLn(['TLazFPDocFile.GetValuesFromNode ',Node.NodeName,' ',dbgsName(Node),' ',Node is TDomElement]);
+  for i in TFPDocItem do
+    Result[i] := '';
   if Node is TDomElement then
     Result[fpdiElementLink] := TDomElement(Node).GetAttribute('link');
   Node := Node.FirstChild;
@@ -911,8 +917,7 @@ begin
   end;
 end;
 
-function TLazFPDocFile.GetValueFromNode(Node: TDOMNode; Item: TFPDocItem
-  ): string;
+function TLazFPDocFile.GetValueFromNode(Node: TDOMNode; Item: TFPDocItem): string;
 var
   Child: TDOMNode;
 begin
@@ -1182,7 +1187,7 @@ var
   CurUnitName: String;
   UnitSet: TFPCUnitSetCache;
   IsInFPCSrc: Boolean;
-  AVLNode: TAvgLvlTreeNode;
+  AVLNode: TAvlTreeNode;
 begin
   Result:='';
   NewOwner:=nil;
@@ -1354,8 +1359,8 @@ end;
 constructor TCodeHelpManager.Create(TheOwner: TComponent);
 begin
   inherited Create(TheOwner);
-  FDocs:=TAvgLvlTree.Create(@CompareLazFPDocFilenames);
-  FSrcToDocMap:=TAvgLvlTree.Create(@CompareLDSrc2DocSrcFilenames);
+  FDocs:=TAvlTree.Create(@CompareLazFPDocFilenames);
+  FSrcToDocMap:=TAvlTree.Create(@CompareLDSrc2DocSrcFilenames);
   FDeclarationCache:=TDeclarationInheritanceCache.Create(
                                   @CodeToolBoss.FindDeclarationAndOverload,
                                   @CodeToolBoss.GetCodeTreeNodesDeletedStep);
@@ -1375,7 +1380,7 @@ end;
 
 function TCodeHelpManager.FindFPDocFile(const Filename: string): TLazFPDocFile;
 var
-  Node: TAvgLvlTreeNode;
+  Node: TAvlTreeNode;
 begin
   Node:=FDocs.FindKey(Pointer(Filename),@CompareAnsistringWithLazFPDocFile);
   if Node<>nil then
@@ -1705,7 +1710,7 @@ var
 
 var
   CodeBuf: TCodeBuffer;
-  AVLNode: TAvgLvlTreeNode;
+  AVLNode: TAvlTreeNode;
   MapEntry: TCHSourceToFPDocFile;
 begin
   Result:='';
@@ -1802,7 +1807,7 @@ var
   CacheWasUsed: boolean;
   AnOwner: TObject;
   FPDocFilename: String;
-  S2SItem: PStringToStringTreeItem;
+  S2SItem: PStringToStringItem;
 begin
   for S2SItem in SrcFilenames do begin
     SrcFilename:=S2SItem^.Name;
@@ -2484,11 +2489,11 @@ function TCodeHelpManager.GetHTMLHintForExpr(CTExprType: TExpressionType;
 var
   aTopLine: integer;
   ListOfPCodeXYPosition: TFPList;
-  ElementName: String;
   AnOwner: TObject;
   FPDocFilename: String;
   FPDocFile: TLazFPDocFile;
   Complete: boolean;
+  ElementName: String;
   ElementNode: TDOMNode;
   ElementNames: TStringList;
   i: Integer;
@@ -2496,7 +2501,7 @@ var
   OldCTTool: TFindDeclarationTool;
   OldCTNode: TCodeTreeNode;
   n: Integer;
-  s: String;
+  s, Descr, Short: String;
   Cmd: TKeyCommandRelation;
   CTTool: TFindDeclarationTool;
   CTNode: TCodeTreeNode;
@@ -2523,7 +2528,8 @@ begin
       if chhoDeclarationHeader in Options then
         HTMLHint:=HTMLHint+GetHTMLDeclarationHeader(CTTool,CTNode,CTExprType.Desc,XYPos);
 
-      for n:=1 to 30 do begin
+      for n:=1 to 30 do
+      begin
         if (CTExprType.Desc=xtContext) and (CTNode<>nil) then
           ElementName:=CodeNodeToElementName(CTTool,CTNode)
         else if (CTExprType.Desc in xtAllIdentPredefinedTypes) then
@@ -2534,7 +2540,7 @@ begin
         i:=ElementNames.Count-1;
         while (i>=0) do begin
           if (ElementNames.Objects[i]=CTTool)
-          and (SysUtils.CompareText(ElementNames[i],ElementName)=0) then
+          and (CompareText(ElementNames[i],ElementName)=0) then
             break;
           dec(i);
         end;
@@ -2562,21 +2568,28 @@ begin
             ElementNode:=FPDocFile.GetElementWithName(ElementName);
             if ElementNode<>nil then begin
               //DebugLn(['TCodeHelpManager.GetHTMLHintForNode: fpdoc element found "',ElementName,'"']);
-              s:=AppendLineEnding(GetFPDocNodeAsHTML(FPDocFile,ElementNode.FindNode(FPDocItemNames[fpdiShort])));
-              s:=s+AppendLineEnding(GetFPDocNodeAsHTML(FPDocFile,ElementNode.FindNode(FPDocItemNames[fpdiDescription])));
-              if s<>'' then begin
-                // Leave also Description header out to save space when header is not requested
-                if chhoDeclarationHeader in Options then
+              Short:=AppendLineEnding(GetFPDocNodeAsHTML(FPDocFile,ElementNode.FindNode(FPDocItemNames[fpdiShort])));
+              Descr:=AppendLineEnding(GetFPDocNodeAsHTML(FPDocFile,ElementNode.FindNode(FPDocItemNames[fpdiDescription])));
+              s:=Short+Descr;
+              if chhoDeclarationHeader in Options then
+              begin
+                // Add Description header only when requested. Save space otherwise.
+                if s<>'' then
                   s:='<br>'+LineEnding+'<div class="title">Description</div>'+LineEnding+s;
-                HTMLHint:=HTMLHint+s;
+              end
+              else begin
+                // Make Short text distinctive if both are given and no header is requested.
+                if (Short<>'') and (Descr<>'') then
+                  s:=Short+'<hr>'+Descr;
               end;
+              HTMLHint:=HTMLHint+s;
               HTMLHint:=HTMLHint+GetFPDocNodeAsHTML(FPDocFile,ElementNode.FindNode(FPDocItemNames[fpdiErrors]));
               HTMLHint:=HTMLHint+GetFPDocNodeAsHTML(FPDocFile,ElementNode.FindNode(FPDocItemNames[fpdiSeeAlso]));
               HTMLHint:=HTMLHint+GetFPDocNodeAsHTML(FPDocFile,ElementNode.FindNode(FPDocItemNames[fpdiExample]));
             end;
           end;
 
-          if not (chhoNoComments in Options) then
+          if chhoComments in Options then
           begin
             // add pasdoc
             HTMLHint:=HTMLHint+GetPasDocCommentsAsHTML(CTTool,CTNode);
@@ -2731,7 +2744,9 @@ begin
   if Desc=xtContext then
     CTHint:=Tool.GetSmartHint(Node,XYPos,false)
   else if Desc in xtAllIdentPredefinedTypes then
-    CTHint:='type '+ExpressionTypeDescNames[Desc];
+    CTHint:='type '+ExpressionTypeDescNames[Desc]
+  else
+    CTHint:='';
   Result:=Result+'  <nobr>'+SourceToFPDocHint(CTHint)+'</nobr>';
 
   // add link to declaration
@@ -2927,13 +2942,16 @@ function TCodeHelpManager.GetFPDocNodeAsHTML(FPDocFile: TLazFPDocFile;
       else if Node.NodeName='seealso' then
         Result:=Result+'<div class="title">'+'See also'+'</div>';
       Result:=Result+'<div class="'+Node.NodeName+'">'+s+'</div>'+LineEnding;
-    end else if (Node.NodeName='p')
+    end else
+    if (Node.NodeName='p')
     or (Node.NodeName='b')
     or (Node.NodeName='pre')
     or (Node.NodeName='table')
     or (Node.NodeName='th')
     or (Node.NodeName='tr')
     or (Node.NodeName='td')
+    or (Node.NodeName='ul')
+    or (Node.NodeName='li')
     or (Node.NodeName='hr')
     then begin
       Result:=Result+'<'+Node.NodeName+'>'+AddChilds(Node)+'</'+Node.NodeName+'>';
@@ -3171,7 +3189,7 @@ end;
 
 procedure TCodeHelpManager.FreeDocs;
 var
-  AVLNode: TAvgLvlTreeNode;
+  AVLNode: TAvlTreeNode;
 begin
   AVLNode:=FDocs.FindLowest;
   while AVLNode<>nil do begin

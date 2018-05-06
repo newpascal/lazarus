@@ -164,7 +164,9 @@ Mike Thompson
 Nikolay Ermolov
 Nur Cholif Murtadho
 Olivier Guilbaud
+Olexandr Pylypchuk - Ukrainian translation
 Ondrej Pokorny
+Pascal Riekenberg
 Patrick Chevalley
 Paul Ishenin
 Paul Michell
@@ -175,12 +177,14 @@ Petr Kristan
 Philip J. Hess
 Philippe Picard
 Pierre Gillmann
+Pino Toscano
 Przemyslaw Nagay
 Radek Cervinka
 Raul Moratalla
 Razvan Adrian Bogdan
 Reimar Grabowski
 Reinier Olislagers
+Roland Hahn - Component icons
 Roozbeh GHolizadeh
 Rostislav Okulov
 Salvatore Coppola
@@ -227,6 +231,7 @@ Zaenal Mutaqin
 Zaher Dirkey
 Zdravko Gabrovski
 Zeljan Rikalo
+Zheng Jian Ping aka "robsean" - Simplified Chinese translation
 Žilvinas Ledas
 
 #and special thanks to the FPC team.

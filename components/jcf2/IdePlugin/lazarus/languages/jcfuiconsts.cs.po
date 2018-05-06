@@ -409,6 +409,10 @@ msgstr ""
 msgid "Word list:"
 msgstr ""
 
+#: jcfuiconsts.lisfrfileconfirmformat
+msgid "Show confirmation dialog before format"
+msgstr ""
+
 #: jcfuiconsts.lisfrfilesdatefilewritten
 msgid "Date file written: %s"
 msgstr ""
@@ -429,12 +433,16 @@ msgstr ""
 msgid "File not found"
 msgstr ""
 
-#: jcfuiconsts.lisfrfilesformatfile
-msgid "Format File"
+#: jcfuiconsts.lisfrfilesopenfolder
+msgid "Open folder"
 msgstr ""
 
-#: jcfuiconsts.lisfrfilesformatfileis
-msgid "Format file is %s"
+#: jcfuiconsts.lisfrfilessettingsfile
+msgid "Settings File"
+msgstr ""
+
+#: jcfuiconsts.lisfrfilessettingsfileis
+msgid "Settings file is:"
 msgstr ""
 
 #: jcfuiconsts.lisfrfilesversionthatwrotethisfile
@@ -503,6 +511,10 @@ msgstr ""
 
 #: jcfuiconsts.lisjcfformatsettings
 msgid "JCF Format Settings"
+msgstr ""
+
+#: jcfuiconsts.lisjedicodeformatallopenwindow
+msgid "JEDI Code Format of all open windows?"
 msgstr ""
 
 #: jcfuiconsts.lisjedicodeformatofareyousurethatyouwanttoformatallfi

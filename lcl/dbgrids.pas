@@ -32,13 +32,16 @@ unit DBGrids;
 interface
 
 uses
-  Classes, SysUtils, Math, FileUtil, DB,
-  LazUTF8, LazLoggerBase, LCLStrConsts, LCLIntf, LCLType, LMessages, LResources,
-  Controls, StdCtrls, Graphics, Grids, Dialogs, Themes, Variants, Clipbrd, Laz2_XMLCfg;
+  Classes, SysUtils, Math, FileUtil, DB, LazUTF8, LazLoggerBase, LCLStrConsts,
+  LCLIntf, LCLType, LMessages, LResources, Controls, StdCtrls, Graphics, Grids,
+  Dialogs, Themes, Variants, Clipbrd, ImgList, Laz2_XMLCfg;
 
 {$if FPC_FULLVERSION<20701}
   {$DEFINE noautomatedbookmark}
 {$endif}
+
+const
+  DEFINDICATORCOLWIDTH = 12;
 
 type
   TCustomDbGrid = class;
@@ -73,7 +76,8 @@ type
     dgCellEllipsis,                     // show ... if cell text is truncated
     dgRowHighlight,                     // Highlight current row
     dgThumbTracking,
-    dgDblClickAutoSize                  // dblclicking columns borders (on hdrs) resize col.
+    dgDblClickAutoSize,                 // dblclicking columns borders (on hdrs) resize col.
+    dgDisplayMemoText                   // show memo content instead of (memo) for ftMemo fields
   );
   TDbGridOptions = set of TDbGridOption;
 
@@ -89,6 +93,9 @@ type
 
   TDataSetScrolledEvent =
     procedure(DataSet: TDataSet; Distance: Integer) of object;
+
+  TFocusControlEvent =
+    procedure(aField: TFieldRef) of object;
 
   TDBGridClickEvent =
     procedure(Column: TColumn) of object;
@@ -167,6 +174,7 @@ type
     fOnDataSetOpen: TDataSetNotifyEvent;
     FOnDataSetScrolled: TDataSetScrolledEvent;
     FOnEditingChanged: TDataSetNotifyEvent;
+    fOnFocusControl: TFocusControlEvent;
     fOnInvalidDataSet: TDataSetNotifyEvent;
     fOnInvalidDataSource: TDataSetNotifyEvent;
     FOnLayoutChanged: TDataSetNotifyEvent;
@@ -197,6 +205,7 @@ type
     property OnDataSetOpen: TDataSetNotifyEvent read fOnDataSetOpen write fOnDataSetOpen;
     property OnInvalidDataSet: TDataSetNotifyEvent read fOnInvalidDataSet write fOnInvalidDataSet;
     property OnInvalidDataSource: TDataSetNotifyEvent read fOnInvalidDataSource write fOnInvalidDataSource;
+    property OnFocusControl: TFocusControlEvent read fOnFocusControl write fOnFocusControl;
     property OnLayoutChanged: TDataSetNotifyEvent read FOnLayoutChanged write FOnLayoutChanged;
     property OnDataSetClose: TDataSetNotifyEvent read fOnDataSetClose write fOnDataSetClose;
     property OnDataSetScrolled: TDataSetScrolledEvent read FOnDataSetScrolled write FOnDataSetScrolled;
@@ -290,6 +299,7 @@ type
     FOnColumnMoved: TMovedEvent;
     FOnColumnSized: TNotifyEvent;
     FOnDrawColumnCell: TDrawColumnCellEvent;
+    FOnDrawColumnTitle: TDrawColumnCellEvent;
     FOnFieldEditMask: TGetDbEditMaskEvent;
     FOnTitleClick: TDBGridClickEvent;
     FOnSelectEditor: TDbGridSelEditorEvent;
@@ -332,6 +342,7 @@ type
     procedure OnEditingChanged(aDataSet: TDataSet);
     procedure OnInvalidDataSet(aDataSet: TDataSet);
     procedure OnInvalidDataSource(aDataSet: TDataset);
+    procedure OnFocusControl(aField: TFieldRef);
     procedure OnLayoutChanged(aDataSet: TDataSet);
     procedure OnNewDataSet(aDataSet: TDataset);
     procedure OnDataSetScrolled(aDataSet:TDataSet; Distance: Integer);
@@ -381,6 +392,7 @@ type
     procedure BeforeMoveSelection(const DCol,DRow: Integer); override;
     procedure BeginLayout;
     procedure CellClick(const aCol,aRow: Integer; const Button:TMouseButton); override;
+    function  CheckDisplayMemo(aField: TField): boolean;
     procedure InvalidateSizes;
     procedure ColRowMoved(IsColumn: Boolean; FromIndex,ToIndex: Integer); override;
     function  ColumnEditorStyle(aCol: Integer; F: TField): TColumnButtonStyle;
@@ -429,12 +441,13 @@ type
     function  GetEditText(aCol, aRow: Longint): string; override;
     function  GetFieldFromGridColumn(Column: Integer): TField;
     function  GetGridColumnFromField(F: TField): Integer;
-    function  GetImageForCheckBox(const aCol,aRow: Integer;
-                                  CheckBoxView: TCheckBoxState): TBitmap; override;
+    procedure GetImageForCheckBox(const aCol, aRow: Integer;
+      CheckBoxView: TCheckBoxState; var ImageList: TCustomImageList;
+      var ImageIndex: TImageIndex; var Bitmap: TBitmap); override;
     function  GetIsCellSelected(aCol, aRow: Integer): boolean; override;
     function  GetIsCellTitle(aCol,aRow: Integer): boolean; override;
     procedure GetSelectedState(AState: TGridDrawState; out IsSelected:boolean); override;
-    function GetSmoothScroll(Which: Integer): Boolean; override;
+    function  GetSmoothScroll(Which: Integer): Boolean; override;
     function  GetTruncCellHintText(aCol, aRow: Integer): string; override;
     function  GridCanModify: boolean;
     procedure GetSBVisibility(out HsbVisible,VsbVisible:boolean);override;
@@ -473,7 +486,6 @@ type
     property Columns: TDBGridColumns read GetColumns write SetColumns;
     property GridStatus: TDBGridStatus read FGridStatus write FGridStatus;
     property Datalink: TComponentDataLink read FDatalink;
-    property DataSource: TDataSource read GetDataSource write SetDataSource;
     property Options: TDBGridOptions read FOptions write SetOptions default
               [dgColumnResize, dgColumnMove, dgTitles, dgIndicator, dgRowLines,
                dgColLines, dgConfirmDelete, dgCancelOnExit, dgTabs, dgEditing,
@@ -489,6 +501,7 @@ type
     property OnColumnMoved: TMovedEvent read FOnColumnMoved write FOnColumnMoved;
     property OnColumnSized: TNotifyEvent read FOnColumnSized write FOnColumnSized;
     property OnDrawColumnCell: TDrawColumnCellEvent read FOnDrawColumnCell write FOnDrawColumnCell;
+    property OnDrawColumnTitle: TDrawColumnCellEvent read FOnDrawColumnTitle write FOnDrawColumnTitle;
     property OnFieldEditMask: TGetDbEditMaskEvent read FOnFieldEditMask write FOnFieldEditMask;
     property OnGetCellHint: TDbGridCellHintEvent read FOnGetCellHint write FOnGetCellHint;
     property OnPrepareCanvas: TPrepareDbGridCanvasEvent read FOnPrepareCanvas write FOnPrepareCanvas;
@@ -500,7 +513,6 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     procedure AutoAdjustColumns; override;
-    procedure AutoSizeColumns; deprecated 'This method will be deleted in 1.8. Use AutoAdjustColumns';
     procedure InitiateAction; override;
     procedure DefaultDrawColumnCell(const Rect: TRect; DataCol: Integer; Column: TColumn; State: TGridDrawState);
     function  EditorByStyle(Style: TColumnButtonStyle): TWinControl; override;
@@ -522,6 +534,7 @@ type
     property SelectedFieldRect: TRect read GetSelectedFieldRect;
     property LastColumn: TColumn read GetLastColumn;
     property FirstColumn: TColumn read GetFirstColumn;
+    property DataSource: TDataSource read GetDataSource write SetDataSource;
   end;
 
   TDBGrid=class(TCustomDBGrid)
@@ -572,6 +585,7 @@ type
     //property ImeMode;
     //property ImeName;
     property Options;
+    property Options2;
     property OptionsExtra;
     property ParentBiDiMode;
     property ParentColor default false;
@@ -596,6 +610,7 @@ type
     property OnColumnSized;
     property OnContextPopup;
     property OnDrawColumnCell;
+    property OnDrawColumnTitle;
     property OnDblClick;
     property OnDragDrop;
     property OnDragOver;
@@ -654,7 +669,7 @@ end;
 function CalcColumnFieldWidth(Canvas: TCanvas; hasTitle: boolean;
   aTitle: String; aTitleFont: TFont; Field: TField): Integer;
 var
-  aCharWidth: Integer;
+  aCharWidth, aTitleWidth: Integer;
   aFont: TFont;
   UseTitleFont: boolean;
 begin
@@ -666,10 +681,11 @@ begin
   else begin
 
     aCharWidth := CalcCanvasCharWidth(Canvas);
-    if Field.DisplayWidth>LazUTF8.UTF8Length(aTitle) then
+    aTitleWidth := UTF8Length(aTitle);
+    if Field.DisplayWidth > aTitleWidth then
       result := aCharWidth * Field.DisplayWidth
     else
-      result := aCharWidth * LazUTF8.UTF8Length(aTitle);
+      result := aCharWidth * aTitleWidth;
 
     if HasTitle then begin
       UseTitleFont :=
@@ -752,9 +768,12 @@ begin
     UpdateActive
   else begin
     c := GetGridColumnFromField(Field);
-    if c>0 then
-      InvalidateCell(C, Row)
-    else
+    if c>0 then begin
+      if EditorMode and (Field=SelectedField) then
+        EditorDoSetValue
+      else
+        InvalidateCell(C, Row)
+    end else
       UpdateActive;
   end;
 end;
@@ -826,7 +845,7 @@ begin
   RowCount := OldFixedRows + 1;
   ColCount := OldFixedCols + 1;
   if dgIndicator in Options then
-    ColWidths[0]:=12;
+    ColWidths[0]:=Scale96ToFont(DEFINDICATORCOLWIDTH);
 end;
 
 procedure TCustomDBGrid.DoHeaderClick(Index: Integer);
@@ -941,6 +960,20 @@ begin
   DebugLn('%s.OnInvalidDataSource', [ClassName]);
   {$endif}
   LinkActive(False);
+end;
+
+procedure TCustomDBGrid.OnFocusControl(aField: TFieldRef);
+var
+  aIndex: Integer;
+begin
+  if CanFocus and (aField<>nil) and (aField^<>nil) then begin
+    aIndex := GetGridColumnFromField(aField^);
+    if aIndex>=FirstGridColumn then begin
+      SelectedField := aField^;
+      aField^ := nil;
+      SetFocus;
+    end;
+  end;
 end;
 
 procedure TCustomDBGrid.OnLayoutChanged(aDataSet: TDataSet);
@@ -1520,22 +1553,29 @@ begin
     C := ColumnFromGridColumn(ACol) as TColumn;
     FOnGetCellHint(self, C, Result);
   end;
-
 end;
 
 function TCustomDBGrid.GetTruncCellHintText(aCol, aRow: Integer): string;
 var
   F: TField;
+  C: TColumn;
 begin
   Result := '';
   if ARow < FixedRows then
     exit;
   F := GetFieldFromGridColumn(ACol);
   if (F <> nil) then
+    if CheckDisplayMemo(f) then
+      result := F.AsString
+    else
     if (F.DataType <> ftBlob) then
       Result := F.DisplayText
     else
       Result := '(blob)';
+  if Assigned(OnGetCellHint) then begin
+    C := ColumnFromGridColumn(ACol) as TColumn;
+    FOnGetCellHint(self, C, Result);
+  end;
 end;
 
 // obtain the field either from a Db column or directly from dataset fields
@@ -1567,12 +1607,13 @@ begin
   end;
 end;
 
-function TCustomDBGrid.GetImageForCheckBox(const aCol, aRow: Integer;
-  CheckBoxView: TCheckBoxState): TBitmap;
+procedure TCustomDBGrid.GetImageForCheckBox(const aCol, aRow: Integer;
+  CheckBoxView: TCheckBoxState; var ImageList: TCustomImageList;
+  var ImageIndex: TImageIndex; var Bitmap: TBitmap);
 begin
-  Result:=inherited GetImageForCheckBox(aCol, aRow, CheckBoxView);
+  inherited GetImageForCheckBox(aCol, aRow, CheckBoxView, ImageList, ImageIndex, Bitmap);
   if Assigned(OnUserCheckboxBitmap) then
-    OnUserCheckboxBitmap(Self, CheckBoxView, Result);
+    OnUserCheckboxBitmap(Self, CheckBoxView, Bitmap);
 end;
 
 // obtain the visible field index corresponding to the grid column index
@@ -1624,12 +1665,9 @@ begin
   {$endif}
   if FDefaultColWidths then begin
     if dgIndicator in Options then
-      ColWidths[0]:=12;
+      ColWidths[0]:=Scale96ToFont(12);
     if NeedAutoSizeColumns then
-      UpdateAutoSizeColumns
-    else
-    for i:=FirstGridColumn to ColCount-1 do
-      ColWidths[i] := GetColumnWidth(i);
+      UpdateAutoSizeColumns;
   end;
 end;
 
@@ -1646,30 +1684,28 @@ begin
 
   GetScrollBarParams(aRange, aPage, aPos);
 
-  FillChar(ScrollInfo, SizeOf(ScrollInfo), 0);
-  ScrollInfo.cbSize := SizeOf(ScrollInfo);
+  if (ScrollBars in [ssBoth, ssVertical])
+  or ((Scrollbars in [ssAutoVertical, ssAutoBoth]) and (aRange>aPage)) then
+  begin
+    FillChar(ScrollInfo, SizeOf(ScrollInfo), 0);
+    ScrollInfo.cbSize := SizeOf(ScrollInfo);
 
-  {TODO: try to move this out}
-  {$ifdef WINDOWS}
-  ScrollInfo.fMask := SIF_ALL or SIF_DISABLENOSCROLL;
-  ScrollInfo.ntrackPos := 0;
-  {$else}
-  ScrollInfo.fMask := SIF_ALL or SIF_UPDATEPOLICY;
-  //ScrollInfo.ntrackPos := SB_POLICY_CONTINUOUS;
-  ScrollInfo.ntrackPos := SB_POLICY_DISCONTINUOUS;
-  {$endif}
-  ScrollInfo.nMin := 0;
-  ScrollInfo.nMax := aRange;
-  ScrollInfo.nPos := Min(aPos,aRange-aPage);
-  ScrollInfo.nPage := aPage;
-  // the redraw argument of SetScrollInfo means under gtk
-  // if the scrollbar is visible or not, in windows it
-  // seems to mean if the scrollbar is redrawn or not
-  // to reflect the scrollbar changes made
-  SetScrollInfo(Handle, SB_VERT, ScrollInfo,
-    (ScrollBars in [ssBoth, ssVertical]) or
-    ((Scrollbars in [ssAutoVertical, ssAutoBoth]) and (aRange>aPAge))
-  );
+    {TODO: try to move this out}
+    {$ifdef WINDOWS}
+    ScrollInfo.fMask := SIF_ALL or SIF_DISABLENOSCROLL;
+    ScrollInfo.ntrackPos := 0;
+    {$else}
+    ScrollInfo.fMask := SIF_ALL or SIF_UPDATEPOLICY;
+    //ScrollInfo.ntrackPos := SB_POLICY_CONTINUOUS;
+    ScrollInfo.ntrackPos := SB_POLICY_DISCONTINUOUS;
+    {$endif}
+    ScrollInfo.nMin := 0;
+    ScrollInfo.nMax := aRange;
+    ScrollInfo.nPos := Min(aPos,aRange-aPage);
+    ScrollInfo.nPage := aPage;
+    SetScrollInfo(Handle, SB_VERT, ScrollInfo, True);
+  end;
+
   FOldPosition := aPos;
   {$ifdef dbgDBGrid}
   DebugLnExit('%s.UpdateScrollBarRange DONE Handle=%d aRange=%d aPage=%d aPos=%d',
@@ -2094,7 +2130,10 @@ begin
           {$ifdef dbgGridPaint}
           DbgOut(' Field=%s',[F.FieldName]);
           {$endif}
-          S := F.DisplayText;
+          if CheckDisplayMemo(F) then
+            S := F.AsString
+          else
+            S := F.DisplayText;
         end else
           S := '';
         {$ifdef dbggridpaint}
@@ -2344,6 +2383,8 @@ var
   end;
 
   procedure MoveSel(AReset: boolean);
+  var
+    ACol: Integer;
   begin
     if (DeltaCol<>0) or (DeltaRow<>0) then begin
       if DeltaRow > 0 then begin
@@ -2356,7 +2397,21 @@ var
       end;
       GridFlags := GridFlags + [gfEditingDone];
       if (DeltaCol<>0) then
-        Col := Col + DeltaCol;
+        if Col + DeltaCol < FixedCols then
+          Col := FixedCols
+        else if Col + DeltaCol >= ColCount then
+          Col := ColCount - 1
+        else
+        begin
+          ACol := Col + DeltaCol;
+          if ColWidths[ACol] > 0 then
+            Col := ACol
+          else
+            if DeltaCol < 0 then
+              Col := GetFirstVisibleColumn
+            else
+              Col := GetLastVisibleColumn;
+        end;
       GridFlags := GridFlags - [gfEditingDone];
     end else
     if AReset then
@@ -2371,7 +2426,7 @@ begin
       begin
         doOnKeyDown;
         if (Key<>0) and ValidDataset then begin
-          if dgTabs in Options then begin
+          if (dgTabs in Options) then begin
 
             if ((ssShift in shift) and
                (Col<=GetFirstVisibleColumn) and (Row<=GetFirstVisibleRow)) then begin
@@ -2631,12 +2686,14 @@ begin
         if Gz=gzFixedRows then
           P.X := Col;
 
-        if P.Y=Row then begin
+        if P.Y=Row then begin      // The current active row was clicked again.
           //doAcceptValue;
 
           if ssCtrl in Shift then begin
             doMouseDown;
-            ToggleSelectedRow;
+            // Don't unselect the row if Right-click was for PopupMenu.
+            if (Button<>mbRight) or (PopupMenu=Nil) then
+              ToggleSelectedRow;
           end
           else begin
             if Button=mbLeft then
@@ -2663,7 +2720,10 @@ begin
             ToggleSelectedRow
           else begin
             if Button=mbLeft then
-              ClearSelection(true);
+              ClearSelection(true)
+            // Select row before popupmenu
+            else if (Button=mbRight) and Assigned(PopupMenu) and not FSelectedRows.CurrentRowSelected then
+              ToggleSelectedRow;
             doMoveToColumn;
           end;
         end;
@@ -2849,6 +2909,12 @@ begin
   end;
 end;
 
+function TCustomDBGrid.CheckDisplayMemo(aField: TField): boolean;
+begin
+  // note that this assumes that aField is not nil
+  result := (aField.DataType=ftMemo) and (dgDisplayMemoText in Options);
+end;
+
 procedure TCustomDBGrid.EndLayout;
 begin
   dec(FLayoutChangedCount);
@@ -2959,8 +3025,12 @@ begin
   Result := '';
   if FDataLink.Active then begin
     aField := GetFieldFromGridColumn(aCol);
-    if aField<>nil then
-      Result := aField.Text;
+    if aField<>nil then begin
+      if CheckDisplayMemo(aField) then
+        Result := aField.AsString
+      else
+        Result := aField.Text;
+    end;
   end;
 end;
 
@@ -3039,7 +3109,7 @@ end;
 
 function TCustomDBGrid.MouseButtonAllowed(Button: TMouseButton): boolean;
 begin
-  Result:= (Button=mbLeft) or (dgAnyButtonCanSelect in Options);
+  Result:= FDataLink.Active and ((Button=mbLeft) or (dgAnyButtonCanSelect in Options));
 end;
 
 procedure TCustomDBGrid.DrawAllRows;
@@ -3099,8 +3169,7 @@ begin
   {$endif}
 end;
 
-procedure TCustomDBGrid.DrawCell(aCol, aRow: Integer; aRect: TRect;
-  aState: TGridDrawState);
+procedure TCustomDBGrid.DrawCell(aCol, aRow: Integer; aRect: TRect; aState: TGridDrawState);
 var
   DataCol: Integer;
 begin
@@ -3119,13 +3188,18 @@ begin
   if not DefaultDrawing then
     DrawCellBackground(aCol, aRow, aRect, aState);
 
-  if (ARow>=FixedRows) and Assigned(OnDrawColumnCell) and
-    not (csDesigning in ComponentState) then begin
-
-    DataCol := ColumnIndexFromGridColumn(aCol);
-    if DataCol>=0 then
-      OnDrawColumnCell(Self, aRect, DataCol, TColumn(Columns[DataCol]), aState);
-
+  if not (csDesigning in ComponentState) then
+  begin
+    if (ARow>=FixedRows) and Assigned(OnDrawColumnCell) then begin
+      DataCol := ColumnIndexFromGridColumn(aCol);
+      if DataCol>=0 then
+        OnDrawColumnCell(Self, aRect, DataCol, TColumn(Columns[DataCol]), aState);
+    end;
+    if (ARow<FixedRows) and Assigned(OnDrawColumnTitle) then begin
+      DataCol := ColumnIndexFromGridColumn(aCol);
+      if DataCol>=0 then
+        OnDrawColumnTitle(Self, aRect, DataCol, TColumn(Columns[DataCol]), aState);
+    end;
   end;
 
   DrawCellGrid(aCol, aRow, aRect, aState);
@@ -3208,13 +3282,19 @@ procedure TCustomDBGrid.DrawColumnText(aCol, aRow: Integer; aRect: TRect;
  aState: TGridDrawState);
 var
   F: TField;
+  s: String;
 begin
   if GetIsCellTitle(aCol, aRow) then
     inherited DrawColumnText(aCol, aRow, aRect, aState)
   else begin
     F := GetFieldFromGridColumn(aCol);
-    if F<>nil then
-      DrawCellText(aCol, aRow, aRect, aState, F.DisplayText)
+    if F<>nil then begin
+      if CheckDisplayMemo(F) then
+        s := F.AsString
+      else
+        s := F.DisplayText;
+      DrawCellText(aCol, aRow, aRect, aState, s)
+    end;
   end;
 end;
 
@@ -3303,7 +3383,8 @@ begin
     aField := SelectedField;
     if aField<>nil then begin
       Result := IsValidChar(AField, Ch) and not aField.Calculated and
-        (aField.DataType<>ftAutoInc) and (aField.FieldKind<>fkLookup) and not aField.IsBlob;
+        (aField.DataType<>ftAutoInc) and (aField.FieldKind<>fkLookup) and
+        (not aField.IsBlob or CheckDisplayMemo(aField));
     end;
   end;
 end;
@@ -3450,11 +3531,9 @@ begin
   try
     Result := GetColumnCount;
     if Result > 0 then begin
-
       if dgTitles in Options then FRCount := 1 else FRCount := 0;
       if dgIndicator in Options then FCCount := 1 else FCCount := 0;
       InternalSetColCount(Result + FCCount);
-
       if FDataLink.Active then begin
         UpdateBufferCount;
         RecCount := FDataLink.RecordCount;
@@ -3467,14 +3546,10 @@ begin
           // if there is one, and if there are no titles
           RecCount := FCCount;
       end;
-
       Inc(RecCount, FRCount);
-
       RowCount := RecCount;
       FixedRows := FRCount;
-
       UpdateGridColumnSizes;
-
       if FDatalink.Active and (FDatalink.ActiveRecord>=0) then
         AdjustEditorBounds(Col, FixedRows + FDatalink.ActiveRecord);
     end;
@@ -3502,6 +3577,7 @@ begin
   FDataLink.OnLayoutChanged:=@OnLayoutChanged;
   FDataLink.OnEditingChanged:=@OnEditingChanged;
   FDataLink.OnUpdateData:=@OnUpdateData;
+  FDatalink.OnFocusControl := @OnFocusControl;
   FDataLink.VisualControl:= True;
 
   FSelectedRows := TBookmarkList.Create(Self);
@@ -3530,11 +3606,6 @@ procedure TCustomDBGrid.AutoAdjustColumns;
 begin
   Exclude(FGridStatus, gsAutoSized);
   UpdateAutoSizeColumns;
-end;
-
-procedure TCustomDBGrid.AutoSizeColumns;
-begin
-  AutoAdjustColumns;
 end;
 
 procedure TCustomDBGrid.InitiateAction;
@@ -3576,6 +3647,9 @@ begin
 
       else begin
         if F<>nil then begin
+          if CheckDisplayMemo(F) then
+            S := F.AsString
+          else
           if F.dataType <> ftBlob then
             S := F.DisplayText
           else
@@ -3623,7 +3697,10 @@ begin
       if FDatalink.BOF then aPos := 0 else
       if FDatalink.EOF then aPos := aRange
       else
+      begin
         aPos := FDataLink.DataSet.RecNo - 1; // RecNo is 1 based
+        FDataLink.DataSet.UpdateCursorPos; // FPC 3 bug #31532 workaround
+      end;
       if aPos<0 then aPos:=0;
       if aRange=0 then aRange:=1; // there's always 1 (new) row
     end else begin
@@ -3903,6 +3980,8 @@ begin
   {$ifdef dbgDBGrid}
   DebugLn('%s.FocusControl', [ClassName]);
   {$endif}
+  if Assigned(OnFocusControl) then
+    OnFocusControl(Field);
 end;
 
 procedure TComponentDataLink.CheckBrowseMode;
@@ -4246,7 +4325,7 @@ begin
       FreeWorkingCanvas(tmpCanvas);
 
   end else
-    result := DEFCOLWIDTH;
+    result := -1;
 end;
 
 function TColumn.CreateTitle: TGridColumnTitle;
@@ -4632,6 +4711,9 @@ end;
 function TBookmarkList.Refresh: boolean;
 var
   i: LongInt;
+  {$ifndef noautomatedbookmark}
+  Bookmark: Pointer;
+  {$endif}
 begin
   {$ifdef dbgDBGrid}
   DebugLn('%s.Refresh', [ClassName]);
@@ -4640,6 +4722,11 @@ begin
   for i := FList.Count - 1 downto 0 do
     if not FDataset.BookmarkValid(TBookMark(Items[i])) then begin
       Result := True;
+      FDataset.FreeBookmark(Items[i]);
+      {$ifndef noautomatedbookmark}
+      Bookmark := FList[i];
+      SetLength(TBookmark(Bookmark),0); // decrease reference count
+      {$endif noautomatedbookmark}
       Flist.Delete(i);
     end;
   if Result then

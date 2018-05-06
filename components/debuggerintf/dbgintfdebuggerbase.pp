@@ -158,7 +158,7 @@ type
                        );
 
   (* TValidState: State for breakpoints *)
-  TValidState = (vsUnknown, vsValid, vsInvalid);
+  TValidState = (vsUnknown, vsValid, vsInvalid, vsPending);
 
 const
   DebuggerDataStateStr : array[TDebuggerDataState] of string = (
@@ -352,6 +352,7 @@ type
     property Kind: TDBGBreakPointKind read GetKind write SetKind;
     property Valid: TValidState read GetValid;
   public
+    procedure SetPendingToValid(const AValue: TValidState);
     procedure SetLocation(const ASource: String; const ALine: Integer); virtual;
     procedure SetWatch(const AData: String; const AScope: TDBGWatchPointScope;
                        const AKind: TDBGWatchPointKind); virtual;
@@ -592,7 +593,7 @@ type
      wdfChar, wdfString,
      wdfDecimal, wdfUnsigned, wdfFloat, wdfHex,
      wdfPointer,
-     wdfMemDump
+     wdfMemDump, wdfBinary
     );
 
   TWatch = class;
@@ -858,8 +859,8 @@ type
   public
     constructor Create;
     function Count: Integer; virtual;
-    function GetAddress(const {%H-}AIndex: Integer; const {%H-}ALine: Integer): TDbgPtr; virtual;
-    function GetAddress(const ASource: String; const ALine: Integer): TDbgPtr;
+    function HasAddress(const AIndex: Integer; const ALine: Integer): Boolean; virtual;
+    function HasAddress(const ASource: String; const ALine: Integer): Boolean;
     function GetInfo({%H-}AAddress: TDbgPtr; out {%H-}ASource, {%H-}ALine, {%H-}AOffset: Integer): Boolean; virtual;
     function IndexOf(const {%H-}ASource: String): integer; virtual;
     procedure Request(const {%H-}ASource: String); virtual;
@@ -1932,6 +1933,7 @@ type
   end;
 
 procedure RegisterDebugger(const ADebuggerClass: TDebuggerClass);
+function MinDbgPtr(a, b: TDBGPtr): TDBGPtr;inline; overload;
 
 function dbgs(AState: TDBGState): String; overload;
 function dbgs(ADataState: TDebuggerDataState): String; overload;
@@ -1980,6 +1982,14 @@ var
 procedure RegisterDebugger(const ADebuggerClass: TDebuggerClass);
 begin
   MDebuggerClasses.AddObject(ADebuggerClass.ClassName, TObject(Pointer(ADebuggerClass)));
+end;
+
+function MinDbgPtr(a, b: TDBGPtr): TDBGPtr;
+begin
+  if a < b then
+    Result := a
+  else
+    Result := b;
 end;
 
 procedure DoFinalization;
@@ -2189,7 +2199,7 @@ begin
   TryStartAt.GuessedValue := TmpAddr;
   AdjustToRangeOrKnowFunctionStart(TryStartAt, RngBefore);
   // check max size
-  if (TryStartAt.Value < AStartAddr - Min(AStartAddr, DAssMaxRangeSize))
+  if (TryStartAt.Value < AStartAddr - MinDbgPtr(AStartAddr, DAssMaxRangeSize))
   then begin
     DebugLn(DBG_DISASSEMBLER, ['INFO: Limit Range for Disass: FStartAddr=', AStartAddr, '  TryStartAt.Value=', TryStartAt.Value  ]);
     TryStartAt := InitAddress(TmpAddr, avGuessed);
@@ -2307,7 +2317,7 @@ begin
     then RngBefore := nil;
     {$POP}
     AdjustToRangeOrKnowFunctionStart(TryStartAt, RngBefore);
-    if (TryStartAt.Value < TryEndAt.Value - Min(TryEndAt.Value, DAssMaxRangeSize))
+    if (TryStartAt.Value < TryEndAt.Value - MinDbgPtr(TryEndAt.Value, DAssMaxRangeSize))
     then begin
       DebugLn(DBG_DISASSEMBLER, ['INFO: Limit Range for Disass: TryEndAt.Value=', TryEndAt.Value, '  TryStartAt.Value=', TryStartAt.Value  ]);
       TryStartAt := InitAddress(TmpAddr, avGuessed);
@@ -2445,7 +2455,7 @@ procedure TThreads.Add(AThread: TThreadEntry);
 begin
   FList.Add(AThread.CreateCopy);
   if FList.Count = 1 then
-    FCurrentThreadId := AThread.ThreadId;
+    FCurrentThreadId := AThread.ThreadId; // TODO: this should never be needed?
 end;
 
 procedure TThreads.Remove(AThread: TThreadEntry);
@@ -3520,6 +3530,12 @@ begin
   AddReference;
 end;
 
+procedure TBaseBreakPoint.SetPendingToValid(const AValue: TValidState);
+begin
+  assert(Valid = vsPending, 'Can only change state if pending');
+  SetValid(AValue);
+end;
+
 procedure TBaseBreakPoint.DoBreakHitCountChange;
 begin
   Changed;
@@ -4238,19 +4254,15 @@ begin
   inherited Create;
 end;
 
-function TBaseLineInfo.GetAddress(const AIndex: Integer; const ALine: Integer): TDbgPtr;
-begin
-  Result := 0;
-end;
-
-function TBaseLineInfo.GetAddress(const ASource: String; const ALine: Integer): TDbgPtr;
+function TBaseLineInfo.HasAddress(const ASource: String; const ALine: Integer
+  ): Boolean;
 var
   idx: Integer;
 begin
   idx := IndexOf(ASource);
   if idx = -1
-  then Result := 0
-  else Result := GetAddress(idx, ALine);
+  then Result := False
+  else Result := HasAddress(idx, ALine);
 end;
 
 function TBaseLineInfo.GetInfo(AAddress: TDbgPtr; out ASource, ALine, AOffset: Integer): Boolean;
@@ -4270,6 +4282,12 @@ end;
 function TBaseLineInfo.Count: Integer;
 begin
   Result := 0;
+end;
+
+function TBaseLineInfo.HasAddress(const AIndex: Integer; const ALine: Integer
+  ): Boolean;
+begin
+  Result := False;
 end;
 
 { TDBGLineInfo }

@@ -39,10 +39,10 @@ uses
   ExtCtrls, LCLType, LCLProc,
   TreeFilterEdit,
   // LazUtils
-  FileUtil, LazFileUtils, LazFileCache,
+  FileUtil, LazFileUtils, LazFileCache, AvgLvlTree,
   // IDEIntf
-  IDEImagesIntf, MenuIntf, LazIDEIntf, ProjectIntf, CodeToolsStructs,
-  FormEditingIntf, PackageIntf, IDEHelpIntf, IDEOptionsIntf,
+  IDEImagesIntf, MenuIntf, LazIDEIntf, ProjectIntf,
+  FormEditingIntf, PackageDependencyIntf, PackageIntf, IDEHelpIntf, IDEOptionsIntf,
   NewItemIntf, IDEWindowIntf, IDEDialogs, ComponentReg,
   // IDE
   MainBase, IDEProcs, LazarusIDEStrConsts, IDEDefs, CompilerOptions,
@@ -317,6 +317,7 @@ type
     FShowDirectoryHierarchy: boolean;
     FSortAlphabetically: boolean;
     FDirSummaryLabel: TLabel;
+    FSingleSelectedNode: TTreeNode;
     FSingleSelectedFile: TPkgFile;
     FSingleSelectedDep: TPkgDependency;
     FFirstNodeData: array[TPENodeType] of TPENodeData;
@@ -325,6 +326,7 @@ type
     procedure DoAddNewFile(NewItem: TNewIDEItemTemplate);
     procedure FreeNodeData(Typ: TPENodeType);
     function CreateNodeData(Typ: TPENodeType; aName: string; aRemoved: boolean): TPENodeData;
+    function GetSingleSelectedDep: TPkgDependency;
     procedure SetDependencyDefaultFilename(AsPreferred: boolean);
     procedure SetIdleConnected(AValue: boolean);
     procedure SetShowDirectoryHierarchy(const AValue: boolean);
@@ -332,7 +334,8 @@ type
     procedure SetupComponents;
     function OnTreeViewGetImageIndex({%H-}Str: String; Data: TObject; var {%H-}AIsEnabled: Boolean): Integer;
     procedure ShowAddDialogEx(AType: TAddToPkgType);
-    procedure UpdateNodeImage(TVNode: TTreeNode; NodeData: TPENodeData);
+    procedure UpdateNodeImage(TVNode: TTreeNode);
+    procedure UpdateNodeImage(TVNode: TTreeNode; NodeData: TPENodeData; Item: TObject);
     procedure UpdatePending;
     function CanUpdate(Flag: TPEFlag; Immediately: boolean): boolean;
     procedure UpdateTitle(Immediately: boolean = false);
@@ -364,7 +367,7 @@ type
     procedure DoShowMissingFiles;
     procedure DoMoveCurrentFile(Offset: integer);
     procedure DoMoveDependency(Offset: integer);
-    procedure DoPublishProject;
+    procedure DoPublishPackage;
     procedure DoEditVirtualUnit;
     procedure DoExpandCollapseDirectory(ExpandIt: Boolean);
     procedure DoUseUnitsInDirectory(Use: boolean);
@@ -631,13 +634,29 @@ begin
   PkgEditMenuViewPackageSource:=RegisterIDEMenuCommand(AParent,'View Package Source',lisPckEditViewPackageSource);
 end;
 
+function DependencyAsString(ADependency: TPkgDependency): string;
+// A display text for a dependency including min/max versions + other info.
+// ToDo: Modify Dependency.AsString output to replace this function,
+//       or create a new method for the task.
+var
+  aFilename: String;
+begin
+  Result:=ADependency.AsString;
+  if ADependency.DefaultFilename<>'' then begin
+    aFilename:=ADependency.MakeFilenameRelativeToOwner(ADependency.DefaultFilename);
+    if ADependency.PreferDefaultFilename then
+      Result:=Result+' in '+aFilename // like the 'in' keyword in uses section
+    else
+      Result:=Format(lisPckEditDefault, [Result, aFilename]);
+  end;
+end;
+
 { TPENodeData }
 
-constructor TPENodeData.Create(aTyp: TPENodeType; aName: string;
-  aRemoved: boolean);
+constructor TPENodeData.Create(aTyp: TPENodeType; aName: string; aRemoved: boolean);
 begin
   Typ:=aTyp;
-  Name:=aName;;
+  Name:=aName;
   Removed:=aRemoved;
 end;
 
@@ -645,7 +664,7 @@ end;
 
 procedure TPackageEditorForm.PublishClick(Sender: TObject);
 begin
-  DoPublishProject;
+  DoPublishPackage;
 end;
 
 procedure TPackageEditorForm.ReAddMenuItemClick(Sender: TObject);
@@ -907,25 +926,14 @@ var
   TargetTVType: TTreeViewInsertMarkType;
 begin
   //debugln(['TPackageEditorForm.ItemsTreeViewDragOver ',DbgSName(Source),' State=',ord(State),' FromSelf=',Source=ItemsTreeView]);
-
-  if not PackageEditors.OnDragOverTreeView(Sender, Source, X, Y,
-    TargetTVNode, TargetTVType)
-  then begin
-    ItemsTreeView.SetInsertMark(nil,tvimNone);
-    Accept:=false;
-    exit;
-  end;
-
-  if State=dsDragLeave then
-    ItemsTreeView.SetInsertMark(nil,tvimNone)
+  Accept:=PackageEditors.OnDragOverTreeView(Sender,Source,X,Y,TargetTVNode,TargetTVType);
+  if Accept and (State<>dsDragLeave) then
+    ItemsTreeView.SetInsertMark(TargetTVNode,TargetTVType)
   else
-    ItemsTreeView.SetInsertMark(TargetTVNode,TargetTVType);
-  Accept:=true;
+    ItemsTreeView.SetInsertMark(nil,tvimNone);
 end;
 
 procedure TPackageEditorForm.MorePopupMenuPopup(Sender: TObject);
-var
-  Writable: Boolean;
 
   procedure SetItem(Item: TIDEMenuCommand; AnOnClick: TNotifyEvent;
                     aShow: boolean = true; AEnable: boolean = true);
@@ -936,6 +944,10 @@ var
     Item.Enabled:=AEnable;
   end;
 
+var
+  Writable, CanPublish: Boolean;
+  pcos: TParsedCompilerOptString;
+  CurrentPath: String;
 begin
   PackageEditorMenuRoot.MenuItem:=MorePopupMenu.Items;
   //PackageEditorMenuRoot.BeginUpdate;
@@ -953,8 +965,16 @@ begin
     SetItem(PkgEditMenuSaveAs,@SaveAsClick,true,true);
     SetItem(PkgEditMenuRevert,@RevertClick,true,
             (not LazPackage.IsVirtual) and FileExistsUTF8(LazPackage.Filename));
-    SetItem(PkgEditMenuPublish,@PublishClick,true,
-            (not LazPackage.Missing) and LazPackage.HasDirectory);
+    CanPublish:=(not LazPackage.Missing) and LazPackage.HasDirectory;
+    for pcos in [pcosUnitPath,pcosIncludePath] do
+    begin
+      CurrentPath:=LazPackage.CompilerOptions.ParsedOpts.GetParsedValue(pcos);
+      CurrentPath:=CreateRelativeSearchPath(CurrentPath,LazPackage.DirectoryExpanded);
+      //debugln(['TPackageEditorForm.MorePopupMenuPopup Unit=',CurrentPath]);
+      if Pos('..',CurrentPath)>0 then
+        CanPublish:=false;
+    end;
+    SetItem(PkgEditMenuPublish,@PublishClick,true,CanPublish);
 
     // under section PkgEditMenuSectionCompile
     SetItem(PkgEditMenuCompile,@CompileBitBtnClick,true,CompileBitBtn.Enabled);
@@ -1395,7 +1415,7 @@ begin
       fForcedFlags:=fForcedFlags+[pefNeedUpdateRemovedFiles];
     if PkgCount>0 then
       fForcedFlags:=fForcedFlags+[pefNeedUpdateRemovedFiles,pefNeedUpdateRequiredPkgs];
-    LazPackage.Modified:=True; // This will update also other possible editors.
+    LazPackage.Modified:=True;
 
   finally
     EndUpdate;
@@ -1648,9 +1668,8 @@ var
   Flags: TPkgDependencyFlags;
   MinVers, MaxVers: TPkgVersion;
 begin
-  if LazPackage=nil then exit;
-  if FSingleSelectedDep=nil then exit;
-  if LazPackage.FindDependencyByName(FSingleSelectedDep.PackageName)<>FSingleSelectedDep
+  if (LazPackage=nil) or (FSingleSelectedNode=nil) or (FSingleSelectedDep=nil)
+  or (LazPackage.FindDependencyByName(FSingleSelectedDep.PackageName)<>FSingleSelectedDep)
   then exit;
 
   MinVers:=TPkgVersion.Create;
@@ -1693,7 +1712,10 @@ begin
     FSingleSelectedDep.Flags := Flags;
     FSingleSelectedDep.MinVersion.Assign(MinVers);
     FSingleSelectedDep.MaxVersion.Assign(MaxVers);
-    LazPackage.ModifySilently;
+
+    UpdateNodeImage(FSingleSelectedNode);
+    //fForcedFlags:=[pefNeedUpdateRequiredPkgs];
+    LazPackage.Modified:=True;
   finally
     MaxVers.Free;
     MinVers.Free;
@@ -1719,7 +1741,7 @@ begin
     CurFile.HasRegisterProc:=CallRegisterProcCheckBox.Checked;
     if not NodeData.Removed then
       LazPackage.ModifySilently;
-    UpdateNodeImage(TVNode, NodeData);
+    UpdateNodeImage(TVNode, NodeData, Item);
   end;
 end;
 
@@ -1883,7 +1905,7 @@ procedure TPackageEditorForm.SetupComponents;
     Result.Caption := ACaption;
     Result.Hint := AHint;
     if AImageName <> '' then
-      Result.ImageIndex := IDEImages.LoadImage(16, AImageName);
+      Result.ImageIndex := IDEImages.LoadImage(AImageName);
     Result.ShowHint := True;
     Result.OnClick := AOnClick;
     Result.AutoSize := True;
@@ -1899,20 +1921,20 @@ procedure TPackageEditorForm.SetupComponents;
   end;
 
 begin
-  ImageIndexFiles           := IDEImages.LoadImage(16, 'pkg_files');
-  ImageIndexRemovedFiles    := IDEImages.LoadImage(16, 'pkg_removedfiles');
-  ImageIndexRequired        := IDEImages.LoadImage(16, 'pkg_required');
-  ImageIndexRemovedRequired := IDEImages.LoadImage(16, 'pkg_removedrequired');
-  ImageIndexUnit            := IDEImages.LoadImage(16, 'pkg_unit');
-  ImageIndexRegisterUnit    := IDEImages.LoadImage(16, 'pkg_registerunit');
-  ImageIndexLFM             := IDEImages.LoadImage(16, 'pkg_lfm');
-  ImageIndexLRS             := IDEImages.LoadImage(16, 'pkg_lrs');
-  ImageIndexInclude         := IDEImages.LoadImage(16, 'pkg_include');
-  ImageIndexIssues          := IDEImages.LoadImage(16, 'pkg_issues');
-  ImageIndexText            := IDEImages.LoadImage(16, 'pkg_text');
-  ImageIndexBinary          := IDEImages.LoadImage(16, 'pkg_binary');
-  ImageIndexConflict        := IDEImages.LoadImage(16, 'pkg_conflict');
-  ImageIndexDirectory       := IDEImages.LoadImage(16, 'pkg_files');
+  ImageIndexFiles           := IDEImages.LoadImage('pkg_files');
+  ImageIndexRemovedFiles    := IDEImages.LoadImage('pkg_removedfiles');
+  ImageIndexRequired        := IDEImages.LoadImage('pkg_required');
+  ImageIndexRemovedRequired := IDEImages.LoadImage('pkg_removedrequired');
+  ImageIndexUnit            := IDEImages.LoadImage('pkg_unit');
+  ImageIndexRegisterUnit    := IDEImages.LoadImage('pkg_registerunit');
+  ImageIndexLFM             := IDEImages.LoadImage('pkg_lfm');
+  ImageIndexLRS             := IDEImages.LoadImage('pkg_lrs');
+  ImageIndexInclude         := IDEImages.LoadImage('pkg_include');
+  ImageIndexIssues          := IDEImages.LoadImage('pkg_issues');
+  ImageIndexText            := IDEImages.LoadImage('pkg_text');
+  ImageIndexBinary          := IDEImages.LoadImage('pkg_binary');
+  ImageIndexConflict        := IDEImages.LoadImage('pkg_conflict');
+  ImageIndexDirectory       := IDEImages.LoadImage('pkg_files');
 
   ItemsTreeView.Images := IDEImages.Images_16;
   ToolBar.Images := IDEImages.Images_16;
@@ -1943,16 +1965,16 @@ begin
   mnuAddNewReqr.Caption := lisProjAddNewRequirement;
 
   // Buttons on FilterPanel
-  OpenButton.LoadGlyphFromResourceName(HInstance, 'laz_open');
+  TIDEImages.AssignImage(OpenButton.Glyph, 'laz_open');
   OpenButton.Hint:=lisOpenFile2;
   SortAlphabeticallyButton.Hint:=lisPESortFilesAlphabetically;
-  SortAlphabeticallyButton.LoadGlyphFromResourceName(HInstance, 'pkg_sortalphabetically');
+  TIDEImages.AssignImage(SortAlphabeticallyButton.Glyph, 'pkg_sortalphabetically');
   DirectoryHierarchyButton.Hint:=lisPEShowDirectoryHierarchy;
-  DirectoryHierarchyButton.LoadGlyphFromResourceName(HInstance, 'pkg_hierarchical');
+  TIDEImages.AssignImage(DirectoryHierarchyButton.Glyph, 'pkg_hierarchical');
 
   // Up / Down buttons
-  MoveUpBtn.LoadGlyphFromResourceName(HInstance, 'arrow_up');
-  MoveDownBtn.LoadGlyphFromResourceName(HInstance, 'arrow_down');
+  TIDEImages.AssignImage(MoveUpBtn.Glyph, 'arrow_up');
+  TIDEImages.AssignImage(MoveDownBtn.Glyph, 'arrow_down');
   MoveUpBtn.Hint:=lisMoveSelectedUp;
   MoveDownBtn.Hint:=lisMoveSelectedDown;
 
@@ -2292,13 +2314,31 @@ begin
   Caption:=NewCaption;
 end;
 
-procedure TPackageEditorForm.UpdateNodeImage(TVNode: TTreeNode; NodeData: TPENodeData);
+procedure TPackageEditorForm.UpdateNodeImage(TVNode: TTreeNode);
 var
-  ena: Boolean;
-  ImgIndex: Integer;
+  NodeData: TPENodeData;
+  Item: TObject;
 begin
-  ena := True;                   // String param is not used.
-  ImgIndex:=OnTreeViewGetImageIndex('', NodeData, ena);
+  if GetNodeDataItem(TVNode, NodeData, Item) then
+    UpdateNodeImage(TVNode, NodeData, Item);
+end;
+
+procedure TPackageEditorForm.UpdateNodeImage(TVNode: TTreeNode;
+  NodeData: TPENodeData; Item: TObject);
+var
+  PkgDependency: TPkgDependency;
+  ImgIndex: Integer;
+  Ena: Boolean;
+begin
+  Assert(Assigned(Item), 'TPackageEditorForm.UpdateNodeImage: Item = Nil.');
+  if Item is TPkgDependency then begin
+    PkgDependency:=TPkgDependency(Item);
+    // Try to load the package again. Min/max version may have changed.
+    PkgDependency.LoadPackageResult := lprUndefined;
+    PackageGraph.OpenDependency(PkgDependency, False);
+  end;
+  Ena := True;                      // Neither Ena nor the String param are used.
+  ImgIndex := OnTreeViewGetImageIndex('', NodeData, Ena);
   TVNode.ImageIndex:=ImgIndex;
   TVNode.SelectedIndex:=ImgIndex;
 end;
@@ -2512,7 +2552,7 @@ procedure TPackageEditorForm.UpdateRequiredPkgs(Immediately: boolean);
 var
   CurDependency: TPkgDependency;
   RequiredBranch, RemovedBranch: TTreeFilterBranch;
-  CurNodeText, aFilename, OldFilter: String;
+  OldFilter: String;
   NodeData: TPENodeData;
 begin
   if not CanUpdate(pefNeedUpdateRequiredPkgs,Immediately) then exit;
@@ -2526,20 +2566,12 @@ begin
   CurDependency:=LazPackage.FirstRequiredDependency;
   FilterEdit.SelectedPart:=nil;
   while CurDependency<>nil do begin
-    CurNodeText:=CurDependency.AsString;
-    if CurDependency.DefaultFilename<>'' then begin
-      aFilename:=CurDependency.MakeFilenameRelativeToOwner(CurDependency.DefaultFilename);
-      if CurDependency.PreferDefaultFilename then
-        CurNodeText:=CurNodeText+' in '+aFilename // like the 'in' keyword in uses section
-      else
-        CurNodeText:=Format(lisPckEditDefault, [CurNodeText, aFilename]);
-    end;
     NodeData:=CreateNodeData(penDependency,CurDependency.PackageName,false);
     if (FNextSelectedPart<>nil) and (FNextSelectedPart.Typ=penDependency)
     and (FNextSelectedPart.Name=NodeData.Name)
     then
       FilterEdit.SelectedPart:=NodeData;
-    RequiredBranch.AddNodeData(CurNodeText, NodeData);
+    RequiredBranch.AddNodeData(DependencyAsString(CurDependency), NodeData);
     CurDependency:=CurDependency.NextRequiresDependency;
   end;
   if (FNextSelectedPart<>nil) and (FNextSelectedPart.Typ=penDependency) then
@@ -2558,7 +2590,7 @@ begin
     RemovedBranch.ClearNodeData;
     while CurDependency<>nil do begin
       NodeData:=CreateNodeData(penDependency,CurDependency.PackageName,true);
-      RemovedBranch.AddNodeData(CurDependency.AsString, NodeData);
+      RemovedBranch.AddNodeData(DependencyAsString(CurDependency), NodeData);
       CurDependency:=CurDependency.NextRequiresDependency;
     end;
     RemovedBranch.InvalidateBranch;
@@ -2635,7 +2667,6 @@ var
   TVNode: TTreeNode;
   SingleSelectedDirectory: TTreeNode;
   SingleSelectedRemoved: Boolean;
-  SingleSelected: TTreeNode;
   FileCount: integer;
   HasRegisterProcCount: integer;
   AddToUsesPkgSectionCount: integer;
@@ -2645,11 +2676,11 @@ begin
   FPlugins.Clear;
 
   // check selection
+  FSingleSelectedNode:=nil;
   FSingleSelectedDep:=nil;
   FSingleSelectedFile:=nil;
   SingleSelectedDirectory:=nil;
   SingleSelectedRemoved:=false;
-  SingleSelected:=nil;
   SelFileCount:=0;
   SelDepCount:=0;
   SelHasRegisterProc:=mubNone;
@@ -2665,7 +2696,7 @@ begin
         CurFile:=TPkgFile(Item);
         inc(SelFileCount);
         FSingleSelectedFile:=CurFile;
-        SingleSelected:=TVNode;
+        FSingleSelectedNode:=TVNode;
         SingleSelectedRemoved:=NodeData.Removed;
         MergeMultiBool(SelHasRegisterProc,CurFile.HasRegisterProc);
         if CurFile.FileType in PkgFileUnitTypes then begin
@@ -2692,13 +2723,13 @@ begin
         inc(SelDepCount);
         CurDependency:=TPkgDependency(Item);
         FSingleSelectedDep:=CurDependency;
-        SingleSelected:=TVNode;
+        FSingleSelectedNode:=TVNode;
         SingleSelectedRemoved:=NodeData.Removed;
       end;
     end else if IsDirectoryNode(TVNode) or (TVNode=FFilesNode) then begin
       inc(SelDirCount);
       SingleSelectedDirectory:=TVNode;
-      SingleSelected:=TVNode;
+      FSingleSelectedNode:=TVNode;
     end;
   end;
 
@@ -2707,7 +2738,7 @@ begin
     FSingleSelectedFile:=nil;
     FSingleSelectedDep:=nil;
     SingleSelectedDirectory:=nil;
-    SingleSelected:=nil;
+    FSingleSelectedNode:=nil;
   end;
   OnlyFilesSelected:=(SelFileCount>0) and (SelDepCount=0) and (SelDirCount=0);
   OnlyFilesWithUnitsSelected:=OnlyFilesSelected and (SelUnitCount>0);
@@ -2720,8 +2751,8 @@ begin
     // move up/down (only single selection)
     aVisible:=(not (SortAlphabetically or SingleSelectedRemoved))
        and ((FSingleSelectedFile<>nil) or (FSingleSelectedDep<>nil));
-    MoveUpBtn.Enabled  :=aVisible and Assigned(SingleSelected.GetPrevVisibleSibling);
-    MoveDownBtn.Enabled:=aVisible and Assigned(SingleSelected.GetNextVisibleSibling);
+    MoveUpBtn.Enabled  :=aVisible and Assigned(FSingleSelectedNode.GetPrevVisibleSibling);
+    MoveDownBtn.Enabled:=aVisible and Assigned(FSingleSelectedNode.GetNextVisibleSibling);
 
     // Min/Max version of dependency (only single selection)
     aVisible:=FSingleSelectedDep<>nil;
@@ -2787,33 +2818,37 @@ begin
   end;
 end;
 
-procedure TPackageEditorForm.UpdateApplyDependencyButton(Immediately: boolean);
+function TPackageEditorForm.GetSingleSelectedDep: TPkgDependency;
 var
-  DependencyChanged: Boolean;
-  AVersion: TPkgVersion;
   i: Integer;
   TVNode: TTreeNode;
   NodeData: TPENodeData;
   Item: TObject;
 begin
-  if not CanUpdate(pefNeedUpdateApplyDependencyButton,Immediately) then exit;
-
-  FSingleSelectedDep:=nil;
+  Result:=nil;
   for i:=0 to ItemsTreeView.SelectionCount-1 do begin
     TVNode:=ItemsTreeView.Selections[i];
     if not GetNodeDataItem(TVNode,NodeData,Item) then continue;
     if Item is TPkgFile then begin
-      FSingleSelectedDep:=nil;
+      Result:=nil;
       break;
     end else if Item is TPkgDependency then begin
-      if FSingleSelectedDep<>nil then begin
-        FSingleSelectedDep:=nil;
+      if Result<>nil then begin
+        Result:=nil;
         break;
       end;
-      FSingleSelectedDep:=TPkgDependency(Item);
+      Result:=TPkgDependency(Item);
     end;
   end;
+end;
 
+procedure TPackageEditorForm.UpdateApplyDependencyButton(Immediately: boolean);
+var
+  DependencyChanged: Boolean;
+  AVersion: TPkgVersion;
+begin
+  if not CanUpdate(pefNeedUpdateApplyDependencyButton,Immediately) then exit;
+  FSingleSelectedDep:=GetSingleSelectedDep;
   DependencyChanged:=false;
   if (FSingleSelectedDep<>nil) then begin
     // check min version
@@ -3146,7 +3181,7 @@ begin
   UpdateAll(false);
 end;
 
-procedure TPackageEditorForm.DoPublishProject;
+procedure TPackageEditorForm.DoPublishPackage;
 begin
   PackageEditors.PublishPackage(LazPackage);
 end;
@@ -3246,8 +3281,9 @@ begin
   if not Moved then exit;
   LazPackage.ModifySilently;
   RequiredBranch:=FilterEdit.GetExistingBranch(FRequiredPackagesNode);
-  OldIndex:=RequiredBranch.Items.IndexOf(FSingleSelectedDep.PackageName);
-  Assert(OldIndex<>-1, 'TPackageEditorForm.DoMoveDependency: "'+FSingleSelectedDep.PackageName+'" not found in FilterBranch.');
+  OldIndex:=RequiredBranch.Items.IndexOf(DependencyAsString(FSingleSelectedDep));
+  Assert(OldIndex<>-1, 'TPackageEditorForm.DoMoveDependency: "' +
+          DependencyAsString(FSingleSelectedDep)+'" not found in FilterBranch.');
   NewIndex:=OldIndex+Offset;
   RequiredBranch.Move(OldIndex,NewIndex);
   UpdatePEProperties;
@@ -3485,8 +3521,8 @@ begin
     if IDEQuestionDialog(lisNotAnInstallPackage,
       Format(lisThePackageDoesNotHaveAnyRegisterProcedureWhichTypi,
              [APackage.Name, LineEnding+LineEnding]),
-      mtWarning,
-      [mrIgnore, lisInstallItILikeTheFat, mrCancel, lisCancel], '')<>mrIgnore
+      mtWarning, [mrIgnore, lisInstallItILikeTheFat,
+                  mrCancel, lisCancel], '') <> mrIgnore
     then exit(mrCancel);
   end;
   if Assigned(OnInstallPackage) then

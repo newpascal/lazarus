@@ -23,6 +23,8 @@ typedef unsigned int PTRUINT;
 
 typedef struct QAbstractButton__ { PTRINT dummy; } *QAbstractButtonH;
 typedef struct QSizePolicy__ { PTRINT dummy; } *QSizePolicyH;
+typedef struct QSurface__ { PTRINT dummy; } *QSurfaceH;
+typedef struct QSurfaceFormat__ { PTRINT dummy; } *QSurfaceFormatH;
 /* typedef struct QWebHistoryItem_hook__ { PTRINT dummy; } *QWebHistoryItem_hookH; */
 typedef struct QSlider_hook__ { PTRINT dummy; } *QSlider_hookH;
 typedef struct QGraphicsScene_hook__ { PTRINT dummy; } *QGraphicsScene_hookH;
@@ -166,6 +168,7 @@ typedef struct QLineEdit__ { PTRINT dummy; } *QLineEditH;
 typedef struct QWhatsThis__ { PTRINT dummy; } *QWhatsThisH;
 typedef struct QStyleOptionDockWidget__ { PTRINT dummy; } *QStyleOptionDockWidgetH;
 typedef struct QDoubleSpinBox_hook__ { PTRINT dummy; } *QDoubleSpinBox_hookH;
+typedef struct QBuffer__ { PTRINT dummy; } *QBufferH;
 typedef struct QFileDevice__ { PTRINT dummy; } *QFileDeviceH;
 typedef struct QMdiArea__ { PTRINT dummy; } *QMdiAreaH;
 typedef struct QFile__ { PTRINT dummy; } *QFileH;
@@ -445,6 +448,8 @@ typedef struct QButtonGroup_hook__ { PTRINT dummy; } *QButtonGroup_hookH;
 typedef struct QInputMethodEvent__ { PTRINT dummy; } *QInputMethodEventH;
 typedef struct QDate__ { PTRINT dummy; } *QDateH;
 typedef struct QStyleOptionTitleBar__ { PTRINT dummy; } *QStyleOptionTitleBarH;
+typedef struct QScreen_hook__ { PTRINT dummy; } *QScreen_hookH;
+typedef struct QWindow_hook__ { PTRINT dummy; } *QWindow_hookH;
 typedef struct QWidget_hook__ { PTRINT dummy; } *QWidget_hookH;
 typedef struct QDockWidget__ { PTRINT dummy; } *QDockWidgetH;
 typedef struct QLine__ { PTRINT dummy; } *QLineH;

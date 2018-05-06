@@ -1,13 +1,17 @@
+# Olexandr Pylypchuk <pilipchukap@rambler.ru>, 2017.
 msgid ""
 msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Project-Id-Version: \n"
 "POT-Creation-Date: \n"
-"PO-Revision-Date: \n"
-"Last-Translator: Igor Paliychuk <mansonigor@gmail.com>\n"
-"Language-Team: \n"
+"PO-Revision-Date: 2017-06-08 18:10+0300\n"
+"Last-Translator: Olexandr Pylypchuk <pilipchukap@rambler.ru>\n"
+"Language-Team: Ukrainian <kde-i18n-doc@kde.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Transfer-Encoding: 8bit\n"
+"Language: uk\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+"X-Generator: Lokalize 1.5\n"
 
 #: eduoptions.edurseducation
 msgid "Education"
@@ -19,11 +23,11 @@ msgstr "Додати пункт створення нової програми �
 
 #: eduoptions.ersaddanidemenuitemtocreateanewprogram
 msgid "Add an IDE menu item to create a new program"
-msgstr "Додати пункт створення нової програми в меню IDE"
+msgstr "Додати пункт створення нової програми в меню ІСР"
 
 #: eduoptions.ersaddaspeedbuttontotheidetoolbartocreateanewprogram
 msgid "Add a speed button to the IDE toolbar to create a new program"
-msgstr "Додати до панелі інструментів IDE кнопку швидкого доступу для створення нової програми"
+msgstr "Додати до панелі інструментів ІСР кнопку швидкого доступу для створення нової програми"
 
 #: eduoptions.ersaddicon
 msgid "Add icon"
@@ -60,11 +64,11 @@ msgstr "Нова програма"
 
 #: eduoptions.erseduoipages
 msgid "Object Inspector"
-msgstr "Інспектор Об'єктів"
+msgstr "Інспектор об'єктів"
 
 #: eduoptions.ersedupropseventstitle
 msgid "Properties and Events"
-msgstr "Властивості і Події"
+msgstr "Властивості і події"
 
 #: eduoptions.ersedusbtitle
 msgid "Speed Buttons"
@@ -104,7 +108,7 @@ msgstr "Сховати все"
 
 #: eduoptions.ersidemenuitems
 msgid "IDE menu items"
-msgstr "Елементи меню IDE"
+msgstr "Елементи меню ІСР"
 
 #: eduoptions.ersloaddefaultcode
 msgid "Load default code?"
@@ -112,7 +116,7 @@ msgstr "Завантажити код за замовчуванням?"
 
 #: eduoptions.ersloadsourcefromfile
 msgid "Load source from file"
-msgstr "Завантажити початковий код з файлу"
+msgstr "Завантажити сирцевий код з файлу"
 
 #: eduoptions.ersnewprogram
 msgctxt "eduoptions.ersnewprogram"
@@ -129,7 +133,7 @@ msgstr "Нова програма з одного файлу"
 
 #: eduoptions.ersrdbtnfull
 msgid "Show All"
-msgstr "Показати Все"
+msgstr "Показати все"
 
 #: eduoptions.ersrdgrpeventscaption
 msgid "Events"
@@ -165,11 +169,11 @@ msgstr "Показувати мінімум"
 
 #: eduoptions.ersshowoipages
 msgid "Show Object Inspector Pages"
-msgstr "Показувати вкладки Інспектора Об'єктів"
+msgstr "Показувати вкладки Інспектора об'єктів"
 
 #: eduoptions.ersshowselection
 msgid "Show Selection"
-msgstr "Показувати Виділення"
+msgstr "Показувати вибірки"
 
 #: eduoptions.erssinglefileprogram
 msgid "Single file program"
@@ -177,7 +181,7 @@ msgstr "Програма з одного файлу"
 
 #: eduoptions.erssource
 msgid "Source"
-msgstr "Початковий код"
+msgstr "Сирцевий код"
 
 #: eduoptions.erssttexteventsext
 msgid "OnClick, OnChange, OnMouseMove, OnDblClick, OnCreate, OnKeyPress, OnFormCreate"
@@ -185,7 +189,7 @@ msgstr "OnClick, OnChange, OnMouseMove, OnDblClick, OnCreate, OnKeyPress, OnForm
 
 #: eduoptions.erssttexteventsfull
 msgid "All Events available"
-msgstr "Доступні всі Події"
+msgstr "Доступні всі події"
 
 #: eduoptions.erssttexteventsmin
 msgid "OnClick, OnChange, OnMouseMove"
@@ -197,11 +201,11 @@ msgstr "Align, Left, Top, Hint, ShowHint, ParentFont, TabOrder, ParentShowHint, 
 
 #: eduoptions.erssttextpropsfull
 msgid "All Properties available"
-msgstr "Доступні всі Властивості"
+msgstr "Доступні всі властивості"
 
 #: eduoptions.erssttextpropsmin
 msgid "Name, Caption, Visible, Text, Checked, Items, Font, Color, Enabled, Height, Width, MaxLength, Picture, Columns"
-msgstr "Ім'я, Заголовок, Видимий, Текст, Позначений, Пункти, Шрифт, Колір, Ввімкнений, Висота, Ширина, МаксДовжина, Картинка, Колонки"
+msgstr "Назва, Заголовок, Видимий, Текст, Позначений, Пункти, Шрифт, Колір, Ввімкнений, Висота, Ширина, МаксДовжина, Картинка, Колонки"
 
 #: eduoptions.ersvisiblecomponents
 msgid "Visible components"
@@ -209,5 +213,5 @@ msgstr "Видимі компоненти"
 
 #: eduoptions.ersvisiblespeedbuttons
 msgid "Visible SpeedButtons"
-msgstr "Видимі Кнопки швидкого доступу"
+msgstr "Видимі кнопки швидкого доступу"
 

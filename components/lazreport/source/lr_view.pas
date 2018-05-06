@@ -16,7 +16,7 @@ interface
 
 uses
   Classes, SysUtils, LResources, LMessages, Forms, Controls, Graphics, Dialogs,
-  ExtCtrls, Buttons, StdCtrls, Menus, GraphType, LCLType, LCLIntf, LazUTF8,
+  ExtCtrls, Buttons, StdCtrls, Menus, GraphType, LCLType, LCLProc, LCLIntf, LazUTF8,
   LR_Const, PrintersDlgs;
 
 type
@@ -176,7 +176,6 @@ type
     procedure FormActivate(Sender: TObject);
     procedure FormDeactivate(Sender: TObject);
   private
-    { Private declarations }
     Doc: Pointer;
     EMFPages: Pointer;
     PBox: TfrPBox;
@@ -217,13 +216,12 @@ type
     procedure CreateExportFilterItems;
     procedure ExportFilterItemExecClick(Sender: TObject);
   public
-    { Public declarations }
     procedure Show_Modal(ADoc: Pointer);
   end;
 
 
 implementation
-uses LR_Class, LR_Prntr, LR_Srch, LR_PrDlg, Printers, strutils, lr_PreviewToolsAbstract;
+uses LR_Class, LR_Prntr, LR_Srch, LR_PrDlg, Printers, lr_PreviewToolsAbstract;
 
 {$R *.lfm}
 
@@ -604,13 +602,13 @@ begin
 
       if FCurView <> V then
       begin
-        if Assigned(FCurView) and (FCurView is TfrMemoView) then
+        if FCurView is TfrMemoView then
         begin
           THackView(FCurView).DoMouseLeave;
 //          THackView(FCurView).Invalidate;
         end;
         FCurView:=V;
-        if Assigned(FCurView) and (FCurView is TfrMemoView) then
+        if FCurView is TfrMemoView then
         begin
           THackView(FCurView).DoMouseEnter;
 //          THackView(FCurView).Invalidate;
@@ -1466,7 +1464,7 @@ begin
     for j:=SK to P^.Page.Objects.Count - 1 do
     begin
       V:=TfrView(P^.Page.Objects[j]);
-      if Assigned(V) and (V is TfrMemoView) then
+      if V is TfrMemoView then
       begin
         S:=TfrMemoView(V).Memo.Text;
         if not SearchCaseSensitive then
@@ -1536,11 +1534,28 @@ begin
 end;
 
 procedure TfrPreviewForm.EditBtnClick(Sender: TObject);
+var
+  R: TfrReport;
 begin
   if (Doc = nil) or not TfrReport(Doc).ModifyPrepared then Exit;
-  ConnectBack;
+{  ConnectBack;
   TfrReport(Doc).EditPreparedReport(CurPage - 1);
-  Connect(Doc);
+  Connect(Doc);}
+
+  R:=TfrReport.Create(nil);
+  R.EMFPages.Free;
+  R.EMFPages := TfrEMFPages(EMFPages);
+  EMFPages := nil;
+  R.EditPreparedReport(CurPage - 1);
+
+  if EMFPages <> nil then
+    TfrEMFPages(EMFPages).Free;
+
+  EMFPages := R.EMFPages;
+  R.EMFPages:=nil;
+//  TfrReport(Doc).EMFPages := TfrEMFPages.Create(TfrReport(Doc));
+
+  R.Free;
   RedrawAll;
 end;
 

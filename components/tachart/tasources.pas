@@ -340,11 +340,11 @@ begin
     if FSource.YCount + 3 < Cardinal(parts.Count) then
       FSource.YCount := parts.Count - 3;
     with ADataItem^ do begin
-      X := StrToFloatDefSep(NextPart);
+      X := StrToFloatOrDateTimeDef(NextPart);
       if FSource.YCount > 0 then begin
-        Y := StrToFloatDefSep(NextPart);
+        Y := StrToFloatOrDateTimeDef(NextPart);
         for i := 0 to High(YList) do
-          YList[i] := StrToFloatDefSep(NextPart);
+          YList[i] := StrToFloatOrDateTimeDef(NextPart);
       end;
       Color := StrToIntDef(NextPart, clTAColor);
       Text := NextPart;
@@ -803,7 +803,7 @@ begin
   end;
   while FCurIndex < AIndex do begin
     FCurIndex += 1;
-    if XMax <= XMin then begin
+    if (XMax <= XMin) or (Count = 1) then begin
       FCurItem.X := XMin;
       for i := 0 to XCount - 2 do FCurItem.XList[i] := XMin;
     end else begin

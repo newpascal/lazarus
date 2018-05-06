@@ -63,6 +63,7 @@ type
     fcTokenList: TSourceTokenList;
 
     fiTokenCount: integer;
+    procedure RecogniseTypeHelper;
     procedure SplitGreaterThanOrEqual;
 
     procedure RecogniseGoal;
@@ -334,6 +335,9 @@ begin
 
   while lbMore do
   begin
+
+    if fcTokenList.FirstSolidTokenType = ttSpecialize then
+      Recognise(ttSpecialize);
 
     RecogniseDottedName;
     if fcTokenList.FirstSolidTokenType = ttLessThan then
@@ -756,7 +760,7 @@ begin
   Recognise(ttInterface, True);
 
   if fcTokenList.FirstSolidTokenType = ttUses then
-    RecogniseUsesClause(False);
+    RecogniseUsesClause(True);
 
   RecogniseInterfaceDecls;
 
@@ -866,7 +870,7 @@ begin
   Recognise(ttImplementation, True);
 
   if fcTokenList.FirstSolidTokenType = ttUses then
-    RecogniseUsesClause(False);
+    RecogniseUsesClause(True);
 
   RecogniseDeclSections;
 
@@ -1150,6 +1154,24 @@ begin
 
 end;
 
+procedure TBuildParseTree.RecogniseTypeHelper;
+begin
+  PushNode(nClassType);
+  Recognise([ttType,ttRecord]);
+  Recognise(ttHelper);
+  if fcTokenList.FirstSolidTokenType = ttOpenBracket then begin
+    Recognise(ttOpenBracket);
+    RecogniseIdentifier(False, idStrict);
+    Recognise(ttCloseBracket);
+  end;
+  Recognise(ttFor);
+  RecogniseIdentifier(False, idStrict);
+  RecogniseClassBody;
+  Recognise(ttEnd);
+  RecogniseHintDirectives;
+  PopNode;
+end;
+
 procedure TBuildParseTree.RecogniseTypeDecl;
 begin
   {
@@ -1181,6 +1203,13 @@ begin
 
   Recognise(ttEquals);
 
+  //Recognise type helper (for fpc)
+  if (fcTokenList.FirstSolidTokenType in [ttType,ttRecord]) and
+    (fcTokenList.SolidToken(2).TokenType=ttHelper) then
+  begin
+     RecogniseTypeHelper;
+  end else
+
   // type or restricted type
   if (fcTokenList.FirstSolidTokenType in [ttObject, ttClass, ttInterface,
     ttDispInterface]) then
@@ -1191,6 +1220,12 @@ begin
   if fcTokenList.FirstSolidTokenType = ttLessThan then
   begin
     RecogniseGenericType;
+  end;
+
+  if fcTokenList.FirstSolidTokenType = ttIs then
+  begin
+    Recognise(ttIs);
+    Recognise(ttNested);
   end;
 
   // the type can be deprecated
@@ -3596,6 +3631,8 @@ begin
           RecogniseFunctionDecl(false);
         ttConstructor:
           RecogniseConstructorDecl;
+        ttDestructor:
+          RecogniseDestructorDecl;
         ttOperator:
           RecogniseClassOperator(True);
         else
@@ -4099,6 +4136,9 @@ begin
   //DestructorHeading -> DESTRUCTOR Ident [FormalParameters]
   PushNode(nDestructorHeading);
 
+  if fcTokenList.FirstSolidTokenType = ttClass then
+    Recognise(ttClass);
+
   Recognise(ttDestructor);
   RecogniseMethodName( not pbDeclaration);
   if fcTokenList.FirstSolidTokenType = ttOpenBracket then
@@ -4139,6 +4179,12 @@ begin
         RecogniseStatementList([ttEnd]);
       end;
 
+      Recognise(ttEnd);
+    end;
+    ttFinalization:
+    begin
+      Recognise(ttFinalization, True);
+      RecogniseStatementList([ttEnd]);
       Recognise(ttEnd);
     end;
     ttBegin:
@@ -4387,6 +4433,8 @@ begin
           end;
           ttConstructor:
             RecogniseConstructorHeading(True);
+          ttDestructor:
+            RecogniseDestructorHeading(True);
           ttOperator:
             RecogniseClassOperator(False);
           else
@@ -4866,6 +4914,12 @@ procedure TBuildParseTree.RecogniseMethodName(const pbClassNameCompulsory: boole
 var
   lbMore: boolean;
 begin
+  if IsSymbolOperator(fcTokenList.FirstSolidToken) then begin
+      PushNode(nIdentifier);
+      Recognise(Operators);
+      PopNode;
+      exit;
+  end;
   if not (IdentifierNext(idAllowDirectives)) then
     raise TEParseError.Create('Expected identifier', fcTokenList.FirstSolidToken);
 
@@ -4887,7 +4941,7 @@ begin
     while lbMore do
     begin
       Recognise(ttDot);
-      Recognise(IdentiferTokens);
+      Recognise(IdentiferTokens + Operators);
 
       if fcTokenList.FirstSolidTokenType = ttLessThan then
       begin

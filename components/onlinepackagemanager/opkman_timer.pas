@@ -29,7 +29,6 @@ interface
 uses
   Classes, SysUtils;
 
-
 type
    { TThreadTimer }
    TThreadTimer = class(TThread)
@@ -61,7 +60,6 @@ begin
   inherited Create(True);
   FreeOnTerminate := True;
   FInterval := 1000;
-  FreeOnTerminate := True;
   FEnabled := False;
 end;
 
@@ -81,7 +79,7 @@ procedure TThreadTimer.Execute;
 begin
   while not Terminated do
   begin
-    Sleep(1);
+    Sleep(100);
     if (GetTickCount64 - FTime > FInterval) and (FEnabled) then
     begin
       FTime := GetTickCount64;

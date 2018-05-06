@@ -334,7 +334,8 @@ procedure SetDebugLogger(ALogger: TLazLogger);
 begin
   ReleaseRefAndNil(TheLazLogger);
   TheLazLogger := ALogger;
-  TheLazLogger.AddReference;
+  if TheLazLogger <> nil then
+    TheLazLogger.AddReference;
 end;
 
 procedure RecreateDebugLogger;
@@ -376,6 +377,7 @@ function GetParamByName(const AName: String; AnIndex: Integer): string;
 var
   i, l: Integer;
 begin
+  Result := '';
   l := Length(AName);
   for i:= 1 to Paramcount do begin
     if copy(ParamStrUTF8(i),1, l) = AName then begin

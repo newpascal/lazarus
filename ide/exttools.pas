@@ -34,14 +34,15 @@ unit ExtTools;
 interface
 
 uses
-  // RTL + FCL + LCL
-  Classes, SysUtils, math, process, Pipes,
+  // RTL + FCL
+  Classes, SysUtils, math, process, Pipes, Laz_AVL_Tree,
+  // LCL
   LCLIntf, Forms, Dialogs,
   {$IFDEF VerboseExtToolThread}
   LCLProc,
   {$ENDIF}
   // CodeTools
-  FileProcs, CodeToolsStructs,
+  FileProcs,
   // LazUtils
   FileUtil, AvgLvlTree, LazFileUtils, UTF8Process, LazUTF8,
   // IDEIntf
@@ -206,7 +207,9 @@ type
     function ParserCount: integer; override;
     procedure RegisterParser(Parser: TExtToolParserClass); override;
     procedure UnregisterParser(Parser: TExtToolParserClass); override;
-    function FindParser(const SubTool: string): TExtToolParserClass; override;
+    function FindParserForTool(const SubTool: string): TExtToolParserClass; override;
+    function FindParserWithName(const ParserName: string): TExtToolParserClass;
+      override;
     function GetMsgTool(Msg: TMessageLine): TAbstractExternalTool; override;
   end;
 
@@ -580,6 +583,7 @@ procedure TExternalTool.SetThread(AValue: TExternalToolThread);
 var
   CallAutoFree: Boolean;
 begin
+  // Note: in lazbuild ProcessStopped sets FThread:=nil, so SetThread is not called.
   EnterCriticalSection;
   try
     if FThread=AValue then Exit;
@@ -592,7 +596,11 @@ begin
     if MainThreadID=GetCurrentThreadId then
       AutoFree
     else if (Application<>nil) then
-      Application.QueueAsyncCall(@SyncAutoFree,0);
+      Application.QueueAsyncCall(@SyncAutoFree,0)
+    else
+    begin
+      debugln(['WARNING: (lazarus) TExternalTool.SetThread can not call AutoFree from other thread']);
+    end;
   end;
 end;
 
@@ -717,24 +725,25 @@ begin
     end else begin
       ExeFile:=FindDefaultExecutablePath(Process.Executable,GetCurrentDirUTF8);
       if ExeFile='' then begin
-        ErrorMessage:=Format(lisCanNotFindExecutable, [ExeFile]);
+        ErrorMessage:=Format(lisCanNotFindExecutable, [Process.Executable]);
         CheckError;
         exit;
       end;
       Process.Executable:=ExeFile;
     end;
   end;
-  if not FileExistsUTF8(Process.Executable) then begin
+  ExeFile:=Process.Executable;
+  if not FileExistsUTF8(ExeFile) then begin
     ErrorMessage:=Format(lisMissingExecutable, [ExeFile]);
     CheckError;
     exit;
   end;
-  if DirectoryExistsUTF8(Process.Executable) then begin
+  if DirectoryExistsUTF8(ExeFile) then begin
     ErrorMessage:=Format(lisExecutableIsADirectory, [ExeFile]);
     CheckError;
     exit;
   end;
-  if not FileIsExecutable(Process.Executable) then begin
+  if not FileIsExecutable(ExeFile) then begin
     ErrorMessage:=Format(lisExecutableLacksThePermissionToRun, [ExeFile]);
     CheckError;
     exit;
@@ -982,7 +991,7 @@ var
   end;
 
 var
-  Node: TAvgLvlTreeNode;
+  Node: TAvlTreeNode;
   Item: PPointerToPointerItem;
   Info: PInfo;
 begin
@@ -1114,7 +1123,7 @@ begin
   {$ENDIF}
   Result:=false;
 
-  if (ToolOptions.Scanners.Count=0) and (ExtToolConsole=nil) then begin
+  if (ToolOptions.Parsers.Count=0) and (ExtToolConsole=nil) then begin
     // simply run and detach
     Proc:=TProcessUTF8.Create(nil);
     try
@@ -1241,8 +1250,8 @@ begin
       Tool.CmdLineParams:=ToolOptions.CmdLineParams;
       Tool.EnvironmentOverrides:=ToolOptions.EnvironmentOverrides;
       if ExtToolConsole=nil then
-        for i:=0 to ToolOptions.Scanners.Count-1 do
-          Tool.AddParsers(ToolOptions.Scanners[i]);
+        for i:=0 to ToolOptions.Parsers.Count-1 do
+          Tool.AddParsers(ToolOptions.Parsers[i]);
       if ToolOptions.ShowConsole then
         Tool.Process.Options:=Tool.Process.Options+[poNewConsole]-[poNoConsole]
       else
@@ -1487,13 +1496,26 @@ begin
   fParsers.Remove(Parser);
 end;
 
-function TExternalTools.FindParser(const SubTool: string): TExtToolParserClass;
+function TExternalTools.FindParserForTool(const SubTool: string
+  ): TExtToolParserClass;
 var
   i: Integer;
 begin
   for i:=0 to fParsers.Count-1 do begin
     Result:=TExtToolParserClass(fParsers[i]);
-    if Result.IsSubTool(SubTool) then exit;
+    if Result.CanParseSubTool(SubTool) then exit;
+  end;
+  Result:=nil;
+end;
+
+function TExternalTools.FindParserWithName(const ParserName: string
+  ): TExtToolParserClass;
+var
+  i: Integer;
+begin
+  for i:=0 to fParsers.Count-1 do begin
+    Result:=TExtToolParserClass(fParsers[i]);
+    if SameText(Result.GetParserName,ParserName) then exit;
   end;
   Result:=nil;
 end;

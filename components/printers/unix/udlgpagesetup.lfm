@@ -1,102 +1,132 @@
 object dlgPageSetup: TdlgPageSetup
-  Left = 275
+  Left = 411
   Height = 449
-  Top = 125
-  Width = 408
+  Top = 113
+  Width = 446
   ActiveControl = frmPageSetup.panPreview
+  BorderStyle = bsDialog
   Caption = 'dlgPageSetup'
   ClientHeight = 449
-  ClientWidth = 408
-  OnCreate = FormCreate
+  ClientWidth = 446
   Position = poScreenCenter
-  LCLVersion = '0.9.27'
+  LCLVersion = '1.9.0.0'
   inline frmPageSetup: TframePageSetup
     Height = 408
-    Width = 408
+    Width = 446
     Align = alClient
-    ClientHeight = 404
-    ClientWidth = 404
-    TabOrder = 1
+    ClientHeight = 408
+    ClientWidth = 446
+    DesignLeft = 388
+    DesignTop = 96
     inherited panSetup: TPanel
-      Top = 193
-      Width = 404
-      ClientWidth = 404
+      Top = 197
+      Width = 446
+      ClientWidth = 446
+      TabOrder = 1
       inherited gpPaper: TGroupBox
-        Width = 392
-        ClientWidth = 388
+        Width = 434
+        ClientWidth = 430
         inherited cbPaper: TComboBox
-          Width = 303
+          Width = 345
         end
         inherited cbSource: TComboBox
-          Width = 303
+          Width = 345
         end
       end
       inherited gpMargins: TGroupBox
-        Width = 266
-        ClientWidth = 262
+        Width = 308
+        ClientWidth = 304
         inherited panMargins: TPanel
-          Left = 7
-          TabOrder = 4
+          Width = 304
+          ClientWidth = 304
+          inherited txtRight: TFloatSpinEdit
+            Left = 225
+          end
+          inherited txtBottom: TFloatSpinEdit
+            Left = 225
+          end
         end
       end
     end
     inherited panPreview: TPanel
-      Height = 193
-      Width = 404
-      ClientHeight = 193
-      ClientWidth = 404
+      AnchorSideTop.Control = nil
+      Height = 197
+      Width = 446
+      ClientHeight = 197
+      ClientWidth = 446
       Constraints.MinHeight = 0
+      TabOrder = 0
+      inherited boxShadow: TShape
+        Left = 179
+        Top = 39
+      end
       inherited pbPreview: TPaintBox
-        Left = 152
-        Top = 31
+        Left = 173
+        Top = 33
       end
     end
   end
-  object Panel1: TPanel
+  object PanelButtons: TPanel
     Left = 0
     Height = 41
     Top = 408
-    Width = 408
+    Width = 446
     Align = alBottom
     Anchors = [akLeft, akBottom]
     BevelOuter = bvNone
     ClientHeight = 41
-    ClientWidth = 408
+    ClientWidth = 446
     FullRepaint = False
-    TabOrder = 0
+    TabOrder = 1
     TabStop = True
-    object btnCancel1: TButton
-      Left = 201
-      Height = 25
-      Top = 8
-      Width = 91
+    object btnCancel: TButton
+      AnchorSideTop.Control = btnPrinter
+      AnchorSideTop.Side = asrCenter
+      AnchorSideRight.Control = btnPrinter
+      Left = 254
+      Height = 26
+      Top = 7
+      Width = 90
       Anchors = [akTop, akRight]
-      BorderSpacing.InnerBorder = 4
+      AutoSize = True
+      BorderSpacing.Right = 6
       Caption = 'Cancel'
+      Constraints.MinWidth = 90
       ModalResult = 2
-      TabOrder = 0
-    end
-    object btnOk: TButton
-      Left = 104
-      Height = 25
-      Top = 8
-      Width = 91
-      Anchors = [akTop, akRight]
-      BorderSpacing.InnerBorder = 4
-      Caption = 'Ok'
-      Default = True
-      ModalResult = 1
       TabOrder = 1
     end
-    object btnPrinter: TButton
-      Left = 304
-      Height = 25
-      Top = 8
-      Width = 91
+    object btnOk: TButton
+      AnchorSideTop.Control = btnPrinter
+      AnchorSideTop.Side = asrCenter
+      AnchorSideRight.Control = btnCancel
+      Left = 158
+      Height = 26
+      Top = 7
+      Width = 90
       Anchors = [akTop, akRight]
-      BorderSpacing.InnerBorder = 4
-      Caption = 'Printer ...'
-      ModalResult = 2
+      AutoSize = True
+      BorderSpacing.Right = 6
+      Caption = 'OK'
+      Constraints.MinWidth = 90
+      Default = True
+      ModalResult = 1
+      TabOrder = 0
+    end
+    object btnPrinter: TButton
+      AnchorSideTop.Control = PanelButtons
+      AnchorSideTop.Side = asrCenter
+      AnchorSideRight.Control = PanelButtons
+      AnchorSideRight.Side = asrBottom
+      Left = 350
+      Height = 26
+      Top = 7
+      Width = 90
+      Anchors = [akTop, akRight]
+      AutoSize = True
+      BorderSpacing.Right = 6
+      Caption = 'Printer...'
+      Constraints.MinWidth = 90
+      OnClick = btnPrinterClick
       TabOrder = 2
     end
   end

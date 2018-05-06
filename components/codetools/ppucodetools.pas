@@ -30,7 +30,7 @@ unit PPUCodeTools;
 interface
 
 uses
-  Classes, SysUtils, PPUParser, AVL_Tree, FileProcs, LazFileUtils, LazFileCache;
+  Classes, SysUtils, Laz_AVL_Tree, PPUParser, FileProcs, LazFileUtils, LazFileCache;
 
 type
 
@@ -74,10 +74,8 @@ type
     procedure ClearError;
     function HandleException(AnException: Exception): boolean;
     procedure SetError(TheFilename: string; const TheMessage: string);
-    property CatchExceptions: boolean
-                                   read FCatchExceptions write FCatchExceptions;
-    property WriteExceptions: boolean
-                                   read FWriteExceptions write FWriteExceptions;
+    property CatchExceptions: boolean read FCatchExceptions write FCatchExceptions;
+    property WriteExceptions: boolean read FWriteExceptions write FWriteExceptions;
     property ErrorFilename: string read FErrorFilename;
     property ErrorMessage: string read fErrorMsg;
 

@@ -27,12 +27,16 @@ unit onlinepackagemanagerintf;
 interface
 
 uses
-  MenuIntf, IDECommands, ToolBarIntf, LCLType;
+  Classes,
+  // LCL
+  LCLType,
+  // IdeIntf
+  MenuIntf, IDECommands, ToolBarIntf, PackageLinkIntf;
 
 procedure Register;
 
 implementation
-uses opkman_const, opkman_mainfrm;
+uses opkman_const, opkman_mainfrm, opkman_intf;
 
 procedure IDEMenuSectionClicked(Sender: TObject);
 begin
@@ -51,16 +55,21 @@ var
   IDECommandCategory: TIDECommandCategory;
   IDECommand: TIDECommand;
 begin
-  IDEShortCutX := IDEShortCut(VK_UNKNOWN, [], VK_UNKNOWN, []);
+  IDEShortCutX := IDEShortCut(VK_O, [ssCtrl, ssAlt], VK_UNKNOWN, []);
   IDECommandCategory := IDECommandList.FindCategoryByName('Components');
   if IDECommandCategory <> nil then
   begin
-    IDECommand := RegisterIDECommand(IDECommandCategory, rsLazarusPackageManager, rsLazarusPackageManager, IDEShortCutX, nil, @IDEMenuSectionClicked);
+    IDECommand := RegisterIDECommand(IDECommandCategory, 'Online Package Manager', rsLazarusPackageManager, IDEShortCutX, nil, @IDEMenuSectionClicked);
     if IDECommand <> nil then
       RegisterIDEButtonCommand(IDECommand);
   end;
-  RegisterIDEMenuCommand(itmPkgGraphSection, rsLazarusPackageManager, rsLazarusPackageManager, nil, @IDEMenuSectionClicked);
+  RegisterIDEMenuCommand(itmPkgGraphSection, 'Online Package Manager', rsLazarusPackageManager, nil, @IDEMenuSectionClicked, IDECommand);
 end;
 
+initialization
+  OPMInterface := TOPMInterfaceEx.Create;
+
+finalization
+  OPMInterface.Free;
 end.
 

@@ -14,34 +14,25 @@ unit TADrawerSVG;
 interface
 
 uses
-  Graphics, Classes, FPImage, FPCanvas, TAChartUtils, TADrawUtils;
+  Graphics, Classes, FPImage, FPCanvas, EasyLazFreeType,
+  TAFonts, TAChartUtils, TADrawUtils, TAGraph;
 
 type
-  TSVGFont = record
-    Name: String;
-    Color: TFPColor;
-    Size: integer;
-    Orientation: Integer;  // angle * 10 (90° --> 900), >0 if ccw.
-    Bold: boolean;
-    Italic: boolean;
-    Underline: boolean;
-    StrikeThrough: boolean;
-  end;
-
-
   TSVGDrawer = class(TBasicDrawer, IChartDrawer)
   strict private
     FAntialiasingMode: TChartAntialiasingMode;
     FBrushColor: TFPColor;
     FBrushStyle: TFPBrushStyle;
     FClippingPathId: Integer;
-    FFont: TSVGFont;
+    FFont: TFreeTypeFont;
+    FFontHeight: Integer;  // Height of text in pixels
+    FFontOrientation: Integer;  // angle*10 (i.e. 90° --> 900, >0 if ccs.
+    FFontColor: TFPColor;
     FPatterns: TStrings;
     FPen: TFPCustomPen;
     FPrevPos: TPoint;
     FStream: TStream;
 
-    function FontSize: Integer; inline;
     function OpacityStr: String;
     function PointsToStr(
       const APoints: array of TPoint; AStartIndex, ANumPts: Integer): String;
@@ -56,7 +47,6 @@ type
     procedure WriteFmt(const AFormat: String; AParams: array of const);
     procedure WriteStr(const AString: String);
   strict protected
-    function GetFontAngle: Double; override;
     function SimpleTextExtent(const AText: String): TPoint; override;
     procedure SimpleTextOut(AX, AY: Integer; const AText: String); override;
 
@@ -73,6 +63,11 @@ type
     procedure Ellipse(AX1, AY1, AX2, AY2: Integer);
     procedure FillRect(AX1, AY1, AX2, AY2: Integer);
     function GetBrushColor: TChartColor;
+    function GetFontAngle: Double; override;
+    function GetFontColor: TFPColor; override;
+    function GetFontName: String; override;
+    function GetFontSize: Integer; override;
+    function GetFontStyle: TChartFontStyles; override;
     procedure Line(AX1, AY1, AX2, AY2: Integer);
     procedure Line(const AP1, AP2: TPoint);
     procedure LineTo(AX, AY: Integer); override;
@@ -96,6 +91,14 @@ type
     procedure SetPenParams(AStyle: TFPPenStyle; AColor: TChartColor);
   end;
 
+
+  { TSVGChartHelper }
+
+  TSVGChartHelper = class helper for TChart
+    procedure SaveToSVGFile(const AFileName: String);
+  end;
+
+
 implementation
 
 uses
@@ -106,6 +109,22 @@ const
     '<rect x="%d" y="%d" width="%d" height="%d" style="%s"/>';
 var
   fmtSettings: TFormatSettings;
+
+function EscapeXML(const AText: String): String;
+var
+  ch: Char;
+begin
+  Result := '';
+  for ch in AText do
+    case ch of
+      '<': Result := Result + '&lt;';
+      '>': Result := Result + '&gt;';
+      '"': Result := Result + '&quot;';
+      '''':Result := Result + '&apos;';
+      '&': Result := Result + '&amp;';
+      else Result := Result + ch;
+    end;
+end;
 
 function ColorToHex(AColor: TFPColor): String;
 begin
@@ -146,7 +165,7 @@ end;
 
 procedure TSVGDrawer.AddToFontOrientation(ADelta: Integer);
 begin
-  FFont.Orientation += ADelta;
+  FFontOrientation += ADelta;
 end;
 
 procedure TSVGDrawer.ClippingStart(const AClipRect: TRect);
@@ -172,6 +191,7 @@ end;
 constructor TSVGDrawer.Create(AStream: TStream; AWriteDocType: Boolean);
 begin
   inherited Create;
+  InitFonts;
   FStream := AStream;
   FPatterns := TStringList.Create;
   FPen := TFPCustomPen.Create;
@@ -186,6 +206,7 @@ end;
 
 destructor TSVGDrawer.Destroy;
 begin
+  FreeAndNil(FFont);
   FreeAndNil(FPatterns);
   FreeAndNil(FPen);
   inherited Destroy;
@@ -238,11 +259,6 @@ begin
   WriteFmt(RECT_FMT, [AX1, AY1, AX2 - AX1, AY2 - AY1, StyleFill]);
 end;
 
-function TSVGDrawer.FontSize: Integer;
-begin
-  Result := IfThen(FFont.Size = 0, 8, FFont.Size);
-end;
-
 function TSVGDrawer.GetBrushColor: TChartColor;
 begin
   Result := FPColorToChartColor(FBrushColor);
@@ -250,7 +266,31 @@ end;
 
 function TSVGDrawer.GetFontAngle: Double;
 begin
-  Result := FFont.Orientation;
+  Result := OrientToRad(FFontOrientation);
+end;
+
+function TSVGDrawer.GetFontColor: TFPColor;
+begin
+  Result := FFontColor;
+end;
+
+function TSVGDrawer.GetFontName: String;
+begin
+  Result := FFont.Family;
+end;
+
+function TSVGDrawer.GetFontSize: Integer;
+begin
+  Result := Round(FFont.SizeInPoints);
+end;
+
+function TSVGDrawer.GetFontStyle: TChartFontStyles;
+begin
+  Result := [];
+  if ftsBold in FFont.Style then Include(Result, cfsBold);
+  if ftsItalic in FFont.Style then Include(Result, cfsItalic);
+  if FFont.UnderlineDecoration then Include(Result, cfsUnderline);
+  if FFont.StrikeoutDecoration then Include(Result, cfsStrikeout);
 end;
 
 procedure TSVGDrawer.Line(AX1, AY1, AX2, AY2: Integer);
@@ -381,7 +421,7 @@ end;
 
 procedure TSVGDrawer.ResetFont;
 begin
-  FFont.Orientation := 0;
+  FFontOrientation := 0;
 end;
 
 procedure TSVGDrawer.SetAntialiasingMode(AValue: TChartAntialiasingMode);
@@ -419,23 +459,40 @@ begin
 end;
 
 procedure TSVGDrawer.SetFont(AFont: TFPCustomFont);
+var
+  style: TFreeTypeStyles;
+  fn: String;
 begin
-  with FFont do begin
-    Name := AFont.Name;
-    Size := IfThen(AFont.Size=0, 8, AFont.Size);
+  style := [];
+  if AFont.Bold then Include(style, ftsBold);
+  if AFont.Italic then Include(style, ftsItalic);
 
-    // ???
-    if FMonochromeColor <> clTAColor then
-      Color := FChartColorToFPColorFunc(FMonochromeColor)
+  // create a new font if not yet loaded
+  if (FFont = nil) or (FFont.Family <> AFont.Name) or(FFont.Style <> style) then
+  begin
+    FreeAndNil(FFont);
+    if SameText(AFont.Name, 'default') then
+      fn := 'Arial'   // FIXME: Find font in FontCollection!
     else
-      Color := AFont.FPColor;
-
-    Orientation := FGetFontOrientationFunc(AFont);
-    FFont.Bold := AFont.Bold;
-    FFont.Italic := AFont.Italic;
-    FFont.Underline := AFont.Underline;
-    FFont.Strikethrough := AFont.Strikethrough;
+      fn := AFont.Name;
+    FFont := LoadFont(fn, style);
+    if FFont = nil then
+      raise Exception.CreateFmt('Font "%s" not found."', [AFont.Name]);
   end;
+
+  // Set the requested font attributes
+  FFont.SizeInPoints := IfThen(AFont.Size = 0, DEFAULT_FONT_SIZE, AFont.Size);
+  FFont.UnderlineDecoration := AFont.Underline;
+  FFont.StrikeoutDecoration := AFont.StrikeThrough;
+  FFont.Hinted := true;
+  FFont.Quality := grqHighQuality;
+
+  if FMonochromeColor <> clTAColor then
+    FFontColor := FChartColorToFPColorFunc(FMonochromeColor)
+  else
+    FFontColor := AFont.FPColor;
+  FFontOrientation := FGetFontOrientationFunc(AFont);
+  FFontHeight := round(FFont.TextHeight('Tg'));
 end;
 
 procedure TSVGDrawer.SetPen(APen: TFPCustomPen);
@@ -456,49 +513,50 @@ end;
 
 function TSVGDrawer.SimpleTextExtent(const AText: String): TPoint;
 begin
-  // SVG does not have a way to determine text size.
-  // Use some heuristics.
-  Result.X := FontSize * Length(AText) * 2 div 3;
-  Result.Y := FontSize;
+  Result.X := Round(FFont.TextWidth(AText));
+  Result.Y := FFontHeight;
 end;
+
+type
+  TFreeTypeFontOpener = class(TFreeTypeFont);
 
 procedure TSVGDrawer.SimpleTextOut(AX, AY: Integer; const AText: String);
 var
   p: TPoint;
   stext: String;
   sstyle: String;
-  fs: TFormatSettings;
+  dy: Integer;
+  phi: Double;
 begin
-  fs := DefaultFormatSettings;
-  fs.DecimalSeparator := '.';
-  fs.ThousandSeparator := '#';
-
-  p := RotatePoint(Point(0, FontSize), OrientToRad(-FFont.Orientation)) + Point(AX, AY);
+  dy := round(TFreeTypeFontOpener(FFont).GetAscent);
+  phi := OrientToRad(FFontOrientation);
+  p := RotatePoint(Point(0, dy), -phi) + Point(AX, AY);
   stext := Format('x="%d" y="%d"', [p.X, p.Y]);
-  if FFont.Orientation <> 0 then
-    stext := stext + Format(' transform="rotate(%g,%d,%d)"', [-FFont.Orientation*0.1, p.X, p.Y], fs);
+  if FFontOrientation <> 0 then
+    stext := stext + Format(' transform="rotate(%g,%d,%d)"',
+      [-FFontOrientation*0.1, p.X, p.Y], fmtSettings);
 
   sstyle := Format('fill:%s; font-family:''%s''; font-size:%dpt;',
-    [ColorToHex(FFont.Color), FFont.Name, FontSize]);
-  if FFont.Bold then
+    [ColorToHex(GetFontColor), GetFontName, round(FFont.SizeInPoints)]);
+  if (ftsBold in FFont.Style) then
     sstyle := sstyle + ' font-weight:bold;';
-  if FFont.Italic then
+  if (ftsItalic in FFont.Style) then
     sstyle := sstyle + ' font-style:oblique;';
-  if FFont.Underline and FFont.Strikethrough then
+  if FFont.UnderlineDecoration and FFont.StrikeoutDecoration then
     sstyle := sstyle + ' text-decoration:underline,line-through;'
-  else if FFont.Underline then
+  else if FFont.UnderlineDecoration then
     sstyle := sstyle + ' text-deocration:underline;'
-  else if FFont.Strikethrough then
+  else if FFont.StrikeoutDecoration then
     sstyle := sstyle + ' text-decoration:line-through;';
   if OpacityStr <> '' then
     sstyle := sstyle + OpacityStr + ';';
 
-  WriteFmt('<text %s style="%s">%s</text>', [stext, sstyle, AText]);
+  WriteFmt('<text %s style="%s">%s</text>', [stext, sstyle, EscapeXML(AText)]);
 end;
 
 function TSVGDrawer.StyleFill: String;
 
-function AddPattern(APattern: String): String;
+  function AddPattern(APattern: String): String;
   var
     i: Integer;
   begin
@@ -551,7 +609,7 @@ end;
 
 procedure TSVGDrawer.WriteFmt(const AFormat: String; AParams: array of const);
 begin
-  WriteStr(Format(AFormat, AParams));
+  WriteStr(Format(AFormat, AParams, fmtSettings));
 end;
 
 procedure TSVGDrawer.WriteStr(const AString: String);
@@ -562,8 +620,23 @@ begin
   FStream.WriteBuffer(le[1], Length(le));
 end;
 
-initialization
 
+{ TSVGChartHelper }
+
+procedure TSVGChartHelper.SaveToSVGFile(const AFileName: String);
+var
+  fs: TFileStream;
+begin
+  fs := TFileStream.Create(AFileName, fmCreate);
+  try
+    Draw(TSVGDrawer.Create(fs, true), Rect(0, 0, Width, Height));
+  finally
+    fs.Free;
+  end;
+end;
+
+
+initialization
   fmtSettings := DefaultFormatSettings;
   fmtSettings.DecimalSeparator := '.';
 

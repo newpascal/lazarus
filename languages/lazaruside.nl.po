@@ -410,6 +410,10 @@ msgstr ""
 msgid "Default Text"
 msgstr ""
 
+#: lazarusidestrconsts.dlgaddhiattrdefaultwindow
+msgid "Default Text / Window"
+msgstr ""
+
 #: lazarusidestrconsts.dlgaddhiattrdisabledbreakpoint
 msgid "Disabled breakpoint"
 msgstr ""
@@ -454,6 +458,10 @@ msgctxt "lazarusidestrconsts.dlgaddhiattrgroupline"
 msgid "Line"
 msgstr "Regel"
 
+#: lazarusidestrconsts.dlgaddhiattrgroupoutlinecolors
+msgid "Outline Colors"
+msgstr ""
+
 #: lazarusidestrconsts.dlgaddhiattrgroupsyncroedit
 msgid "Syncron Edit"
 msgstr ""
@@ -477,6 +485,11 @@ msgstr ""
 
 #: lazarusidestrconsts.dlgaddhiattrhighlightall
 msgid "Incremental others"
+msgstr ""
+
+#: lazarusidestrconsts.dlgaddhiattrhighlightprefix
+msgctxt "lazarusidestrconsts.dlgaddhiattrhighlightprefix"
+msgid "Highlight prefix"
 msgstr ""
 
 #: lazarusidestrconsts.dlgaddhiattrhighlightword
@@ -505,6 +518,46 @@ msgstr ""
 
 #: lazarusidestrconsts.dlgaddhiattrmouselink
 msgid "Mouse link"
+msgstr ""
+
+#: lazarusidestrconsts.dlgaddhiattroutlinelevel10color
+msgid "Level 10"
+msgstr ""
+
+#: lazarusidestrconsts.dlgaddhiattroutlinelevel1color
+msgid "Level  1"
+msgstr ""
+
+#: lazarusidestrconsts.dlgaddhiattroutlinelevel2color
+msgid "Level  2"
+msgstr ""
+
+#: lazarusidestrconsts.dlgaddhiattroutlinelevel3color
+msgid "Level  3"
+msgstr ""
+
+#: lazarusidestrconsts.dlgaddhiattroutlinelevel4color
+msgid "Level  4"
+msgstr ""
+
+#: lazarusidestrconsts.dlgaddhiattroutlinelevel5color
+msgid "Level  5"
+msgstr ""
+
+#: lazarusidestrconsts.dlgaddhiattroutlinelevel6color
+msgid "Level  6"
+msgstr ""
+
+#: lazarusidestrconsts.dlgaddhiattroutlinelevel7color
+msgid "Level  7"
+msgstr ""
+
+#: lazarusidestrconsts.dlgaddhiattroutlinelevel8color
+msgid "Level  8"
+msgstr ""
+
+#: lazarusidestrconsts.dlgaddhiattroutlinelevel9color
+msgid "Level  9"
 msgstr ""
 
 #: lazarusidestrconsts.dlgaddhiattrsyncroeditarea
@@ -549,12 +602,20 @@ msgstr ""
 msgid "Unknown breakpoint"
 msgstr ""
 
+#: lazarusidestrconsts.dlgaddhiattrwindowborder
+msgid "Window border"
+msgstr ""
+
 #: lazarusidestrconsts.dlgaddhiattrwordgroup
 msgid "Word-Brackets"
 msgstr ""
 
 #: lazarusidestrconsts.dlgaddhispecialvisiblechars
 msgid "Visualized Special Chars"
+msgstr ""
+
+#: lazarusidestrconsts.dlgaddnewmode
+msgid "Add new mode"
 msgstr ""
 
 #: lazarusidestrconsts.dlgaddsemicolon
@@ -600,6 +661,14 @@ msgstr "Applicatie instellingen"
 #| msgid "Include Assertion Code"
 msgid "Include assertion code"
 msgstr "Gebruik assertie code"
+
+#: lazarusidestrconsts.dlgassociateddebugdesktop
+msgid "Associated debug desktop"
+msgstr ""
+
+#: lazarusidestrconsts.dlgassociateddebugdesktophint
+msgid "If you select the desktop, the associated debug desktop will be selected as well."
+msgstr ""
 
 #: lazarusidestrconsts.dlgautocreateforms
 msgid "Auto-create forms:"
@@ -667,6 +736,10 @@ msgstr "Beschikbare Forms:"
 msgid "These forms must be created and freed in the program code."
 msgstr ""
 
+#: lazarusidestrconsts.dlgavoidunnecessaryjumps
+msgid "Avoid unnecessary jumps"
+msgstr ""
+
 #: lazarusidestrconsts.dlgbackcolor
 msgid "Background"
 msgstr "Achtergrond"
@@ -684,9 +757,10 @@ msgid "Behind methods"
 msgstr "Achter methoden"
 
 #: lazarusidestrconsts.dlgblockgroupoptions
+#, fuzzy
 msgctxt "lazarusidestrconsts.dlgblockgroupoptions"
 msgid "Selection"
-msgstr ""
+msgstr "Selectie"
 
 #: lazarusidestrconsts.dlgblockindent
 #, fuzzy
@@ -834,12 +908,6 @@ msgstr "Variabele prefix"
 msgid "Write prefix"
 msgstr "Schrijf voorvoegsel"
 
-#: lazarusidestrconsts.dlgcentercursorline
-#, fuzzy
-#| msgid "Center Cursor Line"
-msgid "Center cursor line"
-msgstr "Centreer Cursor line"
-
 #: lazarusidestrconsts.dlgcharcasefileact
 #, fuzzy
 #| msgid "Save As - auto rename pascal files lower case"
@@ -888,9 +956,10 @@ msgid "Assembler style"
 msgstr ""
 
 #: lazarusidestrconsts.dlgcocfgcmpmessages
+#, fuzzy
 msgctxt "lazarusidestrconsts.dlgcocfgcmpmessages"
 msgid "Messages"
-msgstr ""
+msgstr "Berichten"
 
 #: lazarusidestrconsts.dlgcochecksandassertion
 msgid "Checks and assertion"
@@ -1001,7 +1070,7 @@ msgid "Command line parameters (without application name)"
 msgstr "Command line parameters (zonder applicatie naam)"
 
 #: lazarusidestrconsts.dlgcommentalignmaxdefault
-msgid "Make default indent for new line if comment opens at column:"
+msgid "Max indent for new line if prefix is based on start of comment on first comment line:"
 msgstr ""
 
 #: lazarusidestrconsts.dlgcommentalignmaxtoken
@@ -1219,6 +1288,10 @@ msgstr ""
 msgid "C++ styled INLINE"
 msgstr "C++-achtige INLINE"
 
+#: lazarusidestrconsts.dlgcreatenewrunparameterssettings
+msgid "Create new Run Parameters settings"
+msgstr ""
+
 #: lazarusidestrconsts.dlgctrlmiddletabcloseotherpages
 msgid "Ctrl-middle-click on tab closes all others"
 msgstr ""
@@ -1270,6 +1343,10 @@ msgstr "Standaard editorfont"
 #: lazarusidestrconsts.dlgdefvaluecolor
 msgid "Default Value"
 msgstr "Standaardwaarde"
+
+#: lazarusidestrconsts.dlgdeletemode
+msgid "Delete mode"
+msgstr ""
 
 #: lazarusidestrconsts.dlgdeltemplate
 msgid "Delete template "
@@ -1938,6 +2015,14 @@ msgstr ""
 msgid "Processing Instruction"
 msgstr ""
 
+#: lazarusidestrconsts.dlgforcedpiscalingindesigntime
+msgid "Force DPI scaling in design-time"
+msgstr ""
+
+#: lazarusidestrconsts.dlgforcedpiscalingindesigntimehint
+msgid "When checked the project scaling settings will be ignored - only the form/frame/datamodule Scaled property will be taken into account."
+msgstr ""
+
 #: lazarusidestrconsts.dlgforceuniqueinstancemodalerror
 msgid "The running Lazarus instance cannot accept any files."
 msgstr ""
@@ -1986,10 +2071,6 @@ msgstr ""
 msgid "&From cursor"
 msgstr ""
 
-#: lazarusidestrconsts.dlggetposition
-msgid "Get position"
-msgstr "positie"
-
 #: lazarusidestrconsts.dlgglobal
 msgid "&Global"
 msgstr ""
@@ -2001,6 +2082,10 @@ msgstr "Genereer code voor gprof"
 #: lazarusidestrconsts.dlggrabbercolor
 msgid "Grabber color"
 msgstr "Kleur opnemen"
+
+#: lazarusidestrconsts.dlggrayeddesktopsdocked
+msgid "Grayed desktops are for docked environment."
+msgstr ""
 
 #: lazarusidestrconsts.dlggrayeddesktopsundocked
 msgid "Grayed desktops are for undocked environment."
@@ -2031,9 +2116,10 @@ msgid "Vertical grid step size"
 msgstr "Vertikale stapgrootte van raster"
 
 #: lazarusidestrconsts.dlggroupcodeexplorer
+#, fuzzy
 msgctxt "lazarusidestrconsts.dlggroupcodeexplorer"
 msgid "Code Explorer"
-msgstr ""
+msgstr "Codeverkenner"
 
 #: lazarusidestrconsts.dlggroupcodetools
 msgid "Codetools"
@@ -2201,6 +2287,10 @@ msgid ""
 "Please confirm the desktop name:\n"
 msgstr ""
 
+#: lazarusidestrconsts.dlgincludeidentifierscontainingprefix
+msgid "Include identifiers containing prefix"
+msgstr ""
+
 #: lazarusidestrconsts.dlgincludesystemvariables
 msgid "Include system variables"
 msgstr "Include systeemvariabelen"
@@ -2253,9 +2343,17 @@ msgstr "Spatie voor invoegen"
 msgid "Interval in secs"
 msgstr "Interval in seconden"
 
+#: lazarusidestrconsts.dlgjumpcodeblockpos
+msgid "Vertical position for a code block jump in % (0=top, 100=bottom)"
+msgstr ""
+
 #: lazarusidestrconsts.dlgjumpingetc
 msgid "Jumping (e.g. Method Jumping)"
 msgstr "Springen ('Method Jumping')"
+
+#: lazarusidestrconsts.dlgjumpsinglelinepos
+msgid "Vertical position for a single line jump in % (0=top, 100=bottom)"
+msgstr ""
 
 #: lazarusidestrconsts.dlgjumptomethodbody
 msgid "Jump directly to method body"
@@ -2297,10 +2395,6 @@ msgstr "Laatste (einde broncode)"
 #: lazarusidestrconsts.dlglazarusdir
 msgid "Lazarus directory (default for all projects)"
 msgstr "Lazarus directory (standaard voor alle projecten)"
-
-#: lazarusidestrconsts.dlgleftpos
-msgid "Left:"
-msgstr "Links:"
 
 #: lazarusidestrconsts.dlglefttopclr
 #, fuzzy
@@ -2499,7 +2593,7 @@ msgid "Word Brackets on caret (global)"
 msgstr ""
 
 #: lazarusidestrconsts.dlgmarkupwordfulllen
-msgid "Match word boundaries for words up to this length:"
+msgid "Match whole words, if length is less or equal to:"
 msgstr ""
 
 #: lazarusidestrconsts.dlgmarkupwordnokeyword
@@ -2533,6 +2627,10 @@ msgstr "Max aantal recente projecten"
 #: lazarusidestrconsts.dlgmixmethodsandproperties
 msgid "Mix methods and properties"
 msgstr "Mix methodes en properties"
+
+#: lazarusidestrconsts.dlgmode
+msgid "Mode"
+msgstr ""
 
 #: lazarusidestrconsts.dlgmouseaction
 msgid "Mouse Action"
@@ -2805,9 +2903,10 @@ msgid "Priority"
 msgstr ""
 
 #: lazarusidestrconsts.dlgmsgs
+#, fuzzy
 msgctxt "lazarusidestrconsts.dlgmsgs"
 msgid "Messages"
-msgstr ""
+msgstr "Berichten"
 
 #: lazarusidestrconsts.dlgmsgwincolorurgentdebug
 #, fuzzy
@@ -2971,9 +3070,10 @@ msgid "Do not split line in front of"
 msgstr "Splits een regel niet voor :"
 
 #: lazarusidestrconsts.dlgobjinsp
+#, fuzzy
 msgctxt "lazarusidestrconsts.dlgobjinsp"
 msgid "Object Inspector"
-msgstr ""
+msgstr "Object Inspecteur"
 
 #: lazarusidestrconsts.dlgoiitemheight
 #, fuzzy
@@ -3118,6 +3218,10 @@ msgstr ""
 
 #: lazarusidestrconsts.dlgpodpiawarenessoldonnewpermonitor
 msgid "Vista-8: on, 8.1+: per monitor"
+msgstr ""
+
+#: lazarusidestrconsts.dlgpodpiawarenessoldonnewpermonitorv2
+msgid "Vista-8: on, 8.1/10+: per monitor/V2"
 msgstr ""
 
 #: lazarusidestrconsts.dlgpodpiawarenesson
@@ -3277,8 +3381,8 @@ msgstr "Vervang &alles"
 
 #: lazarusidestrconsts.dlgreplacewith
 #, fuzzy
-#| msgid "&Replace With"
-msgid "&Replace with"
+#| msgid "&Replace with"
+msgid "Replace wit&h"
 msgstr "&Vervang Door"
 
 #: lazarusidestrconsts.dlgreport
@@ -3389,6 +3493,10 @@ msgstr "Sla alleen bewerker informatie op voor project bestanden"
 msgid "Only files that belong to this project."
 msgstr ""
 
+#: lazarusidestrconsts.dlgsavein
+msgid "Save in"
+msgstr ""
+
 #: lazarusidestrconsts.dlgscrollbyoneless
 msgid "Scroll by one less"
 msgstr "Scroll met een minder"
@@ -3491,9 +3599,10 @@ msgid "Show compiled procedures"
 msgstr "Toon gecompileerde procedures"
 
 #: lazarusidestrconsts.dlgshowcompilinglinenumbers
+#, fuzzy
 msgctxt "lazarusidestrconsts.dlgshowcompilinglinenumbers"
 msgid "Show line numbers"
-msgstr ""
+msgstr "Toon regelnummers"
 
 #: lazarusidestrconsts.dlgshowconditionals
 msgid "Show conditionals"
@@ -3625,9 +3734,10 @@ msgid "Hints for main speed buttons (open, save, ...)"
 msgstr "Hints voor snelknoppen in hoofdbalk (openen, opslaan, ...)"
 
 #: lazarusidestrconsts.dlgsrcedit
+#, fuzzy
 msgctxt "lazarusidestrconsts.dlgsrcedit"
 msgid "Source Editor"
-msgstr ""
+msgstr "Broncode Bewerker"
 
 #: lazarusidestrconsts.dlgsrorigin
 msgid "Origin"
@@ -3693,9 +3803,10 @@ msgid "Target CPU family"
 msgstr ""
 
 #: lazarusidestrconsts.dlgtargetos
+#, fuzzy
 msgctxt "lazarusidestrconsts.dlgtargetos"
 msgid "Target OS"
-msgstr ""
+msgstr "Doel OS"
 
 #: lazarusidestrconsts.dlgtargetplatform
 #, fuzzy
@@ -3715,6 +3826,10 @@ msgstr ""
 msgid "Directory for building test projects"
 msgstr "Folder voor bouwen van test projecten"
 
+#: lazarusidestrconsts.dlgtextstyle
+msgid "Text-Style"
+msgstr ""
+
 #: lazarusidestrconsts.dlgtexttofind
 #, fuzzy
 #| msgid "&Text to Find"
@@ -3730,10 +3845,6 @@ msgstr ""
 #: lazarusidestrconsts.dlgtopinfohint
 msgid "Current Class/Proc Hint"
 msgstr ""
-
-#: lazarusidestrconsts.dlgtoppos
-msgid "Top:"
-msgstr "Top:"
 
 #: lazarusidestrconsts.dlgtrimspacetypecaption
 msgid "Trim spaces style"
@@ -3811,6 +3922,10 @@ msgstr ""
 msgid "Use standard compiler config file (fpc.cfg)"
 msgstr "Gebruik standaard compiler configuratie bestand (fpc.cfg)"
 
+#: lazarusidestrconsts.dlguseiconsincompletionbox
+msgid "Icons in code completion box"
+msgstr ""
+
 #: lazarusidestrconsts.dlguselaunchingapp
 msgid "Use launching application"
 msgstr "Gebruik start programma"
@@ -3876,12 +3991,6 @@ msgstr ""
 msgctxt "lazarusidestrconsts.dlgwindow"
 msgid "Window"
 msgstr "Venster"
-
-#: lazarusidestrconsts.dlgwinpos
-#, fuzzy
-#| msgid "Window Positions"
-msgid "Window positions"
-msgstr "Venster Posities"
 
 #: lazarusidestrconsts.dlgwordexceptions
 msgid "Exceptions"
@@ -4077,9 +4186,11 @@ msgid "Ancestor Type"
 msgstr "Ancestor Type"
 
 #: lazarusidestrconsts.lisa2papascalunitmusthavetheextensionpporpas
+#, fuzzy
+#| msgid "A pascal unit must have the extension .pp or .pas"
 msgctxt "lazarusidestrconsts.lisa2papascalunitmusthavetheextensionpporpas"
 msgid "A Pascal unit must have the extension .pp or .pas"
-msgstr ""
+msgstr "Een Pascal-unit dient op .pp of .pas te eindigen."
 
 #: lazarusidestrconsts.lisa2pbrokendependencies
 msgid "Broken Dependencies"
@@ -4124,7 +4235,9 @@ msgid "File is used"
 msgstr "Bestand wordt gebruikt"
 
 #: lazarusidestrconsts.lisa2pfilename2
-msgid "Filename"
+#, fuzzy
+#| msgid "Filename"
+msgid "Filename/URL"
 msgstr "Bestandsnaam"
 
 #: lazarusidestrconsts.lisa2pfilenotunit
@@ -4266,19 +4379,22 @@ msgid "The filename \"%s\" is ambiguous, because the package has no default dire
 msgstr "De bestandsnaam \"%s\" is onduidelijk, omdat het package geen standaard directorie heeft.%sGeef een bestandsnaam inclusief het pad."
 
 #: lazarusidestrconsts.lisa2pthemaximumversionisinvalidpleaseusetheformatmajor
+#, fuzzy
 msgctxt "lazarusidestrconsts.lisa2pthemaximumversionisinvalidpleaseusetheformatmajor"
 msgid "The Maximum Version \"%s\" is invalid.%sPlease use the format major.minor.release.build%sFor example: 1.0.20.10"
-msgstr ""
+msgstr "De Maximum Versie \"%s\" is ongeldig.%sGebruik het formaat major.minor.release.build%sBijvoorbeeld: 1.0.20.10"
 
 #: lazarusidestrconsts.lisa2pthemaximumversionislowerthantheminimimversion
+#, fuzzy
 msgctxt "lazarusidestrconsts.lisa2pthemaximumversionislowerthantheminimimversion"
 msgid "The Maximum Version is lower than the Minimim Version."
-msgstr ""
+msgstr "De maximum versie is lager dan de minimum versie"
 
 #: lazarusidestrconsts.lisa2ptheminimumversionisinvalidpleaseusetheformatmajor
+#, fuzzy
 msgctxt "lazarusidestrconsts.lisa2ptheminimumversionisinvalidpleaseusetheformatmajor"
 msgid "The Minimum Version \"%s\" is invalid.%sPlease use the format major.minor.release.build%sFor example: 1.0.20.10"
-msgstr ""
+msgstr "De Minimum Versie \"%s\" is ongeldig.%sGebruik het formaat major.minor.release.build%sBijvoorbeeld: 1.0.20.10"
 
 #: lazarusidestrconsts.lisa2pthepackagehasalreadyadependencyforthe
 #, fuzzy
@@ -4369,9 +4485,10 @@ msgid "Abort whole loading"
 msgstr ""
 
 #: lazarusidestrconsts.lisabout
+#, fuzzy
 msgctxt "lazarusidestrconsts.lisabout"
 msgid "About"
-msgstr ""
+msgstr "Informatie"
 
 #: lazarusidestrconsts.lisabout2
 msgid "About %s"
@@ -4443,6 +4560,14 @@ msgstr ""
 msgctxt "lazarusidestrconsts.lisadd"
 msgid "Add"
 msgstr "Toevoegen"
+
+#: lazarusidestrconsts.lisaddanewseparatoraboveselecteditem
+msgid "Add a new separator above selected item"
+msgstr ""
+
+#: lazarusidestrconsts.lisaddanewseparatorbelowselecteditem
+msgid "Add a new separator below selected item"
+msgstr ""
 
 #: lazarusidestrconsts.lisadddelphidefine
 msgid "Add defines simulating Delphi7"
@@ -4768,6 +4893,10 @@ msgstr ""
 msgid "An error occurred at last startup while loading %s!%sLoad this project again?"
 msgstr "Bij het laden van %s is er laatst een fout opgetreden!%sDit project opnieuw laden?"
 
+#: lazarusidestrconsts.lisappearance
+msgid "Appearance"
+msgstr ""
+
 #: lazarusidestrconsts.lisapplicationclassname
 msgid "&Application class name"
 msgstr ""
@@ -4984,6 +5113,12 @@ msgstr ""
 msgid "Working directory (leave empty for file path)"
 msgstr ""
 
+#: lazarusidestrconsts.lisbinary
+#, fuzzy
+msgctxt "lazarusidestrconsts.lisbinary"
+msgid "Binary"
+msgstr "Binair"
+
 #: lazarusidestrconsts.lisboldnondefaultobjectinspector
 msgid "Bold non default values"
 msgstr ""
@@ -5021,6 +5156,17 @@ msgstr "Dit is het verwante control waaraan de bodemzijde is verankerd. Laat het
 msgid "Bottom space equally"
 msgstr "Bodem gelijk gespaceerd"
 
+#: lazarusidestrconsts.lisbpsdisabled
+msgctxt "lazarusidestrconsts.lisbpsdisabled"
+msgid "Disabled"
+msgstr ""
+
+#: lazarusidestrconsts.lisbpsenabled
+#, fuzzy
+msgctxt "lazarusidestrconsts.lisbpsenabled"
+msgid "Enabled"
+msgstr "Ingeschakeld"
+
 #: lazarusidestrconsts.lisbreak
 msgctxt "lazarusidestrconsts.lisbreak"
 msgid "Break"
@@ -5028,6 +5174,10 @@ msgstr ""
 
 #: lazarusidestrconsts.lisbreakpointproperties
 msgid "Breakpoint Properties"
+msgstr ""
+
+#: lazarusidestrconsts.lisbrowseandselectacompiler
+msgid "Browse and select a compiler (e.g. ppcx64"
 msgstr ""
 
 #: lazarusidestrconsts.lisbtnadd
@@ -5073,6 +5223,10 @@ msgstr "Afsluiten"
 #: lazarusidestrconsts.lisbtnremove
 msgctxt "lazarusidestrconsts.lisbtnremove"
 msgid "&Remove"
+msgstr ""
+
+#: lazarusidestrconsts.lisbtnrename
+msgid "&Rename"
 msgstr ""
 
 #: lazarusidestrconsts.lisbtnreplace
@@ -5200,6 +5354,10 @@ msgstr "Kan top-level component niet kopiëren."
 #| msgid "Cannot create file %s%s%s"
 msgid "Cannot create file \"%s\""
 msgstr "Kan bestand \"%s\" niet maken"
+
+#: lazarusidestrconsts.liscannotdeletelastmode
+msgid "Cannot delete last mode."
+msgstr ""
 
 #: lazarusidestrconsts.liscannotexecute
 msgid "cannot execute \"%s\""
@@ -6157,11 +6315,6 @@ msgctxt "lazarusidestrconsts.liscodecreationdialoglocation"
 msgid "Location"
 msgstr ""
 
-#: lazarusidestrconsts.liscodeexplorer
-msgctxt "lazarusidestrconsts.liscodeexplorer"
-msgid "Code Explorer"
-msgstr ""
-
 #: lazarusidestrconsts.liscodegenerationoptions
 msgid "Code generation options"
 msgstr ""
@@ -6171,9 +6324,10 @@ msgid "Add path"
 msgstr "Pad toevoegen"
 
 #: lazarusidestrconsts.liscodehelpbrowseexamplebutton
+#, fuzzy
 msgctxt "lazarusidestrconsts.liscodehelpbrowseexamplebutton"
 msgid "Browse"
-msgstr ""
+msgstr "Blader"
 
 #: lazarusidestrconsts.liscodehelpconfirmreplace
 msgid "Confirm replace"
@@ -6193,9 +6347,10 @@ msgid "Description"
 msgstr ""
 
 #: lazarusidestrconsts.liscodehelperrorstag
+#, fuzzy
 msgctxt "lazarusidestrconsts.liscodehelperrorstag"
 msgid "Errors"
-msgstr ""
+msgstr "Fouten"
 
 #: lazarusidestrconsts.liscodehelpexampletag
 msgid "Example"
@@ -6584,9 +6739,10 @@ msgid "Previous node can not contain child nodes."
 msgstr "Vorige node kan geen child nodes bevatten"
 
 #: lazarusidestrconsts.liscodetoolsdefsprojectdirectory
+#, fuzzy
 msgctxt "lazarusidestrconsts.liscodetoolsdefsprojectdirectory"
 msgid "Project directory"
-msgstr ""
+msgstr "Project directory"
 
 #: lazarusidestrconsts.liscodetoolsdefsprojectdirectory2
 msgid "%s project directory"
@@ -7397,14 +7553,11 @@ msgctxt "lazarusidestrconsts.liscoolbarborderstyleitem1"
 msgid "Single"
 msgstr ""
 
-#: lazarusidestrconsts.liscoolbarclearselection
-msgid "Clear selection"
-msgstr ""
-
 #: lazarusidestrconsts.liscoolbarcodeexplorer
+#, fuzzy
 msgctxt "lazarusidestrconsts.liscoolbarcodeexplorer"
 msgid "Code Explorer"
-msgstr ""
+msgstr "Codeverkenner"
 
 #: lazarusidestrconsts.liscoolbarcodetemplates
 #, fuzzy
@@ -7472,9 +7625,10 @@ msgid "IDE Main Menu"
 msgstr ""
 
 #: lazarusidestrconsts.liscoolbarmessages
+#, fuzzy
 msgctxt "lazarusidestrconsts.liscoolbarmessages"
 msgid "Messages"
-msgstr ""
+msgstr "Berichten"
 
 #: lazarusidestrconsts.liscoolbarmoveselecteddown
 msgid "Move selected toolbar item down"
@@ -7509,9 +7663,10 @@ msgid "Please select a toolbar first!"
 msgstr ""
 
 #: lazarusidestrconsts.liscoolbarsourceeditor
+#, fuzzy
 msgctxt "lazarusidestrconsts.liscoolbarsourceeditor"
 msgid "Source Editor"
-msgstr ""
+msgstr "Broncode Bewerker"
 
 #: lazarusidestrconsts.liscoolbarsourcetab
 msgid "Source Tab"
@@ -8002,6 +8157,11 @@ msgstr "Zet toch een breekpunt"
 msgid "There is no debugger specified.%sSetting breakpoints have no effect until you set up a Debugger in the debugger options dialog in the menu."
 msgstr "Er is geen debugger ingesteld.%sHet plaatsen van breakpoints heeft geen effect totdat je een debugger hebt aangegeven in de Debugger Instellingen in het menu."
 
+#: lazarusidestrconsts.lisdbgterminal
+msgctxt "lazarusidestrconsts.lisdbgterminal"
+msgid "Console In/Output"
+msgstr ""
+
 #: lazarusidestrconsts.lisdbgwinpower
 msgid "On/Off"
 msgstr ""
@@ -8123,7 +8283,7 @@ msgid "Module"
 msgstr ""
 
 #: lazarusidestrconsts.lisdebugoptionsfrmnotifyonlazarusexceptions
-msgid "Notify on Lazarus Exceptions"
+msgid "Notify on Exceptions"
 msgstr ""
 
 #: lazarusidestrconsts.lisdebugoptionsfrmosexceptions
@@ -8442,6 +8602,7 @@ msgid "Disable Breakpoint"
 msgstr ""
 
 #: lazarusidestrconsts.lisdisabled
+msgctxt "lazarusidestrconsts.lisdisabled"
 msgid "Disabled"
 msgstr ""
 
@@ -8617,6 +8778,12 @@ msgstr ""
 msgid "Do not write updated project info file after build. If not specified, build number will be incremented if configured."
 msgstr ""
 
+#: lazarusidestrconsts.lisdonwloadonlinepackages
+msgid ""
+"The following package(s) are not available locally: %s.\n"
+"In order to install it, you must download them first. Download now?\n"
+msgstr ""
+
 #: lazarusidestrconsts.lisdown
 msgctxt "lazarusidestrconsts.lisdown"
 msgid "Down"
@@ -8628,6 +8795,10 @@ msgstr ""
 
 #: lazarusidestrconsts.lisdowngradeconfiguration
 msgid "Downgrade configuration"
+msgstr ""
+
+#: lazarusidestrconsts.lisdownload
+msgid "Download"
 msgstr ""
 
 #: lazarusidestrconsts.lisdoyoustillwanttocreatethenewproject
@@ -8698,6 +8869,10 @@ msgstr ""
 msgid "Duplicate found of value \"%s\"."
 msgstr ""
 
+#: lazarusidestrconsts.lisduplicatemodename
+msgid "Mode \"%s\" is already present in the list."
+msgstr ""
+
 #: lazarusidestrconsts.lisduplicatename
 msgid "Duplicate Name"
 msgstr ""
@@ -8752,7 +8927,7 @@ msgid "Editor Colors"
 msgstr ""
 
 #: lazarusidestrconsts.liseditormacros
-msgid "Editor macros"
+msgid "Editor Macros"
 msgstr ""
 
 #: lazarusidestrconsts.liseditortoolbar
@@ -9359,9 +9534,11 @@ msgid "Extract"
 msgstr "Destilleer"
 
 #: lazarusidestrconsts.lisextractprocedure
+#, fuzzy
+#| msgid "Extract procedure"
 msgctxt "lazarusidestrconsts.lisextractprocedure"
 msgid "Extract Procedure"
-msgstr ""
+msgstr "Destilleer procedure"
 
 #: lazarusidestrconsts.lisextremelyverbose
 msgid "Extremely Verbose"
@@ -10028,6 +10205,10 @@ msgstr ""
 msgid "Hide message by inserting IDE directive {%H-}"
 msgstr ""
 
+#: lazarusidestrconsts.lishidemessagebyinsertingwarnofftounit
+msgid "Hide message by inserting {$warn %s off} to unit \"%s\""
+msgstr ""
+
 #: lazarusidestrconsts.lishidesearch
 msgid "Hide Search"
 msgstr ""
@@ -10181,6 +10362,10 @@ msgstr ""
 
 #: lazarusidestrconsts.lisidemacros
 msgid "IDE Macros"
+msgstr ""
+
+#: lazarusidestrconsts.lisidemaintainsscaledinmainunit
+msgid "The IDE maintains Application.Scaled (Hi-DPI) in main unit."
 msgstr ""
 
 #: lazarusidestrconsts.lisidemaintainsthetitleinmainunit
@@ -10542,7 +10727,7 @@ msgid "&Inspect"
 msgstr ""
 
 #: lazarusidestrconsts.lisinspectclassinherit
-msgid "%s : Class %s inherits from %s"
+msgid "%s: class %s inherits from %s"
 msgstr ""
 
 #: lazarusidestrconsts.lisinspectdata
@@ -10578,8 +10763,8 @@ msgstr ""
 msgid "Show visibility column"
 msgstr ""
 
-#: lazarusidestrconsts.lisinspectunavailable
-msgid "%s : unavailable"
+#: lazarusidestrconsts.lisinspectunavailableerror
+msgid "%s: unavailable (error: %s)"
 msgstr ""
 
 #: lazarusidestrconsts.lisinspectuseinstance
@@ -10600,6 +10785,12 @@ msgstr ""
 
 #: lazarusidestrconsts.lisinstallitilikethefat
 msgid "Install it, I like the fat"
+msgstr ""
+
+#: lazarusidestrconsts.lisinstallpackagesmsg
+msgid ""
+"The following packages are not installed, but available in the main repository: %s.\n"
+"Do you wish to install missing packages?\n"
 msgstr ""
 
 #: lazarusidestrconsts.lisinstallselection
@@ -10699,11 +10890,9 @@ msgstr ""
 msgid "Invalid Pascal Identifier"
 msgstr "Ongeldige Pascal Identifier"
 
-#: lazarusidestrconsts.lisinvalidpascalidentifiertext
-#, fuzzy
-#| msgid "The name \"%s\" is not a valid pascal identifier."
-msgid "The name \"%s\" is not a valid Pascal identifier."
-msgstr "De naam \"%s\" is geen geldige pascal identifier."
+#: lazarusidestrconsts.lisinvalidpascalidentifiername
+msgid "The name \"%s\" is not a valid Pascal identifier.%sUse it anyway?"
+msgstr ""
 
 #: lazarusidestrconsts.lisinvalidprocname
 msgid "Invalid proc name"
@@ -10756,9 +10945,11 @@ msgid "I wonder how you did that: Error in the base directory:"
 msgstr ""
 
 #: lazarusidestrconsts.lisjhjumphistory
+#, fuzzy
+#| msgid "Jump History ..."
 msgctxt "lazarusidestrconsts.lisjhjumphistory"
 msgid "Jump History"
-msgstr ""
+msgstr "Toon Springpunt geschiedenis ..."
 
 #: lazarusidestrconsts.lisjumptoerror
 msgid "Jump to error"
@@ -10921,15 +11112,15 @@ msgid "Convert DFM File to LFM"
 msgstr "Converteer DFM bestand naar LFM"
 
 #: lazarusidestrconsts.liskmcopyselectedcomponentstoclipboard
-msgid "Copy selected Components to clipboard"
+msgid "Copy selected components"
 msgstr ""
 
 #: lazarusidestrconsts.liskmcutselectedcomponentstoclipboard
-msgid "Cut selected Components to clipboard"
+msgid "Cut selected components"
 msgstr ""
 
 #: lazarusidestrconsts.liskmdefaulttoosx
-msgid "Default adapted to OS X"
+msgid "Default adapted to macOS"
 msgstr ""
 
 #: lazarusidestrconsts.liskmdeletelastchar
@@ -11085,15 +11276,15 @@ msgid "Keymapping Scheme"
 msgstr "Toets mapping schema"
 
 #: lazarusidestrconsts.liskmlazarusdefault
-msgid "Lazarus (default)"
+msgid "Lazarus default"
 msgstr ""
 
 #: lazarusidestrconsts.liskmmacosxapple
-msgid "Mac OS X (Apple style)"
+msgid "macOS, Apple style"
 msgstr ""
 
 #: lazarusidestrconsts.liskmmacosxlaz
-msgid "Mac OS X (Lazarus style)"
+msgid "macOS, Lazarus style"
 msgstr ""
 
 #: lazarusidestrconsts.liskmnewpackage
@@ -11109,9 +11300,10 @@ msgid "New project from file"
 msgstr "Nieuw project van bestand"
 
 #: lazarusidestrconsts.liskmnewunit
+#, fuzzy
 msgctxt "lazarusidestrconsts.liskmnewunit"
 msgid "New Unit"
-msgstr ""
+msgstr "Nieuwe Unit"
 
 #: lazarusidestrconsts.liskmnoteallkeyswillbesettothevaluesofthechosenscheme
 msgid "Note: All keys will be set to the values of the chosen scheme."
@@ -11122,7 +11314,9 @@ msgid "Open package file"
 msgstr "Open pakket bestand"
 
 #: lazarusidestrconsts.liskmpastecomponentsfromclipboard
-msgid "Paste Components from clipboard"
+#, fuzzy
+#| msgid "Paste Components from clipboard"
+msgid "Paste Components"
 msgstr "Plak componenten van clipboard"
 
 #: lazarusidestrconsts.liskmpauseprogram
@@ -11162,34 +11356,40 @@ msgid "Save project as"
 msgstr "Sla project op als"
 
 #: lazarusidestrconsts.liskmselectlineend
+#, fuzzy
 msgctxt "lazarusidestrconsts.liskmselectlineend"
 msgid "Select Line End"
-msgstr ""
+msgstr "Selecteer regel einde"
 
 #: lazarusidestrconsts.liskmselectlinestart
+#, fuzzy
 msgctxt "lazarusidestrconsts.liskmselectlinestart"
 msgid "Select Line Start"
-msgstr ""
+msgstr "Selecteer regel begin"
 
 #: lazarusidestrconsts.liskmselectpagebottom
+#, fuzzy
 msgctxt "lazarusidestrconsts.liskmselectpagebottom"
 msgid "Select Page Bottom"
-msgstr ""
+msgstr "Selecteer onderkant Pagina"
 
 #: lazarusidestrconsts.liskmselectpagetop
+#, fuzzy
 msgctxt "lazarusidestrconsts.liskmselectpagetop"
 msgid "Select Page Top"
-msgstr ""
+msgstr "Select bovenkant pagina"
 
 #: lazarusidestrconsts.liskmselectwordleft
+#, fuzzy
 msgctxt "lazarusidestrconsts.liskmselectwordleft"
 msgid "Select Word Left"
-msgstr ""
+msgstr "Selecteer linker woord"
 
 #: lazarusidestrconsts.liskmselectwordright
+#, fuzzy
 msgctxt "lazarusidestrconsts.liskmselectwordright"
 msgid "Select Word Right"
-msgstr ""
+msgstr "Selecteer rechter woord"
 
 #: lazarusidestrconsts.liskmsetfreebookmark
 msgid "Set free Bookmark"
@@ -11315,9 +11515,10 @@ msgid "View Breakpoints"
 msgstr ""
 
 #: lazarusidestrconsts.liskmtoggleviewcallstack
+#, fuzzy
 msgctxt "lazarusidestrconsts.liskmtoggleviewcallstack"
 msgid "View Call Stack"
-msgstr ""
+msgstr "Toon Call Stack"
 
 #: lazarusidestrconsts.liskmtoggleviewcodebrowser
 msgid "Toggle view Code Browser"
@@ -11366,7 +11567,7 @@ msgstr ""
 
 #: lazarusidestrconsts.liskmtoggleviewpseudoterminal
 msgctxt "lazarusidestrconsts.liskmtoggleviewpseudoterminal"
-msgid "View Terminal Output"
+msgid "View Console In/Output"
 msgstr ""
 
 #: lazarusidestrconsts.liskmtoggleviewregisters
@@ -11758,8 +11959,10 @@ msgid "&Local"
 msgstr ""
 
 #: lazarusidestrconsts.lislocals
-msgid "Locals"
-msgstr ""
+#, fuzzy
+msgctxt "lazarusidestrconsts.lislocals"
+msgid "Local Variables"
+msgstr "Lokale Variabelen"
 
 #: lazarusidestrconsts.lislocalsdlgcopyname
 msgid "&Copy Name"
@@ -11832,11 +12035,13 @@ msgstr "Voer Start parameters in"
 msgid "Main unit has Application.CreateForm statements"
 msgstr "De hoofd unit bevat Application.CreateFrom statements"
 
-#: lazarusidestrconsts.lismainunithasapplicationtitlestatements
-#, fuzzy
-#| msgid "Main Unit has Application.Title statements"
-msgid "Main unit has Application.Title statements"
-msgstr "De hoofd unit bevat Application.Title statements"
+#: lazarusidestrconsts.lismainunithasapplicationscaledstatement
+msgid "Main unit has Application.Scaled statement"
+msgstr ""
+
+#: lazarusidestrconsts.lismainunithasapplicationtitlestatement
+msgid "Main unit has Application.Title statement"
+msgstr ""
 
 #: lazarusidestrconsts.lismainunithasusessectioncontainingallunitsofproject
 #, fuzzy
@@ -11850,6 +12055,11 @@ msgstr ""
 
 #: lazarusidestrconsts.lismainunitispascalsourcehint
 msgid "Assume Pascal even if it does not end with .pas/.pp suffix."
+msgstr ""
+
+#: lazarusidestrconsts.lismakecurrent
+msgctxt "lazarusidestrconsts.lismakecurrent"
+msgid "Current"
 msgstr ""
 
 #: lazarusidestrconsts.lismakeexe
@@ -12413,8 +12623,12 @@ msgstr ""
 msgid "&Grab key"
 msgstr ""
 
+#: lazarusidestrconsts.lismenueditorgroupindexd
+msgid "GroupIndex: %d"
+msgstr ""
+
 #: lazarusidestrconsts.lismenueditorgroupindexvaluess
-msgid "GroupIndex value(s): %s"
+msgid "Values in use: %s"
 msgstr ""
 
 #: lazarusidestrconsts.lismenueditorinadequatedescription
@@ -12515,10 +12729,6 @@ msgstr ""
 msgid "<none>,<none>"
 msgstr ""
 
-#: lazarusidestrconsts.lismenueditornoradioitemsinthismenu
-msgid "No radioitems in this menu"
-msgstr ""
-
 #: lazarusidestrconsts.lismenueditornoshortcutconflicts
 msgid "<no shortcut conflicts>"
 msgstr ""
@@ -12533,6 +12743,10 @@ msgstr ""
 
 #: lazarusidestrconsts.lismenueditorpopupassignmentss
 msgid "Popup assignments: %s"
+msgstr ""
+
+#: lazarusidestrconsts.lismenueditorradioitem
+msgid "RadioItem"
 msgstr ""
 
 #: lazarusidestrconsts.lismenueditorremainingconflictss
@@ -12553,10 +12767,6 @@ msgstr ""
 
 #: lazarusidestrconsts.lismenueditorresolveshortcutconflicts
 msgid "&Resolve shortcut conflicts ..."
-msgstr ""
-
-#: lazarusidestrconsts.lismenueditorrootmenu
-msgid "Root menu"
 msgstr ""
 
 #: lazarusidestrconsts.lismenueditorsavedtemplates
@@ -12585,10 +12795,6 @@ msgstr ""
 
 #: lazarusidestrconsts.lismenueditorseparators
 msgid "Se&parators"
-msgstr ""
-
-#: lazarusidestrconsts.lismenueditorsgroupindexd
-msgid "%s.GroupIndex: %d"
 msgstr ""
 
 #: lazarusidestrconsts.lismenueditorshortcutitemss
@@ -12643,10 +12849,6 @@ msgstr ""
 msgid ""
 "\"%s\" is already in use in %s as a shortcut.\n"
 "Try a different shortcut.\n"
-msgstr ""
-
-#: lazarusidestrconsts.lismenueditorsisnotaradioitem
-msgid "%s is not a radioitem"
 msgstr ""
 
 #: lazarusidestrconsts.lismenueditorsisnotasufficientdescriptionpleaseexpand
@@ -13064,6 +13266,10 @@ msgstr "Openen ..."
 #| msgid "Open filename at cursor"
 msgid "Open Filename at Cursor"
 msgstr "Open bestandsnaam (op cursor)"
+
+#: lazarusidestrconsts.lismenuopenfolder
+msgid "Open Folder ..."
+msgstr ""
 
 #: lazarusidestrconsts.lismenuopenpackage
 #, fuzzy
@@ -13525,6 +13731,7 @@ msgid "Jump History"
 msgstr "Toon Springpunt geschiedenis ..."
 
 #: lazarusidestrconsts.lismenuviewlocalvariables
+msgctxt "lazarusidestrconsts.lismenuviewlocalvariables"
 msgid "Local Variables"
 msgstr "Lokale Variabelen"
 
@@ -13543,7 +13750,8 @@ msgid "&View Project Source"
 msgstr ""
 
 #: lazarusidestrconsts.lismenuviewpseudoterminal
-msgid "Terminal Output"
+msgctxt "lazarusidestrconsts.lismenuviewpseudoterminal"
+msgid "Console In/Output"
 msgstr ""
 
 #: lazarusidestrconsts.lismenuviewregisters
@@ -13599,6 +13807,7 @@ msgid "Units ..."
 msgstr "Units..."
 
 #: lazarusidestrconsts.lismenuviewwatches
+msgctxt "lazarusidestrconsts.lismenuviewwatches"
 msgid "Watches"
 msgstr "Watches"
 
@@ -14275,6 +14484,10 @@ msgstr ""
 msgid "not installed"
 msgstr ""
 
+#: lazarusidestrconsts.lisnotinstalledpackages
+msgid "Not installed packages"
+msgstr ""
+
 #: lazarusidestrconsts.lisnotnow
 msgid "Not now"
 msgstr "Niet nu"
@@ -14425,6 +14638,10 @@ msgstr ""
 msgid "On break line (i.e. return or enter key)"
 msgstr ""
 
+#: lazarusidestrconsts.lisonlinepackage
+msgid "available in the main repository"
+msgstr ""
+
 #: lazarusidestrconsts.lisonly32bit
 msgid "only 32bit"
 msgstr ""
@@ -14491,6 +14708,10 @@ msgstr "Open bestand"
 msgctxt "lazarusidestrconsts.lisopenfile2"
 msgid "Open file"
 msgstr "Open bestand"
+
+#: lazarusidestrconsts.lisopenfileatcursor
+msgid "Open file at cursor"
+msgstr ""
 
 #: lazarusidestrconsts.lisopenlfm
 msgid "Open %s"
@@ -14586,9 +14807,17 @@ msgstr ""
 msgid "other sources path of package \"%s\" contains directory \"%s\", which is already in the unit search path."
 msgstr ""
 
+#: lazarusidestrconsts.lisoutputdirectoryofcontainspascalunitsource
+msgid "output directory of %s contains Pascal unit source \"%s\""
+msgstr ""
+
 #: lazarusidestrconsts.lisoverridelanguage
 msgid "Override language. For example --language=de. For possible values see files in the languages directory."
 msgstr "Overrule de ingestelde taal. Bijv. --language=nl. Voor mogelijke waardes zie de bestanden in the directorie languages"
+
+#: lazarusidestrconsts.lisoverridestringtypeswithfirstparamtype
+msgid "Override function result string types with the first parameter expression type"
+msgstr ""
 
 #: lazarusidestrconsts.lisoverridethedefaultcompileregppc386ppcx64ppcppcetcd
 msgid "%soverride the default compiler. e.g. ppc386 ppcx64 ppcppc etc. default is stored in environmentoptions.xml"
@@ -14701,8 +14930,20 @@ msgstr ""
 msgid "parser \"%s\": %s"
 msgstr ""
 
+#: lazarusidestrconsts.lisparsers
+msgid "Parsers:"
+msgstr ""
+
 #: lazarusidestrconsts.lispasscount
 msgid "Pass Count"
+msgstr ""
+
+#: lazarusidestrconsts.lispassingcompilerdefinetwicewithdifferentvalues
+msgid "passing compiler define \"%s\" twice with different values"
+msgstr ""
+
+#: lazarusidestrconsts.lispassingcompileroptiontwicewithdifferentvalues
+msgid "passing compiler option -%s twice with different values"
 msgstr ""
 
 #: lazarusidestrconsts.lispaste
@@ -14810,13 +15051,19 @@ msgid "Add other items"
 msgstr ""
 
 #: lazarusidestrconsts.lispckeditaddtoproject
+#, fuzzy
+#| msgid "Add to project"
 msgctxt "lazarusidestrconsts.lispckeditaddtoproject"
 msgid "Add to Project"
-msgstr ""
+msgstr "Voeg toe aan het project"
 
 #: lazarusidestrconsts.lispckeditapplychanges
 msgid "Apply changes"
 msgstr "Wijzigingen toepassen"
+
+#: lazarusidestrconsts.lispckeditavailableonline
+msgid "(available online)"
+msgstr ""
 
 #: lazarusidestrconsts.lispckeditcallregisterprocedureofselectedunit
 msgid "Call %sRegister%s procedure of selected unit"
@@ -15250,6 +15497,10 @@ msgstr "Ongeldige unit naam"
 msgid "Missing files of package %s"
 msgstr ""
 
+#: lazarusidestrconsts.lispendingon
+msgid "Pending (On)"
+msgstr ""
+
 #: lazarusidestrconsts.lispenewfilenotinincludepath
 msgid "New file not in include path"
 msgstr ""
@@ -15314,6 +15565,10 @@ msgstr ""
 #: lazarusidestrconsts.lispkgdefscompiledsrcpathaddition
 msgid "CompiledSrcPath addition"
 msgstr "CompiledSrcPath toevoeging"
+
+#: lazarusidestrconsts.lispkgdefsnamespaces
+msgid "Namespaces"
+msgstr ""
 
 #: lazarusidestrconsts.lispkgdefsoutputdirectory
 msgid "Output directory"
@@ -16044,12 +16299,20 @@ msgctxt "lazarusidestrconsts.lispldglobal"
 msgid "Global"
 msgstr ""
 
+#: lazarusidestrconsts.lispldonline
+msgid "Online"
+msgstr ""
+
 #: lazarusidestrconsts.lispldpackagelinks
 msgid "Package Links"
 msgstr ""
 
 #: lazarusidestrconsts.lispldshowgloballinksin
 msgid "Show global links in "
+msgstr ""
+
+#: lazarusidestrconsts.lispldshowonlinelinks
+msgid "Show online links"
 msgstr ""
 
 #: lazarusidestrconsts.lispldshowuserlinksin
@@ -16255,6 +16518,10 @@ msgstr "Ongeldige Pascal unit naam"
 msgid "Invalid version"
 msgstr "Ongeldige versie"
 
+#: lazarusidestrconsts.lisprojaddlocalpkg
+msgid "Local (%s)"
+msgstr ""
+
 #: lazarusidestrconsts.lisprojaddmaximumversionoptional
 msgid "Maximum Version (optional):"
 msgstr "Maximum Versie (optioneel):"
@@ -16267,6 +16534,10 @@ msgstr "Minimum Versie (optioneel):"
 msgid "New Requirement"
 msgstr "Nieuwe vereiste"
 
+#: lazarusidestrconsts.lisprojaddonlinepkg
+msgid "Online (%s)"
+msgstr ""
+
 #: lazarusidestrconsts.lisprojaddpackagename
 msgid "Package Name:"
 msgstr "Pakketnaam"
@@ -16274,6 +16545,10 @@ msgstr "Pakketnaam"
 #: lazarusidestrconsts.lisprojaddpackagenotfound
 msgid "Package not found"
 msgstr "Pakket niet gevonden"
+
+#: lazarusidestrconsts.lisprojaddpackagetype
+msgid "Package Type:"
+msgstr ""
 
 #: lazarusidestrconsts.lisprojaddthedependencywasnotfound
 #, fuzzy
@@ -16402,6 +16677,10 @@ msgstr ""
 #: lazarusidestrconsts.lisprojectmacroproperties
 msgid "Project macro properties"
 msgstr "Project macro eigenschappen"
+
+#: lazarusidestrconsts.lisprojectnamespaces
+msgid "Project Namespaces"
+msgstr ""
 
 #: lazarusidestrconsts.lisprojectoption
 msgid "Project Option"
@@ -17355,6 +17634,10 @@ msgstr ""
 msgid "Select FPC source directory"
 msgstr ""
 
+#: lazarusidestrconsts.lisselectframe
+msgid "Select Frame"
+msgstr ""
+
 #: lazarusidestrconsts.lisselectionexceedsstringconstant
 msgid "Selection exceeds string constant"
 msgstr "Selectie overschrijdt string constante"
@@ -17471,6 +17754,10 @@ msgstr ""
 
 #: lazarusidestrconsts.lisshowonlyonebuttoninthetaskbarforthewholeideinstead
 msgid "Show only one button in the taskbar for the whole IDE, instead of one per window. Some Linux Window Managers like Cinnamon do not support this and always show one button per window."
+msgstr ""
+
+#: lazarusidestrconsts.lisshowoutput
+msgid "Show output"
 msgstr ""
 
 #: lazarusidestrconsts.lisshowoverviewgutter
@@ -17654,6 +17941,10 @@ msgstr "Sorteer Selectie"
 msgctxt "lazarusidestrconsts.lissortselwords"
 msgid "Words"
 msgstr "Woorden"
+
+#: lazarusidestrconsts.lissortunicoderangelistalphabetically
+msgid "Sort Unicode range list alphabetically"
+msgstr ""
 
 #: lazarusidestrconsts.lissourceanddestinationarethesame
 msgid "Source and Destination are the same:%s%s"
@@ -18312,12 +18603,12 @@ msgstr ""
 msgid "The project must be saved before building%sIf you set the Test Directory in the IDE options,%syou can create new projects and build them at once.%sSave project?"
 msgstr "Het project moet worden opgeslagen voor het bouwen%sAls je de Test Directory invuld bij de Omgeving Opties,%skun je nieuwe projecten maken en deze gelijk bouwen.%sPorject opslaan?"
 
-#: lazarusidestrconsts.listheprojectusestargetosandcputhesystemppuforthistar
-msgid "The project uses target OS=%s and CPU=%s.%sThe system.ppu for this target was not found in the FPC binary directories.%sMake sure fpc is installed correctly for this target and the fpc.cfg contains the right directories."
+#: lazarusidestrconsts.listheprojectusesfpcresourceswhichrequireatleast
+msgid "The project uses FPC resources, which require at least FPC 2.4"
 msgstr ""
 
-#: lazarusidestrconsts.listheprojectusesthenewfpcresourceswhichrequiresatlea
-msgid "The project uses the new FPC resources, which requires at least FPC 2.4"
+#: lazarusidestrconsts.listheprojectusestargetosandcputhesystemppuforthistar
+msgid "The project uses target OS=%s and CPU=%s.%sThe system.ppu for this target was not found in the FPC binary directories.%sMake sure fpc is installed correctly for this target and the fpc.cfg contains the right directories."
 msgstr ""
 
 #: lazarusidestrconsts.listheprojectwritesthedebugsymbolstoanexternalfilethe
@@ -19246,6 +19537,10 @@ msgstr "Kan de variabele niet hernoemen in de broncode."
 msgid "Unable to run"
 msgstr ""
 
+#: lazarusidestrconsts.lisunabletorun2
+msgid "Unable to run \"%s\""
+msgstr ""
+
 #: lazarusidestrconsts.lisunabletosetanchorsidecontrol
 msgid "Unable to set AnchorSide Control"
 msgstr ""
@@ -19401,6 +19696,10 @@ msgstr ""
 
 #: lazarusidestrconsts.lisunusualcompilerfilenameusuallyitstartswithfpcppcor
 msgid "Unusual compiler file name. Usually it starts with fpc, ppc or ppcross."
+msgstr ""
+
+#: lazarusidestrconsts.lisunusualpas2jscompilerfilenameusuallyitstartswithpa
+msgid "Unusual pas2js compiler file name. Usually it starts with pas2js."
 msgstr ""
 
 #: lazarusidestrconsts.lisup
@@ -19789,8 +20088,10 @@ msgid "&Properties"
 msgstr "&Eigenschappen"
 
 #: lazarusidestrconsts.liswlwatchlist
-msgid "Watch List"
-msgstr ""
+#, fuzzy
+msgctxt "lazarusidestrconsts.liswlwatchlist"
+msgid "Watches"
+msgstr "Watches"
 
 #: lazarusidestrconsts.liswordatcursorincurrenteditor
 msgid "Word at cursor in current editor"
@@ -19845,6 +20146,10 @@ msgstr ""
 #| msgid "You can not build lazarus while debugging or compiling."
 msgid "You cannot build Lazarus while debugging or compiling."
 msgstr "Je kunt lazarus niet bouwen tijdens het debuggen of compileren."
+
+#: lazarusidestrconsts.lisyoucannotchangethebuildmodewhilecompiling
+msgid "You cannot change the build mode while compiling."
+msgstr ""
 
 #: lazarusidestrconsts.lisyoucanselectitemsbysimplypressingunderscoredletter
 msgid "You can select items by simply pressing underscored letters"
@@ -19983,8 +20288,8 @@ msgstr ""
 msgid "Excluded"
 msgstr ""
 
-#: lazarusidestrconsts.rsi18nforceupdatepofilesonnextcompile
-msgid "Force update PO files on next compile"
+#: lazarusidestrconsts.rsi18nforceupdatepofilesonnextbuild
+msgid "Force update PO files on next build"
 msgstr ""
 
 #: lazarusidestrconsts.rsi18nidentifiers
@@ -20005,70 +20310,6 @@ msgstr ""
 
 #: lazarusidestrconsts.rsincludeversioninfoinexecutable
 msgid "Include version info in executable"
-msgstr ""
-
-#: lazarusidestrconsts.rsiwpcolumnnameshint
-msgid "Column Names"
-msgstr ""
-
-#: lazarusidestrconsts.rsiwpcolumnstrategyhint
-msgid "Strategy for saving Columns"
-msgstr ""
-
-#: lazarusidestrconsts.rsiwpcolumnwidthhint
-msgid "Column Width"
-msgstr ""
-
-#: lazarusidestrconsts.rsiwpcustomgeometry
-msgid "Custom geometry"
-msgstr ""
-
-#: lazarusidestrconsts.rsiwpcustomgeometryhint
-msgid "User can define window's position and size"
-msgstr ""
-
-#: lazarusidestrconsts.rsiwpfixeddefaultgeometry
-msgid "Fixed default geometry"
-msgstr ""
-
-#: lazarusidestrconsts.rsiwpfixeddefaultgeometryhint
-msgid "Always the same fixed position and size"
-msgstr ""
-
-#: lazarusidestrconsts.rsiwpletwindowmanagerdecide
-msgid "Let windowmanager decide"
-msgstr ""
-
-#: lazarusidestrconsts.rsiwpletwindowmanagerdecidehint
-msgid "System windowmanagers have different strategies for positioning windows"
-msgstr ""
-
-#: lazarusidestrconsts.rsiwppositionwindowlisthint
-msgid "Windows that have been open. They may be closed now."
-msgstr ""
-
-#: lazarusidestrconsts.rsiwprestorewindowgeometry
-msgid "Restore window geometry"
-msgstr "Herstel window plaatsing"
-
-#: lazarusidestrconsts.rsiwprestorewindowgeometryhint
-msgid "Use previous position and size"
-msgstr ""
-
-#: lazarusidestrconsts.rsiwpsplittercustomposition
-msgid "Custom Size"
-msgstr ""
-
-#: lazarusidestrconsts.rsiwpsplitterdefault
-msgid "Default Size"
-msgstr ""
-
-#: lazarusidestrconsts.rsiwpsplitterfollowwindow
-msgid "Restore with window"
-msgstr ""
-
-#: lazarusidestrconsts.rsiwpsplitterrestorewindowgeometry
-msgid "Restore Size"
 msgstr ""
 
 #: lazarusidestrconsts.rslanguageafrikaans
@@ -20535,7 +20776,10 @@ msgid "config build file"
 msgstr "Configureer bouwbestand"
 
 #: lazarusidestrconsts.srkmeccopy
-msgid "Copy selection to clipboard"
+#, fuzzy
+#| msgid "Copy selection to clipboard"
+msgctxt "lazarusidestrconsts.srkmeccopy"
+msgid "Copy"
 msgstr "Kopieer selectie naar klembord"
 
 #: lazarusidestrconsts.srkmeccopyeditornewwindow
@@ -20551,7 +20795,10 @@ msgid "Copy editor to prior free window"
 msgstr ""
 
 #: lazarusidestrconsts.srkmeccut
-msgid "Cut selection to clipboard"
+#, fuzzy
+#| msgid "Cut selection to clipboard"
+msgctxt "lazarusidestrconsts.srkmeccut"
+msgid "Cut"
 msgstr "Knip selectie naar klembord"
 
 #: lazarusidestrconsts.srkmecdeletebol
@@ -20941,7 +21188,8 @@ msgid "Move editor rightmost"
 msgstr ""
 
 #: lazarusidestrconsts.srkmecmultipaste
-msgid "MultiPaste clipboard to current position"
+msgctxt "lazarusidestrconsts.srkmecmultipaste"
+msgid "MultiPaste"
 msgstr ""
 
 #: lazarusidestrconsts.srkmecnextbookmark
@@ -21003,7 +21251,10 @@ msgid "Move cursor up one page"
 msgstr "Verplaats cursor een pagina omhoog"
 
 #: lazarusidestrconsts.srkmecpaste
-msgid "Paste clipboard to current position"
+#, fuzzy
+#| msgid "Paste clipboard to current position"
+msgctxt "lazarusidestrconsts.srkmecpaste"
+msgid "Paste"
 msgstr "Plak klembord op de huidige positie"
 
 #: lazarusidestrconsts.srkmecpause
@@ -21574,7 +21825,7 @@ msgstr ""
 
 #: lazarusidestrconsts.srkmecviewpseudoterminal
 msgctxt "lazarusidestrconsts.srkmecviewpseudoterminal"
-msgid "View Terminal Output"
+msgid "View console in/output"
 msgstr ""
 
 #: lazarusidestrconsts.srkmecviewtaborder
@@ -21904,10 +22155,6 @@ msgstr "Niet wijzigbaar"
 #: lazarusidestrconsts.uemrefactor
 msgid "Refactoring"
 msgstr "Refactoring"
-
-#: lazarusidestrconsts.uemruntocursor
-msgid "&Run to Cursor"
-msgstr "&Start tot cursor"
 
 #: lazarusidestrconsts.uemsetfreebookmark
 #, fuzzy

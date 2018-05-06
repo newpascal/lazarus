@@ -10,7 +10,7 @@ interface
 uses
   MacOSAll, // for CGContextRef
   LCLtype, LCLProc, Graphics, Controls, fpcanvas,
-  CocoaAll, CocoaProc, CocoaUtils,
+  CocoaAll, CocoaUtils,
   cocoa_extra,
   {$ifndef CocoaUseHITheme}
   customdrawndrawers, customdrawn_mac,
@@ -199,17 +199,20 @@ type
     FStyle: TCocoaFontStyle;
     FAntialiased: Boolean;
     FIsSystemFont: Boolean;
+    FRotationDeg: Single;
   public
     constructor CreateDefault(AGlobal: Boolean = False);
     constructor Create(const ALogFont: TLogFont; AFontName: String; AGlobal: Boolean = False); reintroduce; overload;
     constructor Create(const AFont: NSFont; AGlobal: Boolean = False); overload;
     destructor Destroy; override;
     class function CocoaFontWeightToWin32FontWeight(const CocoaFontWeight: Integer): Integer; static;
+    procedure SetHandle(ANewHandle: NSFont);
     property Antialiased: Boolean read FAntialiased;
     property Font: NSFont read FFont;
     property Name: String read FName;
     property Size: Integer read FSize;
     property Style: TCocoaFontStyle read FStyle;
+    property RotationDeg: Single read FRotationDeg;
   end;
 
   { TCocoaBitmap }
@@ -343,6 +346,7 @@ type
     property Font: TCocoaFont read FFont write SetFont;
     property BackgroundColor: TColor read FBackgroundColor write SetBackgoundColor;
     property ForegroundColor: TColor read FForegroundColor write SetForegoundColor;
+    property Layout: NSLayoutManager read FLayout;
   end;
 
   { TCocoaContext }
@@ -398,6 +402,7 @@ type
   public
     ctx: NSGraphicsContext;
     isControlDC: Boolean; // control DCs should never be freed by ReleaseDC as the control will free it by itself
+    isDesignDC: Boolean;  // this is a special Designer Overlay DC
     constructor Create(AGraphicsContext: NSGraphicsContext); virtual;
     destructor Destroy; override;
 
@@ -558,116 +563,111 @@ begin
   inherited Create(AGlobal);
 
   Pool := NSAutoreleasePool.alloc.init;
+  try
+    FName := AFontName;
 
-  FName := AFontName;
+    // If we are using a "systemFont" font we need this complex shuffling,
+    // because otherwise the result is wrong in Mac OS X 10.11, see bug 30300
+    // Code used for 10.10 or inferior:
+    // FName := NSStringToString(NSFont.systemFontOfSize(0).familyName);
+    if IsFontNameDefault(FName) then
+    begin
+      FTmpFont := NSFont.fontWithName_size(NSFont.systemFontOfSize(0).fontDescriptor.postscriptName, 0);
+      FName := NSStringToString(FTmpFont.familyName);
+    end;
 
-  // If we are using a "systemFont" font we need this complex shuffling,
-  // because otherwise the result is wrong in Mac OS X 10.11, see bug 30300
-  // Code used for 10.10 or inferior:
-  // FName := NSStringToString(NSFont.systemFontOfSize(0).familyName);
-  if AnsiCompareText(FName, 'default') = 0 then
-  begin
-    FTmpFont := NSFont.fontWithName_size(NSFont.systemFontOfSize(0).fontDescriptor.postscriptName, 0);
-    FName := NSStringToString(FTmpFont.familyName);
-  end;
+    if ALogFont.lfHeight = 0 then
+      FSize := Round(NSFont.systemFontSize)
+    else
+      FSize := Abs(ALogFont.lfHeight);
 
-  if ALogFont.lfHeight = 0 then
-    FSize := Round(NSFont.systemFontSize)
-  else
-    FSize := Abs(ALogFont.lfHeight);
+    // create font attributes
+    Win32Weight := ALogFont.lfWeight;
+    FStyle := [];
+    if ALogFont.lfItalic > 0 then
+      include(FStyle, cfs_Italic);
+    if Win32Weight > FW_NORMAL then
+      include(FStyle, cfs_Bold);
+    if ALogFont.lfUnderline > 0 then
+      include(FStyle, cfs_Underline);
+    if ALogFont.lfStrikeOut > 0 then
+      include(FStyle, cfs_StrikeOut);
 
-  // create font attributes
-  Win32Weight := ALogFont.lfWeight;
-  FStyle := [];
-  if ALogFont.lfItalic > 0 then
-    include(FStyle, cfs_Italic);
-  if Win32Weight > FW_NORMAL then
-    include(FStyle, cfs_Bold);
-  if ALogFont.lfUnderline > 0 then
-    include(FStyle, cfs_Underline);
-  if ALogFont.lfStrikeOut > 0 then
-    include(FStyle, cfs_StrikeOut);
-
-  // If this is not a "systemFont" Create the font ourselves
-  FontName := NSStringUTF8(FName);
-  Attributes := NSDictionary.dictionaryWithObjectsAndKeys(
-        FontName, NSFontFamilyAttribute,
-        NSNumber.numberWithFloat(FSize), NSFontSizeAttribute,
-        nil);
-  FontName.release;
-  Descriptor := NSFontDescriptor.fontDescriptorWithFontAttributes(Attributes);
-  FFont := NSFont.fontWithDescriptor_textTransform(Descriptor, nil);
-
-  if FFont = nil then
-  begin
-    // fallback to system font if not found (at least we can try to apply some of the other traits)
-    FName := NSStringToString(NSFont.systemFontOfSize(0).familyName);
+    // If this is not a "systemFont" Create the font ourselves
     FontName := NSStringUTF8(FName);
     Attributes := NSDictionary.dictionaryWithObjectsAndKeys(
-               FontName, NSFontFamilyAttribute,
-               NSNumber.numberWithFloat(FSize), NSFontSizeAttribute,
-               nil);
+          FontName, NSFontFamilyAttribute,
+          NSNumber.numberWithFloat(FSize), NSFontSizeAttribute,
+          nil);
     FontName.release;
     Descriptor := NSFontDescriptor.fontDescriptorWithFontAttributes(Attributes);
     FFont := NSFont.fontWithDescriptor_textTransform(Descriptor, nil);
+
     if FFont = nil then
     begin
-      Pool.release;
-      exit;
+      // fallback to system font if not found (at least we can try to apply some of the other traits)
+      FName := NSStringToString(NSFont.systemFontOfSize(0).familyName);
+      FontName := NSStringUTF8(FName);
+      Attributes := NSDictionary.dictionaryWithObjectsAndKeys(
+                 FontName, NSFontFamilyAttribute,
+                 NSNumber.numberWithFloat(FSize), NSFontSizeAttribute,
+                 nil);
+      FontName.release;
+      Descriptor := NSFontDescriptor.fontDescriptorWithFontAttributes(Attributes);
+      FFont := NSFont.fontWithDescriptor_textTransform(Descriptor, nil);
+      if FFont = nil then
+      begin
+        exit;
+      end;
     end;
-  end;
 
-  // we could use NSFontTraitsAttribute to request the desired font style (Bold/Italic)
-  // but in this case we may get NIL as result. This way is safer.
-  if cfs_Italic in Style then
-    FFont := NSFontManager.sharedFontManager.convertFont_toHaveTrait(FFont, NSItalicFontMask)
-  else
-    FFont := NSFontManager.sharedFontManager.convertFont_toNotHaveTrait(FFont, NSItalicFontMask);
-  if cfs_Bold in Style then
-    FFont := NSFontManager.sharedFontManager.convertFont_toHaveTrait(FFont, NSBoldFontMask)
-  else
-    FFont := NSFontManager.sharedFontManager.convertFont_toNotHaveTrait(FFont, NSBoldFontMask);
-  case ALogFont.lfPitchAndFamily and $F of
-    FIXED_PITCH, MONO_FONT:
-      FFont := NSFontManager.sharedFontManager.convertFont_toHaveTrait(FFont, NSFixedPitchFontMask);
-    VARIABLE_PITCH:
-      FFont := NSFontManager.sharedFontManager.convertFont_toNotHaveTrait(FFont, NSFixedPitchFontMask);
+    // we could use NSFontTraitsAttribute to request the desired font style (Bold/Italic)
+    // but in this case we may get NIL as result. This way is safer.
+    if cfs_Italic in Style then
+      FFont := NSFontManager.sharedFontManager.convertFont_toHaveTrait(FFont, NSItalicFontMask)
+    else
+      FFont := NSFontManager.sharedFontManager.convertFont_toNotHaveTrait(FFont, NSItalicFontMask);
+    if cfs_Bold in Style then
+      FFont := NSFontManager.sharedFontManager.convertFont_toHaveTrait(FFont, NSBoldFontMask)
+    else
+      FFont := NSFontManager.sharedFontManager.convertFont_toNotHaveTrait(FFont, NSBoldFontMask);
+    case ALogFont.lfPitchAndFamily and $F of
+      FIXED_PITCH, MONO_FONT:
+        FFont := NSFontManager.sharedFontManager.convertFont_toHaveTrait(FFont, NSFixedPitchFontMask);
+      VARIABLE_PITCH:
+        FFont := NSFontManager.sharedFontManager.convertFont_toNotHaveTrait(FFont, NSFixedPitchFontMask);
+    end;
+    if Win32Weight <> FW_DONTCARE then
+    begin
+      // currently if we request the desired weight by Attributes we may get a nil font
+      // so we need to get font weight and to convert it to lighter/heavier
+      LoopCount := 0;
+      repeat
+        // protection from endless loop
+        if LoopCount > 12 then
+          Break;
+        CocoaWeight := CocoaFontWeightToWin32FontWeight(NSFontManager.sharedFontManager.weightOfFont(FFont));
+        if CocoaWeight < Win32Weight then
+          FFont := NSFontManager.sharedFontManager.convertWeight_ofFont(True, FFont)
+        else
+        if CocoaWeight > Win32Weight then
+          FFont := NSFontManager.sharedFontManager.convertWeight_ofFont(False, FFont);
+        inc(LoopCount);
+      until CocoaWeight = Win32Weight;
+    end;
+    FFont.retain;
+    FAntialiased := ALogFont.lfQuality <> NONANTIALIASED_QUALITY;
+
+    FRotationDeg := ALogFont.lfEscapement / 10;
+  finally
+    Pool.release;
   end;
-  if Win32Weight <> FW_DONTCARE then
-  begin
-    // currently if we request the desired weight by Attributes we may get a nil font
-    // so we need to get font weight and to convert it to lighter/heavier
-    LoopCount := 0;
-    repeat
-      // protection from endless loop
-      if LoopCount > 12 then
-        Exit;
-      CocoaWeight := CocoaFontWeightToWin32FontWeight(NSFontManager.sharedFontManager.weightOfFont(FFont));
-      if CocoaWeight < Win32Weight then
-        FFont := NSFontManager.sharedFontManager.convertWeight_ofFont(True, FFont)
-      else
-      if CocoaWeight > Win32Weight then
-        FFont := NSFontManager.sharedFontManager.convertWeight_ofFont(False, FFont);
-      inc(LoopCount);
-    until CocoaWeight = Win32Weight;
-  end;
-  FFont.retain;
-  FAntialiased := ALogFont.lfQuality <> NONANTIALIASED_QUALITY;
-  Pool.release;
 end;
 
 constructor TCocoaFont.Create(const AFont: NSFont; AGlobal: Boolean = False);
-var  Pool: NSAutoreleasePool;
 begin
   inherited Create(AGlobal);
-  Pool := NSAutoreleasePool.alloc.init;
-  FFont := AFont;
-  FFont.retain;
-  FName := NSStringToString(FFont.familyName);
-  FSize := Round(FFont.pointSize);
-  FStyle := [];
-  FAntialiased := True;
-  Pool.release;
+  SetHandle(AFont);
 end;
 
 destructor TCocoaFont.Destroy;
@@ -692,6 +692,32 @@ begin
   else
     Result := FW_HEAVY;
   end;
+end;
+
+procedure TCocoaFont.SetHandle(ANewHandle: NSFont);
+var
+  pool: NSAutoreleasePool;
+  lsymTraits: NSFontSymbolicTraits;
+begin
+  if FFont <> nil then
+  begin
+    FFont.release;
+  end;
+  Pool := NSAutoreleasePool.alloc.init;
+  FFont := ANewHandle;
+  FFont.retain;
+  FName := NSStringToString(FFont.familyName);
+  FSize := Round(FFont.pointSize);
+
+  FStyle := [];
+  lsymTraits := FFont.fontDescriptor.symbolicTraits;
+  if (lsymTraits and NSFontBoldTrait) <> 0 then
+    Include(FStyle, cfs_Bold);
+  if (lsymTraits and NSFontItalicTrait) <> 0 then
+    Include(FStyle, cfs_Italic);
+
+  FAntialiased := True;
+  Pool.release;
 end;
 
 { TCocoaColorObject }
@@ -744,7 +770,7 @@ begin
       AB := 1;
       AA := 0;
     end;
-    R2_NOT:
+    R2_NOT, R2_NOTXORPEN:
     begin
       AR := 1;
       AG := 1;
@@ -968,6 +994,12 @@ end;
 
 procedure TCocoaBitmap.SetModified;
 begin
+  if FOriginalData <> nil then
+  begin
+    // the original data no longer applies, as imageRep was modified
+    System.FreeMem(FOriginalData);
+    FOriginalData:=nil;
+  end;
   FModified_SinceLastRecreate := True;
 end;
 
@@ -1285,6 +1317,7 @@ var
   Locations: array of NSPoint;
   Indexes: array of NSUInteger;
   I, Count: NSUInteger;
+  transform : NSAffineTransform;
 begin
   if not ctx.isFlipped then
     Context := NSGraphicsContext.graphicsContextWithGraphicsPort_flipped(ctx.graphicsPort, True)
@@ -1294,6 +1327,18 @@ begin
   NSGraphicsContext.saveGraphicsState;
   NSGraphicsContext.setCurrentContext(Context);
   ctx.setShouldAntialias(FFont.Antialiased);
+  if FFont.RotationDeg<>0 then
+  begin
+    transform := NSAffineTransform.transform;
+    transform.translateXBy_yBy(X, Y);
+    if ctx.isFlipped then
+      transform.rotateByDegrees( FFont.RotationDeg )
+    else
+      transform.rotateByDegrees( -FFont.RotationDeg );
+    transform.translateXBy_yBy(-X, -Y);
+    transform.concat;
+  end;
+
   Range := FLayout.glyphRangeForTextContainer(FTextContainer);
   Pt.x := X;
   Pt.y := Y;
@@ -1684,8 +1729,8 @@ begin
   if (absDeltaX<=1) and (absDeltaY<=1) then
   begin
     // special case for 1-pixel lines
-    tx := bx + 0.05;
-    ty := by + 0.05;
+    tx := bx + 0.05 * deltaX;
+    ty := by + 0.05 * deltay;
   end
   else
   begin
@@ -2074,6 +2119,9 @@ begin
   if not Assigned(Bmp) then
     Exit(False);
 
+  // Make sure that bitmap is the most up-to-date
+  Bmp.ReCreateHandle_IfModified(); // Fix for bug 28102
+
   if (Msk <> nil) and (Msk.Image <> nil) then
   begin
     MskImage := Msk.CreateMaskImage(Bounds(XMsk, YMsk, SrcWidth, SrcHeight));
@@ -2089,14 +2137,12 @@ begin
 
     CGImageRelease(MskImage);
     CGContextRestoreGState(CGContext);
-    Bmp.ReCreateHandle_IfModified(); // Fix for bug 28102
   end
   else
   begin
     // convert Y coordinate of the source bitmap
     YSrc := Bmp.Height - (SrcHeight + YSrc);
     Result := DrawImageRep(GetNSRect(X, Y, Width, Height),GetNSRect(XSrc, YSrc, SrcWidth, SrcHeight), bmp.ImageRep);
-    Bmp.ReCreateHandle_IfModified(); // Fix for bug 28102
   end;
   AttachedBitmap_SetModified();
 end;
@@ -2172,6 +2218,9 @@ begin
   TM.tmBreakChar := '?';
 
   TM.tmWeight := Font.CocoaFontWeightToWin32FontWeight(NSFontManager.sharedFontManager.weightOfFont(Font.Font));
+
+  if cfs_Bold in Font.Style then
+    TM.tmWeight := Min(FW_BOLD, TM.tmWeight);
 
   if cfs_Italic in Font.Style then
     TM.tmItalic := 1;
@@ -2626,10 +2675,12 @@ begin
 
   GetRGBA(AROP2, AR, AG, AB, AA);
 
-  if AROP2 <> R2_NOT then
-    CGContextSetBlendMode(ADC.CGContext, kCGBlendModeNormal)
+  case AROP2 of
+    R2_NOT, R2_NOTXORPEN:
+      CGContextSetBlendMode(ADC.CGContext, kCGBlendModeDifference);
   else
-    CGContextSetBlendMode(ADC.CGContext, kCGBlendModeDifference);
+    CGContextSetBlendMode(ADC.CGContext, kCGBlendModeNormal)
+  end;
 
   CGContextSetRGBStrokeColor(ADC.CGContext, AR, AG, AB, AA);
   CGContextSetLineWidth(ADC.CGContext, FWidth);
@@ -3033,7 +3084,6 @@ var
   AROP2: Integer;
   APatternSpace: CGColorSpaceRef;
   BaseSpace: CGColorSpaceRef;
-  AColor: CGColorRef;
 begin
   if ADC = nil then Exit;
 
@@ -3047,10 +3097,10 @@ begin
 
   GetRGBA(AROP2, RGBA[0], RGBA[1], RGBA[2], RGBA[3]);
 
-  if AROP2 <> R2_NOT then
-    CGContextSetBlendMode(ADC.CGContext, kCGBlendModeNormal)
-  else
-    CGContextSetBlendMode(ADC.CGContext, kCGBlendModeDifference);
+  //if AROP2 <> R2_NOT then
+    //CGContextSetBlendMode(ADC.CGContext, kCGBlendModeNormal)
+  //else
+    //CGContextSetBlendMode(ADC.CGContext, kCGBlendModeDifference);
 
   if Assigned(FCGPattern) then
   begin
@@ -3069,8 +3119,7 @@ begin
   end
   else
   begin
-    AColor := CGColorCreateGenericRGB(RGBA[0], RGBA[1], RGBA[2], RGBA[3]);
-    CGContextSetFillColorWithColor(ADC.CGContext, AColor);
+    CGContextSetRGBFillColor(ADC.CGContext, RGBA[0], RGBA[1], RGBA[2], RGBA[3]);
   end;
 end;
 

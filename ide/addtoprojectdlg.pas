@@ -34,7 +34,7 @@ unit AddToProjectDlg;
 interface
 
 uses
-  Classes, SysUtils, AVL_Tree,
+  Classes, SysUtils, Laz_AVL_Tree,
   // LCL
   Forms, Controls, Buttons, ComCtrls, StdCtrls, Dialogs, ButtonPanel,
   // LazUtils
@@ -42,7 +42,8 @@ uses
   // IDEIntf
   IDEWindowIntf, PackageIntf,
   // IDE
-  LazarusIDEStrConsts, Project, InputHistory, PackageDefs, ProjPackChecks;
+  LazarusIDEStrConsts, IDEImagesIntf, Project, InputHistory, PackageDefs,
+  ProjPackChecks;
   
 type
   TAddToProjectType = (
@@ -342,7 +343,7 @@ begin
 
   with FilesDirButton do begin
     Caption:=lisAddFilesInDirectory;
-    LoadGlyphFromResourceName(HInstance, 'pkg_files');
+    TIDEImages.AssignImage(Glyph, 'pkg_files');
   end;
 
   with FilesShortenButton do begin
@@ -355,7 +356,7 @@ begin
     Caption:=lisDelete;
     ShowHint:=true;
     Hint:=lisDeleteSelectedFiles;
-    LoadGlyphFromResourceName(HInstance, 'laz_delete');
+    TIDEImages.AssignImage(Glyph, 'laz_delete');
   end;
 
   UpdateFilesButtons;

@@ -85,7 +85,7 @@ uses
   MemCheck,
   {$ENDIF}
   // RTL + FCL
-  Classes, SysUtils, contnrs, AVL_Tree,
+  Classes, SysUtils, contnrs, Laz_AVL_Tree,
   // CodeTools
   FileProcs, CodeToolsStrConsts, StdCodeTools,
   CodeTree, CodeAtom, CodeCache, CustomCodeTool, PascalParserTool, MethodJumpTool,
@@ -95,7 +95,7 @@ uses
   CodeCompletionTemplater,
   {$ENDIF}
   // LazUtils
-  LazFileUtils, LazDbgLog;
+  LazFileUtils, LazDbgLog, AvgLvlTree;
 
 type
   TNewClassPart = (ncpPrivateProcs, ncpPrivateVars,
@@ -205,7 +205,7 @@ type
     function CreateMissingClassProcBodies(UpdateSignatures: boolean): boolean;
     function ApplyChangesAndJumpToFirstNewProc(CleanPos: integer;
            OldTopLine: integer; AddMissingProcBodies: boolean;
-           out NewPos: TCodeXYPosition; out NewTopLine: integer): boolean;
+           out NewPos: TCodeXYPosition; out NewTopLine, BlockTopLine, BlockBottomLine: integer): boolean;
     function NodeExtIsVariable(ANodeExt: TCodeTreeNodeExtension): boolean;
     function NodeExtHasVisibilty(ANodeExt: TCodeTreeNodeExtension;
       Visibility: TPascalClassSection): boolean;
@@ -238,10 +238,10 @@ type
     function CompleteClass(AClassNode: TCodeTreeNode;
                            CleanCursorPos, OldTopLine: integer;
                            CursorNode: TCodeTreeNode;
-                var NewPos: TCodeXYPosition; var NewTopLine: integer): boolean;
+                var NewPos: TCodeXYPosition; var NewTopLine, BlockTopLine, BlockBottomLine: integer): boolean;
     function CompleteForwardProcs(CursorPos: TCodeXYPosition;
                      ProcNode, CursorNode: TCodeTreeNode;
-                     var NewPos: TCodeXYPosition; var NewTopLine: integer;
+                     var NewPos: TCodeXYPosition; var NewTopLine, BlockTopLine, BlockBottomLine: integer;
                      SourceChangeCache: TSourceChangeCache): boolean;
     function CompleteVariableAssignment(CleanCursorPos,
                        OldTopLine: integer; CursorNode: TCodeTreeNode;
@@ -269,14 +269,14 @@ type
                                           out CleanList: string): string;
     function CompleteProcByCall(CleanCursorPos, OldTopLine: integer;
                            CursorNode: TCodeTreeNode;
-                           var NewPos: TCodeXYPosition; var NewTopLine: integer;
+                           var NewPos: TCodeXYPosition; var NewTopLine, BlockTopLine, BlockBottomLine: integer;
                            SourceChangeCache: TSourceChangeCache): boolean;
   protected
     procedure DoDeleteNodes(StartNode: TCodeTreeNode); override;
   public
     constructor Create;
     function CompleteCode(CursorPos: TCodeXYPosition; OldTopLine: integer;
-                          out NewPos: TCodeXYPosition; out NewTopLine: integer;
+                          out NewPos: TCodeXYPosition; out NewTopLine, BlockTopLine, BlockBottomLine: integer;
                           SourceChangeCache: TSourceChangeCache;
                           Interactive: Boolean): boolean;
     function CreateVariableForIdentifier(CursorPos: TCodeXYPosition; OldTopLine: integer;
@@ -287,7 +287,7 @@ type
                         OldTopLine: integer;
                         ListOfPCodeXYPosition: TFPList;
                         const VirtualToOverride: boolean;
-                        out NewPos: TCodeXYPosition; out NewTopLine: integer;
+                        out NewPos: TCodeXYPosition; out NewTopLine, BlockTopLine, BlockBottomLine: integer;
                         SourceChangeCache: TSourceChangeCache): boolean;
     function AddPublishedVariable(const UpperClassName,VarName, VarType: string;
                       SourceChangeCache: TSourceChangeCache): boolean; override;
@@ -362,6 +362,13 @@ type
         out NewPos: TCodeXYPosition; out NewTopLine: integer;
         LocalVarName: string = '' // default is 'aSource'
         ): boolean;
+    function AddAssignMethod(ClassNode: TCodeTreeNode; MemberNodeExts: TFPList;
+        const ProcName, ParamName, ParamType: string;
+        OverrideMod, CallInherited, CallInheritedOnlyInElse: boolean;
+        SourceChanger: TSourceChangeCache;
+        out NewPos: TCodeXYPosition; out NewTopLine, BlockTopLine, BlockBottomLine: integer;
+        LocalVarName: string = '' // default is 'aSource'
+        ): boolean;
 
     // local variables
     function GetPossibleInitsForVariable(CursorPos: TCodeXYPosition;
@@ -393,7 +400,9 @@ type
                                  SourceChangeCache: TSourceChangeCache): boolean;
     function ApplyClassCompletion(AddMissingProcBodies: boolean): boolean;
     function ProcExistsInCodeCompleteClass(
-                                    const NameAndParamsUpCase: string): boolean;
+        const NameAndParamsUpCase: string; SearchInAncestors: boolean = true): boolean;
+    function FindProcInCodeCompleteClass(const NameAndParamsUpCase: string;
+        SearchInAncestors: boolean = true): TFindContext;
     function VarExistsInCodeCompleteClass(const UpperName: string): boolean;
     procedure AddClassInsertion(
         const CleanDef, Def, IdentifierName: string;
@@ -467,47 +476,67 @@ end;
 { TCodeCompletionCodeTool }
 
 function TCodeCompletionCodeTool.ProcExistsInCodeCompleteClass(
-  const NameAndParamsUpCase: string): boolean;
+  const NameAndParamsUpCase: string; SearchInAncestors: boolean): boolean;
+begin
+  Result:=FindProcInCodeCompleteClass(NameAndParamsUpCase,SearchInAncestors).Node<>nil;
+end;
+
+function TCodeCompletionCodeTool.FindProcInCodeCompleteClass(
+  const NameAndParamsUpCase: string; SearchInAncestors: boolean): TFindContext;
 // NameAndParams should be uppercase and contains the proc name and the
 // parameter list without names and default values
 // and should not contain any comments and no result type
+// e.g. DOIT(LONGINT;STRING)
 var
   ANodeExt: TCodeTreeNodeExtension;
   Params: TFindDeclarationParams;
-  ClassNode, CompletingChildNode: TCodeTreeNode;
+  ClassNode, StartNode: TCodeTreeNode;
   Tool: TFindDeclarationTool;
   Vis: TClassSectionVisibility;
 begin
-  Result:=false;
+  Result:=CleanFindContext;
   // search in new nodes, which will be inserted
   ANodeExt:=FirstInsert;
   while ANodeExt<>nil do begin
     if CompareTextIgnoringSpace(ANodeExt.Txt,NameAndParamsUpCase,true)=0 then
-      exit(true);
+    begin
+      Result.Tool:=Self;
+      Result.Node:=CodeCompleteClassNode;
+      exit;
+    end;
     ANodeExt:=ANodeExt.Next;
   end;
   // search in current class
-  Result:=(FindProcNode(FCompletingFirstEntryNode,NameAndParamsUpCase,mgMethod,[phpInUpperCase])<>nil);
-  if not Result then
-  begin
-    //search in ancestor classes
-    Params:=TFindDeclarationParams.Create;
-    try
-      ClassNode:=CodeCompleteClassNode;
-      Tool:=Self;
-      while not Result and Tool.FindAncestorOfClass(ClassNode,Params,True) do begin
-        Tool:=Params.NewCodeTool;
-        ClassNode:=Params.NewNode;
-        CompletingChildNode:=GetFirstClassIdentifier(ClassNode);
-        if Tool=Self then
-          Vis := csvPrivateAndHigher
-        else
-          Vis := csvProtectedAndHigher;
-        Result := (Tool.FindProcNode(CompletingChildNode,NameAndParamsUpCase,mgMethod,[phpInUpperCase], Vis)<>nil);
+  Result.Node:=FindProcNode(FCompletingFirstEntryNode,NameAndParamsUpCase,mgMethod,
+                        [phpInUpperCase]);
+  if Result.Node<>nil then begin
+    Result.Tool:=Self;
+    exit;
+  end;
+  if not SearchInAncestors then exit;
+  //search in ancestor classes
+  Params:=TFindDeclarationParams.Create;
+  try
+    ClassNode:=CodeCompleteClassNode;
+    Tool:=Self;
+    while Tool.FindAncestorOfClass(ClassNode,Params,True) do
+    begin
+      Tool:=Params.NewCodeTool;
+      ClassNode:=Params.NewNode;
+      StartNode:=GetFirstClassIdentifier(ClassNode);
+      if Tool=Self then
+        Vis := csvPrivateAndHigher
+      else
+        Vis := csvProtectedAndHigher;
+      Result.Node := Tool.FindProcNode(StartNode,NameAndParamsUpCase,
+                                   mgMethod,[phpInUpperCase], Vis);
+      if Result.Node<>nil then begin
+        Result.Tool:=Tool;
+        exit;
       end;
-    finally
-      Params.Free;
     end;
+  finally
+    Params.Free;
   end;
 end;
 
@@ -814,7 +843,7 @@ begin
     // forward proc in interface
     StartSearchProc:=FindImplementationNode;
     if StartSearchProc=nil then
-      RaiseException('Implementation section not found');
+      RaiseException(20170421201438,'Implementation section not found');
     if StartSearchProc.FirstChild<>nil then begin
       // implementation not empty
       StartSearchProc:=StartSearchProc.FirstChild
@@ -858,7 +887,7 @@ begin
       // remove current forward proc from tree
       ProcAVLNode:=FindAVLNodeWithNode(ForwardProcNodes,ProcNode);
       if ProcAVLNode=nil then
-        RaiseException('TCodeCompletionCodeTool.FindInsertPositionForForwardProc '
+        RaiseException(20170421201441,'TCodeCompletionCodeTool.FindInsertPositionForForwardProc '
          +' Internal Error, current forward proc not found');
       ProcNodeExt:=TCodeTreeNodeExtension(ProcAVLNode.Data);
       ForwardProcNodes.Delete(ProcAVLNode);
@@ -984,7 +1013,7 @@ begin
     exit;
   end;
 
-  RaiseException('TCodeCompletionCodeTool.FindInsertPositionForForwardProc '
+  RaiseException(20170421201444,'TCodeCompletionCodeTool.FindInsertPositionForForwardProc '
    +' Internal Error: no insert position found');
 end;
 
@@ -1015,6 +1044,8 @@ begin
   end;
   if InsertPos<1 then begin
     InsertNode:=FindFirstSectionChild;
+    if (InsertNode<>nil) and (InsertNode.Desc=ctnSrcName) then
+      InsertNode:=InsertNode.NextBrother;
     if InsertNode<>nil then begin
       Indent:=Beauty.GetLineIndent(Src,InsertNode.StartPos);
       if InsertNode.Desc=ctnUsesSection then
@@ -1184,7 +1215,7 @@ begin
   if CleanLevelPos<1 then CleanLevelPos:=CleanCursorPos;
   //DebugLn('TCodeCompletionCodeTool.AddLocalVariable START CleanCursorPos=',CleanPosToStr(CleanCursorPos),' CleanLevelPos=',CleanPosToStr(CleanLevelPos));
   if not CleanPosToCodePos(CleanCursorPos,OldCodePos) then begin
-    RaiseException('TCodeCompletionCodeTool.AddLocalVariable Internal Error: '
+    RaiseException(20170421201447,'TCodeCompletionCodeTool.AddLocalVariable Internal Error: '
       +'CleanPosToCodePos');
   end;
   Beauty:=SourceChangeCache.BeautifyCodeOptions;
@@ -1230,14 +1261,16 @@ begin
 
   if ParentNode=nil then begin
     // no target for a var
-    RaiseException('TCodeCompletionCodeTool.AddLocalVariable Internal Error: '
+    RaiseException(20170421201449,'TCodeCompletionCodeTool.AddLocalVariable Internal Error: '
       +'invalid target for a var');
   end;
 
 {$IFDEF EnableCodeCompleteTemplates}
-  if ( Expander <> nil ) and Expander.TemplateExists('PrettyColon') then
+  if ( CTTemplateExpander <> nil )
+  and CTTemplateExpander.TemplateExists('PrettyColon') then
   begin
-    InsertTxt:=VariableName+Expander.Expand('PrettyColon','','',[],[])+VariableType+';';
+    InsertTxt:=VariableName+CTTemplateExpander.Expand('PrettyColon','','',[],[])
+                       +VariableType+';';
   end
   else
 {$ENDIF}
@@ -1324,10 +1357,8 @@ begin
       // there is no var/type/const section in front
       if (ParentNode.Desc=ctnProcedure) and (HeaderNode=nil) then
         HeaderNode:=ParentNode.FirstChild;
-      if (HeaderNode=nil)
-      and (ParentNode.FirstChild<>nil)
-      and (ParentNode.FirstChild.Desc=ctnUsesSection) then
-        HeaderNode:=ParentNode.FirstChild;
+      if (HeaderNode=nil) then
+        HeaderNode:=FindUsesNode(ParentNode);
 
       if CursorNode.Desc in [ctnBeginBlock,ctnAsmBlock] then begin
         // add the var section directly in front of the begin
@@ -1409,10 +1440,10 @@ begin
     exit;
 
   if fNewMainUsesSectionUnits=nil then
-    fNewMainUsesSectionUnits:=TAVLTree.Create(TListSortCompare(@CompareIdentifiers));
+    fNewMainUsesSectionUnits:=TAVLTree.Create(TListSortCompare(@CompareDottedIdentifiers));
   //DebugLn(['TCodeCompletionCodeTool.AddNeededUnitToMainUsesSection AnUnitName="',AnUnitName,'"']);
   if fNewMainUsesSectionUnits.Find(AnUnitName)<>nil then exit;
-  s:=GetIdentifier(AnUnitName);
+  s:=StrPas(AnUnitName);
   fNewMainUsesSectionUnits.Add(Pointer(s));
   Pointer(s):=nil;
 end;
@@ -1472,11 +1503,11 @@ begin
   MethodDefinition:=Beauty.AddClassAndNameToProc(MethodDefinition,
                    ExtractClassName(AClassNode,false,true), AnEventName);
   if not InsertAllNewClassParts then
-    RaiseException(ctsErrorDuringInsertingNewClassParts);
+    RaiseException(20170421201451,ctsErrorDuringInsertingNewClassParts);
 
   // insert all missing proc bodies
   if not CreateMissingClassProcBodies(false) then
-    RaiseException(ctsErrorDuringCreationOfNewProcBodies);
+    RaiseException(20170421201453,ctsErrorDuringCreationOfNewProcBodies);
   Result := True;
 end;
 
@@ -1525,7 +1556,7 @@ begin
       // insert at start
       if StartNode=nil then begin
         // unit without implementation
-        RaiseException('need implementation section to insert new procedure');
+        RaiseException(20170421201459,'need implementation section to insert new procedure');
       end;
       Node:=StartNode.Next;
       if Node<>nil then begin
@@ -1538,7 +1569,7 @@ begin
         InsertPos:=StartNode.StartPos+length('implementation');
       end else begin
         // empty program
-        RaiseException('no insert place found for the new procedure');
+        RaiseException(20170421201504,'no insert place found for the new procedure');
       end;
     end;
   end;
@@ -1550,6 +1581,8 @@ begin
   MethodDefinition:=TrimCodeSpace(
                 ProcContext.Tool.ExtractProcHead(ProcContext.Node,
                               MethodAttr+[phpWithoutClassName,phpWithoutName]));
+  if MethodDefinition='' then
+    RaiseException(20170422200434,'unknown proctype '+ProcContext.Node.DescAsString);
   MethodDefinition:=Beauty.AddClassAndNameToProc(MethodDefinition, '', NewProcName);
   debugln(['TCodeCompletionCodeTool.AddProcedureCompatibleToProcType MethodDefinition="',MethodDefinition,'"']);
 
@@ -1558,7 +1591,7 @@ begin
   debugln(['TCodeCompletionCodeTool.AddProcedureCompatibleToProcType NewProc="',NewProc,'"']);
   if not SourceChangeCache.Replace(gtEmptyLine,gtEmptyLine,InsertPos,InsertPos,NewProc)
   then
-    RaiseException('unable to insert code at '+CleanPosToStr(InsertPos,true));
+    RaiseException(20170421201508,'unable to insert code at '+CleanPosToStr(InsertPos,true));
 end;
 
 procedure TCodeCompletionCodeTool.AddNeededUnitsToMainUsesSectionForRange(
@@ -1629,7 +1662,8 @@ end;
 
 function TCodeCompletionCodeTool.CompleteClass(AClassNode: TCodeTreeNode;
   CleanCursorPos, OldTopLine: integer; CursorNode: TCodeTreeNode;
-  var NewPos: TCodeXYPosition; var NewTopLine: integer): boolean;
+  var NewPos: TCodeXYPosition; var NewTopLine, BlockTopLine,
+  BlockBottomLine: integer): boolean;
 var
   SectionNode: TCodeTreeNode;
   ANode: TCodeTreeNode;
@@ -1663,7 +1697,7 @@ begin
         if ANode.Desc=ctnProperty then begin
           // check if property is complete
           if not CompleteProperty(ANode) then
-            RaiseException(ctsUnableToCompleteProperty);
+            RaiseException(20170421201511,ctsUnableToCompleteProperty);
         end;
         ANode:=ANode.NextBrother;
       end;
@@ -1676,17 +1710,16 @@ begin
     {$ENDIF}
     // apply the changes and jump to first new proc body
     Result:=ApplyChangesAndJumpToFirstNewProc(CleanCursorPos,OldTopLine,true,
-                                              NewPos,NewTopLine);
+                                              NewPos,NewTopLine, BlockTopLine, BlockBottomLine);
   finally
     FreeClassInsertionList;
   end;
 end;
 
 function TCodeCompletionCodeTool.CompleteForwardProcs(
-  CursorPos: TCodeXYPosition;
-  ProcNode, CursorNode: TCodeTreeNode;
-  var NewPos: TCodeXYPosition; var NewTopLine: integer;
-  SourceChangeCache: TSourceChangeCache): boolean;
+  CursorPos: TCodeXYPosition; ProcNode, CursorNode: TCodeTreeNode;
+  var NewPos: TCodeXYPosition; var NewTopLine, BlockTopLine,
+  BlockBottomLine: integer; SourceChangeCache: TSourceChangeCache): boolean;
 // add proc bodies for forward procs
 // or update signatures
 const
@@ -1721,10 +1754,11 @@ begin
   try
     // gather all proc definitions
     StartNode:=nil;
-    if (ProcNode.Parent.Desc=ctnImplementation)
-    and (ProcNode.Parent.PriorBrother<>nil)
-    and (ProcNode.Parent.PriorBrother.Desc=ctnInterface) then
-      StartNode:=ProcNode.Parent.PriorBrother.FirstChild;
+    if (ProcNode.Parent.Desc=ctnImplementation) then begin
+      StartNode:=FindInterfaceNode;
+      if StartNode<>nil then
+        StartNode:=StartNode.FirstChild;
+    end;
     if StartNode=nil then
       StartNode:=FindFirstNodeOnSameLvl(ProcNode);
     //debugln(['TCodeCompletionCodeTool.CompleteForwardProcs StartNode=',StartNode.DescAsString,' at ',CleanPosToStr(StartNode.StartPos),'=',ExtractProcName(StartNode,[])]);
@@ -1749,7 +1783,7 @@ begin
       if not UpdateProcBodySignatures(ProcDefNodes,ProcBodyNodes,
                               ProcAttrDefToBody,ProcsCopied,OnlyNode) then exit;
       if not SourceChangeCache.Apply then
-        RaiseException('CompleteForwardProcs: unable to apply changes');
+        RaiseException(20170421201515,'CompleteForwardProcs: unable to apply changes');
       exit;
     end;
 
@@ -1799,28 +1833,28 @@ begin
                   phpWithVarModifiers,phpWithParameterNames,phpWithResultType,
                   phpWithCallingSpecs,phpWithAssembler,phpDoNotAddSemicolon]);
       if ProcCode='' then
-        RaiseException('CompleteForwardProcs: unable to parse forward proc node');
+        RaiseException(20170421201518,'CompleteForwardProcs: unable to parse forward proc node');
       if ProcCode[length(ProcCode)]<>';' then begin
         // add missing semicolon
         ProcCode:=ProcCode+';';
         UndoReadNextAtom;
         if not SourceChangeCache.Replace(gtNone,gtNone,
           CurPos.EndPos,CurPos.EndPos,';') then
-            RaiseException('CompleteForwardProcs: unable to insert semicolon');
+            RaiseException(20170421201522,'CompleteForwardProcs: unable to insert semicolon');
       end;
       ProcCode:=Beauty.BeautifyProc(ProcCode,Indent,true);
       if not SourceChangeCache.Replace(gtEmptyLine,gtEmptyLine,
         InsertPos,InsertPos,ProcCode) then
-          RaiseException('CompleteForwardProcs: unable to insert new proc body');
+          RaiseException(20170421201525,'CompleteForwardProcs: unable to insert new proc body');
       // next
       if CurProcNode=EndProcNode then break;
       CurProcNode:=FindNextNodeOnSameLvl(CurProcNode);
     until false;
     if not SourceChangeCache.Apply then
-      RaiseException('CompleteForwardProcs: unable to apply changes');
+      RaiseException(20170421201528,'CompleteForwardProcs: unable to apply changes');
 
     // reparse code and find jump point into new proc
-    Result:=FindJumpPoint(CursorPos,NewPos,NewTopLine,RevertableJump);
+    Result:=FindJumpPoint(CursorPos,NewPos,NewTopLine,BlockTopLine, BlockBottomLine, RevertableJump);
   finally
     DisposeAVLTree(ProcDefNodes);
     DisposeAVLTree(ProcBodyNodes);
@@ -1881,7 +1915,7 @@ begin
     if Result then begin
       MoveCursorToCleanPos(VarNameAtom.StartPos);
       ReadNextAtom;
-      RaiseExceptionFmt(ctsIdentifierAlreadyDefined,[GetAtom]);
+      RaiseExceptionFmt(20170421201531,ctsIdentifierAlreadyDefined,[GetAtom]);
     end;
 
     {$IFDEF VerboseCompleteLocalVarAssign}
@@ -1890,9 +1924,11 @@ begin
     {$ENDIF}
     // find type of term
     Params.ContextNode:=CursorNode;
+    if Beautifier.OverrideStringTypesWithFirstParamType then
+      Params.Flags:=Params.Flags+[fdfOverrideStringTypesWithFirstParamType];
     NewType:=FindTermTypeAsString(TermAtom,Params,ExprType);
     if NewType='' then
-      RaiseException('CompleteLocalVariableAssignment Internal error: NewType=""');
+      RaiseException(20170421201534,'CompleteLocalVariableAssignment Internal error: NewType=""');
 
     // check if there is another NewType in context of CursorNode
     if (ExprType.Desc = xtContext) and (ExprType.Context.Tool <> nil) then
@@ -1946,10 +1982,10 @@ begin
     AddClassInsertion(UpperCase(NewName)+';', NewName+':'+NewType+';',
       NewName, InsertClassSectionToNewVarClassPart[CCOptions.ClassSection]);
     if not InsertAllNewClassParts then
-      RaiseException(ctsErrorDuringInsertingNewClassParts);
+      RaiseException(20170421201536,ctsErrorDuringInsertingNewClassParts);
     // apply the changes
     if not SourceChangeCache.Apply then
-      RaiseException(ctsUnableToApplyChanges);
+      RaiseException(20170421201538,ctsUnableToApplyChanges);
   end;
 end;
 
@@ -2059,7 +2095,8 @@ function TCodeCompletionCodeTool.CompleteEventAssignment(CleanCursorPos,
     Params.Flags:=[fdfSearchInParentNodes,fdfSearchInAncestors,fdfSearchInHelpers];
     ProcContext:=PropVarContext.Tool.FindBaseTypeOfNode(
                                                     Params,PropVarContext.Node);
-    if (ProcContext.Node=nil) or (ProcContext.Node.Desc<>ctnProcedureType)
+    if (ProcContext.Node=nil)
+    or not (ProcContext.Node.Desc in AllProcTypes)
     then begin
       {$IFDEF CTDEBUG}
       DebugLn('FindEventTypeAtCursor not a procedure type');
@@ -2150,15 +2187,15 @@ function TCodeCompletionCodeTool.CompleteEventAssignment(CleanCursorPos,
 
     // apply the changes
     if not SourceChangeCache.Apply then
-      RaiseException(ctsUnableToApplyChanges);
+      RaiseException(20170421201540,ctsUnableToApplyChanges);
 
     {$IFDEF CTDEBUG}
-    DebugLn('  CompleteLocalIdentifierByParameter.AddProcedure: jumping to new method body...');
+    DebugLn('  CompleteEventAssignment.AddProcedure: jumping to new method body...');
     {$ENDIF}
     // jump to new method body
     if not JumpToMethod(AMethodDefinition,AMethodAttr,NewPos,NewTopLine)
     then
-      RaiseException('CompleteLocalIdentifierByParameter.AddProcedure JumpToMethod failed');
+      RaiseException(20170421201543,'CompleteEventAssignment.AddProcedure JumpToMethod failed');
   end;
 
 // function CompleteEventAssignment: boolean
@@ -2209,7 +2246,8 @@ begin
                                   Params);
     if not Result then exit;
 
-    if ProcContext.Tool.ProcNodeHasOfObject(ProcContext.Node) then begin
+    if ((AClassNode<>nil) and (ProcContext.Node.Desc=ctnReferenceTo))
+    or ProcContext.Tool.ProcNodeHasOfObject(ProcContext.Node) then begin
       if AClassNode<>nil then begin
         {$IFDEF VerboseCompleteEventAssign}
         DebugLn('  CompleteEventAssignment: CreateEventFullName... UserEventAtom.StartPos=',dbgs(UserEventAtom.StartPos));
@@ -2226,13 +2264,13 @@ begin
         if not CompleteAssignment(FullEventName,AssignmentOperator,
           AddrOperatorPos,SemicolonPos,UserEventAtom)
         then
-          RaiseException('CompleteEventAssignment CompleteAssignment failed');
+          RaiseException(20170421201546,'CompleteEventAssignment CompleteAssignment failed');
       end else if ProcContext.Tool.ProcNodeHasOfObject(ProcContext.Node) then begin
         {$IFDEF VerboseCompleteEventAssign}
         debugln(['  CompleteEventAssignment:  proc is "of object"']);
         {$ENDIF}
         MoveCursorToCleanPos(PropVarAtom.StartPos);
-        RaiseException('Complete event failed: procedure of object needs a class');
+        RaiseException(20170421201550,'Complete event failed: procedure of object needs a class');
       end;
     end else begin
       // create procedure (not method)
@@ -2247,7 +2285,7 @@ begin
         Identifier:=GetIdentifier(@Src[PropVarAtom.StartPos]);
       if Identifier='' then begin
         MoveCursorToCleanPos(PropVarAtom.StartPos);
-        RaiseException('Complete event failed: need a name');
+        RaiseException(20170421201553,'Complete event failed: need a name');
       end;
       // create proc
       {$IFDEF VerboseCompleteEventAssign}
@@ -2266,7 +2304,7 @@ begin
   {$ENDIF}
   // apply the changes
   if not SourceChangeCache.Apply then
-    RaiseException(ctsUnableToApplyChanges);
+    RaiseException(20170421201555,ctsUnableToApplyChanges);
 
   {$IFDEF VerboseCompleteEventAssign}
   DebugLn('  CompleteEventAssignment: jumping to new method body...');
@@ -2274,7 +2312,7 @@ begin
   // jump to new method body
   if not JumpToMethod(AMethodDefinition,AMethodAttr,NewPos,NewTopLine)
   then
-    RaiseException('CompleteEventAssignment Internal Error 2');
+    RaiseException(20170421201558,'CompleteEventAssignment Internal Error 2');
 
   Result:=true;
 end;
@@ -2324,7 +2362,7 @@ begin
     if Result then begin
       MoveCursorToCleanPos(VarNameAtom.StartPos);
       ReadNextAtom;
-      RaiseExceptionFmt(ctsIdentifierAlreadyDefined,[GetAtom]);
+      RaiseExceptionFmt(20170421201601,ctsIdentifierAlreadyDefined,[GetAtom]);
     end;
 
     {$IFDEF CTDEBUG}
@@ -2334,7 +2372,7 @@ begin
     // find type of term
     NewType:=FindForInTypeAsString(TermAtom,CursorNode,Params,ExprType);
     if NewType='' then
-      RaiseException('CompleteLocalVariableForIn Internal error: NewType=""');
+      RaiseException(20170421201604,'CompleteLocalVariableForIn Internal error: NewType=""');
 
   finally
     Params.Free;
@@ -2366,7 +2404,7 @@ function TCodeCompletionCodeTool.CompleteIdentifierByParameter(CleanCursorPos,
     // parameter needs a method => search class of method
     AClassNode:=FindClassOrInterfaceNode(CursorNode,true);
     if (AClassNode=nil) then
-      RaiseException('parameter needs a method');
+      RaiseException(20170421201607,'parameter needs a method');
     ProcContext:=CreateFindContext(TypeTool,TypeNode);
 
     // create new method
@@ -2377,15 +2415,15 @@ function TCodeCompletionCodeTool.CompleteIdentifierByParameter(CleanCursorPos,
 
     // apply the changes
     if not SourceChangeCache.Apply then
-      RaiseException(ctsUnableToApplyChanges);
+      RaiseException(20170421201609,ctsUnableToApplyChanges);
 
     {$IFDEF CTDEBUG}
-    DebugLn('  CompleteLocalIdentifierByParameter.AddMethod: jumping to new method body...');
+    DebugLn('  CompleteIdentifierByParameter.AddMethod: jumping to new method body...');
     {$ENDIF}
     // jump to new method body
     if not JumpToMethod(AMethodDefinition,AMethodAttr,NewPos,NewTopLine)
     then
-      RaiseException('CompleteLocalIdentifierByParameter.AddMethod JumpToMethod failed');
+      RaiseException(20170421201612,'CompleteIdentifierByParameter.AddMethod JumpToMethod failed');
   end;
 
   procedure AddProcedure(Identifier: string;
@@ -2403,15 +2441,15 @@ function TCodeCompletionCodeTool.CompleteIdentifierByParameter(CleanCursorPos,
 
     // apply the changes
     if not SourceChangeCache.Apply then
-      RaiseException(ctsUnableToApplyChanges);
+      RaiseException(20170421201614,ctsUnableToApplyChanges);
 
     {$IFDEF CTDEBUG}
-    DebugLn('  CompleteLocalIdentifierByParameter.AddProcedure: jumping to new method body...');
+    DebugLn('  CompleteIdentifierByParameter.AddProcedure: jumping to new method body...');
     {$ENDIF}
     // jump to new method body
     if not JumpToMethod(AMethodDefinition,AMethodAttr,NewPos,NewTopLine)
     then
-      RaiseException('CompleteLocalIdentifierByParameter.AddProcedure JumpToMethod failed');
+      RaiseException(20170421201617,'CompleteIdentifierByParameter.AddProcedure JumpToMethod failed');
   end;
 
 var
@@ -2434,7 +2472,7 @@ begin
   Result:=false;
 
   {$IFDEF CTDEBUG}
-  DebugLn('  CompleteLocalIdentifierByParameter: A');
+  DebugLn('  CompleteIdentifierByParameter: A');
   {$ENDIF}
   if not ((CursorNode.Desc=ctnBeginBlock)
           or CursorNode.HasParentOfType(ctnBeginBlock)) then exit;
@@ -2443,7 +2481,7 @@ begin
   CursorNode:=FindDeepestNodeAtPos(CleanCursorPos,true);
 
   {$IFDEF CTDEBUG}
-  DebugLn('  CompleteLocalIdentifierByParameter: B check if it is a parameter ...');
+  DebugLn('  CompleteIdentifierByParameter: B check if it is a parameter ...');
   {$ENDIF}
   // check parameter syntax
   if not CheckParameterSyntax(CursorNode.StartPos,CleanCursorPos,
@@ -2457,31 +2495,31 @@ begin
     MoveCursorToCleanPos(VarNameRange.StartPos+1);
     ReadNextAtom;
     VarNameRange.StartPos:=CurPos.StartPos;
-    //debugln(['TCodeCompletionCodeTool.CompleteLocalIdentifierByParameter HasAtOperator ',GetAtom(VarNameRange)]);
+    //debugln(['TCodeCompletionCodeTool.CompleteIdentifierByParameter HasAtOperator ',GetAtom(VarNameRange)]);
   end;
   Identifier:=ExtractCode(VarNameRange.StartPos,VarNameRange.EndPos,[]);
   if not IsValidIdent(Identifier) then exit;
 
   {$IFDEF CTDEBUG}
-  DebugLn('  CompleteLocalIdentifierByParameter VarNameAtom=',GetAtom(VarNameAtom),' ProcNameAtom=',GetAtom(ProcNameAtom),' ParameterIndex=',dbgs(ParameterIndex));
+  DebugLn('  CompleteIdentifierByParameter VarNameAtom=',GetAtom(VarNameAtom),' ProcNameAtom=',GetAtom(ProcNameAtom),' ParameterIndex=',dbgs(ParameterIndex));
   {$ENDIF}
 
   // search variable
   Params:=TFindDeclarationParams.Create(Self, CursorNode);
   try
     {$IFDEF CTDEBUG}
-    DebugLn('  CompleteLocalIdentifierByParameter: check if variable is already defined ...');
+    DebugLn('  CompleteIdentifierByParameter: check if variable is already defined ...');
     {$ENDIF}
     // check if identifier exists
     Result:=IdentifierIsDefined(VarNameRange,CursorNode,Params);
     if Result then begin
       MoveCursorToCleanPos(VarNameRange.StartPos);
       ReadNextAtom;
-      RaiseExceptionFmt(ctsIdentifierAlreadyDefined,[GetAtom]);
+      RaiseExceptionFmt(20170421201619,ctsIdentifierAlreadyDefined,[GetAtom]);
     end;
 
     {$IFDEF CTDEBUG}
-    DebugLn('  CompleteLocalIdentifierByParameter: Find declaration of parameter list ...  procname="',GetAtom(ProcNameAtom),'"');
+    DebugLn('  CompleteIdentifierByParameter: Find declaration of parameter list ...  procname="',GetAtom(ProcNameAtom),'"');
     {$ENDIF}
 
     Context:=CreateFindContext(Self,CursorNode);
@@ -2490,25 +2528,25 @@ begin
       // for example: Canvas.Line
       // find class
       {$IFDEF CTDEBUG}
-      debugln(['TCodeCompletionCodeTool.CompleteLocalVariableByParameter Call="',ExtractCode(ProcStartPos,ProcNameAtom.EndPos,[]),'"']);
+      debugln(['TCodeCompletionCodeTool.CompleteIdentifierByParameter Call="',ExtractCode(ProcStartPos,ProcNameAtom.EndPos,[]),'"']);
       {$ENDIF}
       Params.ContextNode:=Context.Node;
       Params.Flags:=fdfDefaultForExpressions+[fdfFunctionResult,fdfFindChildren];
       ExprType:=FindExpressionResultType(Params,ProcStartPos,ProcNameAtom.StartPos);
       if not(ExprType.Desc in xtAllIdentTypes) then begin
-        debugln(['TCodeCompletionCodeTool.CompleteLocalIdentifierByParameter Call="',ExtractCode(ProcStartPos,ProcNameAtom.StartPos,[]),'" gives ',ExprTypeToString(ExprType)]);
+        debugln(['TCodeCompletionCodeTool.CompleteIdentifierByParameter Call="',ExtractCode(ProcStartPos,ProcNameAtom.StartPos,[]),'" gives ',ExprTypeToString(ExprType)]);
         exit;
       end;
       Context:=ExprType.Context;
       if Assigned(Context.Tool) and Assigned(Context.Node) then
       begin
         // resolve point '.'
-        //debugln(['TCodeCompletionCodeTool.CompleteLocalIdentifierByParameter base class: ',FindContextToString(Context)]);
+        //debugln(['TCodeCompletionCodeTool.CompleteIdentifierByParameter base class: ',FindContextToString(Context)]);
         Params.Clear;
         Params.Flags:=fdfDefaultForExpressions;
         Context:=Context.Tool.FindBaseTypeOfNode(Params,Context.Node);
         {$IFDEF CTDEBUG}
-        debugln(['TCodeCompletionCodeTool.CompleteLocalVariableByParameter search proc in sub context: ',FindContextToString(Context)]);
+        debugln(['TCodeCompletionCodeTool.CompleteIdentifierByParameter search proc in sub context: ',FindContextToString(Context)]);
         {$ENDIF}
       end;
     end;
@@ -2527,7 +2565,7 @@ begin
       IgnoreErrorAfter:=IgnorePos;
       try
         {$IFDEF CTDEBUG}
-        debugln(['TCodeCompletionCodeTool.CompleteLocalIdentifierByParameter searching ',GetIdentifier(Params.Identifier),' [',dbgs(Params.Flags),'] in ',FindContextToString(Context)]);
+        debugln(['TCodeCompletionCodeTool.CompleteIdentifierByParameter searching ',GetIdentifier(Params.Identifier),' [',dbgs(Params.Flags),'] in ',FindContextToString(Context)]);
         {$ENDIF}
         if not Context.Tool.FindIdentifierInContext(Params) then exit;
       finally
@@ -2563,15 +2601,15 @@ begin
                                                            ParameterIndex);
     if (ParameterNode=nil)
     and (Params.NewNode.Desc in [ctnProperty,ctnProcedure]) then begin
-      DebugLn(['  CompleteLocalIdentifierByParameter Procedure has less than ',ParameterIndex+1,' parameters']);
+      DebugLn(['  CompleteIdentifierByParameter Procedure has less than ',ParameterIndex+1,' parameters']);
       exit;
     end;
     if ParameterNode=nil then exit;
-    //DebugLn('TCodeCompletionCodeTool.CompleteLocalIdentifierByParameter ParameterNode=',ParameterNode.DescAsString,' ',copy(Params.NewCodeTool.Src,ParameterNode.StartPos,50));
+    //DebugLn('TCodeCompletionCodeTool.CompleteIdentifierByParameter ParameterNode=',ParameterNode.DescAsString,' ',copy(Params.NewCodeTool.Src,ParameterNode.StartPos,50));
     TypeTool:=Params.NewCodeTool;
     TypeNode:=FindTypeNodeOfDefinition(ParameterNode);
     if TypeNode=nil then begin
-      DebugLn('  CompleteLocalIdentifierByParameter Parameter has no type');
+      DebugLn('  CompleteIdentifierByParameter Parameter has no type');
       exit;
     end;
     // default: copy the type
@@ -2585,19 +2623,19 @@ begin
     AliasType:=CleanFindContext;
     ExprType:=TypeTool.FindExpressionResultType(Params,
                               TypeNode.StartPos,TypeNode.EndPos,@AliasType);
-    //debugln(['TCodeCompletionCodeTool.CompleteLocalIdentifierByParameter parameter type: AliasType=',FindContextToString(AliasType)]);
+    //debugln(['TCodeCompletionCodeTool.CompleteIdentifierByParameter parameter type: AliasType=',FindContextToString(AliasType)]);
 
     TypeTool:=ExprType.Context.Tool;
     TypeNode:=ExprType.Context.Node;
     if HasAtOperator
     or ((Scanner.CompilerMode=cmDelphi) and (ExprType.Desc=xtContext) // procedures in delphi mode without @
-        and (TypeNode<>nil) and (TypeNode.Desc=ctnProcedureType)) then
+        and (TypeNode<>nil) and (TypeNode.Desc in AllProcTypes)) then
     begin
-      debugln(['TCodeCompletionCodeTool.CompleteLocalIdentifierByParameter HasAtOperator ExprType=',ExprTypeToString(ExprType)]);
+      debugln(['TCodeCompletionCodeTool.CompleteIdentifierByParameter HasAtOperator ExprType=',ExprTypeToString(ExprType)]);
       NewType:='';
       if (ExprType.Desc<>xtContext)
       or (TypeNode=nil) then begin
-        debugln(['TCodeCompletionCodeTool.CompleteLocalIdentifierByParameter parameter has @ operator, but this is not implemented for ',ExprTypeToString(ExprType)]);
+        debugln(['TCodeCompletionCodeTool.CompleteIdentifierByParameter parameter has @ operator, but this is not implemented for ',ExprTypeToString(ExprType)]);
         exit;
       end;
       if (TypeNode.Desc=ctnPointerType) then begin
@@ -2607,7 +2645,7 @@ begin
           // for example PMapID = ^TMapID
           NewType:=TypeTool.ExtractCode(TypeNode.FirstChild.StartPos,
                                         TypeNode.FirstChild.EndPos,[]);
-          //debugln(['TCodeCompletionCodeTool.CompleteLocalIdentifierByParameter pointer to ',NewType]);
+          //debugln(['TCodeCompletionCodeTool.CompleteIdentifierByParameter pointer to ',NewType]);
           Params.Clear;
           Params.ContextNode:=TypeNode;
           Params.Flags:=fdfDefaultForExpressions;
@@ -2615,9 +2653,9 @@ begin
           ExprType:=TypeTool.FindExpressionResultType(Params,
             TypeNode.FirstChild.StartPos,TypeNode.FirstChild.EndPos,
             @AliasType);
-          //debugln(['TCodeCompletionCodeTool.CompleteLocalIdentifierByParameter parameter is pointer to type: AliasType=',FindContextToString(AliasType)]);
+          //debugln(['TCodeCompletionCodeTool.CompleteIdentifierByParameter parameter is pointer to type: AliasType=',FindContextToString(AliasType)]);
         end;
-      end else if TypeNode.Desc=ctnProcedureType then begin
+      end else if TypeNode.Desc in AllProcTypes then begin
         // for example TNotifyEvent = procedure(...
         if TypeTool.ProcNodeHasOfObject(TypeNode) then begin
           AddMethod(Identifier,TypeTool,TypeNode);
@@ -2628,20 +2666,20 @@ begin
         exit(true);
       end;
       if NewType='' then begin
-        debugln(['TCodeCompletionCodeTool.CompleteLocalIdentifierByParameter parameter has @ operator, but this is not implemented for ',ExprTypeToString(ExprType)]);
+        debugln(['TCodeCompletionCodeTool.CompleteIdentifierByParameter parameter has @ operator, but this is not implemented for ',ExprTypeToString(ExprType)]);
         exit;
       end;
     end;
     if AliasType.Node<>nil then begin
       // an identifier
       MissingUnitName:=GetUnitNameForUsesSection(AliasType.Tool);
-      //debugln(['TCodeCompletionCodeTool.CompleteLocalIdentifierByParameter MissingUnitName=',MissingUnitName]);
+      //debugln(['TCodeCompletionCodeTool.CompleteIdentifierByParameter MissingUnitName=',MissingUnitName]);
     end;
 
-    //DebugLn('TCodeCompletionCodeTool.CompleteLocalIdentifierByParameter NewType=',NewType);
+    //DebugLn('TCodeCompletionCodeTool.CompleteIdentifierByParameter NewType=',NewType);
     if NewType='' then
-      RaiseException('CompleteLocalIdentifierByParameter Internal error: NewType=""');
-    //DebugLn('  CompleteLocalIdentifierByParameter Dont know: ',Params.NewNode.DescAsString);
+      RaiseException(20170421201622,'CompleteIdentifierByParameter Internal error: NewType=""');
+    //DebugLn('  CompleteIdentifierByParameter Dont know: ',Params.NewNode.DescAsString);
 
   finally
     Params.Free;
@@ -2822,7 +2860,7 @@ begin
       {$ENDIF}
       // store old cursor position
       if not CleanPosToCodePos(CleanCursorPos,OldCodePos) then begin
-        RaiseException('TCodeCompletionCodeTool.CompleteMethodByBody Internal Error: '
+        RaiseException(20170421201627,'TCodeCompletionCodeTool.CompleteMethodByBody Internal Error: '
           +'CleanPosToCodePos');
       end;
 
@@ -2849,7 +2887,7 @@ begin
 
       // store old cursor position
       if not CleanPosToCodePos(CleanCursorPos,OldCodePos) then begin
-        RaiseException('TCodeCompletionCodeTool.CompleteMethodByBody Internal Error: '
+        RaiseException(20170421201630,'TCodeCompletionCodeTool.CompleteMethodByBody Internal Error: '
           +'CleanPosToCodePos');
       end;
 
@@ -2973,9 +3011,10 @@ begin
         CleanList:=CleanList+';';
       end;
       {$IFDEF EnableCodeCompleteTemplates}
-      if assigned( Expander ) and Expander.TemplateExists('PrettyColon') then
+      if assigned(CTTemplateExpander)
+      and CTTemplateExpander.TemplateExists('PrettyColon') then
       begin
-        Colon := Expander.Expand('PrettyColon', '','', // Doesn't use linebreak or indentation
+        Colon := CTTemplateExpander.Expand('PrettyColon', '','', // Doesn't use linebreak or indentation
                                  [], [] );
         Result:=Result+ParamName+Colon+ParamType;
         CleanList:=CleanList+Colon+ParamType;
@@ -3000,7 +3039,8 @@ end;
 
 function TCodeCompletionCodeTool.CompleteProcByCall(CleanCursorPos,
   OldTopLine: integer; CursorNode: TCodeTreeNode; var NewPos: TCodeXYPosition;
-  var NewTopLine: integer; SourceChangeCache: TSourceChangeCache): boolean;
+  var NewTopLine, BlockTopLine, BlockBottomLine: integer;
+  SourceChangeCache: TSourceChangeCache): boolean;
 // check if 'procname(expr list);'
 const
   ShortProcFormat = [phpWithoutClassKeyword];
@@ -3073,7 +3113,7 @@ const
       DebugLn(['TCodeCompletionCodeTool.CompleteProcByCall proc already exists']);
       MoveCursorToCleanPos(ProcNameAtom.StartPos);
       ReadNextAtom;
-      RaiseExceptionFmt(ctsIdentifierAlreadyDefined,[GetAtom]);
+      RaiseExceptionFmt(20170421201633,ctsIdentifierAlreadyDefined,[GetAtom]);
     end;
     Result:=true;
   end;
@@ -3108,10 +3148,11 @@ const
     if IsFunction then
     begin
       {$IFDEF EnableCodeCompleteTemplates}
-      if ( Expander <> nil ) and Expander.TemplateExists('PrettyColon') then
+      if (CTTemplateExpander<>nil)
+      and CTTemplateExpander.TemplateExists('PrettyColon') then
       begin
         ProcCode:= 'function '+ProcCode+
-                   Expander.Expand('PrettyColon','','',[],[])
+                   CTTemplateExpander.Expand('PrettyColon','','',[],[])
                    +FuncType+';';
       end
       else
@@ -3173,7 +3214,7 @@ const
       debugln(['FindJumpPointToNewProc FindSubProcPath failed, SubProcPath="',SubProcPath.Text,'"']);
       exit;
     end;
-    Result:=FindJumpPointInProcNode(NewProcNode,NewPos,NewTopLine);
+    Result:=FindJumpPointInProcNode(NewProcNode,NewPos,NewTopLine,BlockTopLine,BlockBottomLine);
     { $IFDEF CTDebug}
     if Result then
       DebugLn('TCodeCompletionCodeTool.CompleteProcByCall END ',NewProcNode.DescAsString,' ',dbgs(Result),' ',dbgs(NewPos.X),',',dbgs(NewPos.Y),' ',dbgs(NewTopLine));
@@ -3313,10 +3354,12 @@ begin
   // check if variable already exists
   if not VarExistsInCodeCompleteClass(UpperCaseStr(VarName)) then begin
   {$IFDEF EnableCodeCompleteTemplates}
-    if ( Expander <> nil ) and Expander.TemplateExists('PrettyColon') then
+    if (CTTemplateExpander<>nil)
+    and CTTemplateExpander.TemplateExists('PrettyColon') then
     begin
       AddClassInsertion(UpperCaseStr(VarName),
-                        VarName+Expander.Expand('PrettyColon','','',[],[])+VarType+';',VarName,ncpPublishedVars);
+        VarName+CTTemplateExpander.Expand('PrettyColon','','',[],[])
+               +VarType+';',VarName,ncpPublishedVars);
 
     end
   else
@@ -3324,10 +3367,10 @@ begin
     AddClassInsertion(UpperCaseStr(VarName),
                       VarName+':'+VarType+';',VarName,ncpPublishedVars);
     if not InsertAllNewClassParts then
-      RaiseException(ctsErrorDuringInsertingNewClassParts);
+      RaiseException(20170421201635,ctsErrorDuringInsertingNewClassParts);
     // apply the changes
     if not SourceChangeCache.Apply then
-      RaiseException(ctsUnableToApplyChanges);
+      RaiseException(20170421201637,ctsUnableToApplyChanges);
   end;
   Result:=true;
 end;
@@ -4522,8 +4565,8 @@ var
   procedure AddMove(Node, InsertInFrontOf: TCodeTreeNode);
   begin
     if Node=InsertInFrontOf then exit;
-    if Node=nil then RaiseException('inconsistency');
-    if InsertInFrontOf=nil then RaiseException('inconsistency');
+    if Node=nil then RaiseException(20170421201640,'inconsistency');
+    if InsertInFrontOf=nil then RaiseException(20170421201643,'inconsistency');
     NodeMoves.AddEdge(Node,InsertInFrontOf);
   end;
   
@@ -5124,12 +5167,12 @@ function TCodeCompletionCodeTool.FixForwardDefinitions(
             ReadNextAtom;// read identifier
             AtomIsIdentifierE;
             ReadNextAtom;// read comma
-            if not AtomIsChar(',') then RaiseCharExpectedButAtomFound(',');
+            if not AtomIsChar(',') then RaiseCharExpectedButAtomFound(20170421201647,',');
             FromPos:=CurPos.StartPos;
             ReadNextAtom;// read identifier
             AtomIsIdentifierE;
             ReadNextAtom;//read colon
-            if not AtomIsChar(':') then RaiseCharExpectedButAtomFound(':');
+            if not AtomIsChar(':') then RaiseCharExpectedButAtomFound(20170421201651,':');
             ToPos:=CurPos.StartPos;
           end;
         end else begin
@@ -5146,7 +5189,7 @@ function TCodeCompletionCodeTool.FixForwardDefinitions(
             ReadNextAtom;// read identifier
             AtomIsIdentifierE;
             ReadNextAtom;// read comma
-            if not AtomIsChar(',') then RaiseCharExpectedButAtomFound(',');
+            if not AtomIsChar(',') then RaiseCharExpectedButAtomFound(20170421201654,',');
             ToPos:=CurPos.StartPos;
           end;
         end;
@@ -5242,7 +5285,7 @@ function TCodeCompletionCodeTool.FixForwardDefinitions(
         ReadNextAtom;
         AtomIsIdentifierE;
         ReadNextAtom;
-        if not AtomIsChar(':') then RaiseCharExpectedButAtomFound(':');
+        if not AtomIsChar(':') then RaiseCharExpectedButAtomFound(20170421201657,':');
         FromPos:=CurPos.StartPos;
         ToPos:=Node.EndPos;
         NewTxt:=NewTxt+ExtractCode(FromPos,ToPos,[phpWithComments]);
@@ -5436,7 +5479,7 @@ function TCodeCompletionCodeTool.GatherUnitDefinitions(out
   procedure RaiseRedefinition(Node1, Node2: TCodeTreeNode);
   begin
     MoveCursorToNodeStart(Node1);
-    RaiseException('redefinition found: '+GetRedefinitionNodeText(Node1)
+    RaiseException(20170421201704,'redefinition found: '+GetRedefinitionNodeText(Node1)
       +' at '+CleanPosToStr(Node1.StartPos)
       +' and at '+CleanPosToStr(Node2.StartPos));
   end;
@@ -6102,8 +6145,9 @@ end;
 function TCodeCompletionCodeTool.AddAssignMethod(ClassNode: TCodeTreeNode;
   MemberNodeExts: TFPList; const ProcName, ParamName, ParamType: string;
   OverrideMod, CallInherited, CallInheritedOnlyInElse: boolean;
-  SourceChanger: TSourceChangeCache; out NewPos: TCodeXYPosition;
-  out NewTopLine: integer; LocalVarName: string): boolean;
+  SourceChanger: TSourceChangeCache; out NewPos: TCodeXYPosition; out
+  NewTopLine, BlockTopLine, BlockBottomLine: integer; LocalVarName: string
+  ): boolean;
 var
   NodeExt: TCodeTreeNodeExtension;
   CleanDef: String;
@@ -6130,11 +6174,12 @@ begin
   aClassName:=ExtractClassName(ClassNode,false);
   CleanDef:=ProcName+'('+ParamType+');';
   {$IFDEF EnableCodeCompleteTemplates}
-  if assigned( Expander ) and Expander.TemplateExists('AssignMethodDef') then
+  if assigned(CTTemplateExpander)
+  and CTTemplateExpander.TemplateExists('AssignMethodDef') then
   begin
-    Def := Expander.Expand('AssignMethodDef', '','', // Doesn't use linebreak or indentation
-                           ['ProcName',  'ParamName',  'ParamType', 'Override' ],
-                           [ ProcName,    ParamName,    ParamType,   OverrideMod ] );
+    Def := CTTemplateExpander.Expand('AssignMethodDef', '','', // Doesn't use linebreak or indentation
+                     ['ProcName',  'ParamName',  'ParamType', 'Override' ],
+                     [ ProcName,    ParamName,    ParamType,   OverrideMod ] );
   end else
   {$ENDIF EnableCodeCompleteTemplates}
   begin
@@ -6148,7 +6193,8 @@ begin
   Indent:=0;
   IndentStep:=SourceChanger.BeautifyCodeOptions.Indent;
   {$IFDEF EnableCodeCompleteTemplates}
-  if assigned(Expander) and Expander.TemplateExists('AssignMethod') then begin
+  if assigned(CTTemplateExpander)
+  and CTTemplateExpander.TemplateExists('AssignMethod') then begin
     if not SameType then begin
       // add local variable
       SrcVar:=LocalVarName;
@@ -6170,15 +6216,15 @@ begin
          NodeExtsStr := NodeExtsStr + NodeExt.Txt + '?';
        end;
      end;
-     ProcBody := Expander.Expand( 'AssignMethod',e,GetIndentStr(Indent),
-                                 ['ClassName', 'ProcName', 'ParamName',  'ParamType',
-                                   'SameType',  'SrcVar',   'Inherited0', 'Inherited1',
-                                   'NodeExt' ],
-                                  [ aClassName,  ProcName,   ParamName,    ParamType,
-                                    SameType,    SrcVar,
-                                    CallInherited and (not CallInheritedOnlyInElse),
-                                    CallInherited and CallInheritedOnlyInElse,
-                                    NodeExtsStr ] );
+     ProcBody := CTTemplateExpander.Expand( 'AssignMethod',e,GetIndentStr(Indent),
+                   ['ClassName', 'ProcName', 'ParamName',  'ParamType',
+                     'SameType',  'SrcVar',   'Inherited0', 'Inherited1',
+                     'NodeExt' ],
+                    [ aClassName,  ProcName,   ParamName,    ParamType,
+                      SameType,    SrcVar,
+                      CallInherited and (not CallInheritedOnlyInElse),
+                      CallInherited and CallInheritedOnlyInElse,
+                      NodeExtsStr ] );
     end
   else
   {$ENDIF EnableCodeCompleteTemplates}
@@ -6242,7 +6288,20 @@ begin
   ProcBody:=SourceChanger.BeautifyCodeOptions.BeautifyStatement(ProcBody,0);
   AddClassInsertion(CleanDef,Def,ProcName,ncpPublicProcs,nil,ProcBody);
   Result:=ApplyChangesAndJumpToFirstNewProc(ClassNode.StartPos,1,true,
-                   NewPos,NewTopLine);
+                   NewPos,NewTopLine, BlockTopLine, BlockBottomLine);
+end;
+
+function TCodeCompletionCodeTool.AddAssignMethod(ClassNode: TCodeTreeNode;
+  MemberNodeExts: TFPList; const ProcName, ParamName, ParamType: string;
+  OverrideMod, CallInherited, CallInheritedOnlyInElse: boolean;
+  SourceChanger: TSourceChangeCache; out NewPos: TCodeXYPosition; out
+  NewTopLine: integer; LocalVarName: string): boolean;
+var
+  BlockTopLine, BlockBottomLine: integer;
+begin
+  Result := AddAssignMethod(ClassNode, MemberNodeExts, ProcName, ParamName, ParamType,
+    OverrideMod, CallInherited, CallInheritedOnlyInElse, SourceChanger, NewPos, NewTopLine,
+    BlockTopLine, BlockBottomLine, LocalVarName);
 end;
 
 function TCodeCompletionCodeTool.GetPossibleInitsForVariable(
@@ -6329,7 +6388,7 @@ begin
         debugln(['TCodeCompletionCodeTool.GetPossibleInitsForVariable FindIdentifierInContext Result=',Result,' VarTool=',VarTool<>nil,' VarNode=',VarNode<>nil]);
         {$ENDIF}
         MoveCursorToAtomPos(IdentAtom);
-        RaiseException('failed to resolve identifier "'+Identifier+'"');
+        RaiseException(20170421201708,'failed to resolve identifier "'+Identifier+'"');
       end;
       {$IFDEF VerboseGetPossibleInitsForVariable}
       debugln(['TCodeCompletionCodeTool.GetPossibleInitsForVariable FindIdentifierInContext VarTool=',ExtractFilename(VarTool.MainFilename),' VarNode=',VarNode.DescAsString]);
@@ -6379,7 +6438,7 @@ begin
         AddAssignment('nil');
       ctnPointerType:
         AddAssignment('nil');
-      ctnProcedureType:
+      ctnProcedureType,ctnReferenceTo:
         // address of proc
         AddAssignment('nil');
       ctnProcedureHead:
@@ -6429,12 +6488,15 @@ begin
   xtWord,
   xtSmallInt,
   xtShortInt,
-  xtByte: AddAssignment('0');
+  xtByte,
+  xtNativeInt,
+  xtNativeUInt: AddAssignment('0');
   xtVariant: begin AddAssignment('0'); AddAssignment(''''''); end;
+  xtJSValue: begin AddAssignment('0'); AddAssignment(''''''); AddAssignment('nil'); AddAssignment('false'); end;
   end;
   if Statements.Count=0 then begin
     MoveCursorToAtomPos(IdentAtom);
-    RaiseException('auto initialize not yet implemented for identifier "'+GetIdentifier(Identifier)+'" of type "'+ExprTypeToString(ExprType)+'"');
+    RaiseException(20170421201711,'auto initialize not yet implemented for identifier "'+GetIdentifier(Identifier)+'" of type "'+ExprTypeToString(ExprType)+'"');
   end;
 
   // find possible insert positions
@@ -6461,7 +6523,7 @@ begin
 
   if InsertPositions.Count=0 then begin
     MoveCursorToAtomPos(IdentAtom);
-    RaiseException('auto initialize not yet implemented for this context (Node='+CursorNode.DescAsString+')');
+    RaiseException(20170421201714,'auto initialize not yet implemented for this context (Node='+CursorNode.DescAsString+')');
   end;
 end;
 
@@ -6715,7 +6777,7 @@ begin
         AddClassInsertion(UpperCaseStr(VariableName),
                           VariableName+':'+NewType+';',VariableName,ClassPart);
         if not InsertAllNewClassParts then
-          RaiseException(ctsErrorDuringInsertingNewClassParts);
+          RaiseException(20170421201717,ctsErrorDuringInsertingNewClassParts);
         if (NewUnitName<>'')
         and (not IsHiddenUsedUnit(PChar(NewUnitName)))
         and (not AddUnitToMainUsesSection(NewUnitName,'',SourceChangeCache)) then
@@ -6725,7 +6787,7 @@ begin
         end;
         // apply the changes
         if not SourceChangeCache.Apply then
-          RaiseException(ctsUnableToApplyChanges);
+          RaiseException(20170421201720,ctsUnableToApplyChanges);
         exit(true);
       end;
       Node:=Node.Parent;
@@ -6795,6 +6857,8 @@ begin
     ctnProgram,ctnLibrary,ctnPackage]
   then begin
     Node:=CursorNode.FirstChild;
+    if (Node<>nil) and (Node.Desc=ctnSrcName) then
+      Node:=Node.NextBrother;
     // make sure to insert behind uses section and proc header
     if (Node<>nil) and (Node.Desc in [ctnUsesSection,ctnProcedureHead]) then
     begin
@@ -6882,13 +6946,13 @@ begin
   try
     // insert all new class parts
     if not InsertAllNewClassParts then
-      RaiseException(ctsErrorDuringInsertingNewClassParts);
+      RaiseException(20170421201722,ctsErrorDuringInsertingNewClassParts);
     // insert all missing proc bodies
     if AddMissingProcBodies and (not CreateMissingClassProcBodies(true)) then
-      RaiseException(ctsErrorDuringCreationOfNewProcBodies);
+      RaiseException(20170421201724,ctsErrorDuringCreationOfNewProcBodies);
     // apply the changes
     if not CodeCompleteSrcChgCache.Apply then
-      RaiseException(ctsUnableToApplyChanges);
+      RaiseException(20170421201726,ctsUnableToApplyChanges);
     Result:=true;
   finally
     FreeClassInsertionList;
@@ -6918,7 +6982,6 @@ function TCodeCompletionCodeTool.CompleteProperty(
 type
   TPropPart = (ppName,       // property name
                ppParamList,  // param list
-               ppUnitType,   // optional: unit in front of identifier
                ppType,       // type identifier
                ppIndexWord,  // 'index'
                ppIndex,      // index constant
@@ -6951,7 +7014,7 @@ var
   //   or a specifier
   begin
     if Parts[SpecWord].StartPos>=1 then
-      RaiseExceptionFmt(ctsPropertySpecifierAlreadyDefined,[GetAtom]);
+      RaiseExceptionFmt(20170421201731,ctsPropertySpecifierAlreadyDefined,[GetAtom]);
     Parts[SpecWord]:=CurPos;
     ReadNextAtom;
     if AtomIsChar(';') then exit;
@@ -7024,7 +7087,7 @@ var
         {$IFDEF CTDEBUG}
         DebugLn('[TCodeCompletionCodeTool.CompleteProperty] error parsing param list');
         {$ENDIF}
-        RaiseException(ctsErrorInParamList);
+        RaiseException(20170421201733,ctsErrorInParamList);
       end;
       CleanParamList:=GetExtraction(true);
       Parts[ppParamList].EndPos:=CurPos.EndPos;
@@ -7032,7 +7095,7 @@ var
       CleanParamList:='';
   end;
   
-  procedure ReadPropertyType;
+  function ReadPropertyType: string;
 
     procedure CheckIdentifier;
     begin
@@ -7040,22 +7103,22 @@ var
       or UpAtomIs('END') or AtomIsChar(';') or (not AtomIsIdentifier)
       or AtomIsKeyWord then begin
         // no type name found -> ignore this property
-        RaiseExceptionFmt(ctsPropertTypeExpectedButAtomFound,[GetAtom]);
+        RaiseExceptionFmt(20170421201735,ctsPropertTypeExpectedButAtomFound,[GetAtom]);
       end;
     end;
 
+  var
+    p: Integer;
   begin
     ReadNextAtom; // read type
     CheckIdentifier;
     Parts[ppType]:=CurPos;
-    ReadNextAtom;
-    if CurPos.Flag=cafPoint then begin
-      // unit.identifier
-      Parts[ppUnitType]:=Parts[ppType];
-      ReadNextAtom;
-      CheckIdentifier;
-      Parts[ppType]:=CurPos;
-      ReadNextAtom;
+    Result:=GetAtom;
+    ReadTypeReference(false);
+    p:=LastAtoms.GetPriorAtom.EndPos;
+    if p>Parts[ppType].EndPos then begin
+      Parts[ppType].EndPos:=p;
+      Result:=ExtractCode(Parts[ppType].StartPos,Parts[ppType].EndPos,[]);
     end;
   end;
   
@@ -7065,15 +7128,15 @@ var
   begin
     if UpAtomIs('INDEX') then begin
       if Parts[ppIndexWord].StartPos>=1 then
-        RaiseException(ctsIndexSpecifierRedefined);
+        RaiseException(20170421201737,ctsIndexSpecifierRedefined);
       Parts[ppIndexWord]:=CurPos;
       ReadNextAtom;
       if WordIsPropertySpecifier.DoItCaseInsensitive(Src,CurPos.StartPos,
         CurPos.EndPos-CurPos.StartPos) then
-        RaiseExceptionFmt(ctsIndexParameterExpectedButAtomFound,[GetAtom]);
+        RaiseExceptionFmt(20170421201740,ctsIndexParameterExpectedButAtomFound,[GetAtom]);
       Parts[ppIndex].StartPos:=CurPos.StartPos;
       ReadConstant(true,false,[]);
-      Last:=LastAtoms.GetValueAt(0);
+      Last:=LastAtoms.GetPriorAtom;
       Parts[ppIndex].EndPos:=Last.EndPos;
       PartIsAtom[ppIndex]:=false;
     end;
@@ -7083,15 +7146,15 @@ var
   begin
     if UpAtomIs('DISPID') then begin
       if Parts[ppDispidWord].StartPos>=1 then
-        RaiseException(ctsDispidSpecifierRedefined);
+        RaiseException(20170421201742,ctsDispidSpecifierRedefined);
       Parts[ppDispidWord]:=CurPos;
       ReadNextAtom;
       if WordIsPropertySpecifier.DoItCaseInsensitive(Src,CurPos.StartPos,
         CurPos.EndPos-CurPos.StartPos) then
-        RaiseExceptionFmt(ctsDispidParameterExpectedButAtomFound,[GetAtom]);
+        RaiseExceptionFmt(20170421201744,ctsDispidParameterExpectedButAtomFound,[GetAtom]);
       Parts[ppDispid].StartPos:=CurPos.StartPos;
       ReadConstant(true,false,[]);
-      Parts[ppDispid].EndPos:=LastAtoms.GetValueAt(0).EndPos;
+      Parts[ppDispid].EndPos:=LastAtoms.GetPriorAtom.EndPos;
       PartIsAtom[ppDispid]:=false;
     end;
   end;
@@ -7114,19 +7177,19 @@ var
         ReadSimpleSpec(ppStoredWord,ppStored);
       end else if UpAtomIs('DEFAULT') then begin
         if Parts[ppDefaultWord].StartPos>=1 then
-          RaiseException(ctsDefaultSpecifierRedefined);
+          RaiseException(20170421201746,ctsDefaultSpecifierRedefined);
         Parts[ppDefaultWord]:=CurPos;
         ReadNextAtom;
         if WordIsPropertySpecifier.DoItCaseInsensitive(Src,CurPos.StartPos,
           CurPos.EndPos-CurPos.StartPos) then
-          RaiseExceptionFmt(ctsDefaultParameterExpectedButAtomFound,[GetAtom]);
+          RaiseExceptionFmt(20170421201748,ctsDefaultParameterExpectedButAtomFound,[GetAtom]);
         Parts[ppDefault].StartPos:=CurPos.StartPos;
         ReadConstant(true,false,[]);
-        Parts[ppDefault].EndPos:=LastAtoms.GetValueAt(0).EndPos;
+        Parts[ppDefault].EndPos:=LastAtoms.GetPriorAtom.EndPos;
         PartIsAtom[ppDefault]:=false;
       end else if UpAtomIs('NODEFAULT') then begin
         if Parts[ppNoDefaultWord].StartPos>=1 then
-          RaiseException(ctsNodefaultSpecifierDefinedTwice);
+          RaiseException(20170421201750,ctsNodefaultSpecifierDefinedTwice);
         Parts[ppNoDefaultWord]:=CurPos;
         ReadNextAtom;
       end else if UpAtomIs('IMPLEMENTS') then begin
@@ -7136,11 +7199,11 @@ var
           AtomIsIdentifierE;
           if WordIsPropertySpecifier.DoItCaseInsensitive(Src,CurPos.StartPos,
             CurPos.EndPos-CurPos.StartPos) then
-            RaiseExceptionFmt(ctsIndexParameterExpectedButAtomFound,[GetAtom]);
+            RaiseExceptionFmt(20170421201752,ctsIndexParameterExpectedButAtomFound,[GetAtom]);
           ReadNextAtom;
         end;
-      end else 
-        RaiseExceptionFmt(ctsStrExpectedButAtomFound,[';',GetAtom]);
+      end else
+        RaiseExceptionFmt(20170421201755,ctsStrExpectedButAtomFound,[';',GetAtom]);
     end;
   end;
 
@@ -7180,8 +7243,6 @@ var
       AccessParam:=copy(Src,Parts[ppRead].StartPos,
                         Parts[ppRead].EndPos-Parts[ppRead].StartPos)
     else begin
-      AccessParam:=''; // This was missing
-      // ToDo: Fix this test. AccessParam is now empty.
       if (Parts[ppParamList].StartPos>0) or (Parts[ppIndexWord].StartPos>0)
       or (SysUtils.CompareText(AccessParamPrefix,
               LeftStr(AccessParam,length(AccessParamPrefix)))=0)
@@ -7236,9 +7297,8 @@ var
     end else begin
       // ToDo: find out type of index
       if (Parts[ppParamList].StartPos>0) then begin
-        // index + param list
-        CleanAccessFunc:=UpperCaseStr(AccessParam+'('+IndexType+';')
-                        +CleanParamList+');';
+        // param list + index
+        CleanAccessFunc:=UpperCaseStr(AccessParam+'('+CleanParamList+';'+IndexType+');');
       end else begin
         // index, no param list
         CleanAccessFunc:=UpperCaseStr(AccessParam+'('+IndexType+');');
@@ -7270,7 +7330,7 @@ var
           {$IFDEF CTDEBUG}
           DebugLn('[TCodeCompletionCodeTool.CompleteProperty] Error reading param list');
           {$ENDIF}
-          RaiseException(ctsErrorInParamList);
+          RaiseException(20170421201756,ctsErrorInParamList);
         end;
         ParamList:=GetExtraction(false);
         if (Parts[ppIndexWord].StartPos<1) then begin
@@ -7278,9 +7338,9 @@ var
           AccessFunc:='function '+AccessParam
                       +'('+ParamList+'):'+PropType+';';
         end else begin
-          // index + param list
+          // param list + index
           AccessFunc:='function '+AccessParam
-                      +'(AIndex:'+IndexType+';'+ParamList+'):'+PropType+';';
+                      +'('+ParamList+'; AIndex:'+IndexType+'):'+PropType+';';
         end;
       end else begin
         if (Parts[ppIndexWord].StartPos<1) then begin
@@ -7369,9 +7429,8 @@ var
     end else begin
       // ToDo: find out index type
       if (Parts[ppParamList].StartPos>0) then begin
-        // index + param list
-        CleanAccessFunc:=UpperCaseStr(AccessParam+'('+IndexType+';'
-                  +CleanParamList+';'+PropType+');');
+        // param list + index
+        CleanAccessFunc:=UpperCaseStr(AccessParam+'('+CleanParamList+';'+IndexType+';'+PropType+');');
       end else begin
         // index, no param list
         CleanAccessFunc:=UpperCaseStr(AccessParam+'('+IndexType+';'+PropType+');');
@@ -7410,7 +7469,7 @@ var
                              phpWithoutBrackets,phpWithVarModifiers,
                              phpWithComments])
         then
-          RaiseException(ctsErrorInParamList);
+          RaiseException(20170421201758,ctsErrorInParamList);
         ParamList:=GetExtraction(false);
         if (Parts[ppIndexWord].StartPos<1) then begin
           // param list, no index
@@ -7418,9 +7477,9 @@ var
                       +'('+ParamList+';'+AccessVariableNameParam+':'
                       +PropType+');';
         end else begin
-          // index + param list
+          // param list+ index
           AccessFunc:='procedure '+AccessParam
-                      +'(AIndex:'+IndexType+';'+ParamList+';'
+                      +'('+ParamList+';AIndex:'+IndexType+';'
                       +AccessVariableNameParam+':'+PropType+');';
         end;
       end else begin
@@ -7441,21 +7500,22 @@ var
             
             }
             {$IFDEF EnableCodeCompleteTemplates}
-            if assigned(Expander) and Expander.TemplateExists('SetterMethod') then
+            if assigned(CTTemplateExpander)
+            and CTTemplateExpander.TemplateExists('SetterMethod') then
             begin
               debugln(['CompleteWriteSpecifier ', 'USING template for SetterMethod']);
-              ProcBody := Expander.Expand( 'SetterMethod',
-                                           BeautifyCodeOpts.LineEnd,
-                                           GetIndentStr(BeautifyCodeOpts.Indent),
-                                           ['ClassName',                                   'AccessParam','PropVarName',           'PropType','VarName'],
-                                           [ExtractClassName(PropNode.Parent.Parent,false), AccessParam,  SetPropertyVariablename, PropType,  VariableName] );
+              ProcBody := CTTemplateExpander.Expand( 'SetterMethod',
+                 BeautifyCodeOpts.LineEnd,
+                 GetIndentStr(BeautifyCodeOpts.Indent),
+                 ['ClassName',                                   'AccessParam','PropVarName',           'PropType','VarName'],
+                 [ExtractClassName(PropNode.Parent.Parent,false), AccessParam,  SetPropertyVariablename, PropType,  VariableName] );
             end
             else
             {$ENDIF}
             begin
               ProcBody:=
                 'procedure '
-                +ExtractClassName(PropNode.Parent.Parent,false)+'.'+AccessParam
+                +ExtractClassName(PropNode.Parent.Parent,false,true,Scanner.CompilerMode in [cmDELPHI,cmDELPHIUNICODE])+'.'+AccessParam
                 +'('+AccessVariableNameParam+':'+PropType+');'
                 +BeautifyCodeOpts.LineEnd
                 +'begin'+BeautifyCodeOpts.LineEnd
@@ -7511,28 +7571,40 @@ var
     end else
       AccessParam:=PropName
         +BeautifyCodeOpts.PropertyStoredIdentPostfix;
-    CleanAccessFunc:=UpperCaseStr(AccessParam);
-    // check if procedure exists
-    if (not ProcExistsInCodeCompleteClass(CleanAccessFunc+';'))
-    and (not VarExistsInCodeCompleteClass(CleanAccessFunc))
-    then begin
-      // add insert demand for function
-      // build function code
-      if Parts[ppIndexWord].StartPos < 1 then begin
-        // no index
+    if (Parts[ppIndexWord].StartPos<1) then begin
+      // no index -> check if method or field exists
+      CleanAccessFunc:=UpperCaseStr(AccessParam);
+      if (not ProcExistsInCodeCompleteClass(CleanAccessFunc+';'))
+      and (not VarExistsInCodeCompleteClass(CleanAccessFunc))
+      then begin
+        // add insert demand for function
+        // build function code
         AccessFunc := 'function ' + AccessParam + ':Boolean;';
         CleanAccessFunc := CleanAccessFunc+';';
-      end else begin
-        // index
+        if IsClassProp then
+          AccessFunc:='class '+AccessFunc+' static;';;
+        // add new Insert Node
+        if CompleteProperties then
+          AddClassInsertion(CleanAccessFunc,AccessFunc,AccessParam,
+                            ncpPrivateProcs,PropNode);
+      end;
+    end else begin
+      // has index specifier -> check if method exists
+      CleanAccessFunc:=UpperCaseStr(AccessParam);
+      if (not ProcExistsInCodeCompleteClass(CleanAccessFunc+'('+UpperCaseStr(IndexType)+');'))
+      and (not VarExistsInCodeCompleteClass(CleanAccessFunc))
+      then begin
+        // add insert demand for function
+        // build function code
         AccessFunc := 'function ' + AccessParam + '(AIndex:'+IndexType+'):Boolean;';
         CleanAccessFunc := UpperCaseStr(CleanAccessFunc + '('+IndexType+');');
+        if IsClassProp then
+          AccessFunc:='class '+AccessFunc+' static;';
+        // add new Insert Node
+        if CompleteProperties then
+          AddClassInsertion(CleanAccessFunc,AccessFunc,AccessParam,
+                            ncpPrivateProcs,PropNode);
       end;
-      if IsClassProp then
-        AccessFunc:='class '+AccessFunc+' static;';;
-      // add new Insert Node
-      if CompleteProperties then
-        AddClassInsertion(CleanAccessFunc,AccessFunc,AccessParam,
-                          ncpPrivateProcs,PropNode);
     end;
     if Parts[ppStored].StartPos<0 then begin
       // insert stored specifier
@@ -7570,7 +7642,7 @@ begin
     exit;
   end;
   
-  ReadPropertyType;
+  PropType:=ReadPropertyType;
   // parse specifiers
   if CodeCompleteClassNode.Desc <> ctnDispinterface then begin
     ReadIndexSpecifier;
@@ -7582,12 +7654,7 @@ begin
       ReadNextAtom;
     ReadDispidSpecifier;
   end;
-  PropType:=copy(Src,Parts[ppType].StartPos,
-                 Parts[ppType].EndPos-Parts[ppType].StartPos);
-  if Parts[ppUnitType].StartPos>0 then
-    PropType:=copy(Src,Parts[ppUnitType].StartPos,
-              Parts[ppUnitType].EndPos-Parts[ppUnitType].StartPos)+'.'+PropType;
-               
+
   // complete property
   BeautifyCodeOpts:=FSourceChangeCache.BeautifyCodeOptions;
   if CodeCompleteClassNode.Desc <> ctnDispinterface then begin
@@ -7835,7 +7902,7 @@ begin
         end;
       end;
       CurCode:=ANodeExt.ExtTxt1;
-      CurCode:=Beauty.BeautifyStatement(CurCode,Indent);
+      CurCode:=Beauty.BeautifyStatement(CurCode,Indent,[bcfChangeSymbolToBracketForGenericTypeBrackets]);
       {$IFDEF CTDEBUG}
       DebugLn('TCodeCompletionCodeTool.InsertNewClassParts:');
       DebugLn(CurCode);
@@ -8118,11 +8185,11 @@ begin
         {$ENDIF}
         if not FSourceChangeCache.Replace(gtNone,gtNone,
           CurPos.EndPos,CurPos.EndPos,';') then
-            RaiseException('InsertMissingClassSemicolons: unable to insert semicolon');
+            RaiseException(20170421201801,'InsertMissingClassSemicolons: unable to insert semicolon');
       end;
       MoveCursorToFirstProcSpecifier(ANode);
       if (CurPos.Flag<>cafSemicolon) and (CurPos.EndPos<ANode.FirstChild.EndPos)
-      and (LastAtoms.Count>0)
+      and (LastAtoms.HasPrior)
       then begin
         // add missing semicolon in front of proc modifiers
         UndoReadNextAtom;
@@ -8131,7 +8198,7 @@ begin
         {$ENDIF}
         if not FSourceChangeCache.Replace(gtNone,gtNone,
           CurPos.EndPos,CurPos.EndPos,';') then
-            RaiseException('InsertMissingClassSemicolons: unable to insert semicolon');
+            RaiseException(20170421201804,'InsertMissingClassSemicolons: unable to insert semicolon');
       end;
     end;
     // next node
@@ -8173,16 +8240,20 @@ begin
       ReadNextAtom; // read name
       if AtomIsChar(';') then break;
       RemoveNewMainUsesSectionUnit(@Src[CurPos.StartPos]);
+      if fNewMainUsesSectionUnits.Count=0 then exit;
       ReadNextAtom;
       if UpAtomIs('IN') then begin
         ReadNextAtom;
         ReadNextAtom;
       end;
+      while AtomIsChar('.') do
+      begin
+        ReadNextAtom;
+        ReadNextAtom;
+      end;
       if AtomIsChar(';') then break;
       if not AtomIsChar(',') then break;
-    until (CurPos.StartPos>SrcLen);;
-    
-    if (fNewMainUsesSectionUnits.Count=0) then exit;
+    until (CurPos.StartPos>SrcLen);
   end;
   
   // add units
@@ -8469,7 +8540,9 @@ procedure TCodeCompletionCodeTool.GuessProcDefBodyMapping(ProcDefNodes,
     AVLNodeExt:=NodeExtTree.FindLowest;
     while AVLNodeExt<>nil do begin
       NodeExt:=TCodeTreeNodeExtension(AVLNodeExt.Data);
-      if (not SkipNodesWithData) or (NodeExt.Data=nil) then begin
+      AVLNodeExt:=NodeExtTree.FindSuccessor(AVLNodeExt);
+      if (not SkipNodesWithData) or (NodeExt.Data=nil)
+      or (ProcNodeHasSpecifier(NodeExt.Node,psEXTERNAL)) then begin
         {$IFDEF VerboseUpdateProcBodySignatures}
         if NodeExtTree=ProcBodyNodes then
           debugln(['CreateNameTree body without corresponding def: ',NodeExt.Txt])
@@ -8486,7 +8559,6 @@ procedure TCodeCompletionCodeTool.GuessProcDefBodyMapping(ProcDefNodes,
           Result:=TAVLTree.Create(@CompareCodeTreeNodeExtMethodHeaders);
         Result.Add(NewNodeExt);
       end;
-      AVLNodeExt:=NodeExtTree.FindSuccessor(AVLNodeExt);
     end;
   end;
 
@@ -8607,6 +8679,14 @@ procedure TCodeCompletionCodeTool.GuessProcDefBodyMapping(ProcDefNodes,
   end;
 
 begin
+  {$IFDEF VerboseUpdateProcBodySignatures}
+  debugln(['TCodeCompletionCodeTool.GuessProcDefBodyMapping',
+    ' ProcDefNodes=',ProcDefNodes.Count,
+    ' ProcBodyNodes=',ProcBodyNodes.Count,
+    ' MapByNameOnly=',MapByNameOnly,
+    ' MapLastOne=',MapLastOne
+    ]);
+  {$ENDIF}
   ClearNodeExtData(ProcBodyNodes);
   ClearNodeExtData(ProcDefNodes);
   MapBodiesAndDefsByNameAndParams; // first: map all exact matches between bodies and defs
@@ -8650,7 +8730,7 @@ begin
   TypeSectionNode:=ClassNode.GetTopMostNodeOfType(ctnTypeSection);
   Result:=GatherProcNodes(TypeSectionNode,
                       [phpInUpperCase,phpIgnoreForwards,phpOnlyWithClassname],
-                       ExtractClassName(ClassNode,true));
+                       ExtractClassName(ClassNode,true,true,false));
 end;
 
 function TCodeCompletionCodeTool.CreateMissingClassProcBodies(
@@ -8770,7 +8850,7 @@ var
           if Caret1.Code<>Caret2.Code then
             s:=s+' in '+CreateRelativePath(Caret2.Code.Filename,ExtractFilePath(Caret1.Code.Filename));
           MoveCursorToNodeStart(ANode.FirstChild);
-          RaiseException('procedure redefined (first at '+s+')');
+          RaiseException(20170421201808,'procedure redefined (first at '+s+')');
         end;
       end;
       AnAVLNode:=NextAVLNode;
@@ -8810,7 +8890,7 @@ var
           CodeCompleteSrcChgCache.BeautifyCodeOptions.BeautifyKeyWord('implementation'))
         then begin
           MoveCursorToCleanPos(InsertPos);
-          RaiseException('unable to insert implementation section (read only?)');
+          RaiseException(20170421201812,'unable to insert implementation section (read only?)');
         end;
         exit;
       end else if (ImplementationNode.FirstChild=nil)
@@ -8887,7 +8967,7 @@ var
       exit;
     end;
 
-    RaiseException('TCodeCompletionCodeTool.CreateMissingClassProcBodies.FindInsertPointForNewClass '
+    RaiseException(20170421201815,'TCodeCompletionCodeTool.CreateMissingClassProcBodies.FindInsertPointForNewClass '
      +' Internal Error: no insert position found');
   end;
   
@@ -8929,7 +9009,14 @@ begin
     {$ENDIF}
     exit(true);
   end;
-  
+  if FindClassExternalNode(CodeCompleteClassNode)<>nil then begin
+    // external class has no implementations
+    {$IF defined(CTDEBUG) or defined(VerboseCreateMissingClassProcBodies)}
+    debugln(['TCodeCompletionCodeTool.CreateMissingClassProcBodies external ',CodeCompleteClassNode.DescAsString]);
+    {$ENDIF}
+    exit(true);
+  end;
+
   Result:=false;
   Beauty:=FSourceChangeCache.BeautifyCodeOptions;
   MethodInsertPolicy:=Beauty.MethodInsertPolicy;
@@ -8947,11 +9034,13 @@ begin
     ProcBodyNodes:=GatherClassProcBodies(CodeCompleteClassNode);
 
     {$IFDEF VerboseCreateMissingClassProcBodies}
+    debugln(['TCodeCompletionCodeTool.CreateMissingClassProcBodies ClassProcs=',ClassProcs.Count]);
     AnAVLNode:=ClassProcs.FindLowest;
     while AnAVLNode<>nil do begin
       DebugLn(' Gathered ProcDef ',TCodeTreeNodeExtension(AnAVLNode.Data).Txt);
       AnAVLNode:=ClassProcs.FindSuccessor(AnAVLNode);
     end;
+    debugln(['TCodeCompletionCodeTool.CreateMissingClassProcBodies ProcBodyNodes=',ProcBodyNodes.Count]);
     AnAVLNode:=ProcBodyNodes.FindLowest;
     while AnAVLNode<>nil do begin
       DebugLn(' Gathered ProcBody ',TCodeTreeNodeExtension(AnAVLNode.Data).Txt);
@@ -8965,7 +9054,7 @@ begin
     {$IF defined(CTDEBUG) or defined(VerboseCreateMissingClassProcBodies)}
     DebugLn('TCodeCompletionCodeTool.CreateMissingClassProcBodies Gather existing method declarations ... ');
     {$ENDIF}
-    TheClassName:=ExtractClassName(CodeCompleteClassNode,false);
+    TheClassName:=ExtractClassName(CodeCompleteClassNode,false,true,Scanner.CompilerMode in [cmDELPHI,cmDELPHIUNICODE]);
 
     // check for double defined methods in ClassProcs
     CheckForDoubleDefinedMethods;
@@ -9057,9 +9146,10 @@ begin
       MissingNode:=ClassProcs.FindHighest;
       while (MissingNode<>nil) do begin
         ANodeExt:=TCodeTreeNodeExtension(MissingNode.Data);
+        MissingNode:=ClassProcs.FindPrecessor(MissingNode);
+        if ProcNodeHasSpecifier(ANodeExt.Node,psEXTERNAL) then continue;
         CreateCodeForMissingProcBody(ANodeExt,Indent);
         InsertProcBody(ANodeExt,InsertPos,Indent);
-        MissingNode:=ClassProcs.FindPrecessor(MissingNode);
       end;
       
     end else begin
@@ -9079,21 +9169,24 @@ begin
       NearestNodeValid:=false;
       while (MissingNode<>nil) do begin
         ANodeExt:=TCodeTreeNodeExtension(MissingNode.Data);
-        ExistingNode:=ProcBodyNodes.Find(MissingNode.Data);
+        MissingNode:=ClassProcs.FindPrecessor(MissingNode);
+        ExistingNode:=ProcBodyNodes.Find(ANodeExt);
         {$IFDEF VerboseCreateMissingClassProcBodies}
         DebugLn(['TCodeCompletionCodeTool.CreateMissingClassProcBodies ANodeExt.Txt=',ANodeExt.Txt,' ExistingNode=',ExistingNode<>nil]);
         {$ENDIF}
-        if ExistingNode=nil then begin
+        if (ExistingNode=nil) and (not ProcNodeHasSpecifier(ANodeExt.Node,psEXTERNAL))
+        then begin
           {$IFDEF VerboseCreateMissingClassProcBodies}
-          DebugLn(['TCodeCompletionCodeTool.CreateMissingClassProcBodies ANodeExt.Txt=',ANodeExt.Txt,' ExistingNode=',TCodeTreeNodeExtension(ExistingNode.Data).Txt]);
+          //generates AV:
+          //DebugLn(['TCodeCompletionCodeTool.CreateMissingClassProcBodies ANodeExt.Txt=',ANodeExt.Txt,' ExistingNode=',TCodeTreeNodeExtension(ExistingNode.Data).Txt]);
           {$ENDIF}
           // MissingNode does not have a body -> insert proc body
           case MethodInsertPolicy of
           mipAlphabetically:
             begin
               // search alphabetically nearest proc body
-              ExistingNode:=ProcBodyNodes.FindNearest(MissingNode.Data);
-              cmp:=CompareCodeTreeNodeExtMethodHeaders(ExistingNode.Data,MissingNode.Data);
+              ExistingNode:=ProcBodyNodes.FindNearest(ANodeExt);
+              cmp:=CompareCodeTreeNodeExtMethodHeaders(ExistingNode.Data,ANodeExt);
               if (cmp<0) then begin
                 AnAVLNode:=ProcBodyNodes.FindSuccessor(ExistingNode);
                 if AnAVLNode<>nil then begin
@@ -9154,7 +9247,6 @@ begin
           CreateCodeForMissingProcBody(ANodeExt,Indent);
           InsertProcBody(ANodeExt,InsertPos,0);
         end;
-        MissingNode:=ClassProcs.FindPrecessor(MissingNode);
       end;
     end;
     Result:=true;
@@ -9165,8 +9257,9 @@ begin
 end;
 
 function TCodeCompletionCodeTool.ApplyChangesAndJumpToFirstNewProc(
-  CleanPos: integer; OldTopLine: integer; AddMissingProcBodies: boolean;
-  out NewPos: TCodeXYPosition; out NewTopLine: integer): boolean;
+  CleanPos: integer; OldTopLine: integer; AddMissingProcBodies: boolean; out
+  NewPos: TCodeXYPosition; out NewTopLine, BlockTopLine,
+  BlockBottomLine: integer): boolean;
 var
   OldCodeXYPos: TCodeXYPosition;
   OldCodePos: TCodePosition;
@@ -9179,21 +9272,21 @@ begin
   try
     // extend class declaration
     if not InsertAllNewClassParts then
-      RaiseException(ctsErrorDuringInsertingNewClassParts);
+      RaiseException(20170421201817,ctsErrorDuringInsertingNewClassParts);
 
     // create missing method bodies
     if AddMissingProcBodies and (not CreateMissingClassProcBodies(true)) then
-      RaiseException(ctsErrorDuringCreationOfNewProcBodies);
+      RaiseException(20170421201819,ctsErrorDuringCreationOfNewProcBodies);
 
     CurClassName:=ExtractClassName(CodeCompleteClassNode,false);
 
     // apply the changes and jump to first new proc body
     if not CleanPosToCodePos(CleanPos,OldCodePos) then
-      RaiseException('TCodeCompletionCodeTool.CompleteCode Internal Error CleanPosToCodePos');
+      RaiseException(20170421201822,'TCodeCompletionCodeTool.CompleteCode Internal Error CleanPosToCodePos');
     if not CleanPosToCaret(CleanPos,OldCodeXYPos) then
-      RaiseException('TCodeCompletionCodeTool.CompleteCode Internal Error CleanPosToCaret');
+      RaiseException(20170421201826,'TCodeCompletionCodeTool.CompleteCode Internal Error CleanPosToCaret');
     if not FSourceChangeCache.Apply then
-      RaiseException(ctsUnableToApplyChanges);
+      RaiseException(20170421201828,ctsUnableToApplyChanges);
 
   finally
     FreeClassInsertionList;
@@ -9216,13 +9309,13 @@ begin
       CursorNode:=CursorNode.GetTopMostNodeOfType(ctnTypeSection);
     FCodeCompleteClassNode:=FindClassNode(CursorNode,CurClassName,true,false);
     if CodeCompleteClassNode=nil then
-      RaiseException('oops, I lost your class');
+      RaiseException(20170421201833,'oops, I lost your class');
     ProcNode:=FindProcNode(CursorNode,FJumpToProcHead,[phpInUpperCase,phpIgnoreForwards]);
     if ProcNode=nil then begin
       debugln(['TCodeCompletionCodeTool.ApplyChangesAndJumpToFirstNewProc Proc="',FJumpToProcHead.Name,'"']);
-      RaiseException(ctsNewProcBodyNotFound);
+      RaiseException(20170421201835,ctsNewProcBodyNotFound);
     end;
-    Result:=FindJumpPointInProcNode(ProcNode,NewPos,NewTopLine);
+    Result:=FindJumpPointInProcNode(ProcNode,NewPos,NewTopLine, BlockTopLine, BlockBottomLine);
   end else begin
     {$IFDEF CTDEBUG}
     DebugLn('TCodeCompletionCodeTool.ApplyChangesAndJumpToFirstNewProc Adjust Cursor ... ');
@@ -9235,7 +9328,8 @@ begin
 end;
 
 function TCodeCompletionCodeTool.CompleteCode(CursorPos: TCodeXYPosition;
-  OldTopLine: integer; out NewPos: TCodeXYPosition; out NewTopLine: integer;
+  OldTopLine: integer; out NewPos: TCodeXYPosition; out NewTopLine,
+  BlockTopLine, BlockBottomLine: integer;
   SourceChangeCache: TSourceChangeCache; Interactive: Boolean): boolean;
 
   function TryCompleteLocalVar(CleanCursorPos: integer;
@@ -9274,7 +9368,7 @@ function TCodeCompletionCodeTool.CompleteCode(CursorPos: TCodeXYPosition;
       AClassNode:=FindClassOrInterfaceNode(CursorNode);
       if AClassNode<>nil then begin
         Result:=CompleteClass(AClassNode,CleanCursorPos,OldTopLine,CursorNode,
-                              NewPos,NewTopLine);
+                              NewPos,NewTopLine, BlockTopLine, BlockBottomLine);
         exit;
       end;
       {$IFDEF CTDEBUG}
@@ -9300,7 +9394,7 @@ function TCodeCompletionCodeTool.CompleteCode(CursorPos: TCodeXYPosition;
       and ((ProcNode.SubDesc and ctnsForwardDeclaration)>0) then begin
         // Node is forward Proc
         Result:=CompleteForwardProcs(CursorPos,ProcNode,CursorNode,NewPos,NewTopLine,
-                             SourceChangeCache);
+                             BlockTopLine, BlockBottomLine, SourceChangeCache);
         exit;
       end;
 
@@ -9314,7 +9408,7 @@ function TCodeCompletionCodeTool.CompleteCode(CursorPos: TCodeXYPosition;
 
       // test if procedure call
       Result:=CompleteProcByCall(CleanCursorPos,OldTopLine,
-                                 CursorNode,NewPos,NewTopLine,SourceChangeCache);
+                                 CursorNode,NewPos,NewTopLine,BlockTopLine,BlockBottomLine,SourceChangeCache);
       if Result then exit;
     finally
       FCompletingCursorNode:=nil;
@@ -9380,7 +9474,7 @@ function TCodeCompletionCodeTool.CompleteCode(CursorPos: TCodeXYPosition;
             FCompletingCursorNode:=CursorNode;
             try
               if not CleanPosToCodePos(OrigCleanCursorPos,OldCodePos) then
-                RaiseException('TCodeCompletionCodeTool.TryFirstLocalIdentOccurence CleanPosToCodePos');
+                RaiseException(20170421201838,'TCodeCompletionCodeTool.TryFirstLocalIdentOccurence CleanPosToCodePos');
               CompleteCode:=TryCompleteLocalVar(LastCurPos.StartPos,AtomContextNode);
               AdjustCursor(OldCodePos,OldTopLine,NewPos,NewTopLine);
               exit(true);
@@ -9412,12 +9506,12 @@ function TCodeCompletionCodeTool.CompleteCode(CursorPos: TCodeXYPosition;
   var
     OldCodePos: TCodePosition;
   begin
-    // Search only within the current instruction - stop on semicolon or keywords
+    // Search only within the current statement - stop on semicolon or keywords
     //   (else isn't prepended by a semicolon in contrast to other keywords).
 
     Result := False;
-    MoveCursorToCleanPos(CleanCursorPos);
-    while CurPos.StartPos > 0 do
+    MoveCursorToNearestAtom(CleanCursorPos);
+    while CurPos.StartPos > 1 do
     begin
       ReadPriorAtom;
       case CurPos.Flag of
@@ -9430,7 +9524,7 @@ function TCodeCompletionCodeTool.CompleteCode(CursorPos: TCodeXYPosition;
             if TryComplete(CursorNode, CurPos.StartPos) then
             begin
               if not CleanPosToCodePos(OrigCleanCursorPos,OldCodePos) then
-                RaiseException('TCodeCompletionCodeTool.CompleteCode CleanPosToCodePos');
+                RaiseException(20170421201842,'TCodeCompletionCodeTool.CompleteCode CleanPosToCodePos');
               AdjustCursor(OldCodePos,OldTopLine,NewPos,NewTopLine);
               exit(true);
             end;
@@ -9459,11 +9553,13 @@ var
   LastCodeToolsErrorCleanPos: Integer;
   LastCodeToolsError: ECodeToolError;
 begin
+  BlockTopLine := -1;
+  BlockBottomLine := -1;
   //DebugLn(['TCodeCompletionCodeTool.CompleteCode CursorPos=',Dbgs(CursorPos),' OldTopLine=',OldTopLine]);
 
   Result:=false;
   if (SourceChangeCache=nil) then 
-    RaiseException('need a SourceChangeCache');
+    RaiseException(20170421201857,'need a SourceChangeCache');
   BuildTreeAndGetCleanPos(trTillCursor,lsrEnd,CursorPos,CleanCursorPos,
                           [btSetIgnoreErrorPos]);
   OrigCleanCursorPos:=CleanCursorPos;
@@ -9503,7 +9599,7 @@ begin
       begin
         // we have a codetool error, let's try to find the assignment in any case
         LastCodeToolsErrorCleanPos := CurPos.StartPos;
-        LastCodeToolsError := ECodeToolError.Create(E.Sender, E.Message);
+        LastCodeToolsError := ECodeToolError.Create(E.Sender,E.Id,E.Message);
       end else
         raise;
     end;
@@ -9540,7 +9636,7 @@ begin
   NewPos:=CleanCodeXYPosition;
   NewTopLine:=0;
   if (SourceChangeCache=nil) then
-    RaiseException('need a SourceChangeCache');
+    RaiseException(20170421201910,'need a SourceChangeCache');
   BuildTreeAndGetCleanPos(CursorPos, CleanCursorPos);
 
   CursorNode:=FindDeepestNodeAtPos(CleanCursorPos,true);
@@ -9561,14 +9657,13 @@ begin
   if Result then exit;
 
   MoveCursorToCleanPos(CleanCursorPos);
-  RaiseException('this syntax is not supported by variable completion');
+  RaiseException(20170421201915,'this syntax is not supported by variable completion');
 end;
 
 function TCodeCompletionCodeTool.AddMethods(CursorPos: TCodeXYPosition;
-  OldTopLine: integer;
-  ListOfPCodeXYPosition: TFPList;
-  const VirtualToOverride: boolean;
-  out NewPos: TCodeXYPosition; out NewTopLine: integer;
+  OldTopLine: integer; ListOfPCodeXYPosition: TFPList;
+  const VirtualToOverride: boolean; out NewPos: TCodeXYPosition; out
+  NewTopLine, BlockTopLine, BlockBottomLine: integer;
   SourceChangeCache: TSourceChangeCache): boolean;
 var
   CleanCursorPos: integer;
@@ -9596,7 +9691,7 @@ begin
     exit(true);
   
   if (SourceChangeCache=nil) then
-    RaiseException('need a SourceChangeCache');
+    RaiseException(20170421201918,'need a SourceChangeCache');
 
   CodeCompleteSrcChgCache:=SourceChangeCache;
   Beauty:=SourceChangeCache.BeautifyCodeOptions;
@@ -9621,7 +9716,7 @@ begin
         if (ProcNode.Desc<>ctnProcedure)
         or (ProcNode.Parent=nil) then begin
           NewCodeTool.MoveCursorToNodeStart(ProcNode);
-          RaiseException('TCodeCompletionCodeTool.AddMethods source position not a procedure');
+          RaiseException(20170421201921,'TCodeCompletionCodeTool.AddMethods source position not a procedure');
         end;
         // find visibility
         VisibilityDesc:=ctnClassPublic;
@@ -9721,7 +9816,7 @@ begin
     
     // apply changes
     if not ApplyChangesAndJumpToFirstNewProc(CleanCursorPos,OldTopLine,true,
-      NewPos,NewTopLine) then exit;
+      NewPos,NewTopLine, BlockTopLine, BlockBottomLine) then exit;
 
     Result:=true;
   finally

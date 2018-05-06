@@ -43,9 +43,12 @@ uses
   {$IFDEF MEM_CHECK}
   MemCheck,
   {$ENDIF}
-  Classes, SysUtils, FileProcs, CodeToolsStrConsts, CodeTree, CodeAtom,
+  Classes, SysUtils, Laz_AVL_Tree,
+  // Codetools
+  FileProcs, CodeToolsStrConsts, CodeTree, CodeAtom,
   KeywordFuncLists, BasicCodeTools, LinkScanner, CodeCache,
-  LazFileUtils, LazUtilities, AVL_Tree, LazDbgLog;
+  // LazUtils
+  LazFileUtils, LazUtilities, LazDbgLog;
 
 type
   TCodeToolPhase = (
@@ -59,16 +62,22 @@ type
 
 
   // types for errors
+
+  { ECodeToolError }
+
   ECodeToolError = class(Exception)
     Sender: TCustomCodeTool;
-    constructor Create(ASender: TCustomCodeTool; const AMessage: string);
+    Id: int64;
+    constructor Create(ASender: TCustomCodeTool; TheId: int64; const AMessage: string);
   end;
   
   ECodeToolErrors = class of ECodeToolError;
   
+  { ECodeToolFileNotFound }
+
   ECodeToolFileNotFound = class(ECodeToolError)
     Filename: string;
-    constructor Create(ASender: TCustomCodeTool;
+    constructor Create(ASender: TCustomCodeTool; TheId: int64;
       const AMessage, AFilename: string);
   end;
   
@@ -116,10 +125,10 @@ type
     procedure SetScanner(NewScanner: TLinkScanner); virtual;
     procedure DoDeleteNodes(StartNode: TCodeTreeNode); virtual;
     procedure CloseUnfinishedNodes;
-    procedure SaveRaiseIdentExpectedButAtomFound;
-    procedure SaveRaiseBracketOpenExpectedButAtomFound;
-    procedure SaveRaiseBracketCloseExpectedButAtomFound;
-    procedure RaiseUndoImpossible;
+    procedure SaveRaiseIdentExpectedButAtomFound(id: int64);
+    procedure SaveRaiseBracketOpenExpectedButAtomFound(id: int64);
+    procedure SaveRaiseBracketCloseExpectedButAtomFound(id: int64);
+    procedure RaiseUndoImpossible(id: int64);
     procedure SetIgnoreErrorAfter(const AValue: TCodePosition); virtual;
     procedure IncreaseTreeChangeStep(NodesDeleting: boolean);
   protected
@@ -129,6 +138,7 @@ type
     LastErrorBehindIgnorePosition: boolean;
     LastErrorCheckedForIgnored: boolean;
     LastErrorNicePosition: TCodeXYPosition;
+    LastErrorId: int64;
     procedure ClearLastError;
     procedure RaiseLastError;
     procedure DoProgress; inline;
@@ -144,12 +154,12 @@ type
     SrcLen: integer;
     CurNode: TCodeTreeNode;
     LastAtoms: TAtomRing;
-    NextPos: TAtomPosition;
-    
+
     CheckFilesOnDisk: boolean;
     IndentSize: integer;
     VisibleEditorLines: integer;
-    JumpCentered: boolean;
+    JumpSingleLinePos: integer; // in percent 0..100
+    JumpCodeBlockPos: integer; // in percent 0..100
     CursorBeyondEOL: boolean;
     
     ErrorPosition: TCodeXYPosition;
@@ -244,7 +254,7 @@ type
     function AtomIsIdentifier: boolean;
     procedure AtomIsIdentifierE; overload;
     function AtomIsIdentifierE(ExceptionOnNotFound: boolean): boolean; overload;
-    procedure AtomIsIdentifierSaveE;
+    procedure AtomIsIdentifierSaveE(id: int64);
     function AtomIsCustomOperator(AllowIdentifier, ExceptionOnNotFound, SaveE: boolean): boolean;
     function LastAtomIs(BackIndex: integer;
         const AnAtom: shortstring): boolean; // 0=current, 1=prior current, ...
@@ -267,6 +277,7 @@ type
       AnIdentifier: PChar): boolean;
     function CompareSrcIdentifiersMethod(Identifier1, Identifier2: Pointer): integer;
     function ExtractIdentifier(CleanStartPos: integer): string;
+    function ExtractDottedIdentifier(CleanStartPos: integer): string;
 
     procedure CreateChildNode;
     procedure EndChildNode; {$IFDEF UseInline}inline;{$ENDIF}
@@ -281,18 +292,18 @@ type
     // error handling
     procedure RaiseExceptionInstance(TheException: ECodeToolError;
       ClearNicePos: boolean = true); virtual;
-    procedure RaiseExceptionClass(const AMessage: string;
+    procedure RaiseExceptionClass(id: int64; const AMessage: string;
       ExceptionClass: ECodeToolErrors; ClearNicePos: boolean); virtual;
-    procedure RaiseException(const AMessage: string;
+    procedure RaiseException(id: int64; const AMessage: string;
       ClearNicePos: boolean = true); virtual;
-    procedure RaiseExceptionFmt(const AMessage: string;
+    procedure RaiseExceptionFmt(id: int64; const AMessage: string;
       const args: array of const; ClearNicePos: boolean = true);
-    procedure RaiseExceptionAtErrorPos(const AMessage: string;
+    procedure RaiseExceptionAtErrorPos(id: int64; const AMessage: string;
       ClearNicePos: boolean = true); virtual;
     // permanent errors, that the parser will raise again
-    procedure SaveRaiseException(const AMessage: string;
+    procedure SaveRaiseException(id: int64; const AMessage: string;
       ClearNicePos: boolean = true); virtual;
-    procedure SaveRaiseExceptionFmt(const AMessage: string;
+    procedure SaveRaiseExceptionFmt(id: int64; const AMessage: string;
       const args: array of const; ClearNicePos: boolean = true);
     procedure SetNiceErrorPos(CleanPos: integer);
     property IgnoreErrorAfter: TCodePosition
@@ -379,35 +390,34 @@ begin
   if Tree<>nil then DoDeleteNodes(Tree.Root);
   CurPos:=StartAtomPosition;
   LastAtoms.Clear;
-  NextPos.StartPos:=-1;
   ClearLastError;
 end;
 
-procedure TCustomCodeTool.RaiseException(const AMessage: string;
+procedure TCustomCodeTool.RaiseException(id: int64; const AMessage: string;
   ClearNicePos: boolean);
 begin
-  RaiseExceptionClass(AMessage,ECodeToolError,ClearNicePos);
+  RaiseExceptionClass(id,AMessage,ECodeToolError,ClearNicePos);
 end;
 
-procedure TCustomCodeTool.RaiseExceptionFmt(const AMessage: string;
+procedure TCustomCodeTool.RaiseExceptionFmt(id: int64; const AMessage: string;
   const args: array of const; ClearNicePos: boolean);
 begin
-  RaiseException(Format(AMessage,args),ClearNicePos);
+  RaiseException(id,Format(AMessage,args),ClearNicePos);
 end;
 
-procedure TCustomCodeTool.RaiseExceptionAtErrorPos(const AMessage: string;
-  ClearNicePos: boolean);
+procedure TCustomCodeTool.RaiseExceptionAtErrorPos(id: int64;
+  const AMessage: string; ClearNicePos: boolean);
 begin
   if ClearNicePos then
     ErrorNicePosition:=CleanCodeXYPosition;
   // raise the exception
   if not RaiseUnhandableExceptions then
-    raise ECodeToolError.Create(Self,AMessage)
+    raise ECodeToolError.Create(Self,id,AMessage)
   else
-    RaiseCatchableException(AMessage);
+    RaiseCatchableException('['+IntToStr(id)+'] '+AMessage);
 end;
 
-procedure TCustomCodeTool.SaveRaiseException(const AMessage: string;
+procedure TCustomCodeTool.SaveRaiseException(id: int64; const AMessage: string;
   ClearNicePos: boolean);
 var
   Node: TCodeTreeNode;
@@ -415,6 +425,7 @@ begin
   LastErrorMessage:=AMessage;
   LastErrorCurPos:=CurPos;
   LastErrorValid:=true;
+  LastErrorId:=id;
   if ClearNicePos then begin
     LastErrorNicePosition.Code:=nil;
     LastErrorNicePosition.Y:=-1;
@@ -432,13 +443,13 @@ begin
     Node:=Node.Parent;
   end;
 
-  RaiseException(AMessage,ClearNicePos);
+  RaiseException(id,AMessage,ClearNicePos);
 end;
 
-procedure TCustomCodeTool.SaveRaiseExceptionFmt(const AMessage: string;
-  const args: array of const; ClearNicePos: boolean);
+procedure TCustomCodeTool.SaveRaiseExceptionFmt(id: int64;
+  const AMessage: string; const args: array of const; ClearNicePos: boolean);
 begin
-  SaveRaiseException(Format(AMessage,args),ClearNicePos);
+  SaveRaiseException(id,Format(AMessage,args),ClearNicePos);
 end;
 
 procedure TCustomCodeTool.SetNiceErrorPos(CleanPos: integer);
@@ -472,7 +483,7 @@ begin
   MoveCursorToCleanPos(LastErrorCurPos.StartPos);
   CurPos:=LastErrorCurPos;
   ErrorNicePosition:=LastErrorNicePosition;
-  SaveRaiseException(LastErrorMessage,false);
+  SaveRaiseException(LastErrorId,LastErrorMessage,false);
 end;
 
 procedure TCustomCodeTool.DoProgress;
@@ -489,7 +500,7 @@ begin
   if Assigned(OnParserProgress) then begin
     if OnParserProgress(Self) then exit;
     // raise the abort exception to stop the parsing
-    RaiseExceptionClass('Abort',EParserAbort,true);
+    RaiseExceptionClass(20170421194502,'Abort',EParserAbort,true);
   end;
 end;
 
@@ -505,6 +516,7 @@ begin
     ClearLastError;
     Src:=Scanner.CleanedSrc;
     SrcLen:=length(Src);
+    LastAtoms.SrcLen:=SrcLen;
     {$IFDEF VerboseUpdateNeeded}
     DebugLn(['TCustomCodeTool.BeginParsing ',MainFilename]);
     {$ENDIF}
@@ -532,9 +544,9 @@ begin
   Result:=false;
 end;
 
-procedure TCustomCodeTool.RaiseUndoImpossible;
+procedure TCustomCodeTool.RaiseUndoImpossible(id: int64);
 begin
-  RaiseException('TCustomCodeTool.UndoReadNextAtom impossible',true);
+  RaiseException(id,'TCustomCodeTool.UndoReadNextAtom impossible',true);
 end;
 
 procedure TCustomCodeTool.SetScanner(NewScanner: TLinkScanner);
@@ -757,12 +769,12 @@ procedure TCustomCodeTool.AtomIsIdentifierE;
 
   procedure RaiseEOFFound;
   begin
-    RaiseExceptionFmt(ctsIdentExpectedButEOFFound,[GetAtom],true);
+    RaiseExceptionFmt(20170421194604,ctsIdentExpectedButEOFFound,[GetAtom],true);
   end;
 
   procedure RaiseAtomFound;
   begin
-    RaiseExceptionFmt(ctsIdentExpectedButAtomFound,[GetAtom],true);
+    RaiseExceptionFmt(20170421194607,ctsIdentExpectedButAtomFound,[GetAtom],true);
   end;
 
 begin
@@ -773,8 +785,7 @@ begin
     RaiseAtomFound;
 end;
 
-function TCustomCodeTool.AtomIsIdentifierE(ExceptionOnNotFound: boolean
-  ): boolean;
+function TCustomCodeTool.AtomIsIdentifierE(ExceptionOnNotFound: boolean): boolean;
 begin
   if InternalAtomIsIdentifier then exit(true);
   Result:=false;
@@ -782,11 +793,11 @@ begin
   AtomIsIdentifierE();
 end;
 
-procedure TCustomCodeTool.AtomIsIdentifierSaveE;
+procedure TCustomCodeTool.AtomIsIdentifierSaveE(id: int64);
 
   procedure SaveRaiseIdentExpectedButEOFFound;
   begin
-    SaveRaiseExceptionFmt(ctsIdentExpectedButEOFFound,[GetAtom]);
+    SaveRaiseExceptionFmt(id,ctsIdentExpectedButEOFFound,[GetAtom]);
   end;
 
 begin
@@ -794,7 +805,7 @@ begin
   if CurPos.StartPos>SrcLen then
     SaveRaiseIdentExpectedButEOFFound
   else
-    SaveRaiseIdentExpectedButAtomFound;
+    SaveRaiseIdentExpectedButAtomFound(id);
 end;
 
 function TCustomCodeTool.AtomIsCustomOperator(AllowIdentifier,
@@ -804,18 +815,19 @@ function TCustomCodeTool.AtomIsCustomOperator(AllowIdentifier,
   begin
     if CurPos.StartPos>SrcLen then begin
       if SaveE then
-        SaveRaiseException(ctsOperatorExpectedButEOFFound)
+        SaveRaiseException(20170421194635,ctsOperatorExpectedButEOFFound)
       else
-        RaiseException(ctsOperatorExpectedButEOFFound)
+        RaiseException(20170421194649,ctsOperatorExpectedButEOFFound)
     end else begin
       if SaveE then
-        SaveRaiseExceptionFmt(ctsOperatorExpectedButAtomFound,[GetAtom])
+        SaveRaiseExceptionFmt(20170421194701,ctsOperatorExpectedButAtomFound,[GetAtom])
       else
-        RaiseExceptionFmt(ctsOperatorExpectedButAtomFound,[GetAtom])
+        RaiseExceptionFmt(20170421194704,ctsOperatorExpectedButAtomFound,[GetAtom])
     end;
   end;
 
 begin
+  Result:=false;
   if (CurPos.StartPos<=SrcLen) then begin
     if WordIsCustomOperator.DoItCaseInsensitive(
       Src,CurPos.StartPos,CurPos.EndPos-CurPos.StartPos)
@@ -926,20 +938,16 @@ var ap: TAtomPosition;
   AnAtomLen: integer;
   i: integer;
 begin
-  Result:=false;
-  if (BackIndex>=0) and (BackIndex<LastAtoms.Count) then begin
-    ap:=LastAtoms.GetValueAt(BackIndex);
-    Result:=false;
-    if (ap.StartPos<SrcLen) and (ap.EndPos<=SrcLen+1)
-    and (ap.StartPos>=1) then begin
-      AnAtomLen:=length(AnAtom);
-      if AnAtomLen=ap.EndPos-ap.StartPos then begin
-        for i:=1 to AnAtomLen do
-          if AnAtom[i]<>Src[ap.StartPos-1+i] then exit;
-        Result:=true;
-      end;
-    end;
+  ap:=LastAtoms.GetAtomAt(-BackIndex);
+  if ap.StartPos>=ap.EndPos then exit(false);
+  if (ap.EndPos<=SrcLen+1) then begin
+    AnAtomLen:=length(AnAtom);
+    if AnAtomLen<>ap.EndPos-ap.StartPos then exit(false);
+    for i:=1 to AnAtomLen do
+      if AnAtom[i]<>Src[ap.StartPos-1+i] then exit(false);
+    exit(true);
   end;
+  Result:=false;
 end;
 
 function TCustomCodeTool.LastUpAtomIs(BackIndex: integer;
@@ -949,18 +957,19 @@ var ap: TAtomPosition;
   i: integer;
   p: PChar;
 begin
-  Result:=false;
-  if (BackIndex<0) or (BackIndex>=LastAtoms.Count) then exit;
-  ap:=LastAtoms.GetValueAt(BackIndex);
-  AnAtomLen:=length(AnAtom);
-  if AnAtomLen<>ap.EndPos-ap.StartPos then exit;
-  if (ap.StartPos>SrcLen) or (ap.EndPos>SrcLen+1) or (ap.StartPos<1) then exit;
-  p:=@Src[ap.StartPos];
-  for i:=1 to AnAtomLen do begin
-    if AnAtom[i]<>UpChars[p^] then exit;
-    inc(p);
+  ap:=LastAtoms.GetAtomAt(-BackIndex);
+  if ap.StartPos>=ap.EndPos then exit(false);
+  if (ap.EndPos<=SrcLen+1) then begin
+    AnAtomLen:=length(AnAtom);
+    if AnAtomLen<>ap.EndPos-ap.StartPos then exit(false);
+    p:=@Src[ap.StartPos];
+    for i:=1 to AnAtomLen do begin
+      if AnAtom[i]<>UpChars[p^] then exit(false);
+      inc(p);
+    end;
+    exit(true);
   end;
-  Result:=true;
+  Result:=false;
 end;
 
 function TCustomCodeTool.GetAtom: string;
@@ -1002,102 +1011,73 @@ begin
   Result:=true;
 end;
 
+{$IFOPT R+}{$DEFINE RangeChecking}{$ENDIF}
+{$R-}
 procedure TCustomCodeTool.ReadNextAtom;
 var
   c1, c2: char;
   CommentLvl: integer;
   p: PChar;
 begin
-  {$IFOPT R+}{$DEFINE RangeChecking}{$ENDIF}
-  {$R-}
-  if (CurPos.StartPos<CurPos.EndPos) then
-    LastAtoms.Add(CurPos);
-  if NextPos.StartPos<1 then begin
-    CurPos.StartPos:=CurPos.EndPos;
-    CurPos.Flag:=cafNone;
-    if CurPos.StartPos>SrcLen then
-      exit;
-    // Skip all spaces and comments
-    p:=@Src[CurPos.StartPos];
-    while true do begin
-      case p^ of
-      #0:
-        begin
-          CurPos.StartPos:=p-PChar(Src)+1;
-          if CurPos.StartPos>SrcLen then
-            break
-          else
-            inc(p);
-        end;
-      #1..#32:
-        inc(p);
-      #$EF:
-        if (p[1]=#$BB)
-        and (p[2]=#$BF) then begin
-          // skip UTF BOM
-          inc(p,3);
-        end else begin
-          break;
-        end;
-      '{': // pascal comment
-        begin
+  if LastAtoms.HasNext then begin
+    //debugln(['TCustomCodeTool.ReadNextAtom HASNEXT ',LastAtoms.NextCount]);
+    LastAtoms.MoveToNext(CurPos);
+    //debugln(['TCustomCodeTool.ReadNextAtom ',GetAtom,' ',CurPos.StartPos,'-',CurPos.EndPos,' ',SrcLen]);
+    exit;
+  end;
+
+  CurPos.StartPos:=CurPos.EndPos;
+  CurPos.Flag:=cafNone;
+  if CurPos.StartPos>SrcLen then begin
+    if (not LastAtoms.Empty) and (LastAtoms.GetPriorAtom.StartPos<CurPos.StartPos)
+    then
+      LastAtoms.Add(CurPos);
+    exit;
+  end;
+  // Skip all spaces and comments
+  p:=@Src[CurPos.StartPos];
+  while true do begin
+    case p^ of
+    #0:
+      begin
+        CurPos.StartPos:=p-PChar(Src)+1;
+        if CurPos.StartPos>SrcLen then
+          break
+        else
           inc(p);
-          if p^=#3 then begin
-            // codetools skip comment {#3 #3}
-            repeat
-              case p^ of
-              #0:
-                begin
-                  CurPos.StartPos:=p-PChar(Src)+1;
-                  if CurPos.StartPos>SrcLen then break;
-                end;
-              #3:
-                if p[1]='}' then begin
-                  inc(p,2);
-                  break;
-                end;
+      end;
+    #1..#32:
+      inc(p);
+    #$EF:
+      if (p[1]=#$BB)
+      and (p[2]=#$BF) then begin
+        // skip UTF BOM
+        inc(p,3);
+      end else begin
+        break;
+      end;
+    '{': // pascal comment
+      begin
+        inc(p);
+        if p^=#3 then begin
+          // codetools skip comment {#3 #3}
+          repeat
+            case p^ of
+            #0:
+              begin
+                CurPos.StartPos:=p-PChar(Src)+1;
+                if CurPos.StartPos>SrcLen then break;
               end;
-              inc(p);
-            until false;
-          end else begin
-            // pascal comment {}
-            CommentLvl:=1;
-            while true do begin
-              case p^ of
-              #0:
-                begin
-                  CurPos.StartPos:=p-PChar(Src)+1;
-                  if CurPos.StartPos>SrcLen then break;
-                end;
-              '{':
-                if Scanner.NestedComments then
-                  inc(CommentLvl);
-              '}':
-                begin
-                  dec(CommentLvl);
-                  if CommentLvl=0 then begin
-                    inc(p);
-                    break;
-                  end;
-                end;
+            #3:
+              if p[1]='}' then begin
+                inc(p,2);
+                break;
               end;
-              inc(p);
             end;
-          end;
-        end;
-      '/':  // Delphi comment
-        if p[1]<>'/' then begin
-          break;
-        end else begin
-          inc(p,2);
-          while not (p^ in [#10,#13,#0]) do
             inc(p);
-        end;
-      '(': // old turbo pascal comment
-        if p[1]<>'*' then begin
-          break;
+          until false;
         end else begin
-          inc(p,2);
+          // pascal comment {}
           CommentLvl:=1;
           while true do begin
             case p^ of
@@ -1106,260 +1086,294 @@ begin
                 CurPos.StartPos:=p-PChar(Src)+1;
                 if CurPos.StartPos>SrcLen then break;
               end;
-            '(':
-              if (p[1]='*') and Scanner.NestedComments then begin
-                //debugln('TCustomCodeTool.ReadNextAtom ',copy(Src,CurPos.StartPos,CurPos.StartPos-CurPos.EndPos));
+            '{':
+              if Scanner.NestedComments then
                 inc(CommentLvl);
-                inc(p);
-              end;
-            '*':
-              if p[1]=')' then begin
+            '}':
+              begin
                 dec(CommentLvl);
                 if CommentLvl=0 then begin
-                  inc(p,2);
+                  inc(p);
                   break;
                 end;
-                inc(p);
               end;
             end;
             inc(p);
           end;
         end;
-      else
+      end;
+    '/':  // Delphi comment
+      if p[1]<>'/' then begin
         break;
-      end;
-    end;
-    CurPos.StartPos:=p-PChar(Src)+1;
-    CurPos.EndPos:=CurPos.StartPos;
-    // read atom
-    c1:=p^;
-    case c1 of
-    #0: ;
-    '_','A'..'Z','a'..'z':
-      begin
-        inc(p);
-        while IsIdentChar[p^] do
+      end else begin
+        inc(p,2);
+        while not (p^ in [#10,#13,#0]) do
           inc(p);
-        CurPos.Flag:=cafWord;
-        CurPos.EndPos:=p-PChar(Src)+1;
-        case c1 of
-        'e','E':
-          if (CurPos.EndPos-CurPos.StartPos=3)
-          and (Src[CurPos.StartPos+1] in ['n','N'])
-          and (Src[CurPos.StartPos+2] in ['d','D'])
-          and ((CurPos.StartPos=1) or (Src[CurPos.StartPos-1]<>'@'))
-          then
-            CurPos.Flag:=cafEnd;
-        end;
       end;
-    '''','#':
-      begin
-        // string constant
+    '(': // old turbo pascal comment
+      if p[1]<>'*' then begin
+        break;
+      end else begin
+        inc(p,2);
+        CommentLvl:=1;
         while true do begin
           case p^ of
-          '#':
+          #0:
             begin
+              CurPos.StartPos:=p-PChar(Src)+1;
+              if CurPos.StartPos>SrcLen then break;
+            end;
+          '(':
+            if (p[1]='*') and Scanner.NestedComments then begin
+              //debugln('TCustomCodeTool.ReadNextAtom ',copy(Src,CurPos.StartPos,CurPos.StartPos-CurPos.EndPos));
+              inc(CommentLvl);
               inc(p);
-              if IsNumberChar[p^] then begin
-                // decimal
-                repeat
-                  inc(p);
-                until not IsNumberChar[p^];
-              end else if p^='$' then begin
-                // hexadecimal
-                repeat
-                  inc(p);
-                until not IsHexNumberChar[p^];
+            end;
+          '*':
+            if p[1]=')' then begin
+              dec(CommentLvl);
+              if CommentLvl=0 then begin
+                inc(p,2);
+                break;
               end;
-            end;
-          '''':
-            begin
-              inc(p);
-              while true do begin
-                case p^ of
-                '''':
-                  begin
-                    inc(p);
-                    break;
-                  end;
-                #0,#10,#13:
-                  break;
-                else
-                  inc(p);
-                end;
-              end;
-            end;
-          '^':
-            begin
-              inc(p);
-              if not (p^ in ['A'..'Z']) then break;
               inc(p);
             end;
-          else
-            break;
           end;
+          inc(p);
         end;
-        CurPos.EndPos:=p-PChar(Src)+1;
       end;
-    '0'..'9':
-      begin
+    else
+      break;
+    end;
+  end;
+  CurPos.StartPos:=p-PChar(Src)+1;
+  CurPos.EndPos:=CurPos.StartPos;
+  // read atom
+  c1:=p^;
+  case c1 of
+  #0: ;
+  '_','A'..'Z','a'..'z':
+    begin
+      inc(p);
+      while IsIdentChar[p^] do
+        inc(p);
+      CurPos.Flag:=cafWord;
+      CurPos.EndPos:=p-PChar(Src)+1;
+      case c1 of
+      'e','E':
+        if (CurPos.EndPos-CurPos.StartPos=3)
+        and (Src[CurPos.StartPos+1] in ['n','N'])
+        and (Src[CurPos.StartPos+2] in ['d','D'])
+        and ((CurPos.StartPos=1) or (Src[CurPos.StartPos-1]<>'@'))
+        then
+          CurPos.Flag:=cafEnd;
+      end;
+    end;
+  '''','#':
+    begin
+      // string constant
+      while true do begin
+        case p^ of
+        '#':
+          begin
+            inc(p);
+            if IsNumberChar[p^] then begin
+              // decimal
+              repeat
+                inc(p);
+              until not IsNumberChar[p^];
+            end else if p^='$' then begin
+              // hexadecimal
+              repeat
+                inc(p);
+              until not IsHexNumberChar[p^];
+            end;
+          end;
+        '''':
+          begin
+            inc(p);
+            while true do begin
+              case p^ of
+              '''':
+                begin
+                  inc(p);
+                  break;
+                end;
+              #0,#10,#13:
+                break;
+              else
+                inc(p);
+              end;
+            end;
+          end;
+        '^':
+          begin
+            inc(p);
+            if not (p^ in ['A'..'Z']) then break;
+            inc(p);
+          end;
+        else
+          break;
+        end;
+      end;
+      CurPos.EndPos:=p-PChar(Src)+1;
+    end;
+  '0'..'9':
+    begin
+      inc(p);
+      while IsNumberChar[p^] do
+        inc(p);
+      if (p^='.') and IsAfterFloatPointChar[p[1]] then begin
+        // real type number
         inc(p);
         while IsNumberChar[p^] do
           inc(p);
-        if (p^='.') and IsAfterFloatPointChar[p[1]] then begin
-          // real type number
-          inc(p);
-          while IsNumberChar[p^] do
-            inc(p);
-        end;
-        if p^ in ['e','E'] then begin
-          // read exponent
-          inc(p);
-          if p^ in ['-','+'] then inc(p);
-          while IsNumberChar[p^] do
-            inc(p);
-        end;
-        CurPos.EndPos:=p-PChar(Src)+1;
       end;
-    '%': // binary number
-      begin
+      if p^ in ['e','E'] then begin
+        // read exponent
         inc(p);
-        while p^ in ['0'..'1'] do
+        if p^ in ['-','+'] then inc(p);
+        while IsNumberChar[p^] do
           inc(p);
-        CurPos.EndPos:=p-PChar(Src)+1;
       end;
-    '&': // octal number or keyword as identifier
-      begin
+      CurPos.EndPos:=p-PChar(Src)+1;
+    end;
+  '%': // binary number
+    begin
+      inc(p);
+      while p^ in ['0'..'1'] do
         inc(p);
-        if IsOctNumberChar[p^] then begin
-          while IsOctNumberChar[p^] do
-            inc(p);
-        end else if IsIdentStartChar[p^] then begin
-          CurPos.Flag:=cafWord;
-          while IsIdentChar[p^] do
-            inc(p);
-        end;
-        CurPos.EndPos:=p-PChar(Src)+1;
-      end;
-    '$': // hex number
-      begin
-        inc(p);
-        while IsHexNumberChar[p^] do
+      CurPos.EndPos:=p-PChar(Src)+1;
+    end;
+  '&': // octal number or keyword as identifier
+    begin
+      inc(p);
+      if IsOctNumberChar[p^] then begin
+        while IsOctNumberChar[p^] do
           inc(p);
-        CurPos.EndPos:=p-PChar(Src)+1;
+      end else if IsIdentStartChar[p^] then begin
+        CurPos.Flag:=cafWord;
+        while IsIdentChar[p^] do
+          inc(p);
       end;
-    ';':
-      begin
-        inc(CurPos.EndPos);
-        CurPos.Flag:=cafSemicolon;
-      end;
-    ',':
-      begin
-        inc(CurPos.EndPos);
-        CurPos.Flag:=cafComma;
-      end;
-    '=':
-      begin
-        inc(CurPos.EndPos);
-        CurPos.Flag:=cafEqual;
-      end;
-    '(':
-      begin
-        inc(CurPos.EndPos);
-        CurPos.Flag:=cafRoundBracketOpen;
-      end;
-    ')':
-      begin
-        inc(CurPos.EndPos);
-        CurPos.Flag:=cafRoundBracketClose;
-      end;
-    '[':
-      begin
-        inc(CurPos.EndPos);
-        CurPos.Flag:=cafEdgedBracketOpen;
-      end;
-    ']':
-      begin
-        inc(CurPos.EndPos);
-        CurPos.Flag:=cafEdgedBracketClose;
-      end;
-    ':':
-      begin
-        inc(CurPos.EndPos);
-        if (Src[CurPos.EndPos]<>'=') then begin
-          CurPos.Flag:=cafColon;
-        end else begin
-          // :=
-          inc(CurPos.EndPos);
-          CurPos.Flag:=cafAssignment;
-        end;
-      end;
-    '.':
-      begin
-        inc(CurPos.EndPos);
-        if (Src[CurPos.EndPos]<>'.') then begin
-          // '.'
-          CurPos.Flag:=cafPoint;
-        end else begin
-          inc(CurPos.EndPos);
-          if (Src[CurPos.EndPos]<>'.') then begin
-            // '..'
-          end else begin
-            // '...'
-            inc(CurPos.EndPos);
-          end;
-        end;
-      end;
-    #192..#255:
-      begin
-        // read UTF8 character
+      CurPos.EndPos:=p-PChar(Src)+1;
+    end;
+  '$': // hex number
+    begin
+      inc(p);
+      while IsHexNumberChar[p^] do
         inc(p);
-        if ((ord(c1) and %11100000) = %11000000) then begin
-          // could be 2 byte character
-          if (ord(p[0]) and %11000000) = %10000000 then
-            inc(p);
-        end
-        else if ((ord(c1) and %11110000) = %11100000) then begin
-          // could be 3 byte character
-          if ((ord(p[0]) and %11000000) = %10000000)
-          and ((ord(p[1]) and %11000000) = %10000000) then
-            inc(p,2);
-        end
-        else if ((ord(c1) and %11111000) = %11110000) then begin
-          // could be 4 byte character
-          if ((ord(p[0]) and %11000000) = %10000000)
-          and ((ord(p[1]) and %11000000) = %10000000)
-          and ((ord(p[2]) and %11000000) = %10000000) then
-            inc(p,3);
-        end;
-        CurPos.EndPos:=p-PChar(Src)+1;
-      end;
-    else
+      CurPos.EndPos:=p-PChar(Src)+1;
+    end;
+  ';':
+    begin
       inc(CurPos.EndPos);
-      c2:=Src[CurPos.EndPos];
-      // test for double char operators :=, +=, -=, /=, *=, <>, <=, >=, **, ><
-      if ((c2='=') and  (IsEqualOperatorStartChar[c1]))
-        or ((c1='<') and (c2='>')) // <> not equal
-        or ((c1='>') and (c2='<')) // >< symmetric diff for sets
-        or ((c1='.') and (c2='.')) // .. subrange
-        or ((c1='*') and (c2='*')) // ** power
-        then begin
-          // 2 character operator/symbol
-          inc(CurPos.EndPos);
-      end
-      else if ((c1='@') and (c2='@')) then begin
-        // @@ label
-        repeat
-          inc(CurPos.EndPos);
-        until (CurPos.EndPos>SrcLen) or (not IsIdentChar[Src[CurPos.EndPos]]);
+      CurPos.Flag:=cafSemicolon;
+    end;
+  ',':
+    begin
+      inc(CurPos.EndPos);
+      CurPos.Flag:=cafComma;
+    end;
+  '=':
+    begin
+      inc(CurPos.EndPos);
+      CurPos.Flag:=cafEqual;
+    end;
+  '(':
+    begin
+      inc(CurPos.EndPos);
+      CurPos.Flag:=cafRoundBracketOpen;
+    end;
+  ')':
+    begin
+      inc(CurPos.EndPos);
+      CurPos.Flag:=cafRoundBracketClose;
+    end;
+  '[':
+    begin
+      inc(CurPos.EndPos);
+      CurPos.Flag:=cafEdgedBracketOpen;
+    end;
+  ']':
+    begin
+      inc(CurPos.EndPos);
+      CurPos.Flag:=cafEdgedBracketClose;
+    end;
+  ':':
+    begin
+      inc(CurPos.EndPos);
+      if (Src[CurPos.EndPos]<>'=') then begin
+        CurPos.Flag:=cafColon;
+      end else begin
+        // :=
+        inc(CurPos.EndPos);
+        CurPos.Flag:=cafAssignment;
       end;
     end;
-  end else begin
-    CurPos:=NextPos;
-    NextPos.StartPos:=-1;
+  '.':
+    begin
+      inc(CurPos.EndPos);
+      if (Src[CurPos.EndPos]<>'.') then begin
+        // '.'
+        CurPos.Flag:=cafPoint;
+      end else begin
+        inc(CurPos.EndPos);
+        if (Src[CurPos.EndPos]<>'.') then begin
+          // '..'
+        end else begin
+          // '...'
+          inc(CurPos.EndPos);
+        end;
+      end;
+    end;
+  #192..#255:
+    begin
+      // read UTF8 character
+      inc(p);
+      if ((ord(c1) and %11100000) = %11000000) then begin
+        // could be 2 byte character
+        if (ord(p[0]) and %11000000) = %10000000 then
+          inc(p);
+      end
+      else if ((ord(c1) and %11110000) = %11100000) then begin
+        // could be 3 byte character
+        if ((ord(p[0]) and %11000000) = %10000000)
+        and ((ord(p[1]) and %11000000) = %10000000) then
+          inc(p,2);
+      end
+      else if ((ord(c1) and %11111000) = %11110000) then begin
+        // could be 4 byte character
+        if ((ord(p[0]) and %11000000) = %10000000)
+        and ((ord(p[1]) and %11000000) = %10000000)
+        and ((ord(p[2]) and %11000000) = %10000000) then
+          inc(p,3);
+      end;
+      CurPos.EndPos:=p-PChar(Src)+1;
+    end;
+  else
+    inc(CurPos.EndPos);
+    c2:=Src[CurPos.EndPos];
+    // test for double char operators :=, +=, -=, /=, *=, <>, <=, >=, **, ><
+    if ((c2='=') and  (IsEqualOperatorStartChar[c1]))
+      or ((c1='<') and (c2='>')) // <> not equal
+      or ((c1='>') and (c2='<')) // >< symmetric diff for sets
+      or ((c1='.') and (c2='.')) // .. subrange
+      or ((c1='*') and (c2='*')) // ** power
+      then begin
+        // 2 character operator/symbol
+        inc(CurPos.EndPos);
+    end
+    else if ((c1='@') and (c2='@')) then begin
+      // @@ label
+      repeat
+        inc(CurPos.EndPos);
+      until (CurPos.EndPos>SrcLen) or (not IsIdentChar[Src[CurPos.EndPos]]);
+    end;
   end;
-  {$IFDEF RangeChecking}{$R+}{$UNDEF RangeChecking}{$ENDIF}
+  LastAtoms.Add(CurPos);
 end;
+{$IFDEF RangeChecking}{$R+}{$UNDEF RangeChecking}{$ENDIF}
 
 procedure TCustomCodeTool.ReadPriorAtom;
 var
@@ -1509,11 +1523,10 @@ const
 var c1, c2: char;
   ForbiddenNumberTypes: TNumberTypes;
 begin
-  if LastAtoms.Count>0 then begin
-    UndoReadNextAtom;
+  if LastAtoms.HasPrior then begin
+    LastAtoms.GoBack(CurPos);
     exit;
   end;
-  NextPos:=CurPos;
   // Skip all spaces and comments
   CommentLvl:=0;
   dec(CurPos.StartPos);
@@ -1579,6 +1592,7 @@ begin
   if CurPos.StartPos<1 then begin
     CurPos.StartPos:=1;
     CurPos.EndPos:=1;
+    LastAtoms.Clear;
     exit;
   end;
   // read atom
@@ -1587,6 +1601,7 @@ begin
     if (CurPos.StartPos>1) and (Src[CurPos.StartPos-1]='''') then begin
       ReadStringConstantBackward;
     end;
+    LastAtoms.AddReverse(CurPos);
     exit;
   end;
   c2:=Src[CurPos.StartPos];
@@ -1770,6 +1785,7 @@ begin
         end;
       end;
   end;
+  LastAtoms.AddReverse(CurPos);
 end;
 
 procedure TCustomCodeTool.ReadPriorAtomSafe(CleanPos: integer);
@@ -1817,8 +1833,8 @@ var
   p: PChar;
 begin
   CurPos.Flag:=cafNone;
-  NextPos.StartPos:=-1;
   if CurPos.StartPos>SrcLen then begin
+    LastAtoms.ClearCurrent;
     CurPos.EndPos:=CurPos.StartPos;
     exit;
   end;
@@ -1871,16 +1887,13 @@ begin
     end;
   end;
   CurPos.EndPos:=p-PChar(Src)+1;
+  LastAtoms.SetCurrent(CurPos);
 end;
 
 procedure TCustomCodeTool.UndoReadNextAtom;
 begin
-  if LastAtoms.Count>0 then begin
-    NextPos:=CurPos;
-    CurPos:=LastAtoms.GetValueAt(0);
-    LastAtoms.UndoLastAdd;
-  end else
-    RaiseUndoImpossible;
+  if not LastAtoms.GoBack(CurPos) then
+    RaiseUndoImpossible(20170421194733);
 end;
 
 function TCustomCodeTool.ReadTilBracketClose(
@@ -1893,9 +1906,9 @@ var CloseBracket, AntiCloseBracket: TCommonAtomFlag;
   procedure RaiseBracketNotFound;
   begin
     if CloseBracket=cafRoundBracketClose then
-      SaveRaiseExceptionFmt(ctsBracketNotFound,[')'],false)
+      SaveRaiseExceptionFmt(20170421194736,ctsBracketNotFound,[')'],false)
     else
-      SaveRaiseExceptionFmt(ctsBracketNotFound,[']'],false);
+      SaveRaiseExceptionFmt(20170421194740,ctsBracketNotFound,[']'],false);
   end;
   
 begin
@@ -1908,7 +1921,7 @@ begin
     AntiCloseBracket:=cafRoundBracketClose;
   end else begin
     if ExceptionOnNotFound then
-      SaveRaiseBracketOpenExpectedButAtomFound;
+      SaveRaiseBracketOpenExpectedButAtomFound(20170421194744);
     exit;
   end;
   Start:=CurPos;
@@ -1940,9 +1953,9 @@ var OpenBracket, AntiOpenBracket: TCommonAtomFlag;
   procedure RaiseBracketNotFound;
   begin
     if OpenBracket=cafRoundBracketOpen then
-      SaveRaiseExceptionFmt(ctsBracketNotFound,['('])
+      SaveRaiseExceptionFmt(20170421194747,ctsBracketNotFound,['('])
     else
-      SaveRaiseExceptionFmt(ctsBracketNotFound,['[']);
+      SaveRaiseExceptionFmt(20170421194749,ctsBracketNotFound,['[']);
   end;
   
 begin
@@ -1955,7 +1968,7 @@ begin
     AntiOpenBracket:=cafRoundBracketOpen;
   end else begin
     if ExceptionOnNotFound then
-      SaveRaiseBracketCloseExpectedButAtomFound;
+      SaveRaiseBracketCloseExpectedButAtomFound(20170421194752);
     exit;
   end;
   Start:=CurPos;
@@ -1983,6 +1996,7 @@ end;
 procedure TCustomCodeTool.ReadTillCommentEnd;
 begin
   CurPos.StartPos:=FindCommentEnd(Src,CurPos.StartPos,Scanner.NestedComments);
+  LastAtoms.SetCurrent(CurPos);
 end;
 
 procedure TCustomCodeTool.BeginParsing(Range: TLinkScannerRange);
@@ -1994,7 +2008,8 @@ begin
   // init parsing values
   CurPos:=StartAtomPosition;
   LastAtoms.Clear;
-  NextPos.StartPos:=-1;
+  if CurPos.StartPos<CurPos.EndPos then
+    LastAtoms.Add(CurPos);
   CurNode:=nil;
 end;
 
@@ -2009,7 +2024,7 @@ begin
   Dummy:=CaretToCleanPos(CursorPos, CleanCursorPos);
   if (Dummy<>0) and (Dummy<>-1) then begin
     MoveCursorToCleanPos(1);
-    RaiseException(ctsCursorPosOutsideOfCode,true);
+    RaiseException(20170421194754,ctsCursorPosOutsideOfCode,true);
   end;
 end;
 
@@ -2153,7 +2168,7 @@ begin
   //debugln(['TCustomCodeTool.RaiseNodeParserError ',Node.DescAsString,' Msg="',NodeError.Msg,'" ',CleanPosToStr(NodeError.CleanPos)]);
   MoveCursorToCleanPos(NodeError.CleanPos);
   ErrorNicePosition:=NodeError.NicePos;
-  RaiseException(NodeError.Msg,false);
+  RaiseException(20170421194759,NodeError.Msg,false);
 end;
 
 procedure TCustomCodeTool.RaiseCursorOutsideCode(CursorPos: TCodeXYPosition);
@@ -2235,7 +2250,7 @@ begin
       end;
     end;
   end;
-  RaiseExceptionAtErrorPos(Msg);
+  RaiseExceptionAtErrorPos(20170421194801,Msg);
 end;
 
 function TCustomCodeTool.StringIsKeyWord(const Word: string): boolean;
@@ -2257,20 +2272,18 @@ begin
   CurPos.EndPos:=ACleanPos;
   CurPos.Flag:=cafNone;
   LastAtoms.Clear;
-  NextPos.StartPos:=-1;
-  CurNode:=nil;
 end;
 
 procedure TCustomCodeTool.MoveCursorToCleanPos(ACleanPos: PChar);
 
   procedure RaiseSrcEmpty;
   begin
-    RaiseException('[TCustomCodeTool.MoveCursorToCleanPos - PChar] Src empty',true);
+    RaiseException(20170421194805,'[TCustomCodeTool.MoveCursorToCleanPos - PChar] Src empty',true);
   end;
   
   procedure RaiseNotInSrc;
   begin
-    RaiseException('[TCustomCodeTool.MoveCursorToCleanPos - PChar] '
+    RaiseException(20170421194809,'[TCustomCodeTool.MoveCursorToCleanPos - PChar] '
       +'CleanPos not in Src',true);
   end;
 
@@ -2285,8 +2298,19 @@ begin
 end;
 
 procedure TCustomCodeTool.MoveCursorToAtomPos(const AnAtomPos: TAtomPosition);
+var
+  i: Integer;
 begin
-  MoveCursorToCleanPos(AnAtomPos.StartPos);
+  if (AnAtomPos.StartPos<AnAtomPos.EndPos)
+  and LastAtoms.IndexOf(AnAtomPos.StartPos,i) then begin
+    //debugln(['TCustomCodeTool.MoveCursorToAtomPos jump to index ',i,' Atom="',GetAtom(AnAtomPos),'"(',AnAtomPos.StartPos,'-',AnAtomPos.EndPos,')']);
+    //debugln(['TCustomCodeTool.MoveCursorToAtomPos ',LastAtoms.GetAtomAt(0).StartPos,'-',LastAtoms.GetAtomAt(0).EndPos]);
+    LastAtoms.SetIndex(i);
+  end
+  else begin
+    //debugln(['TCustomCodeTool.MoveCursorToAtomPos clearing LastAtoms Atom="',GetAtom(AnAtomPos),'"(',AnAtomPos.StartPos,'-',AnAtomPos.EndPos,')']);
+    MoveCursorToCleanPos(AnAtomPos.StartPos);
+  end;
   CurPos:=AnAtomPos;
 end;
 
@@ -2297,7 +2321,7 @@ var
 begin
   ANode:=FindDeepestNodeAtPos(ACleanPos,true);
   if ANode=nil then
-    RaiseException('TCustomCodeTool.MoveCursorToNearestAtom internal error',true);
+    RaiseException(20170421194812,'TCustomCodeTool.MoveCursorToNearestAtom internal error',true);
   MoveCursorToNodeStart(ANode);
   BestPos:=CurPos.StartPos;
   while (CurPos.StartPos<=ACleanPos) and (CurPos.StartPos<=SrcLen) do begin
@@ -2404,6 +2428,7 @@ var
 begin
   ErrorPosition.Code:=nil;
   CursorPos:=CurPos.StartPos;
+  if CursorPos<1 then LastAtoms.Clear;
   //DebugLn('TCustomCodeTool.RaiseExceptionInstance CursorPos=',dbgs(CursorPos),' "',copy(Src,CursorPos-6,6),'"');
   
   if ClearNicePos then begin
@@ -2432,10 +2457,11 @@ begin
   end;
 end;
 
-procedure TCustomCodeTool.RaiseExceptionClass(const AMessage: string;
-  ExceptionClass: ECodeToolErrors; ClearNicePos: boolean);
+procedure TCustomCodeTool.RaiseExceptionClass(id: int64;
+  const AMessage: string; ExceptionClass: ECodeToolErrors; ClearNicePos: boolean
+  );
 begin
-  RaiseExceptionInstance(ExceptionClass.Create(Self,AMessage),ClearNicePos);
+  RaiseExceptionInstance(ExceptionClass.Create(Self,id,AMessage),ClearNicePos);
 end;
 
 function TCustomCodeTool.DefaultKeyWordFunc: boolean;
@@ -2549,7 +2575,7 @@ function TCustomCodeTool.FindDeepestNodeAtPos(StartNode: TCodeTreeNode;
     if (Tree=nil) or (Tree.Root=nil) then begin
       debugln(['TCustomCodeTool.FindDeepestNodeAtPos there are no nodes, maybe you forgot to parse?']);
       CTDumpStack;
-      RaiseException('no pascal code or not yet parsed');
+      RaiseException(20170421194833,'no pascal code or not yet parsed');
     end;
     if p<Tree.Root.StartPos then begin
       // in front of parsed code
@@ -2561,7 +2587,7 @@ function TCustomCodeTool.FindDeepestNodeAtPos(StartNode: TCodeTreeNode;
                 +CleanPosToStr(Tree.Root.StartPos)+')';
       end;
       MoveCursorToCleanPos(P);
-      RaiseException(Msg);
+      RaiseException(20170421194836,Msg);
     end;
     // behind parsed code
     Node:=Tree.Root;
@@ -2572,16 +2598,24 @@ function TCustomCodeTool.FindDeepestNodeAtPos(StartNode: TCodeTreeNode;
       LastPos:=Node.StartPos;
     if p>LastPos then begin
       Msg:='Behind code (last token at '+CleanPosToStr(LastPos)+')';
-      RaiseException(Msg);
+      {$IFDEF VerboseNoNodeAtCursor}
+      debugln(['RaiseNoNodeFoundAtCursor CleanSrcEnd=',CleanPosToStr(SrcLen),' ...',dbgstr(RightStr(Src,50))]);
+      debugln(['   Scanner.ScannedRange=',dbgs(Scanner.ScannedRange)]);
+      debugln(['   Scanner.CleanedSrc=',dbgstr(RightStr(Scanner.CleanedSrc,50))]);
+      debugln(['   Node.StartPos=',CleanPosToStr(Node.StartPos),' EndPos=',CleanPosToStr(Node.EndPos)]);
+      Node:=Node.GetLastNode;
+      debugln(['   LastNode=',Node.DescAsString,' StartPos=',CleanPosToStr(Node.StartPos),' EndPos=',CleanPosToStr(Node.EndPos)]);
+      {$ENDIF}
+      RaiseException(20170421194838,Msg);
     end;
 
     // p is in parsed code, the StartNode is wrong
     CTDumpStack;
     if (StartNode<>nil) then
-      RaiseException('Invalid search. The search for pascal started at '
+      RaiseException(20170421194842,'Invalid search. The search for pascal started at '
                      +CleanPosToStr(StartNode.StartPos)+'. Invalid search')
     else
-      RaiseException('Inconsistency error in TCustomCodeTool.FindDeepestNodeAtPos');
+      RaiseException(20170421194846,'Inconsistency error in TCustomCodeTool.FindDeepestNodeAtPos');
   end;
   
 var
@@ -2697,8 +2731,8 @@ begin
   NewTopLine:=0;
   Result:=CleanPosToCaret(CleanPos,Caret);
   if Result then begin
-    if JumpCentered then begin
-      NewTopLine:=Caret.Y-(VisibleEditorLines shr 1);
+    if JumpSingleLinePos>0 then begin
+      NewTopLine:=Caret.Y-(VisibleEditorLines*JumpSingleLinePos div 100);
       if NewTopLine<1 then NewTopLine:=1;
     end else
       NewTopLine:=Caret.Y;
@@ -2780,8 +2814,8 @@ begin
       // clean pos between tokens
       SameArea.Flag:=cafNone;
       // get range of space behind last atom
-      if LastAtoms.Count>0 then begin
-        SameArea.StartPos:=LastAtoms.GetValueAt(0).EndPos;
+      if LastAtoms.HasPrior then begin
+        SameArea.StartPos:=LastAtoms.GetPriorAtom.EndPos;
       end else begin
         SameArea.StartPos:=CodePosInFront;
       end;
@@ -2805,7 +2839,7 @@ begin
         //debugln(['TCustomCodeTool.GetCleanPosInfo D "',dbgstr(Src,SameArea.StartPos,SameArea.EndPos-SameArea.StartPos),'"']);
         if (SameArea.StartPos=SameArea.EndPos) then
           // inconsistency: some non space and non comment between two tokens
-          RaiseException('TCustomCodeTool.GetCleanPosInfo Internal Error A');
+          RaiseException(20170421194850,'TCustomCodeTool.GetCleanPosInfo Internal Error A');
         if CleanPos<SameArea.EndPos then begin
           // cursor is in comment
           if ResolveComments then begin
@@ -2820,7 +2854,8 @@ begin
               end;
             '(','/': inc(CodePosInFront,2);
             else
-              RaiseException('TCustomCodeTool.GetCleanPosInfo Internal Error B '+dbgstr(Src[CodePosInFront])+' at '+CleanPosToStr(CodePosInFront,true));
+              RaiseException(20170421194855,'TCustomCodeTool.GetCleanPosInfo Internal Error B '
+                +dbgstr(Src[CodePosInFront])+' at '+CleanPosToStr(CodePosInFront,true));
             end;
             if CodePosInFront>CleanPos then
               // CleanPos at start of comment => return comment
@@ -3026,6 +3061,11 @@ begin
     Result:='';
 end;
 
+function TCustomCodeTool.ExtractDottedIdentifier(CleanStartPos: integer): string;
+begin
+  Result:=GetDottedIdentifier(@Src[CleanStartPos]);
+end;
+
 procedure TCustomCodeTool.DoDeleteNodes(StartNode: TCodeTreeNode);
 // delete Node and all following nodes
 var
@@ -3089,22 +3129,22 @@ begin
   end;
 end;
 
-procedure TCustomCodeTool.SaveRaiseIdentExpectedButAtomFound;
+procedure TCustomCodeTool.SaveRaiseIdentExpectedButAtomFound(id: int64);
 begin
-  SaveRaiseExceptionFmt(ctsIdentExpectedButAtomFound,[GetAtom]);
+  SaveRaiseExceptionFmt(id,ctsIdentExpectedButAtomFound,[GetAtom]);
 end;
 
-procedure TCustomCodeTool.SaveRaiseBracketOpenExpectedButAtomFound;
+procedure TCustomCodeTool.SaveRaiseBracketOpenExpectedButAtomFound(id: int64);
 begin
-  SaveRaiseExceptionFmt(ctsBracketOpenExpectedButAtomFound,[GetAtom]);
+  SaveRaiseExceptionFmt(id,ctsBracketOpenExpectedButAtomFound,[GetAtom]);
 end;
 
-procedure TCustomCodeTool.SaveRaiseBracketCloseExpectedButAtomFound;
+procedure TCustomCodeTool.SaveRaiseBracketCloseExpectedButAtomFound(id: int64);
 begin
   if CurPos.StartPos<SrcLen then
-    SaveRaiseExceptionFmt(ctsBracketCloseExpectedButAtomFound,[GetAtom])
+    SaveRaiseExceptionFmt(id,ctsBracketCloseExpectedButAtomFound,[GetAtom])
   else
-    SaveRaiseExceptionFmt(ctsBracketNotFound,[])
+    SaveRaiseExceptionFmt(id,ctsBracketNotFound,[])
 end;
 
 procedure TCustomCodeTool.ActivateGlobalWriteLock;
@@ -3127,19 +3167,20 @@ end;
 
 { ECodeToolError }
 
-constructor ECodeToolError.Create(ASender: TCustomCodeTool;
+constructor ECodeToolError.Create(ASender: TCustomCodeTool; TheId: int64;
   const AMessage: string);
 begin
   inherited Create(AMessage);
   Sender:=ASender;
+  Id:=TheId;
 end;
 
 { ECodeToolFileNotFound }
 
 constructor ECodeToolFileNotFound.Create(ASender: TCustomCodeTool;
-  const AMessage, AFilename: string);
+  TheId: int64; const AMessage, AFilename: string);
 begin
-  inherited Create(ASender,AMessage);
+  inherited Create(ASender,TheId,AMessage);
   Filename:=AFilename;
 end;
 

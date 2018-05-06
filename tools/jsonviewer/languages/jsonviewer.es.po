@@ -35,8 +35,12 @@ msgid "JSON document modified"
 msgstr "Documento JSON modificado"
 
 #: msgjsonviewer.sdocumentmodifiedaction
+#, fuzzy,badformat
+#| msgid ""
+#| "The JSON data was changed but not saved.\n"
+#| "What do want to do ?\n"
 msgid ""
-"The JSON data was changed but not saved.\n"
+"The JSON data in \"%s\" was changed but not saved.\n"
 "What do want to do ?\n"
 msgstr ""
 "Los datos JSON fueron cambiados pero no guardados.\n"
@@ -45,6 +49,10 @@ msgstr ""
 #: msgjsonviewer.sduplicatemembername
 msgid "Duplicate member name \"%s\"."
 msgstr "Nombre de miembro duplicado \"%s\"."
+
+#: msgjsonviewer.sefilenameneeded
+msgid "Filename needed for generated code"
+msgstr ""
 
 #: msgjsonviewer.selement
 msgid "Element nr. %d"
@@ -90,6 +98,63 @@ msgstr "Objeto (%d miembros)"
 msgid "Save the changes"
 msgstr "Guardar los cambios"
 
+#: tcreatecodeform.caption
+msgctxt "tcreatecodeform.caption"
+msgid "Create pascal code"
+msgstr ""
+
+#: tcreatecodeform.cgoptions.caption
+msgid "Other options"
+msgstr ""
+
+#: tcreatecodeform.eextraunitnames.texthint
+msgid "Unit names, separated by commas"
+msgstr ""
+
+#: tcreatecodeform.leconstructorargslabel1.caption
+msgid "Constructor arguments"
+msgstr ""
+
+#: tcreatecodeform.lepropertytypesuffix.caption
+msgid "Property type suffix"
+msgstr ""
+
+#: tcreatecodeform.leunitname.caption
+msgid "Unit name"
+msgstr ""
+
+#: tcreatecodeform.leunitname1.caption
+msgid "Field Prefix"
+msgstr ""
+
+#: tcreatecodeform.lextraunitnames.caption
+msgid "Extra units in uses"
+msgstr ""
+
+#: tcreatecodeform.lfecode.caption
+msgid "File"
+msgstr ""
+
+#: tcreatecodeform.lparentname.caption
+msgid "Object Parent class"
+msgstr ""
+
+#: tcreatecodeform.lseindent.caption
+msgid "Indent"
+msgstr ""
+
+#: tcreatecodeform.tscode.caption
+msgid "Preview"
+msgstr ""
+
+#: tcreatecodeform.tsoptions.caption
+msgid "Options"
+msgstr ""
+
+#: tmainform.aclose.caption
+msgid "&Close"
+msgstr ""
+
 #: tmainform.acopy.caption
 msgid "&Copy"
 msgstr "&Copiar"
@@ -97,6 +162,11 @@ msgstr "&Copiar"
 #: tmainform.acopy.hint
 msgid "Copy selected node to clipboard as JSON"
 msgstr "Copia el nodo seleccionado en el Portapapeles como JSON"
+
+#: tmainform.acreatecode.caption
+msgctxt "tmainform.acreatecode.caption"
+msgid "Create pascal code"
+msgstr ""
 
 #: tmainform.acut.caption
 msgid "C&ut"
@@ -256,6 +326,15 @@ msgstr "&Editar"
 msgid "&File"
 msgstr "Archiv&o"
 
+#: tmainform.miallowcomments.caption
+msgctxt "tmainform.miallowcomments.caption"
+msgid "Allow comments"
+msgstr ""
+
+#: tmainform.miallowtrailingcomma.caption
+msgid "Allow trailing comma"
+msgstr ""
+
 #: tmainform.micompact.caption
 msgid "Compact display"
 msgstr ""
@@ -267,6 +346,10 @@ msgstr "&Nuevo documento con objeto"
 #: tmainform.miinsert.caption
 msgid "&Values"
 msgstr "&Valores"
+
+#: tmainform.miquotestrings.caption
+msgid "Quote string values"
+msgstr ""
 
 #: tmainform.misortmembers.caption
 msgid "Sort object members"

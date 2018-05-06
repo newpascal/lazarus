@@ -18,7 +18,7 @@ interface
 uses
   Classes, TypInfo, SysUtils, LCLProc, Forms, Controls, LCLType, GraphType,
   LazFileUtils, Graphics, Buttons, Menus, ExtCtrls, Dialogs,
-  LCLIntf, PropEdits, PropEditUtils, ImgList, Math,
+  LCLIntf, PropEdits, PropEditUtils, ImgList, EditBtn, Math,
   GraphicPropEdit; // defines TGraphicPropertyEditorForm
 
 type
@@ -303,8 +303,6 @@ end;
 function TColorPropertyEditor.GetAttributes: TPropertyAttributes;
 begin
   Result := [paMultiSelect,paDialog,paValueList,paCustomDrawn,paRevertable];
-  if GetDefaultOrdValue <> NoDefaultValue then
-    Result := Result + [paHasDefaultValue];
 end;
 
 function TColorPropertyEditor.OrdValueToVisualValue(OrdValue: longint): string;
@@ -376,26 +374,6 @@ begin
     vOldPenColor := Pen.Color;
     vOldBrushColor := Brush.Color;
 
-    // frame things
-    if pedsInEdit in AState then
-    begin
-      if pedsSelected in AState then
-        Brush.Color := clWindow
-      else
-        Brush.Color := ACanvas.Brush.Color;
-    end
-    else
-    begin
-      if pedsSelected in AState then
-        Brush.Color := clHighlightText
-      else
-       Brush.Color := clWindow;
-    end;
-    Pen.Color := Brush.Color;
-    Pen.Style := psSolid;
-    FillRect(ARect);
-    Rectangle(ARect.Left, ARect.Top, vRight, vBottom);
-
     // set things up and do the work
     noFill := CurValue = 'clNone';
     if noFill then
@@ -445,6 +423,7 @@ procedure TFontNamePropertyEditor.GetValues(Proc: TGetStrProc);
 var
   I: Integer;
 begin
+  Proc('default');
   for I := 0 to Screen.Fonts.Count -1 do
     Proc(Screen.Fonts[I]);
 end;
@@ -453,7 +432,7 @@ end;
 
 function TFontCharsetPropertyEditor.GetAttributes: TPropertyAttributes;
 begin
-  Result:=[paMultiSelect,paSortList,paValueList,paRevertable,paHasDefaultValue];
+  Result:=[paMultiSelect,paSortList,paValueList,paRevertable];
 end;
 
 function TFontCharsetPropertyEditor.OrdValueToVisualValue(OrdValue: longint
@@ -562,7 +541,7 @@ end;
 
 function TBrushStylePropertyEditor.GetAttributes: TPropertyAttributes;
 begin
-  Result:=(inherited GetAttributes)-[paHasDefaultValue]+[paCustomDrawn];
+  Result:=(inherited GetAttributes)+[paCustomDrawn];
 end;
 
 procedure TBrushStylePropertyEditor.ListMeasureWidth(const CurValue: ansistring;
@@ -632,7 +611,7 @@ end;
 
 function TPenStylePropertyEditor.GetAttributes: TPropertyAttributes;
 begin
-  Result:=(inherited GetAttributes)-[paHasDefaultValue]+[paCustomDrawn];
+  Result:=(inherited GetAttributes)+[paCustomDrawn];
 end;
 
 procedure TPenStylePropertyEditor.ListMeasureWidth(const CurValue: ansistring;
@@ -693,7 +672,12 @@ begin
   end
   else
   begin
-    Component := Component.GetParentComponent;
+    if not (
+         (Component is TCustomSpeedButton)
+      or (Component is TCustomBitBtn)
+      or (Component is TCustomEditButton))
+    then
+      Component := Component.GetParentComponent;
     if Component = nil then
       Exit;
     PropInfo := TypInfo.GetPropInfo(Component, 'Images');
@@ -708,21 +692,22 @@ end;
 function TImageIndexPropertyEditor.GetAttributes: TPropertyAttributes;
 begin
   Result := [paValueList, paCustomDrawn, paRevertable];
-  if GetDefaultOrdValue <> NoDefaultValue then
-    Result := Result + [paHasDefaultValue];
 end;
 
 procedure TImageIndexPropertyEditor.GetValues(Proc: TGetStrProc);
 var
   Images: TCustomImageList;
-  I: Integer;
+  I, DefValue: Integer;
 begin
-  if GetDefaultOrdValue <> NoDefaultValue then
-    Proc(IntToStr(GetDefaultOrdValue));
+  Proc(IntToStr(-1));
+  DefValue := GetDefaultOrdValue;
+  if (DefValue <> NoDefaultValue) and (DefValue <> -1) then
+    Proc(IntToStr(DefValue));
   Images := GetImageList;
   if Assigned(Images) then
     for I := 0 to Images.Count - 1 do
-      Proc(IntToStr(I));
+      if (I <> DefValue) then
+        Proc(IntToStr(I));
 end;
 
 procedure TImageIndexPropertyEditor.ListMeasureHeight(const AValue: ansistring;
@@ -772,7 +757,9 @@ initialization
   RegisterPropertyEditor(TypeInfo(TBrushStyle), nil, '', TBrushStylePropertyEditor);
   RegisterPropertyEditor(TypeInfo(AnsiString), TFont, 'Name', TFontNamePropertyEditor);
   RegisterPropertyEditor(TypeInfo(TFontCharset), nil, 'CharSet', TFontCharsetPropertyEditor);
-  RegisterPropertyEditor(TypeInfo(TImageIndex), TComponent, 'ImageIndex', TImageIndexPropertyEditor);
+  RegisterPropertyEditor(TypeInfo(TImageIndex), TPersistent, 'ImageIndex', TImageIndexPropertyEditor);
+  RegisterPropertyEditor(TypeInfo(TImageIndex), TComponent, 'ImageIndexSortAsc', TImageIndexPropertyEditor);
+  RegisterPropertyEditor(TypeInfo(TImageIndex), TComponent, 'ImageIndexSortDesc', TImageIndexPropertyEditor);
   RegisterPropertyEditor(ClassTypeInfo(TFont), nil,'',TFontPropertyEditor);
   RegisterPropertyEditor(ClassTypeInfo(TGraphic), nil,'',TGraphicPropertyEditor);
   RegisterPropertyEditor(ClassTypeInfo(TPicture), nil,'',TPicturePropertyEditor);

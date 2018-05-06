@@ -103,6 +103,10 @@
    contained TCSSProps objects are created and owned by TCSSGlobalProps }
  TCSSGlobalProps = class
    FElements: TFPObjectHashTable;
+ protected
+   {$IFDEF IP_LAZARUS_DBG}
+   procedure DoDumpProps(Item: TObject; const Key: String; var Continue: Boolean);
+   {$ENDIF}
  public
    constructor Create;
    destructor Destroy; override;
@@ -551,7 +555,6 @@ begin
   Result := TStringList.Create;
   Start := Pos(':', ACommand)+1;
 
-
   WantArg := True;
   Quote := #0;
   for i := Start to Length(ACommand) do
@@ -770,14 +773,13 @@ begin
              else
                Color := clDefault;
 
-      'b': if Command = 'background-color' then
-           begin
+      'b': if Command = 'background-color' then begin
              if Args.Count > 0 then
                BGColor := ColorFromString(Args[0])
              else
-               BGColor := clDefault
-           end
-           else if Command = 'background' then
+               BGColor := clDefault;
+           end else
+           if Command = 'background' then
            begin
              if Args.Count > 0 then BGColor := ColorFromString(Args[0]);
              if Args.Count > 1 then ; // background image
@@ -793,32 +795,29 @@ begin
            end
            else if Command = 'border-width' then
            begin
-             Border.Width := SizePxFromString(Args[0]);
+             if Args.Count > 0 then Border.Width := SizePxFromString(Args[0]);
            end
            else if Command = 'border-color' then
            begin
-             Border.Color := ColorFromString(Args[0]);
+             if Args.Count > 0 then Border.Color := ColorFromString(Args[0]);
            end
            else if Command = 'border-style' then
            begin
-             Border.Style := BorderStyleFromString(Args[0]);
+             if Args.Count > 0 then Border.Style := BorderStyleFromString(Args[0]);
            end;
 
       'm':
-        if Command = 'margin-top' then
-        begin
+        if Command = 'margin-top' then begin
           if Args.Count > 0 then MarginTop := StrToCssMargin(Args[0]);
-        end else if Command = 'margin-left' then
-        begin
+        end
+        else if Command = 'margin-left' then begin
           if Args.Count > 0 then MarginLeft := StrToCssMargin(Args[0]);
-        end else if Command = 'margin-bottom' then
-        begin
+        end
+        else if Command = 'margin-bottom' then begin
           if Args.Count > 0 then MarginBottom := StrToCssMargin(Args[0]);
-        end else if Command = 'margin-right' then
-        begin
+        end else if Command = 'margin-right' then begin
           if Args.Count > 0 then MarginRight := StrToCssMargin(Args[0]);
-        end else if Command = 'margin' then
-        begin
+        end else if Command = 'margin' then begin
           case Args.Count of
           1:begin
               // 1 arg: all four the same
@@ -850,27 +849,23 @@ begin
           end;
         end;
 
-      't': if (Command = 'text-align') and (Args.Count = 1) then
-             if Args.Count > 0 then
-               Alignment := GetAlignmentForStr(Args[0])
-             else
-               Alignment := GetAlignmentForStr('');
-
+      't': if (Command = 'text-align') then
+           begin
+             if Args.Count > 0 then Alignment := GetAlignmentForStr(Args[0]);
+           end;
 
       'f':
-          if length(Command) > 7 then
-          begin
+          if (Length(Command) > 7) and (Args.Count > 0) then
             case Command[7] of
-              'a': if (Command = 'font-family')and (Args.Count > 0) then
+              'a': if (Command = 'font-family') then
                      Font.Name := Args[0];
-              'i': if (Command = 'font-size') and (Args.Count > 0) then
+              'i': if (Command = 'font-size') then
                      Font.Size := Args[0];
-              't': if (Command = 'font-style') and (Args.Count > 0) then
+              't': if (Command = 'font-style') then
                      Font.Style := CSSFontStyleFromName(Args[0]);
-              'e': if (Command = 'font-weight') and (Args.Count > 0) then
+              'e': if (Command = 'font-weight') then
                      Font.Weight := FontWeightFromString(Args[0]);
             end;
-          end;
       end;
     finally
       Args.Free;
@@ -908,8 +903,8 @@ begin
   if AProps.MarginTop.Size <> 0 then
     FMarginTop.Size := AProps.MarginTop.Size;
 
-
 end;
+
 
 { TCSSGlobalProps }
 
@@ -923,6 +918,25 @@ begin
   FElements.Free;
   inherited Destroy;
 end;
+
+{$IFDEF IP_LAZARUS_DBG}
+procedure TCSSGlobalProps.DoDumpProps(Item: TObject; const Key: String; var Continue: Boolean);
+var
+  lProp: TCSSProps;
+begin
+  lProp := TCSSProps(Item);
+  WriteLn('CSS for  >>>: ', Key);
+  WriteLn('  Color : ', lProp.Color);
+  WriteLn('  BgColor : ', lProp.BGColor);
+  WriteLn('  Font : ', lProp.Font.Name, ':', lProp.Font.FFamily, ':', lProp.Font.Size);
+  WriteLn('  Align : ' + GetEnumName(TypeInfo(TIpHtmlAlign), ord(lProp.Alignment)));
+end;
+
+procedure TCSSGlobalProps.DumpProps;
+begin
+  FElements.Iterate(DoDumpProps);
+end;
+{$endif}
 
 function TCSSGlobalProps.GetPropsObject(ATagName: String;
   AClassID: String; CreateIfNotExist: Boolean): TCSSProps;
@@ -963,6 +977,7 @@ begin
   end;
 end;
 
+
 { TCSSBorder }
 
 constructor TCSSBorder.Create;
@@ -973,35 +988,4 @@ begin
   FStyle := cbsNone;
 end;
 
-{$IFDEF IP_LAZARUS_DBG}
-procedure DumpTCSSProps(aProp: TCSSProps);
-var
-  str: string;
-begin
-    WriteLn('Color : ', aProp.Color);
-    WriteLn('BgColor : ', aProp.BGColor);
-    WriteLn('Font : ', aProp.Font.Name, ':', aProp.Font.FFamily, ':', aProp.Font.Size);
-    case aProp.Alignment of
-       haDefault: str:= 'haDefault';
-       haLeft: str:= 'haLeft';
-       haCenter: str:= 'haCenter';
-       haRight: str:= 'haRight';
-       haJustify: str:= 'haJustify';
-       haChar: str:= 'haChar';
-       else str:= 'haUnknow';
-    end;
-    WriteLn('Align : ', str);
-end;
-
-procedure TCSSGlobalProps.DumpProps;
-var
-   n: integer;
-begin
-   for n:=0 to FElements.Count-1 do
-   begin
-        WriteLn('CSS for >>>: ', FElements[n]);
-        DumpTCSSProps(TCSSProps(FElements.Objects[n]));
-   end;
-end;
-{$endif}
 {$ENDIF}

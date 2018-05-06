@@ -35,6 +35,7 @@ uses
   Dialogs, TreeFilterEdit,
   // IdeIntf
   IDEWindowIntf, IDEOptionsIntf, IDECommands, IDEHelpIntf, ProjectIntf,
+  IDEImagesIntf,
   // IDE
   EnvironmentOpts, EditorOptions, BuildModesManager, Compiler_ModeMatrix,
   Project, LazarusIDEStrConsts,
@@ -94,6 +95,7 @@ type
     procedure SaveIDEOptions(Sender: TObject; AOptions: TAbstractIDEOptions);
     procedure CreateEditors;
     function SearchEditorNode(AEditor: TAbstractIDEOptionsEditorClass): TTreeNode;
+    function SearchEditorNode(const IDEOptionsEditorClassName: string): TTreeNode;
     function PassesFilter(ARec: PIDEOptionsGroupRec): Boolean;
     procedure SetSettings(const AValue: TIDEOptionsEditorSettings);
     function AllBuildModes: boolean;
@@ -108,6 +110,7 @@ type
     procedure OpenEditor(AEditor: TAbstractIDEOptionsEditorClass); override;
     procedure OpenEditor(GroupIndex, AIndex: integer); override;
     function FindEditor(AEditor: TAbstractIDEOptionsEditorClass): TAbstractIDEOptionsEditor; override;
+    function FindEditor(const IDEOptionsEditorClassName: string): TAbstractIDEOptionsEditor; override;
     function FindEditor(GroupIndex, AIndex: integer): TAbstractIDEOptionsEditor; override;
     function FindEditorClass(GroupIndex, AIndex: integer): TAbstractIDEOptionsEditorClass; override;
     function ResetFilter: Boolean; override;
@@ -158,7 +161,7 @@ begin
   SetBuildModeVisibility(False);
   UseBuildModeCheckBox.Caption:=lisBuildModes;
 
-  IDEDialogLayoutList.ApplyLayout(Self, Width, Height);
+  IDEDialogLayoutList.ApplyLayout(Self);
   Caption := dlgIDEOptions;
   ButtonPanel.OKButton.Caption := lisMenuOk;
   ButtonPanel.OKButton.OnClick := @OKButtonClick;
@@ -584,6 +587,28 @@ begin
   Result := Traverse(CategoryTree.Items.GetFirstNode);
 end;
 
+function TIDEOptionsDialog.SearchEditorNode(
+  const IDEOptionsEditorClassName: string): TTreeNode;
+
+  function Traverse(ANode: TTreeNode): TTreeNode;
+  begin
+    Result := nil;
+    if ANode <> nil then
+    begin
+      if (ANode.Data <> nil)
+      and (CompareText(TObject(ANode.Data).ClassName,IDEOptionsEditorClassName)=0) then
+        Result := ANode;
+      if Result = nil then
+        Result := Traverse(ANode.GetFirstChild);
+      if Result = nil then
+        Result := Traverse(ANode.GetNextSibling);
+    end;
+  end;
+
+begin
+  Result := Traverse(CategoryTree.Items.GetFirstNode);
+end;
+
 function TIDEOptionsDialog.PassesFilter(ARec: PIDEOptionsGroupRec): Boolean;
 var
   i: Integer;
@@ -728,6 +753,18 @@ var
   Node: TTreeNode;
 begin
   Node := SearchEditorNode(AEditor);
+  if Node <> nil then
+    Result := TAbstractIDEOptionsEditor(Node.Data)
+  else
+    Result := nil;
+end;
+
+function TIDEOptionsDialog.FindEditor(const IDEOptionsEditorClassName: string
+  ): TAbstractIDEOptionsEditor;
+var
+  Node: TTreeNode;
+begin
+  Node := SearchEditorNode(IDEOptionsEditorClassName);
   if Node <> nil then
     Result := TAbstractIDEOptionsEditor(Node.Data)
   else

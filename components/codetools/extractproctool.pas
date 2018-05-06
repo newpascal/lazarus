@@ -51,11 +51,12 @@ unit ExtractProcTool;
 interface
 
 uses
-  Classes, SysUtils, math, FileProcs, CodeToolsStrConsts, CodeTree, CodeAtom,
+  Classes, SysUtils, math, Laz_AVL_Tree,
+  // Codetools
+  FileProcs, CodeToolsStrConsts, CodeTree, CodeAtom,
   CodeCache, CustomCodeTool, PascalReaderTool,
   PascalParserTool, CodeCompletionTool, KeywordFuncLists, BasicCodeTools,
-  LinkScanner, AVL_Tree, SourceChanger,
-  FindDeclarationTool;
+  LinkScanner, SourceChanger, FindDeclarationTool;
   
 type
   TExtractedProcVariableType = (
@@ -113,7 +114,7 @@ type
     function ExtractProc(const StartPos, EndPos: TCodeXYPosition;
       ProcType: TExtractProcType; const ProcName: string;
       IgnoreIdentifiers: TAVLTree; // tree of PCodeXYPosition
-      out NewPos: TCodeXYPosition; out NewTopLine: integer;
+      out NewPos: TCodeXYPosition; out NewTopLine, BlockTopLine, BlockBottomLine: integer;
       SourceChangeCache: TSourceChangeCache;
       FunctionResultVariableStartPos: integer = 0): boolean;
 
@@ -264,10 +265,10 @@ end;
 
 function TExtractProcTool.ExtractProc(const StartPos, EndPos: TCodeXYPosition;
   ProcType: TExtractProcType; const ProcName: string;
-  IgnoreIdentifiers: TAVLTree; // tree of PCodeXYPosition
-  out NewPos: TCodeXYPosition; out NewTopLine: integer;
-  SourceChangeCache: TSourceChangeCache;
-  FunctionResultVariableStartPos: integer): boolean;
+  IgnoreIdentifiers: TAVLTree; out NewPos: TCodeXYPosition; out NewTopLine,
+  BlockTopLine, BlockBottomLine: integer;
+  SourceChangeCache: TSourceChangeCache; FunctionResultVariableStartPos: integer
+  ): boolean;
 const
   ShortProcFormat = [phpWithoutClassKeyword];
 var
@@ -856,7 +857,7 @@ var
                                    ShortProcFormat+[phpIgnoreForwards]);
     Result:=ConflictProcNode<>nil;
     if Result then begin
-      RaiseException('New procedure "'+ProcName+'" exists already');
+      RaiseException(20170421201925,'New procedure "'+ProcName+'" exists already');
     end;
     {$IFDEF CTDebug}
     DebugLn('NewProcAlreadExists END ProcHead="',ProcHead,'" Found=',dbgs(Result));
@@ -925,7 +926,7 @@ var
         AddClassInsertion(CleanMethodDefinition, MethodDefinition,
                           ProcName, NewClassPart, nil, ProcCode);
         if not InsertAllNewClassParts then
-          RaiseException(ctsErrorDuringInsertingNewClassParts);
+          RaiseException(20170421201927,ctsErrorDuringInsertingNewClassParts);
       end;
 
     end;
@@ -962,7 +963,7 @@ var
       eptPublicMethod] then
     begin
       if not CreateMissingClassProcBodies(false) then
-        RaiseException(ctsErrorDuringCreationOfNewProcBodies);
+        RaiseException(20170421201930,ctsErrorDuringCreationOfNewProcBodies);
     end else begin
       TabWidth:=Beauty.TabWidth;
       IndentText(ProcCode,Indent,TabWidth,IndentedProcCode);
@@ -1015,7 +1016,7 @@ var
     DebugLn('FindJumpPointToNewProc A found=',dbgs(NewProcNode<>nil));
     {$ENDIF}
     if NewProcNode=nil then exit;
-    Result:=FindJumpPointInProcNode(NewProcNode,NewPos,NewTopLine);
+    Result:=FindJumpPointInProcNode(NewProcNode,NewPos,NewTopLine,BlockTopLine,BlockBottomLine);
     {$IFDEF CTDebug}
     DebugLn('FindJumpPointToNewProc END ',NewProcNode.DescAsString,' ',dbgs(Result),' ',dbgs(NewPos.X),',',dbgs(NewPos.Y),' ',dbgs(NewTopLine));
     {$ENDIF}
@@ -1160,7 +1161,7 @@ var
                    in (AllClasses+[ctnEnumerationType])))
           then begin
             MoveCursorToCleanPos(Cache^.WithVarNode.StartPos);
-            RaiseException(ctsExprTypeMustBeClassOrRecord);
+            RaiseException(20170421201932,ctsExprTypeMustBeClassOrRecord);
           end;
           {$IFDEF CTDEBUG}
           debugln(['IdentifierDefinedByWith WithVarExpr=',ExprTypeToString(Cache^.WithVarExpr)]);
@@ -1586,19 +1587,19 @@ var
         if (StartFlag=cafRoundBracketOpen) then
           break
         else if StartFlag=cafEdgedBracketOpen then
-          RaiseCharExpectedButAtomFound(']')
+          RaiseCharExpectedButAtomFound(20170421201936,']')
         else
-          RaiseStringExpectedButAtomFound('end');
+          RaiseStringExpectedButAtomFound(20170421201938,'end');
       cafEdgedBracketClose:
         if (StartFlag=cafEdgedBracketOpen) then
           break
         else if StartFlag=cafRoundBracketOpen then
-          RaiseCharExpectedButAtomFound(')')
+          RaiseCharExpectedButAtomFound(20170421201942,')')
         else
-          RaiseStringExpectedButAtomFound('end');
+          RaiseStringExpectedButAtomFound(20170421201946,'end');
       end;
       if AtomIsIdentifier then begin
-        LastPos:=LastAtoms.GetValueAt(0);
+        LastPos:=LastAtoms.GetPriorAtom;
         if not ((LastPos.Flag in [cafPoint]) or LastAtomIs(0,'^')
           or LastUpAtomIs(0,'INHERITED'))
         then begin

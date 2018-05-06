@@ -27,6 +27,7 @@ uses
   qtwidgets, qtobjects, qtproc, QtWsControls,
   // LCL
   SysUtils, Classes, Types, LCLType, LCLProc, Graphics, Controls, Forms, Menus,
+  ImgList,
   // Widgetset
   WSMenus, WSLCLClasses;
 
@@ -100,7 +101,7 @@ end;
 
 class function TQtWSMenuItem.CreateMenuFromMenuItem(const AMenuItem: TMenuItem): TQtMenu;
 var
-  ImgList: TImageList;
+  ImgList: TCustomImageList;
 begin
   Result := TQtMenu.Create(AMenuItem);
   Result.FDeleteLater := False;
@@ -117,13 +118,13 @@ begin
     Result.setShortcut(AMenuItem.ShortCut, AMenuItem.ShortCutKey2);
     if AMenuItem.HasIcon then
     begin
-      ImgList := TImageList(AMenuItem.GetImageList);
+      ImgList := AMenuItem.GetImageList;
       // we must check so because AMenuItem.HasIcon can return true
       // if Bitmap is setted up but not ImgList.
       if (ImgList <> nil) and (AMenuItem.ImageIndex >= 0) and
         (AMenuItem.ImageIndex < ImgList.Count) then
       begin
-        ImgList.GetBitmap(AMenuItem.ImageIndex, AMenuItem.Bitmap);
+        ImgList.ResolutionForPPI[16, ScreenInfo.PixelsPerInchX, 1].GetBitmap(AMenuItem.ImageIndex, AMenuItem.Bitmap); // Qt bindings support only 16px icons for menu items
         Result.setImage(TQtImage(AMenuItem.Bitmap.Handle));
       end else
       if Assigned(AMenuItem.Bitmap) then
@@ -367,7 +368,7 @@ end;
 class function TQtWSMenuItem.SetRightJustify(const AMenuItem: TMenuItem; const Justified: boolean): boolean;
 begin
   if not WSCheckMenuItem(AMenuItem, 'SetRightJustify') then
-    Exit;
+    Exit(False);
 
   // what should be done here? maybe this?
   TQtMenu(AMenuItem.Handle).setAttribute(QtWA_RightToLeft, Justified);
@@ -401,6 +402,7 @@ var
   Menu: TQtMenu;
   AParent: TComponent;
 begin
+  Result := 0;
   { If the menu is a main menu, there is no need to create a handle for it.
     It's already created on the window }
   if (AMenu is TMainMenu) then
@@ -427,15 +429,12 @@ begin
   begin
     Menu := TQtMenu.Create(AMenu.Items);
     Menu.AttachEvents;
-  
     Result := HMENU(Menu);
   end;
 
   {$ifdef VerboseQt}
     Write('[TQtWSMenu.CreateHandle] ');
-
     if (AMenu is TMainMenu) then Write('IsMainMenu ');
-
     WriteLn(' Handle: ', dbghex(Result), ' Name: ', AMenu.Name);
   {$endif}
 end;

@@ -17,41 +17,16 @@ resourcestring
   oisError = 'Error';
   oisMixed = '(Mixed)';
   oisItemsSelected = '%u items selected';
-  
-  oiscAdd = '&Add';
+  //oiscAdd = '&Add';
   oiscDelete = 'Delete?';
-  oisDeleteSelectedFieldS = 'Delete selected field(s)';
-  oisNew = '&New';
-  oisCreateNewFieldAndAddItAtCurrentPosition = 'Create new field and add it '
-    +'at current position';
-  oisMoveUp = 'Move &Up';
-  oisMoveDown = 'Move &Down';
-  oisSelectAll = '&Select all';
-  oisUnselectAll = '&Unselect all';
-  oisConfirmDelete = 'Confirm delete';
-  oisDeleteItem = 'Delete item "%s"?';
-  oisUnknown = 'Unknown';
-  oisObject = 'Object';
-  oisClass = 'Class';
-  oisWord = 'Word';
-  oisString = 'String';
-  oisFloat = 'Float';
-  oisSet = 'Set';
-  oisMethod = 'Method';
-  oisVariant = 'Variant';
-  oisArray = 'Array';
-  oisRecord = 'Record';
-  oisInterface = 'Interface';
   oisProperties = 'Properties';
   oisBtnProperties = '&Properties';
   oisEvents = 'Events';
   oisFavorites = 'Favorites';
   oisRestricted = 'Restricted';
-  
   oisWidgetSetRestrictions = 'General widget set restrictions: ';
   oisComponentRestrictions = 'Component restrictions: ';
 
-  
   //Object Inspector Popup Menu
   oisZOrder = 'Z-order';
   oisOrderMoveToFront = 'Move to Front';
@@ -85,15 +60,39 @@ resourcestring
   oisShowStatusBar = 'Show Status Bar';
   oisOptions = 'Options';
 
-  
-  // typeinfo
+  // typeinfo, PropEdits
+  oisInvalid = '(Invalid)';
+  oisUnknown = 'Unknown';
+  oisObject = 'Object';
+  oisClass = 'Class';
+  oisWord = 'Word';
+  oisString = 'String';
+  oisFloat = 'Float';
+  oisSet = 'Set';
+  oisMethod = 'Method';
+  oisVariant = 'Variant';
+  oisArray = 'Array';
+  oisRecord = 'Record';
+  oisInterface = 'Interface';
   oisValue = 'Value:';
   oisInteger = 'Integer';
   oisInt64 = 'Int64';
   oisBoolean = 'Boolean';
   oisEnumeration = 'Enumeration';
   oisChar = 'Char';
-  
+
+  // Editors
+  oisDeleteSelectedFieldS = 'Delete selected field(s)';
+  oisNew = '&New';
+  oisCreateNewFieldAndAddItAtCurrentPosition = 'Create new field and add it '
+    +'at current position';
+  oisMoveUp = 'Move &Up';
+  oisMoveDown = 'Move &Down';
+  oisSelectAll = '&Select all';
+  oisUnselectAll = '&Unselect all';
+  oisConfirmDelete = 'Confirm delete';
+  oisDeleteItem = 'Delete item "%s"?';
+
   // TreeView Items Editor
   sccsTrEdtCaption         = 'TreeView Items Editor';
   sccsTrEdt                = 'Edit Items ...';
@@ -134,7 +133,9 @@ resourcestring
   sccsILEdtGrpLCaption = 'Images';
   sccsILEdtGrpRCaption = 'Selected Image';
   sccsILEdtAdd         = '&Add ...';
+  sccsILEdtAddMoreResolutions = 'Add more resolutions ...';
   sccsILEdtReplace     = '&Replace ...';
+  sccsILEdtReplaceAllResolutions = 'Replace all resolutions ...';
   sccsILEdtDelete      = '&Delete';
   sccsILEdtApply       = '&Apply';
   sccsILEdtClear       = '&Clear';
@@ -142,6 +143,11 @@ resourcestring
   sccsILEdtMoveDown    = 'Move D&own';
   sccsILEdtSave        = '&Save ...';
   sccsILEdtSaveAll     = 'Save All ...';
+  sccsILEdtAddNewResolution = 'New resolution ...';
+  sccsILEdtDeleteResolution = 'Delete resolution ...';
+  sccsILEdtDeleteResolutionConfirmation = 'Select the resolution to delete.';
+  sccsILEdtCannotDeleteResolution = 'Cannot delete default resolution.';
+  sccsILEdtImageWidthOfNewResolution = 'Image width of the new resolution:';
   sccsILEdtransparentColor = 'Transparent Color:';
   sccsILEdtAdjustment  = 'Adjustment';
   sccsILEdtNone        = 'None';
@@ -215,7 +221,6 @@ resourcestring
   cgCheckDuplicateMsg = 'The "%s" Item is already listed. Add it anyway?';
 
   // Collection Editor
-
   oiColEditAdd = 'Add';
   oiColEditDelete = 'Delete';
   oiColEditUp = 'Up';
@@ -440,6 +445,8 @@ resourcestring
   oisChangeClass = 'Change Class ...';
   oisChangeParent = 'Change Parent';
   lisUnableToFindParserForTool = 'Unable to find parser for tool "%s"';
+  oisShowAllOutputLines = 'Show all output lines';
+  lisUnableToFindParserWithName = 'Unable to find parser with name "%s"';
 
   // TChangeParentDlg
   oisShowClasses = 'Show classes';

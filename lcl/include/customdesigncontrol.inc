@@ -18,7 +18,8 @@ begin
   FScaled := True;
   FDesignTimePPI := 96;
   FPixelsPerInch := FDesignTimePPI;
-  Font.PixelsPerInch := FDesignTimePPI;
+  if Application.Scaled then
+    Font.PixelsPerInch := FDesignTimePPI;
 end;
 
 procedure TCustomDesignControl.AutoAdjustLayout(AMode: TLayoutAdjustmentPolicy;
@@ -28,6 +29,31 @@ begin
 
   if AMode = lapAutoAdjustForDPI then
     FPixelsPerInch := AToPPI;
+end;
+
+procedure TCustomDesignControl.DoAutoAdjustLayout(
+  const AMode: TLayoutAdjustmentPolicy; const AXProportion, AYProportion: Double
+  );
+var
+  NewWidth, NewHeight: Integer;
+begin
+  if Assigned(Parent) then
+  begin
+    inherited;
+    Exit;
+  end;
+
+  // Apply the changes
+  if AMode in [lapAutoAdjustWithoutHorizontalScrolling, lapAutoAdjustForDPI] then
+  begin
+    NewWidth := Round(Width*AXProportion);
+    NewHeight := Round(Height*AYProportion);
+
+    BorderSpacing.AutoAdjustLayout(AXProportion, AYProportion);
+    Constraints.AutoAdjustLayout(AXProportion, AYProportion);
+
+    SetBounds(Left, Top, NewWidth, NewHeight);
+  end;
 end;
 
 procedure TCustomDesignControl.Loaded;
@@ -70,5 +96,10 @@ end;
 
 procedure TCustomDesignControl.SetScaled(const AScaled: Boolean);
 begin
+  if FScaled=AScaled then
+    Exit;
+
   FScaled := AScaled;
+  if not FScaled then
+    Font.PixelsPerInch := Screen.PixelsPerInch;
 end;

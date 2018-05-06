@@ -328,9 +328,6 @@ type
         itmPkgPkgGraph: TIDEMenuCommand;
         itmPkgPackageLinks: TIDEMenuCommand;
         itmPkgEditInstallPkgs: TIDEMenuCommand;
-        {$IFDEF CustomIDEComps}
-        itmCompsConfigCustomComps: TIDEMenuCommand;
-        {$ENDIF}
 
     // tools menu
     //mnuTools: TIDEMenuSection;
@@ -419,36 +416,42 @@ begin
   if not Showing then Exit;
 
   //DebugLn(['TMainIDEBar.DoSetMainIDEHeight: IDEStarted=', LazarusIDE.IDEStarted]);
-  if Assigned(IDEDockMaster) then
-  begin
-    if EnvironmentOptions.Desktop.AutoAdjustIDEHeight then
+
+  DisableAutoSizing;
+  try
+    if Assigned(IDEDockMaster) then
     begin
-      if ANewHeight <= 0 then
-        ANewHeight := CalcMainIDEHeight;
-      IDEDockMaster.AdjustMainIDEWindowHeight(Self, True, ANewHeight)
-    end
-    else
-      IDEDockMaster.AdjustMainIDEWindowHeight(Self, False, 0);
-  end else
-  begin
-    if (AIDEIsMaximized or EnvironmentOptions.Desktop.AutoAdjustIDEHeight) then
-    begin
-      if ANewHeight <= 0 then
-        ANewHeight := CalcMainIDEHeight;
-      Inc(ANewHeight, CalcNonClientHeight);
-      if ANewHeight <> Constraints.MaxHeight then
+      if EnvironmentOptions.Desktop.AutoAdjustIDEHeight then
       begin
-        Constraints.MaxHeight := ANewHeight;
-        Constraints.MinHeight := ANewHeight;
-        ClientHeight := ANewHeight;
-      end else if ClientHeight <> ANewHeight then
-        ClientHeight := ANewHeight;
+        if ANewHeight <= 0 then
+          ANewHeight := CalcMainIDEHeight;
+        IDEDockMaster.AdjustMainIDEWindowHeight(Self, True, ANewHeight)
+      end
+      else
+        IDEDockMaster.AdjustMainIDEWindowHeight(Self, False, 0);
     end else
-    if Constraints.MaxHeight <> 0 then
     begin
-      Constraints.MaxHeight := 0;
-      Constraints.MinHeight := 0;
+      if (AIDEIsMaximized or EnvironmentOptions.Desktop.AutoAdjustIDEHeight) then
+      begin
+        if ANewHeight <= 0 then
+          ANewHeight := CalcMainIDEHeight;
+        Inc(ANewHeight, CalcNonClientHeight);
+        if ANewHeight <> Constraints.MaxHeight then
+        begin
+          Constraints.MaxHeight := ANewHeight;
+          Constraints.MinHeight := ANewHeight;
+          ClientHeight := ANewHeight;
+        end else if ClientHeight <> ANewHeight then
+          ClientHeight := ANewHeight;
+      end else
+      if Constraints.MaxHeight <> 0 then
+      begin
+        Constraints.MaxHeight := 0;
+        Constraints.MinHeight := 0;
+      end;
     end;
+  finally
+    EnableAutoSizing;
   end;
 end;
 
@@ -497,8 +500,8 @@ begin
   Assert(Result >= 0, 'TMainIDEBar.CalcNonClientHeight: Result '+IntToStr(Result)+' is below zero.');
 
   {$IFDEF LCLWin32}
-  //Win32 the constrained height has to be without SM_CYSIZEFRAME and SM_CYMENU
-  Result := Result - (LCLIntf.GetSystemMetrics(SM_CYSIZEFRAME) + LCLIntf.GetSystemMetrics(SM_CYMENU));
+  //Win32 the constrained height has to be without SM_CYSIZEFRAME and SM_CYCAPTION;
+  Result := Result - (LCLIntf.GetSystemMetrics(SM_CYSIZEFRAME) + LCLIntf.GetSystemMetrics(SM_CYCAPTION));
   {$ENDIF LCLWin32}
 
   {$ELSE}
@@ -591,7 +594,7 @@ begin
   OptionsMenuItem.Caption := lisOptions;
   OptionsMenuItem.Enabled := True;
   OptionsMenuItem.Visible := True;
-  OptionsMenuItem.ImageIndex := IDEImages.LoadImage(16, 'menu_environment_options');
+  OptionsMenuItem.ImageIndex := IDEImages.LoadImage('menu_environment_options');
   OptionsPopupMenu.Items.Add(OptionsMenuItem);
 end;
 

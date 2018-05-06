@@ -7,21 +7,32 @@ object Form1: TForm1
   ClientHeight = 319
   ClientWidth = 688
   OnCreate = FormCreate
-  LCLVersion = '1.7'
+  LCLVersion = '1.9.0.0'
   object OpenGLControl1: TOpenGLControl
-    Left = 344
+    AnchorSideLeft.Control = Bevel1
+    AnchorSideTop.Control = Owner
+    AnchorSideRight.Control = Owner
+    AnchorSideRight.Side = asrBottom
+    AnchorSideBottom.Control = Owner
+    AnchorSideBottom.Side = asrBottom
+    Left = 343
     Height = 319
     Top = 0
-    Width = 344
-    Align = alClient
+    Width = 345
+    Anchors = [akTop, akLeft, akRight, akBottom]
     AutoResizeViewport = True
     OnPaint = OpenGLControl1Paint
   end
   object Chart1: TChart
+    AnchorSideLeft.Control = Owner
+    AnchorSideTop.Control = Owner
+    AnchorSideRight.Control = Bevel1
+    AnchorSideBottom.Control = Owner
+    AnchorSideBottom.Side = asrBottom
     Left = 0
     Height = 319
     Top = 0
-    Width = 344
+    Width = 343
     AxisList = <    
       item
         Marks.LabelFont.Color = clTeal
@@ -29,15 +40,17 @@ object Form1: TForm1
         Marks.LabelFont.Name = 'Arial'
         Marks.Frame.Style = psSolid
         Marks.LabelBrush.Color = clYellow
-        Marks.LabelBrush.Style = bsSolid
         Minors = <>
         Title.LabelFont.Orientation = 900
+        Title.LabelBrush.Style = bsClear
       end    
       item
         Alignment = calBottom
         Marks.LabelFont.Height = -13
         Marks.LabelFont.Name = 'Arial'
+        Marks.LabelBrush.Style = bsClear
         Minors = <>
+        Title.LabelBrush.Style = bsClear
       end>
     Foot.Brush.Color = clBtnFace
     Foot.Font.Color = clBlue
@@ -51,7 +64,7 @@ object Form1: TForm1
     )
     Title.Visible = True
     OnAfterPaint = Chart1AfterPaint
-    Align = alLeft
+    Anchors = [akTop, akLeft, akRight, akBottom]
     Color = clSkyBlue
     object Chart1LineSeries1: TLineSeries
       LinePen.Color = clBlue
@@ -66,6 +79,14 @@ object Form1: TForm1
     object Chart1PieSeries1: TPieSeries
       Source = RandomChartSource1
     end
+  end
+  object Bevel1: TBevel
+    AnchorSideLeft.Control = Owner
+    AnchorSideLeft.Side = asrCenter
+    Left = 343
+    Height = 50
+    Top = 73
+    Width = 2
   end
   object RandomChartSource1: TRandomChartSource
     PointsNumber = 10

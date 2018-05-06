@@ -1143,7 +1143,7 @@ type
     odSelected, odGrayed, odDisabled, odChecked,
     odFocused, odDefault, odHotLight, odInactive, odNoAccel,
     odNoFocusRect, odReserved1, odReserved2, odComboBoxEdit,
-    odPainted  // item already painted
+    odBackgroundPainted  // item background already painted
     );
   TOwnerDrawState = set of TOwnerDrawStateType;
 
@@ -1327,6 +1327,7 @@ type
     Alpha: Byte;
   end;
   PRGBAQuad = ^TRGBAQuad;
+  TRGBAQuadArray = array of TRGBAQuad;
 
 
   PBitmapInfo = ^TBitmapInfo;
@@ -1943,6 +1944,8 @@ const
   SM_LCLMAXIMIZEDHEIGHT = 122;
 
   SM_LCLHasFormAlphaBlend = 123;
+
+  SM_REMOTESESSION = $1000;
 
 //==============================================
 // SystemParametersInfo constants
@@ -2712,23 +2715,10 @@ type
       pcfPixmap,
       pcfIcon,
       pcfPicture,
+      pcfMetaFilePict,
       pcfObject,
       pcfComponent,
-      pcfCustomData,
-
-      // Delphi definitions (only for compatibility)
-      pcfDelphiText,
-      pcfDelphiBitmap,
-      pcfDelphiPicture,
-      pcfDelphiMetaFilePict,
-      pcfDelphiObject,
-      pcfDelphiComponent,
-
-      // Kylix definitions (only for compatibility)
-      pcfKylixPicture,
-      pcfKylixBitmap,
-      pcfKylixDrawing,
-      pcfKylixComponent
+      pcfCustomData
     );
 
 const
@@ -2738,23 +2728,10 @@ const
      'image/xpm',
      'image/lcl.icon',
      'image/lcl.picture',
+     'image/lcl.metafilepict',
      'application/lcl.object',
      'application/lcl.component',
-     'application/lcl.customdata',
-
-     // Delphi definitions (only for compatibility)
-     'text/plain',
-     'image/delphi.bitmap',
-     'Delphi Picture',
-     'image/delphi.metafilepict',
-     'application/delphi.object',
-     'Delphi Component',
-
-     // Kylix definitons (only for compatibility)
-     'image/delphi.picture',
-     'image/delphi.bitmap',
-     'image/delphi.drawing',
-     'application/delphi.component'
+     'application/lcl.customdata'
   );
 
 
@@ -2929,17 +2906,29 @@ const
 // Listview
 //-------------
 const
-  LVN_ITEMCHANGING    = LVN_FIRST-0;
-  LVN_ITEMCHANGED     = LVN_FIRST-1;
-  LVN_INSERTITEM      = LVN_FIRST-2;
-  LVN_DELETEITEM      = LVN_FIRST-3;
-  LVN_DELETEALLITEMS  = LVN_FIRST-4;
-  LVN_COLUMNCLICK     = LVN_FIRST-8;
-  LVN_BEGINDRAG       = LVN_FIRST-9;
-  LVN_BEGINRDRAG      = LVN_FIRST-11;
-  LVN_ODCACHEHINT     = LVN_FIRST-13;
-  LVN_ODSTATECHANGED  =  LVN_FIRST-15;
-  LVN_ODFINDITEM      = LVN_FIRST-79;
+  LVN_ITEMCHANGING      = LVN_FIRST - 0;
+  LVN_ITEMCHANGED       = LVN_FIRST - 1;
+  LVN_INSERTITEM        = LVN_FIRST - 2;
+  LVN_DELETEITEM        = LVN_FIRST - 3;
+  LVN_DELETEALLITEMS    = LVN_FIRST - 4;
+  LVN_COLUMNCLICK       = LVN_FIRST - 8;
+  LVN_BEGINDRAG         = LVN_FIRST - 9;
+  LVN_BEGINRDRAG        = LVN_FIRST - 11;
+  LVN_ODCACHEHINT       = LVN_FIRST - 13;
+  LVN_ITEMACTIVATE      = LVN_FIRST - 14;
+  LVN_ODSTATECHANGED    = LVN_FIRST - 15;
+  LVN_HOTTRACK          = LVN_FIRST - 21;
+  LVN_KEYDOWN           = LVN_FIRST - 55;
+  LVN_MARQUEEBEGIN      = LVN_FIRST - 56;
+  LVN_GETINFOTIP        = LVN_FIRST - 58;
+  LVN_INCREMENTALSEARCH = LVN_FIRST - 63;
+  LVN_BEGINLABELEDIT    = LVN_FIRST - 75;
+  LVN_ENDLABELEDIT      = LVN_FIRST - 76;
+  LVN_GETDISPINFO       = LVN_FIRST - 77;
+  LVN_SETDISPINFO       = LVN_FIRST - 78;
+  LVN_ODFINDITEM        = LVN_FIRST - 79;
+  LVN_BEGINSCROLL       = LVN_FIRST - 80;
+  LVN_ENDSCROLL         = LVN_FIRST - 81;
 
 const
   LVIF_TEXT           = $0001;

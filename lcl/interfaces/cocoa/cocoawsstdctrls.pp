@@ -28,7 +28,7 @@ uses
   // LCL
   Controls, StdCtrls, Graphics, LCLType, LMessages, LCLProc, LCLMessageGlue,
   // LazUtils
-  LazUTF8Classes, TextStrings,
+  LazUTF8, LazUTF8Classes, TextStrings,
   // Widgetset
   WSStdCtrls, WSLCLClasses, WSControls, WSProc,
   // LCL Cocoa
@@ -50,6 +50,8 @@ type
   TCocoaWSCustomGroupBox = class(TWSCustomGroupBox)
   published
     class function CreateHandle(const AWinControl: TWinControl; const AParams: TCreateParams): TLCLIntfHandle; override;
+    class function  GetText(const AWinControl: TWinControl; var AText: String): Boolean; override;
+    class procedure SetText(const AWinControl: TWinControl; const AText: String); override;
   end;
 
   { TLCLComboboxCallback }
@@ -76,7 +78,6 @@ type
     class procedure SetItemIndex(const ACustomComboBox: TCustomComboBox; NewIndex: integer); override;
     {class procedure SetMaxLength(const ACustomComboBox: TCustomComboBox; NewLength: integer); override;
     class procedure SetStyle(const ACustomComboBox: TCustomComboBox; NewStyle: TComboBoxStyle); override;}
-    class procedure SetReadOnly(const ACustomComboBox: TCustomComboBox; NewReadOnly: boolean); override;
     class procedure SetDropDownCount(const ACustomComboBox: TCustomComboBox; NewCount: Integer); override;
 
     class function  GetItems(const ACustomComboBox: TCustomComboBox): TStrings; override;
@@ -108,8 +109,8 @@ type
     //class procedure SetBorder(const ACustomListBox: TCustomListBox); override;
     class procedure SetItemIndex(const ACustomListBox: TCustomListBox; const AIndex: integer); override;
     class procedure SetSelectionMode(const ACustomListBox: TCustomListBox; const AExtendedSelect, AMultiSelect: boolean); override;
-    {class procedure SetStyle(const ACustomListBox: TCustomListBox); override;
-    class procedure SetSorted(const ACustomListBox: TCustomListBox; AList: TStrings; ASorted: boolean); override;}
+    class procedure SetStyle(const ACustomListBox: TCustomListBox); override;
+    {class procedure SetSorted(const ACustomListBox: TCustomListBox; AList: TStrings; ASorted: boolean); override;}
     class procedure SetTopIndex(const ACustomListBox: TCustomListBox; const NewTopIndex: integer); override;
   end;
 
@@ -121,8 +122,13 @@ type
   published
     class function  CreateHandle(const AWinControl: TWinControl; const AParams: TCreateParams): TLCLIntfHandle; override;
 
+    // WSControl functions
+    class procedure SetColor(const AWinControl: TWinControl); override;
+
+    // WSEdit functions
     class function  GetSelStart(const ACustomEdit: TCustomEdit): integer; override;
     class function  GetSelLength(const ACustomEdit: TCustomEdit): integer; override;
+    class procedure SetAlignment(const ACustomEdit: TCustomEdit; const NewAlignment: TAlignment); override;
 
     {class procedure SetCharCase(const ACustomEdit: TCustomEdit; NewCase: TEditCharCase); override;
     class procedure SetEchoMode(const ACustomEdit: TCustomEdit; NewMode: TEchoMode); override;
@@ -137,7 +143,7 @@ type
 
   TCocoaMemoStrings = class(TCustomMemoStrings)
   private
-    FTextView: NSTextView;
+    FTextView: TCocoaTextView;
   public
     class procedure GetLineStart(const s: AnsiString; LineIndex: Integer; var Offset, LinesSkipped: Integer);
     class function GetLinesCount(const s: AnsiString): Integer;
@@ -147,7 +153,7 @@ type
     function GetCount: Integer; override;
     function Get(Index: Integer): string; override;
   public
-    constructor Create(ATextView: NSTextView);
+    constructor Create(ATextView: TCocoaTextView);
     procedure Clear; override;
     procedure Delete(Index: Integer); override;
     procedure Insert(Index: Integer; const S: string); override;
@@ -163,13 +169,17 @@ type
     class function GetScrollView(AWinControl: TWinControl): TCocoaScrollView;
   published
     class function CreateHandle(const AWinControl: TWinControl; const AParams: TCreateParams): TLCLIntfHandle; override;
-    // WSWinControl functions
-    class procedure SetBounds(const AWinControl: TWinControl; const ALeft, ATop, AWidth, AHeight: Integer); override;
+
+    // WSControl functions
+    class procedure SetColor(const AWinControl: TWinControl); override;
+
     // WSEdit functions
     //class function GetCanUndo(const ACustomEdit: TCustomEdit): Boolean; override;
     class function GetCaretPos(const ACustomEdit: TCustomEdit): TPoint; override;
     class function GetSelStart(const ACustomEdit: TCustomEdit): integer; override;
     class function GetSelLength(const ACustomEdit: TCustomEdit): integer; override;
+    class procedure SetAlignment(const ACustomEdit: TCustomEdit; const NewAlignment: TAlignment); override;
+
     // WSMemo functions
     class function GetStrings(const ACustomMemo: TCustomMemo): TStrings; override;
     class procedure AppendText(const ACustomMemo: TCustomMemo; const AText: string); override;
@@ -249,6 +259,7 @@ type
   TCocoaWSRadioButton = class(TWSRadioButton)
   published
     class function CreateHandle(const AWinControl: TWinControl; const AParams: TCreateParams): TLCLIntfHandle; override;
+    class procedure SetState(const ACustomCheckBox: TCustomCheckBox; const NewState: TCheckBoxState); override;
   end;
 
   { TCocoaWSCustomStaticText }
@@ -262,11 +273,18 @@ type
   end;
 
 function AllocTextView(ATarget: TWinControl; const AParams: TCreateParams; fieldEditor: Boolean): NSTextView;
-function AllocButton(const ATarget: TWinControl; const ACallBackClass: TLCLButtonCallBackClass; const AParams: TCreateParams; btnBezel: NSBezelStyle; btnType: NSButtonType): NSButton;
+function AllocButton(const ATarget: TWinControl; const ACallBackClass: TLCLButtonCallBackClass; const AParams: TCreateParams; btnBezel: NSBezelStyle; btnType: NSButtonType): TCocoaButton;
 function AllocTextField(ATarget: TWinControl; const AParams: TCreateParams): TCocoaTextField;
 function AllocSecureTextField(ATarget: TWinControl; const AParams: TCreateParams): TCocoaSecureTextField;
 
 function GetListBox(AWinControl: TWinControl): TCocoaListBox;
+procedure ListBoxSetStyle(list: TCocoaListBox; AStyle: TListBoxStyle);
+
+procedure TextViewSetWordWrap(txt: NSTextView; lScroll: NSScrollView; NewWordWrap: Boolean);
+function AlignmentLCLToCocoa(al: TAlignment): NSTextAlignment;
+procedure TextViewSetAllignment(txt: NSTextView; align: TAlignment);
+procedure TextFieldSetAllignment(txt: NSTextField; align: TAlignment);
+procedure RadioButtonSwitchSiblings(checkedRadio: NSButton);
 
 implementation
 
@@ -301,7 +319,7 @@ const
  {ssAutoBoth      } true
   );
 
-function AllocButton(const ATarget: TWinControl; const ACallBackClass: TLCLButtonCallBackClass; const AParams: TCreateParams; btnBezel: NSBezelStyle; btnType: NSButtonType): NSButton;
+function AllocButton(const ATarget: TWinControl; const ACallBackClass: TLCLButtonCallBackClass; const AParams: TCreateParams; btnBezel: NSBezelStyle; btnType: NSButtonType): TCocoaButton;
 var
   titel:string;
   cap: NSString;
@@ -351,6 +369,18 @@ begin
   end;
 end;
 
+procedure RadioButtonSwitchSiblings(checkedRadio: NSButton);
+var
+  SubView : NSView;
+begin
+  if not Assigned(checkedRadio) then Exit;
+  for SubView in checkedRadio.superView.subviews do
+    if (SubView <> checkedRadio) and (SubView.lclGetTarget is TRadioButton) then
+    begin
+      NSButton(SubView).setState(NSOffState);
+    end;
+end;
+
 { TLCLRadioButtonCallback }
 
 procedure TLCLRadioButtonCallback.ButtonClick;
@@ -359,11 +389,7 @@ var
 begin
   if not Owner.lclIsEnabled() then Exit;
   if NSButton(Owner).state = NSOnState then
-  begin
-    for SubView in NSButton(Owner).superView.subviews do
-      if (SubView <> Owner) and (SubView.lclGetTarget is TRadioButton) then
-        NSButton(SubView).setState(NSOffState);
-  end;
+    RadioButtonSwitchSiblings(NSButton(Owner));
   inherited ButtonClick;
 end;
 
@@ -433,8 +459,6 @@ end;
 
 procedure TLCLComboboxCallback.ComboBoxSelectionDidChange;
 begin
-  // todo: send correct messages here. LM_CHANGED must be sent on editbox change
-  SendSimpleMessage(Target, LM_CHANGED);
   SendSimpleMessage(Target, LM_SELCHANGE);
 end;
 
@@ -457,9 +481,16 @@ end;
 class function TCocoaWSButton.CreateHandle(const AWinControl: TWinControl;
   const AParams: TCreateParams): TLCLIntfHandle;
 var
-  btn: NSButton;
+  btn: TCocoaButton;
 begin
   btn := AllocButton(AWinControl, TLCLButtonCallback, AParams, NSRoundedBezelStyle, NSMomentaryPushInButton);
+  // btn.regularHeight = 32
+  btn.smallHeight := 28;
+  btn.miniHeight := 16;
+  btn.adjustFontToControlSize:=true;
+  // these heights were received from Xcode builder, where the height cannot be changed for a button control
+  // the actual size of the button (the difference between top pixel and bottom pixel, is less than frame size
+  // also, the "mini" button seems to be wider, than
   Result := TLCLIntfHandle(btn);
 end;
 
@@ -572,7 +603,9 @@ const
   buttonState: array [TcheckBoxState] of NSInteger = (NSOffState, NSOnState, NSMixedState);
 begin
   if ACustomCheckBox.HandleAllocated then
+  begin
     NSButton(ACustomCheckBox.Handle).setState(buttonState[NewState]);
+  end;
 end;
 
 class procedure TCocoaWSCustomCheckBox.GetPreferredSize(
@@ -621,6 +654,14 @@ begin
   Result := TLCLIntfHandle(btn);
 end;
 
+class procedure TCocoaWSRadioButton.SetState(
+  const ACustomCheckBox: TCustomCheckBox; const NewState: TCheckBoxState);
+begin
+  if NewState = cbChecked then
+    RadioButtonSwitchSiblings(NSButton(ACustomCheckBox.Handle));
+  TCocoaWSCustomCheckBox.SetState(ACustomCheckBox, NewState);
+end;
+
 { TCocoaWSCustomStaticText }
 
 class function TCocoaWSCustomStaticText.CreateHandle(const AWinControl: TWinControl;
@@ -663,7 +704,21 @@ begin
     else field:=NSTextField(AllocSecureTextField(AWinControl, AParams));
   NSCell(field.cell).setWraps(false);
   NSCell(field.cell).setScrollable(true);
+  TextFieldSetAllignment(field, TCustomEdit(AWinControl).Alignment);
   Result:=TLCLIntfHandle(field);
+end;
+
+class procedure TCocoaWSCustomEdit.SetColor(const AWinControl: TWinControl);
+var
+  field: TCocoaTextField;
+begin
+  field := GetTextField(AWinControl);
+  if not Assigned(field) then Exit;
+
+  if (AWinControl.Color = clDefault) or (AWinControl.Color = clWindow) or (AWinControl.Color = clBackground)  then
+    field.setBackgroundColor( NSColor.textBackgroundColor )
+  else
+    field.setBackgroundColor( ColorToNSColor(ColorToRGB(AWinControl.Color)));
 end;
 
 class function TCocoaWSCustomEdit.GetSelStart(const ACustomEdit: TCustomEdit): integer;
@@ -692,6 +747,16 @@ begin
   if not Assigned(txt) then Exit;
 
   Result:=txt.selectedRange.length;
+end;
+
+class procedure TCocoaWSCustomEdit.SetAlignment(const ACustomEdit: TCustomEdit;
+  const NewAlignment: TAlignment);
+var
+  field: TCocoaTextField;
+begin
+  field := GetTextField(ACustomEdit);
+  if not Assigned(field) then Exit;
+  TextFieldSetAllignment(field, NewAlignment);
 end;
 
 class procedure TCocoaWSCustomEdit.SetPasswordChar(const ACustomEdit: TCustomEdit; NewChar: char);
@@ -738,7 +803,7 @@ end;
 
 { TCocoaMemoStrings }
 
-constructor TCocoaMemoStrings.Create(ATextView: NSTextView);
+constructor TCocoaMemoStrings.Create(ATextView: TCocoaTextView);
 begin
   inherited Create;
   FTextView := ATextView;
@@ -756,6 +821,8 @@ begin
   ns := NSStringUtf8(Value);
   FTextView.setString(ns);
   ns.release;
+
+  FTextView.textDidChange(nil);
 end;
 
 class procedure TCocoaMemoStrings.GetLineStart(const s: AnsiString; LineIndex: Integer; var Offset, LinesSkipped: Integer);
@@ -836,14 +903,46 @@ end;
 
 procedure TCocoaMemoStrings.Insert(Index:Integer;const S:string);
 var
-  txt   : AnsiString;
-  ofs   : Integer;
-  t     : Integer;
+  rng   : NSRange;
+  st,ed : NSUInteger;
+  ced   : NSUInteger;
+  ns    : NSString;
+  idx   : integer;
+  ro    : Boolean;
+const
+  LFSTR = #13#10;
 begin
-  txt:=GetTextStr;
-  GetLineStart(txt, Index, ofs, t);
-  System.Insert(s+LineEnding, txt, ofs);
-  SetTextStr(txt)
+  ns:=FTextView.string_;
+  idx:=0;
+  rng:=NSMakeRange(0,0);
+  while (idx<Index) and (rng.location<ns.length) do begin
+    ns.getLineStart_end_contentsEnd_forRange(nil, @st, @ced, rng);
+    inc(idx);
+    rng.location:=st;
+    rng.length:=0;
+  end;
+
+  // using selectedRange in order to be consistent with Windows widgetset
+  if rng.location>ns.length then rng.location:=ns.length;
+  inc(FTextView.supressTextChangeEvent);
+
+  ro := FTextView.isEditable; // checking for read-only flag;
+  if not ro then FTextView.setEditable(true);
+
+  FTextView.setSelectedRange(rng);
+
+  if (rng.location>=ns.length) and (st=ced) and (ns.length>0) then
+    FTextView.insertText( NSString.stringWithUTF8String( LFSTR ));
+
+  if S<>'' then
+  begin
+    FTextView.insertText( NSString.stringWithUTF8String( @S[1] ));
+  end;
+
+  dec(FTextView.supressTextChangeEvent);
+  FTextView.insertText( NSString.stringWithUTF8String( LFSTR ));
+
+  if not ro then FTextView.setEditable(ro);
 end;
 
 procedure TCocoaMemoStrings.LoadFromFile(const FileName: string);
@@ -871,6 +970,57 @@ begin
 end;
 
 { TCocoaWSCustomMemo }
+
+procedure TextViewSetWordWrap(txt: NSTextView; lScroll: NSScrollView; NewWordWrap: Boolean);
+var
+  layoutSize: NSSize;
+begin
+  if NewWordWrap then
+  begin
+    layoutSize := lScroll.contentSize();
+    layoutSize := GetNSSize(layoutSize.width, CGFloat_Max);
+    txt.textContainer.setContainerSize(layoutSize);
+    txt.textContainer.setWidthTracksTextView(True);
+    txt.setHorizontallyResizable(false);
+    txt.setAutoresizingMask(NSViewWidthSizable);
+    layoutSize.height:=txt.frame.size.height;
+    txt.setFrameSize(layoutSize);
+  end
+  else
+  begin
+    txt.textContainer.setWidthTracksTextView(False);
+    layoutSize := GetNSSize(CGFloat_Max, CGFloat_Max);
+    txt.textContainer.setContainerSize(layoutSize);
+    txt.textContainer.setWidthTracksTextView(False);
+    txt.setHorizontallyResizable(true);
+    txt.setAutoresizingMask(0);
+  end;
+  txt.sizeToFit;
+end;
+
+function AlignmentLCLToCocoa(al: TAlignment): NSTextAlignment;
+begin
+  case al of
+    taRightJustify:
+      Result := NSTextAlignmentRight;
+    taCenter:
+      Result := NSTextAlignmentCenter;
+  else
+    Result:= NSTextAlignmentLeft;
+  end;
+end;
+
+procedure TextViewSetAllignment(txt: NSTextView; align: TAlignment);
+begin
+  //todo: for bidi modes, there's "NSTextAlignmentNatural"
+  txt.setAlignment( AlignmentLCLToCocoa(align) );
+end;
+
+procedure TextFieldSetAllignment(txt: NSTextField; align: TAlignment);
+begin
+  //todo: for bidi modes, there's "NSTextAlignmentNatural"
+  txt.setAlignment( AlignmentLCLToCocoa(align) );
+end;
 
 class function TCocoaWSCustomMemo.GetTextView(AWinControl: TWinControl): TCocoaTextView;
 var
@@ -908,11 +1058,19 @@ begin
   scr := TCocoaScrollView(NSView(TCocoaScrollView.alloc).lclInitWithCreateParams(AParams));
 
   nr.origin.x:=0;
-  nr.origin.x:=0;
+  nr.origin.y:=0;
   nr.size.height:=0;
   nr.size.width:=AParams.Width;
 
   txt := TCocoaTextView.alloc.initwithframe(nr);
+  // setting up a default system font (to be consistent with other widgetsets)
+  txt.setFont( NSFont.systemFontOfSize( NSFont.systemFontSizeForControlSize(NSRegularControlSize) ));
+
+  // this is necessary for Ward Wrap disabled, so NSViewText
+  // doesn't have a constraint to resize
+  // Apple default maxsize is InitialWidth, 10000000
+  // (MaxSize is also changed automatically, if NSViewText size is changed)
+  txt.setMaxSize(NSMakeSize(10000000, 10000000));
   scr.setDocumentView(txt);
 
   scr.setHasVerticalScroller(VerticalScrollerVisible[TMemo(AWinControl).ScrollBars]);
@@ -924,7 +1082,6 @@ begin
 
   nr:=scr.documentVisibleRect;
   txt.setFrame(nr);
-  txt.textContainer.setLineFragmentPadding(0);
   txt.lclSetEnabled(True);
 
   // ToDo: This should be made selectable in the LCL
@@ -932,28 +1089,30 @@ begin
   txt.setAutomaticTextReplacementEnabled(False);
 
   txt.callback := TLCLCommonCallback.Create(txt, AWinControl);
+  txt.setDelegate(txt);
+
   ns := NSStringUtf8(AParams.Caption);
   txt.setString(ns);
   ns.release;
 
   scr.callback := txt.callback;
+
+  TextViewSetWordWrap(txt, scr, TCustomMemo(AWinControl).WordWrap);
+  TextViewSetAllignment(txt, TCustomMemo(AWinControl).Alignment);
   Result := TLCLIntfHandle(scr);
 end;
 
-class procedure TCocoaWSCustomMemo.SetBounds(const AWinControl: TWinControl; const ALeft, ATop, AWidth, AHeight: Integer);
+class procedure TCocoaWSCustomMemo.SetColor(const AWinControl: TWinControl);
 var
-  nr: NSRect;
   txt: TCocoaTextView;
-  lScroll: TCocoaScrollView;
 begin
-  TCocoaWSWinControl.SetBounds(AWinControl, ALeft, ATop, AWidth, AHeight);
-
   txt := GetTextView(AWinControl);
-  lScroll := GetScrollView(AWinControl);
-  if (not Assigned(txt)) or (not Assigned(lScroll)) then Exit;
+  if not Assigned(txt) then Exit;
 
-  nr := lScroll.documentVisibleRect;
-  txt.setFrame(nr);
+  if (AWinControl.Color = clDefault) or (AWinControl.Color = clWindow) or (AWinControl.Color = clBackground) then
+    txt.setBackgroundColor( NSColor.textBackgroundColor )
+  else
+    txt.setBackgroundColor( ColorToNSColor(ColorToRGB(AWinControl.Color)));
 end;
 
 class function TCocoaWSCustomMemo.GetCaretPos(const ACustomEdit: TCustomEdit): TPoint;
@@ -1003,7 +1162,11 @@ var
   txt: TCocoaTextView;
 begin
   txt := GetTextView(ACustomEdit);
-  if not Assigned(txt) then Exit;
+  if not Assigned(txt) then
+  begin
+    Result:=0;
+    Exit;
+  end;
   Result := txt.selectedRange.location;
 end;
 
@@ -1013,8 +1176,22 @@ var
   ns: NSArray;
 begin
   txt := GetTextView(ACustomEdit);
-  if not Assigned(txt) then Exit;
+  if not Assigned(txt) then
+  begin
+    Result:=0;
+    Exit;
+  end;
   Result := txt.selectedRange.length;
+end;
+
+class procedure TCocoaWSCustomMemo.SetAlignment(const ACustomEdit: TCustomEdit;
+  const NewAlignment: TAlignment);
+var
+  txt: TCocoaTextView;
+begin
+  txt := GetTextView(ACustomEdit);
+  if Assigned(txt) then
+    TextViewSetAllignment(txt, NewAlignment);
 end;
 
 class function TCocoaWSCustomMemo.GetStrings(const ACustomMemo: TCustomMemo): TStrings;
@@ -1053,7 +1230,6 @@ end;
 
 class procedure  TCocoaWSCustomMemo.SetWordWrap(const ACustomMemo: TCustomMemo; const NewWordWrap: boolean);
 var
-  layoutSize: NSSize;
   txt: TCocoaTextView;
   lScroll: TCocoaScrollView;
 begin
@@ -1061,19 +1237,7 @@ begin
   lScroll := GetScrollView(ACustomMemo);
   if (not Assigned(txt)) or (not Assigned(lScroll)) then Exit;
 
-  if NewWordWrap then
-  begin
-    layoutSize := lScroll.contentSize();
-    layoutSize := GetNSSize(layoutSize.width, CGFloat_Max);
-    txt.textContainer.setContainerSize(layoutSize);
-    txt.textContainer.setWidthTracksTextView(True);
-  end
-  else
-  begin
-    txt.textContainer.setWidthTracksTextView(False);
-    layoutSize := GetNSSize(CGFloat_Max, CGFloat_Max);
-    txt.textContainer.setContainerSize(layoutSize);
-  end;
+  TextViewSetWordWrap(txt, lScroll, NewWordWrap);
 end;
 
 class procedure TCocoaWSCustomMemo.SetText(const AWinControl:TWinControl;const AText:String);
@@ -1107,28 +1271,28 @@ var
   rocmb: TCocoaReadOnlyComboBox;
 begin
   Result:=0;
-
   if TCustomComboBox(AWinControl).ReadOnly then
   begin
     rocmb := NSView(TCocoaReadOnlyComboBox.alloc).lclInitWithCreateParams(AParams);
     if not Assigned(rocmb) then Exit;
     rocmb.Owner := TCustomComboBox(AWinControl);
-    rocmb.callback:=TLCLComboboxCallback.Create(rocmb, AWinControl);
     rocmb.list:=TCocoaComboBoxList.Create(nil, rocmb);
     rocmb.setTarget(rocmb);
     rocmb.setAction(objcselector('comboboxAction:'));
     rocmb.selectItemAtIndex(rocmb.lastSelectedItemIndex);
+    rocmb.callback:=TLCLComboboxCallback.Create(rocmb, AWinControl);
     Result:=TLCLIntfHandle(rocmb);
   end
   else
   begin
     cmb := NSView(TCocoaComboBox.alloc).lclInitWithCreateParams(AParams);
     if not Assigned(cmb) then Exit;
-    cmb.callback:=TLCLComboboxCallback.Create(cmb, AWinControl);
     cmb.list:=TCocoaComboBoxList.Create(cmb, nil);
     cmb.setUsesDataSource(true);
     cmb.setDataSource(cmb);
     cmb.setDelegate(cmb);
+    cmb.setStringValue(NSStringUtf8(AParams.Caption));
+    cmb.callback:=TLCLComboboxCallback.Create(cmb, AWinControl);
     Result:=TLCLIntfHandle(cmb);
   end;
   //todo: 26 pixels is the height of 'normal' combobox. The value is taken from the Interface Builder!
@@ -1140,7 +1304,10 @@ class function TCocoaWSCustomComboBox.GetItemIndex(const ACustomComboBox:
   TCustomComboBox):integer;
 begin
   if (not Assigned(ACustomComboBox)) or (not ACustomComboBox.HandleAllocated) then
+  begin
+    Result:=-1;
     Exit;
+  end;
 
   if ACustomComboBox.ReadOnly then
     Result := TCocoaReadOnlyComboBox(ACustomComboBox.Handle).indexOfSelectedItem
@@ -1166,27 +1333,23 @@ begin
     TCocoaComboBox(ACustomComboBox.Handle).selectItemAtIndex(NewIndex);
 end;
 
-class procedure TCocoaWSCustomComboBox.SetReadOnly(const ACustomComboBox:
-  TCustomComboBox; NewReadOnly: boolean);
-begin
-  if Assigned(ACustomComboBox) then
-    RecreateWnd(ACustomComboBox);
-end;
-
 class procedure TCocoaWSCustomComboBox.SetDropDownCount(const ACustomComboBox:
   TCustomComboBox;NewCount:Integer);
 begin
   if (not Assigned(ACustomComboBox)) or (not ACustomComboBox.HandleAllocated) then
     Exit;
 
-  if not ACustomComboBox.ReadOnly then
-    TCocoaComboBox(ACustomComboBox.Handle).setNumberOfVisibleItems(NewCount);
+  if ACustomComboBox.ReadOnly then Exit;
+  TCocoaComboBox(ACustomComboBox.Handle).setNumberOfVisibleItems(NewCount);
 end;
 
 class function TCocoaWSCustomComboBox.GetItems(const ACustomComboBox: TCustomComboBox): TStrings;
 begin
   if (not Assigned(ACustomComboBox)) or (not ACustomComboBox.HandleAllocated) then
+  begin
+    Result:=nil;
     Exit;
+  end;
 
   if ACustomComboBox.ReadOnly then
     Result:=TCocoaReadOnlyComboBox(ACustomComboBox.Handle).list
@@ -1198,7 +1361,10 @@ class function TCocoaWSCustomComboBox.GetItemHeight(const ACustomComboBox:
   TCustomComboBox):Integer;
 begin
   if (not Assigned(ACustomComboBox)) or (not ACustomComboBox.HandleAllocated) then
+  begin
+    Result:=0;
     Exit;
+  end;
 
   if ACustomComboBox.ReadOnly then
     Result := 26 // ToDo
@@ -1252,9 +1418,12 @@ begin
   scr.callback:=TLCLCommonCallback.Create(scr, AWinControl);
 
   // OnChange (scrolling) event handling
-  scr.LCLScrollBar := TCustomScrollBar(AWinControl);
   scr.setTarget(scr);
   scr.setAction(objcselector('actionScrolling:'));
+
+  scr.minInt:=TCustomScrollBar(AWinControl).Min;
+  scr.maxInt:=TCustomScrollBar(AWinControl).Max;
+  scr.pageInt:=TCustomScrollBar(AWinControl).PageSize;
 
   Result:=TLCLIntfHandle(scr);
 end;
@@ -1269,14 +1438,16 @@ end;
 class procedure TCocoaWSScrollBar.SetParams(const AScrollBar:TCustomScrollBar);
 var
   lScroller: TCocoaScrollBar;
+  sz : integer;
 begin
   if not Assigned(AScrollBar) then Exit;
   lScroller := TCocoaScrollBar(AScrollBar.Handle);
   if (lScroller = nil) then Exit;
-  if AScrollBar.Max > 0 then
+  sz:=AScrollBar.Max - AScrollBar.PageSize;
+  if sz > 0 then
   begin
     lScroller.setFloatValue_knobProportion(
-      AScrollBar.Position / AScrollBar.Max,
+      AScrollBar.Position / sz,
       AScrollBar.PageSize / AScrollBar.Max);
     //if TCocoaScrollBar(Handle).setKnobProportion( PageSize/Max );
     //if TCocoaScrollBar(Handle).setDoubleValue( Position/Max );
@@ -1305,12 +1476,30 @@ begin
     // set a content view in order to be able to customize drawing for labels/color
     ns := GetNSRect(AParams.X, AParams.Y, AParams.Width, AParams.Height);
     lGroupBoxContents := TCocoaCustomControl(TCocoaCustomControl.alloc.initWithFrame(ns));
-    lGroupBoxContents.callback := TLCLCustomControlCallback.Create(lGroupBoxContents, AWinControl);
+    lGroupBoxContents.callback := box.callback; //TLCLCustomControlCallback.Create(lGroupBoxContents, AWinControl);
     //str := Format('%X=%X', [PtrUInt(box.callback), PtrUInt(lGroupBoxContents.callback)]);
     lGroupBoxContents.autorelease;
     box.setContentView(lGroupBoxContents);
   end;
   Result := TLCLIntfHandle(box);
+end;
+
+class function TCocoaWSCustomGroupBox.GetText(const AWinControl: TWinControl; var AText: String): Boolean;
+var
+  box: TCocoaGroupBox;
+begin
+  box := TCocoaGroupBox(AWinControl.Handle);
+  Result:=Assigned(box);
+  if Result then
+    AText := NSStringToString(box.title);
+end;
+
+class procedure TCocoaWSCustomGroupBox.SetText(const AWinControl: TWinControl; const AText: String);
+var
+  box: TCocoaGroupBox;
+begin
+  box := TCocoaGroupBox(AWinControl.Handle);
+  box.setTitle(NSStringUTF8(AText));
 end;
 
 { TCocoaWSCustomListBox }
@@ -1321,6 +1510,12 @@ begin
     Result := nil
   else
     Result := TCocoaListBox(TCocoaScrollView(AWinControl.Handle).documentView);
+end;
+
+procedure ListBoxSetStyle(list: TCocoaListBox; AStyle: TListBoxStyle);
+begin
+  if not Assigned(list) then Exit;
+  list.isCustomDraw := AStyle in [lbOwnerDrawFixed, lbOwnerDrawVariable];
 end;
 
 class function TCocoaWSCustomListBox.CreateHandle(const AWinControl:TWinControl;
@@ -1343,6 +1538,7 @@ begin
   list.setDataSource(list);
   list.setDelegate(list);
   list.setAllowsMultipleSelection(lclListBox.MultiSelect);
+  ListBoxSetStyle(list, TCustomListBox(AWinControl).Style);
 
   scroll := EmbedInScrollView(list);
   if not Assigned(scroll) then
@@ -1363,7 +1559,11 @@ var
   lPoint: NSPoint;
 begin
   list := GetListBox(ACustomListBox);
-  if not Assigned(list) then Exit();
+  if not Assigned(list) then
+  begin
+    Result:=-1;
+    Exit();
+  end;
   lPoint := LCLCoordsToCocoa(ACustomListBox, X, Y);
   Result := list.rowAtPoint(lPoint);
 end;
@@ -1448,7 +1648,9 @@ begin
   list := GetListBox(ACustomListBox);
   if not Assigned(list) then Exit();
   if ASelected then
-    list.selectRow_byExtendingSelection(AIndex, True)
+  begin
+    list.selectRowIndexes_byExtendingSelection(NSIndexSet.indexSetWithIndex(AIndex), True)
+  end
   else
     list.deselectRow(AIndex);
 end;
@@ -1459,7 +1661,8 @@ var
 begin
   list := GetListBox(ACustomListBox);
   if not Assigned(list) then Exit();
-  list.selectRow_byExtendingSelection(AIndex, False);
+
+  list.selectRowIndexes_byExtendingSelection(NSIndexSet.indexSetWithIndex(AIndex), True)
 end;
 
 class procedure TCocoaWSCustomListBox.SetSelectionMode(const ACustomListBox: TCustomListBox; const AExtendedSelect, AMultiSelect: boolean);
@@ -1469,6 +1672,15 @@ begin
   list := GetListBox(ACustomListBox);
   if not Assigned(list) then Exit();
   list.setAllowsMultipleSelection(AMultiSelect);
+end;
+
+class procedure TCocoaWSCustomListBox.SetStyle(const ACustomListBox: TCustomListBox);
+var
+  view: TCocoaListBox;
+begin
+  view := GetListBox(ACustomListBox);
+  ListBoxSetStyle(view, TCustomListBox(ACustomListBox).Style);
+  view.setNeedsDisplay;
 end;
 
 class procedure TCocoaWSCustomListBox.SetTopIndex(const ACustomListBox: TCustomListBox; const NewTopIndex: integer);

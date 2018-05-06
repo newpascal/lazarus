@@ -2,9 +2,9 @@ object EditorDisplayOptionsFrame: TEditorDisplayOptionsFrame
   Left = 0
   Height = 455
   Top = 0
-  Width = 501
+  Width = 588
   ClientHeight = 455
-  ClientWidth = 501
+  ClientWidth = 588
   TabOrder = 0
   Visible = False
   DesignLeft = 176
@@ -14,19 +14,19 @@ object EditorDisplayOptionsFrame: TEditorDisplayOptionsFrame
     Left = 0
     Height = 151
     Top = 0
-    Width = 501
+    Width = 588
     Align = alTop
     AutoSize = True
     Caption = 'MarginAndGutterGroupBox'
     ClientHeight = 131
-    ClientWidth = 497
+    ClientWidth = 584
     TabOrder = 0
     object RightMarginLabel: TLabel
       AnchorSideLeft.Control = RightMarginComboBox
       AnchorSideLeft.Side = asrBottom
       AnchorSideTop.Control = RightMarginComboBox
       AnchorSideTop.Side = asrCenter
-      Left = 296
+      Left = 310
       Height = 15
       Top = 10
       Width = 94
@@ -49,13 +49,15 @@ object EditorDisplayOptionsFrame: TEditorDisplayOptionsFrame
       ParentColor = False
     end
     object GutterSeparatorIndexLabel: TLabel
-      AnchorSideLeft.Control = RightMarginLabel
+      AnchorSideLeft.Control = GutterSeparatorIndexSpinBox
+      AnchorSideLeft.Side = asrBottom
       AnchorSideTop.Control = GutterSeparatorIndexSpinBox
       AnchorSideTop.Side = asrCenter
       Left = 296
       Height = 15
       Top = 39
       Width = 139
+      BorderSpacing.Left = 6
       Caption = 'GutterSeparatorIndexLabel'
       ParentColor = False
     end
@@ -65,7 +67,7 @@ object EditorDisplayOptionsFrame: TEditorDisplayOptionsFrame
       AnchorSideTop.Control = RightMarginLabel
       AnchorSideTop.Side = asrCenter
       Cursor = crHandPoint
-      Left = 396
+      Left = 410
       Height = 15
       Top = 10
       Width = 117
@@ -124,7 +126,7 @@ object EditorDisplayOptionsFrame: TEditorDisplayOptionsFrame
       Left = 234
       Height = 23
       Top = 6
-      Width = 56
+      Width = 70
       BorderSpacing.Left = 50
       BorderSpacing.Around = 6
       ItemHeight = 15
@@ -196,13 +198,13 @@ object EditorDisplayOptionsFrame: TEditorDisplayOptionsFrame
     Left = 0
     Height = 113
     Top = 157
-    Width = 501
+    Width = 588
     Align = alTop
     AutoSize = True
     BorderSpacing.Top = 6
     Caption = 'EditorFontGroupBox'
     ClientHeight = 93
-    ClientWidth = 497
+    ClientWidth = 584
     TabOrder = 1
     object EditorFontSizeLabel: TLabel
       AnchorSideLeft.Control = EditorFontSizeSpinEdit
@@ -250,7 +252,7 @@ object EditorDisplayOptionsFrame: TEditorDisplayOptionsFrame
       Left = 6
       Height = 23
       Top = 6
-      Width = 435
+      Width = 549
       Anchors = [akTop, akLeft, akRight]
       BorderSpacing.Left = 6
       BorderSpacing.Top = 6
@@ -265,10 +267,10 @@ object EditorDisplayOptionsFrame: TEditorDisplayOptionsFrame
       AnchorSideRight.Side = asrBottom
       AnchorSideBottom.Control = EditorFontComboBox
       AnchorSideBottom.Side = asrBottom
-      Left = 441
+      Left = 555
       Height = 23
       Top = 6
-      Width = 50
+      Width = 23
       Anchors = [akTop, akRight, akBottom]
       BorderSpacing.Right = 6
       Caption = '...'
@@ -335,10 +337,9 @@ object EditorDisplayOptionsFrame: TEditorDisplayOptionsFrame
       AnchorSideTop.Control = EditorFontSizeSpinEdit
       AnchorSideTop.Side = asrBottom
       Left = 6
-      Height = 23
+      Height = 19
       Top = 64
       Width = 172
-      Anchors = [akTop, akLeft, akBottom]
       BorderSpacing.Around = 6
       Caption = 'DisableAntialiasingCheckBox'
       OnChange = GeneralCheckBoxOnChange
@@ -351,7 +352,7 @@ object EditorDisplayOptionsFrame: TEditorDisplayOptionsFrame
     Left = 0
     Height = 179
     Top = 276
-    Width = 501
+    Width = 588
     Align = alClient
     BorderSpacing.Top = 6
     Font.Height = -16

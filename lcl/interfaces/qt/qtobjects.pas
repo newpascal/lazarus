@@ -988,7 +988,7 @@ var
   WStr: WideString;
 begin
   QFontInfo_family(FHandle, @WStr);
-  Result := UTF8ToUTF16(WStr);
+  Result := WStr;
 end;
 
 function TQtFontInfo.GetFixedPitch: Boolean;
@@ -1677,8 +1677,7 @@ procedure TQtFont.setRawName(p1: string);
 var
   Str: WideString;
 begin
-  Str := GetUtf8String(p1);
-
+  Str := {%H-}p1;
   QFont_setRawName(FHandle, @Str);
 end;
 
@@ -1686,8 +1685,7 @@ procedure TQtFont.setFamily(p1: string);
 var
   Str: WideString;
 begin
-  Str := GetUtf8String(p1);
-
+  Str := {%H-}p1;
   QFont_setFamily(FHandle, @Str);
 end;
 
@@ -1811,7 +1809,7 @@ end;
 constructor TQtBrush.CreateWithRadialGradient(ALogBrush: TLogRadialGradient);
 var
   i: Integer;
-  lColor: PQColor;
+  lColor: TQColor;
   lR, lG, lB, lA: Double;
 begin
   FRadialGradient := QRadialGradient_create(
@@ -1823,8 +1821,8 @@ begin
     lG := ALogBrush.radStops[i].radColorG / $FFFF;
     lB := ALogBrush.radStops[i].radColorB / $FFFF;
     lA := ALogBrush.radStops[i].radColorA / $FFFF;
-    QColor_fromRgbF(lColor, lR, lG, lB, lA);
-    QGradient_setColorAt(FRadialGradient, ALogBrush.radStops[i].radPosition, lColor);
+    QColor_fromRgbF(@lColor, lR, lG, lB, lA);
+    QGradient_setColorAt(FRadialGradient, ALogBrush.radStops[i].radPosition, @lColor);
   end;
 
   FHandle := QBrush_create(FRadialGradient);
@@ -1854,8 +1852,7 @@ begin
   Result := QBrush_Color(FHandle);
 end;
 
-function TQtBrush.GetLBStyle(out AStyle: LongWord; out AHatch: PtrUInt
-  ): Boolean;
+function TQtBrush.GetLBStyle(out AStyle: LongWord; out AHatch: PtrUInt): Boolean;
 begin
   Result := FHandle <> nil;
   if not Result then
@@ -1863,7 +1860,7 @@ begin
 
   AStyle := BS_SOLID;
   if Style in [QtHorPattern, QtVerPattern, QtCrossPattern,
-                    QtBDiagPattern, QtFDiagPattern, QtDiagCrossPattern] then
+               QtBDiagPattern, QtFDiagPattern, QtDiagCrossPattern] then
     AStyle := BS_HATCHED
   else
     AHatch := 0;
@@ -3439,6 +3436,8 @@ var
   ScaledMask: QImageH;
   NewRect: TRect;
   ARenderHint: Boolean;
+  ATransformation: QtTransformationMode;
+  ARenderHints: QPainterRenderHints;
 
   function NeedScaling: boolean;
   var
@@ -3573,9 +3572,17 @@ begin
         ScaledImage := QImage_create();
         try
           QImage_copy(Image, ScaledImage, 0, 0, QImage_width(Image), QImage_height(Image));
-          // use smooth transformation when scaling image. issue #29883
+          {use smooth transformation when scaling image. issue #29883
+           check if antialiasing is on, if not then don''t call smoothTransform. issue #330011}
+          ARenderHints := QPainter_renderHints(Widget);
+          if (ARenderHints and QPainterAntialiasing <> 0) or (ARenderHints and QPainterSmoothPixmapTransform <> 0) or
+            (ARenderHints and QPainterHighQualityAntialiasing <> 0) then
+              ATransformation := QtSmoothTransformation
+          else
+            ATransformation := QtFastTransformation;
+
           QImage_scaled(ScaledImage, ScaledImage, LocalRect.Right - LocalRect.Left,
-            LocalRect.Bottom - LocalRect.Top, QtIgnoreAspectRatio, QtSmoothTransformation);
+            LocalRect.Bottom - LocalRect.Top, QtIgnoreAspectRatio, ATransformation);
           NewRect := sourceRect^;
           NewRect.Right := (LocalRect.Right - LocalRect.Left) + sourceRect^.Left;
           NewRect.Bottom := (LocalRect.Bottom - LocalRect.Top) + sourceRect^.Top;
@@ -3585,13 +3592,19 @@ begin
         end;
       end else
       begin
-        // smooth a bit. issue #29883
-        ARenderHint := QPainter_testRenderHint(Widget, QPainterSmoothPixmapTransform);
-        if (QImage_format(image) = QImageFormat_ARGB32) and (flags = QtAutoColor) and
+        {smooth a bit. issue #29883
+         check if antialiasing is on, if not then don''t call smoothTransform. issue #330011}
+
+        ARenderHints := QPainter_renderHints(Widget);
+        ARenderHint := (ARenderHints and QPainterAntialiasing <> 0) or (ARenderHints and QPainterSmoothPixmapTransform <> 0) or
+          (ARenderHints and QPainterHighQualityAntialiasing <> 0);
+
+        if ARenderHint and (QImage_format(image) = QImageFormat_ARGB32) and (flags = QtAutoColor) and
           not EqualRect(LocalRect, sourceRect^) then
             QPainter_setRenderHint(Widget, QPainterSmoothPixmapTransform, True);
         QPainter_drawImage(Widget, PRect(@LocalRect), image, sourceRect, flags);
-        QPainter_setRenderHint(Widget, QPainterSmoothPixmapTransform, ARenderHint);
+        if ARenderHint then
+          QPainter_setRenderHint(Widget, QPainterSmoothPixmapTransform, not ARenderHint);
       end;
     end;
   end;
@@ -3873,7 +3886,7 @@ begin
     Clip := Clipbrd.Clipboard(ctPrimarySelection);
     Clip.OnRequest := nil;
     FOnClipBoardRequest[ctPrimarySelection] := nil;
-    Clip.AsText := UTF8Decode(WStr);
+    Clip.AsText := WStr{%H-};
     EndUpdate;
   end;
 end;
@@ -3901,8 +3914,7 @@ end;
 function TQtClipboard.IsClipboardChanged: Boolean;
 var
   TempMimeData: QMimeDataH;
-  Str: WideString;
-  Str2: WideString;
+  Str, Str2: WideString;
 begin
   Result := not FLockClip;
   if FLockClip then
@@ -3916,13 +3928,10 @@ begin
       QMimeData_hasURLS(TempMimeData)) then
     begin
       QMimeData_text(TempMimeData, @Str);
-      Str := UTF16ToUTF8(Str);
-
-      Str2 := Clipbrd.Clipboard.AsText;
-
+      Str2 := Clipbrd.Clipboard{%H-}.AsText;
       Result := Str <> Str2;
       if Result then
-        Clipbrd.Clipboard.AsText := Str;
+        Clipbrd.Clipboard.AsText := Str{%H-};
     end;
   finally
     FLockClip := False;
@@ -3966,7 +3975,7 @@ var
     begin
       DataStream.Size := 0;
       DataStream.Position := 0;
-      MimeType := FormatToMimeType(Clip.Formats[I]);
+      MimeType := {%H-}FormatToMimeType(Clip.Formats[I]);
       FOnClipBoardRequest[ClipboardType](Clip.Formats[I], DataStream);
       Data := QByteArray_create(PAnsiChar(DataStream.Memory), DataStream.Size);
       if (QByteArray_length(Data) > 1) and QByteArray_endsWith(Data, #0) then
@@ -4063,7 +4072,7 @@ var
 begin
   Result := False;
   QtMimeData := getMimeData(ClipbBoardTypeToQtClipboard[ClipBoardType]);
-  MimeType := FormatToMimeType(FormatID);
+  MimeType := {%H-}FormatToMimeType(FormatID);
   Data := QByteArray_create();
   QMimeData_data(QtMimeData, Data, @MimeType);
   s := QByteArray_size(Data);
@@ -4098,8 +4107,7 @@ begin
     for i := 0 to Count - 1 do
     begin
       QStringList_at(QtList, @Str, i);
-      Str := UTF16ToUTF8(Str);
-      List[i] := RegisterFormat(Str);
+      List[i] := RegisterFormat(Str{%H-});
     end;
 
     Result := True;
@@ -4142,7 +4150,7 @@ function TQtClipboard.GetOwnerShip(ClipboardType: TClipboardType;
     begin
       DataStream.Size := 0;
       DataStream.Position := 0;
-      MimeType := FormatToMimeType(Formats[I]);
+      MimeType := {%H-}FormatToMimeType(Formats[I]);
       FOnClipBoardRequest[ClipboardType](Formats[I], DataStream);
       Data := QByteArray_create(PAnsiChar(DataStream.Memory), DataStream.Size);
       {do not remove #0 from Application/X-Laz-SynEdit-Tagged issue #25692}
@@ -4217,16 +4225,14 @@ end;
 {returns default system printer}
 function TQtPrinter.DefaultPrinter: WideString;
 var
-  prnName: WideString;
   PrnInfo: QPrinterInfoH;
 begin
   PrnInfo := QPrinterInfo_create();
   QPrinterInfo_defaultPrinter(PrnInfo);
-  QPrinterInfo_printerName(PrnInfo, @PrnName);
+  QPrinterInfo_printerName(PrnInfo, @Result);
   QPrinterInfo_destroy(PrnInfo);
-  if PrnName = '' then
-    PrnName := 'unknown';
-  Result := UTF8ToUTF16(PrnName);
+  if Result = '' then
+    Result := 'unknown';
 end;
 
 {returns available list of printers.
@@ -4234,8 +4240,7 @@ end;
  Default sys printer is always 1st in the list.}
 function TQtPrinter.GetAvailablePrinters(Lst: TStrings): Boolean;
 var
-  Str: WideString;
-  PrnName: WideString;
+  Str, PrnName: WideString;
   i: Integer;
   PrnInfo: QPrinterInfoH;
   Prntr: QPrinterInfoH;
@@ -4255,16 +4260,16 @@ begin
       begin
         QPrinterInfo_printerName(Prntr, @PrnName);
         if QPrinterInfo_isDefault(Prntr) then
-          Lst.Insert(0, UTF8ToUTF16(PrnName))
+          Lst.Insert(0, PrnName{%H-})
         else
-          Lst.Add(UTF8ToUTF16(PrnName));
+          Lst.Add(PrnName{%H-});
       end;
     end;
   finally
     QPrinterInfo_destroy(PrnInfo);
   end;
 
-  i := Lst.IndexOf(Str);
+  i := Lst.IndexOf(Str{%H-});
   if i > 0 then
     Lst.Move(i, 0);
   Result := Lst.Count > 0;
@@ -4315,7 +4320,7 @@ var
   Str: WideString;
 begin
   QPrinter_creator(FHandle, @Str);
-  Result := UTF16ToUTF8(Str);
+  Result := Str;
 end;
 
 function TQtPrinter.getDevType: Integer;
@@ -4328,7 +4333,7 @@ var
   Str: WideString;
 begin
   QPrinter_docName(FHandle, @Str);
-  Result := UTF16ToUTF8(Str);
+  Result := Str;
 end;
 
 function TQtPrinter.getDoubleSidedPrinting: Boolean;
@@ -4371,7 +4376,7 @@ var
   Str: WideString;
 begin
   QPrinter_printProgram(FHandle, @Str);
-  Result := UTF16ToUTF8(Str);
+  Result := Str;
 end;
 
 function TQtPrinter.getPrintRange: QPrinterPrintRange;
@@ -4393,7 +4398,7 @@ procedure TQtPrinter.setCreator(const AValue: WideString);
 var
   Str: WideString;
 begin
-  Str := GetUtf8String(AValue);
+  Str := AValue;
   QPrinter_setCreator(FHandle, @Str);
 end;
 
@@ -4401,7 +4406,7 @@ procedure TQtPrinter.setDocName(const AValue: WideString);
 var
   Str: WideString;
 begin
-  Str := GetUtf8String(AValue);
+  Str := AValue;
   QPrinter_setDocName(FHandle, @Str);
 end;
 
@@ -4429,7 +4434,7 @@ procedure TQtPrinter.setPrinterName(const AValue: WideString);
 var
   Str: WideString;
 begin
-  Str := GetUtf8String(AValue);
+  Str := AValue;
   QPrinter_setPrinterName(FHandle, @Str);
 end;
 
@@ -4438,14 +4443,14 @@ var
   Str: WideString;
 begin
   QPrinter_printerName(FHandle, @Str);
-  Result := UTF16ToUTF8(Str);
+  Result := Str;
 end;
 
 procedure TQtPrinter.setOutputFileName(const AValue: WideString);
 var
   Str: WideString;
 begin
-  Str := GetUtf8String(AValue);
+  Str := AValue;
   QPrinter_setOutputFileName(FHandle, @Str);
 end;
 
@@ -4454,7 +4459,7 @@ var
   Str: WideString;
 begin
   QPrinter_outputFileName(FHandle, @Str);
-  Result := UTF16ToUTF8(Str);
+  Result := Str;
 end;
 
 procedure TQtPrinter.setOrientation(const AValue: QPrinterOrientation);
@@ -4491,7 +4496,7 @@ procedure TQtPrinter.setPrintProgram(const AValue: WideString);
 var
   Str: WideString;
 begin
-  Str := GetUtf8String(AValue);
+  Str := AValue;
   QPrinter_setPrintProgram(FHandle, @Str);
 end;
 
@@ -4743,7 +4748,7 @@ var
   W: Widestring;
 begin
   QStringList_at(FHandle, @W, Index);
-  Result := UTF16ToUTF8(W);
+  Result := {%H-}W;
 end;
 
 function TQtStringList.GetCount: Integer;
@@ -4784,7 +4789,7 @@ procedure TQtStringList.Insert(Index: Integer; const S: string);
 var
   W: WideString;
 begin
-  W := GetUtf8String(S);
+  W := {%H-}S;
   QStringList_insert(FHandle, Index, @W);
 end;
 
@@ -4979,7 +4984,7 @@ function TQtActionGroup.addAction(text: WideString): QActionH;
 var
   WStr: WideString;
 begin
-  WStr := GetUTF8String(text);
+  WStr := text;
   Result := QActionGroup_addAction(FHandle, @WStr);
 end;
 
@@ -4987,7 +4992,7 @@ function TQtActionGroup.addAction(icon: QIconH; text: WideString): QActionH;
 var
   WStr: WideString;
 begin
-  WStr := GetUTF8String(text);
+  WStr := text;
   Result := QActionGroup_addAction(FHandle, icon, @WStr);
 end;
 
@@ -5089,8 +5094,7 @@ begin
   QObject_objectName(AnObject, @Result);
 end;
 
-function TQtObjectDump.InheritsQtClass(AnObject: QObjectH;
-  AQtClass: WideString): Boolean;
+function TQtObjectDump.InheritsQtClass(AnObject: QObjectH; AQtClass: WideString): Boolean;
 begin
   if (AnObject = nil) or (AQtClass = '') then
     Result := False

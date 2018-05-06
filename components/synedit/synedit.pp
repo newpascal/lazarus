@@ -784,6 +784,8 @@ type
     property PaintLockOwner: TSynEditBase read GetPaintLockOwner write SetPaintLockOwner;
     property TextDrawer: TheTextDrawer read fTextDrawer;
 
+    procedure DoAutoAdjustLayout(const AMode: TLayoutAdjustmentPolicy;
+      const AXProportion, AYProportion: Double); override;
   protected
     procedure CreateHandle; override;
     procedure CreateParams(var Params: TCreateParams); override;
@@ -2100,10 +2102,6 @@ begin
   FWordBreaker := TSynWordBreaker.Create;
 
   RecreateMarkList;
-
-  {$IFNDEF EnableDoubleBuf}
-  DoubleBuffered := True;
-  {$ENDIF}
 
   fTextDrawer := TheTextDrawer.Create([fsBold], fFontDummy);
   {$IFDEF WithSynExperimentalCharWidth}
@@ -4075,7 +4073,7 @@ begin
         if (NX <= 0) and not InclCurrent then NX := LineLen + 1;
         if (NX <= 0) and InclCurrent then NX := 1;
 
-        ULine := LazUTF8.UTF8UpperCase(Line);
+        ULine := UTF8UpperCase(Line);
         CWidth := FTheLinesView.GetPhysicalCharWidths(CY - 1); // for utf 8
         OX := CX;
         i := Length(ULine);
@@ -4091,7 +4089,7 @@ begin
           CX := j;
         end;
         // skip lowercase
-        ULine := LazUTF8.UTF8LowerCase(Line);
+        ULine := UTF8LowerCase(Line);
         While (CX < NX) and (CX <= i) do begin          // check entire next utf-8 char to be equal
           r := (CX = OX) or (CX <= 1) or (Line[CX-1] <> '_') or ((CX <= i) and (Line[CX] = '_'));
           j := CX;
@@ -4175,7 +4173,7 @@ begin
     swbCaseChange: begin
         NX := WordBreaker.PrevWordStart(Line,  Min(CX, Length(Line) + 1));
 
-        ULine := LazUTF8.UTF8LowerCase(Line);
+        ULine := UTF8LowerCase(Line);
         CWidth := FTheLinesView.GetPhysicalCharWidths(CY - 1); // for utf 8
         OX := CX;
         i := Length(ULine);
@@ -5087,7 +5085,7 @@ begin
     exit;
 
   FHighlighter.CurrentLines := FLines; // Trailing spaces are not needed
-  if not FHighlighter.IdleScanRanges then
+  if not FHighlighter.IdleScanRanges{%H-} then
     exit;
 
   // Move to the end; give others a change too
@@ -5470,7 +5468,7 @@ var
   Group: TSynEditUndoGroup;
 begin
   Group := fUndoList.PopItem;
-  if Group <> nil then begin;
+  if Group <> nil then begin
     {$IFDEF SynUndoDebugCalls}
     DebugLnEnter(['>> TCustomSynEdit.Undo ',DbgSName(self), ' ', dbgs(Self), ' Group', dbgs(Group), ' cnt=', Group.Count]);
     {$ENDIF}
@@ -6737,10 +6735,10 @@ begin
         end;
       ecDeleteWord, ecDeleteEOL:
         if not ReadOnly then begin
-          Len := LogicalToPhysicalCol(LineText, CaretY-1,Length(LineText)+1)-1;
           Helper := '';
           Caret := CaretXY;
           if Command = ecDeleteWord then begin
+            Len := LogicalToPhysicalCol(LineText, CaretY-1,Length(LineText)+1)-1;
             if CaretX > Len + 1 then begin
               Helper := StringOfChar(' ', CaretX - 1 - Len);
               CaretX := 1 + Len;
@@ -6756,7 +6754,7 @@ begin
               // if we are inside a word, delete to word-end
               WP := NextWordLogicalPos(swbWordEnd, True);
           end else
-            WP := Point(Len + 1, CaretY);
+            WP := Point(Length(LineText) + 1, CaretY);
           if (WP.X <> FCaret.BytePos) or (WP.Y <> FCaret.LinePos) then begin
             FInternalBlockSelection.StartLineBytePos := WP;
             FInternalBlockSelection.EndLineBytePos := LogicalCaretXY;
@@ -6825,7 +6823,7 @@ begin
       ecMatchBracket:
         FindMatchingBracket;
       ecChar:
-        if not ReadOnly and (AChar >= #32) and (AChar <> #127) then begin
+        if not ReadOnly and ((AChar = #9) or (AChar >= #32)) and (AChar <> #127) then begin
           if SelAvail and (not FBlockSelection.Persistent) and (eoOverwriteBlock in fOptions2) then begin
             SetSelTextExternal(AChar);
           end else begin
@@ -8201,6 +8199,8 @@ end;
 
 procedure TCustomSynEdit.CreateWnd;
 begin
+  if not (csDesigning in ComponentState) then
+    DoubleBuffered := DoubleBuffered or (GetSystemMetrics(SM_REMOTESESSION)=0); // force DoubleBuffered if not used in remote session
   inherited;
   if (eoDropFiles in fOptions) and not (csDesigning in ComponentState) then
     // ToDo DragAcceptFiles
@@ -8227,6 +8227,19 @@ begin
   {$ENDIF}
   SurrenderPrimarySelection;
   inherited DestroyWnd;
+end;
+
+procedure TCustomSynEdit.DoAutoAdjustLayout(
+  const AMode: TLayoutAdjustmentPolicy; const AXProportion, AYProportion: Double
+  );
+begin
+  inherited DoAutoAdjustLayout(AMode, AXProportion, AYProportion);
+
+  if AMode in [lapAutoAdjustWithoutHorizontalScrolling, lapAutoAdjustForDPI] then
+  begin
+    FLeftGutter.ScalePPI(AXProportion);
+    FRightGutter.ScalePPI(AXProportion);
+  end;
 end;
 
 procedure TCustomSynEdit.DoBlockIndent;
@@ -8975,13 +8988,20 @@ begin
         //TokenType := Highlighter.GetTokenKind;
         Attri := Highlighter.GetTokenAttribute;
         //DebugLn(['  TCustomSynEdit.CaretAtIdentOrString: Start=', Start, ', Token=', Token]);
-        if (PosX >= Start) and (PosX < Start + Length(Token)) then
+        if (PosX = Start) then
         begin
-          AtIdent := Attri = Highlighter.IdentifierAttribute;
+          AtIdent := (Attri = Highlighter.IdentifierAttribute)
+                  or (PrevAttri = Highlighter.IdentifierAttribute);
           NearString := (Attri = Highlighter.StringAttribute)
                  or (PrevAttri = Highlighter.StringAttribute); // If cursor is on end-quote.
           //DebugLn(['   TCustomSynEdit.CaretAtIdentOrString: Success! Attri=', Attri,
           //         ', AtIdent=', AtIdent, ', AtString=', AtString]);
+          exit;
+        end;
+        if (PosX >= Start) and (PosX < Start + Length(Token)) then
+        begin
+          AtIdent := Attri = Highlighter.IdentifierAttribute;
+          NearString := (Attri = Highlighter.StringAttribute);
           exit;
         end;
         PrevAttri := Attri;

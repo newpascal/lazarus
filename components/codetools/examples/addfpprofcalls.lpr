@@ -31,8 +31,12 @@ program addfpprofcalls;
 {$mode objfpc}{$H+}
 
 uses
-  SysUtils, CodeCache, CodeToolManager, CodeAtom, BasicCodeTools, SourceChanger,
-  CodeTree, CodeToolsStructs, PascalParserTool;
+  SysUtils,
+  // LazUtils
+  LazFileUtils, LazUTF8, AvgLvlTree,
+  // CodeTools
+  CodeCache, CodeToolManager, CodeAtom, BasicCodeTools, SourceChanger,
+  CodeTree, PascalParserTool;
 
 type
   TMode = (mList,mAdd,mRemove);
@@ -60,13 +64,50 @@ var
   FromPos: objpas.Integer;
   ToPos: objpas.Integer;
 
+procedure ShowHelp;
+begin
+  writeln('addfpprofcalls');
+  writeln;
+  writeln('List function signatures, or add or remove fpprofiler calls to selected functions.');
+  writeln;
+  writeln('Usage: <options> <unit file name> <function signature> <function signature> ...');
+  writeln('  -h : write this help');
+  writeln('  -r : remove calls instead of list');
+  writeln('  -a : add calls instead of list');
+  writeln;
+  writeln('Example');
+  writeln('  List all function signatures of unit1.pas');
+  writeln('    ',ParamStrUTF8(0),' unit1.pas');
+  writeln('  Add fpprofiler calls to TForm.Button1Click:');
+  writeln('    ',ParamStrUTF8(0),' -a unit1.pas TForm1.Button1Click(:TObject)');
+  writeln('  Remove fpprofiler calls from TForm.Button1Click:');
+  writeln('    ',ParamStrUTF8(0),' -r unit1.pas TForm1.Button1Click(:TObject)');
+  writeln;
+  writeln('Before:');
+  writeln('=======');
+  writeln('procedure TMainForm.Button1Clicked(...)');
+  writeln('begin');
+  writeln('  // do something here');
+  writeln('end;');
+  writeln;
+  writeln('After:');
+  writeln('======');
+  writeln('procedure TMainForm.Button1Clicked(...)');
+  writeln('begin');
+  writeln('  SendMethodEnter(''TMainForm.Button1Clicked'');');
+  writeln('  // do something here');
+  writeln('  SendMethodExit(''TMainForm.Button1Clicked'');');
+  writeln('end;');
+  writeln;
+end;
+
 procedure RemoveCall;
 begin
   FromPos:=Tool.CurPos.StartPos;
   // read parameters
   Tool.ReadNextAtom;
   if Tool.CurPos.Flag<>cafRoundBracketOpen then
-    Tool.RaiseException('( expected, but '+Tool.GetAtom+' found');
+    Tool.RaiseException(20171014154139,'( expected, but '+Tool.GetAtom+' found');
   Tool.ReadTilBracketClose(true);
   ToPos:=Tool.CurPos.EndPos;
   // read semicolon
@@ -94,39 +135,8 @@ begin
     for i:=1 to ParamCount do begin
       Param:=ParamStrUTF8(i);
       if (Param='-h') or (Param='-?') then begin
-        writeln('addfpprofcalls');
-        writeln;
-        writeln('List function signatures, or add or remove fpprofiler calls to selected functions.');
-        writeln;
-        writeln('Usage: <options> <unit file name> <function signature> <function signature> ...');
-        writeln('  -h : write this help');
-        writeln('  -r : remove calls instead of list');
-        writeln('  -a : add calls instead of list');
-        writeln;
-        writeln('Example');
-        writeln('  List all function signatures of unit1.pas');
-        writeln('    ',ParamStrUTF8(0),' unit1.pas');
-        writeln('  Add fpprofiler calls to TForm.Button1Click:');
-        writeln('    ',ParamStrUTF8(0),' -a unit1.pas TForm1.Button1Click(:TObject)');
-        writeln('  Remove fpprofiler calls from TForm.Button1Click:');
-        writeln('    ',ParamStrUTF8(0),' -r unit1.pas TForm1.Button1Click(:TObject)');
-        writeln;
-        writeln('Before:');
-        writeln('=======');
-        writeln('procedure TMainForm.Button1Clicked(...)');
-        writeln('begin');
-        writeln('  // do something here');
-        writeln('end;');
-        writeln;
-        writeln('After:');
-        writeln('======');
-        writeln('procedure TMainForm.Button1Clicked(...)');
-        writeln('begin');
-        writeln('  SendMethodEnter(''TMainForm.Button1Clicked'');');
-        writeln('  // do something here');
-        writeln('  SendMethodExit(''TMainForm.Button1Clicked'');');
-        writeln('end;');
-        Halt;
+        ShowHelp;
+        exit;
       end else if Param='-r' then
         Mode:=mRemove
       else if Param='-a' then
@@ -140,6 +150,11 @@ begin
         else
           Signatures[Param]:='1';
       end;
+    end;
+
+    if Filename='' then begin
+      ShowHelp;
+      exit;
     end;
 
     // load the file

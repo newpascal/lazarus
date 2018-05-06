@@ -35,12 +35,13 @@ unit UnitDependencies;
 interface
 
 uses
-  // RTL + FCL + LCL
-  Classes, SysUtils, types, math, AVL_Tree,
+  // RTL + FCL
+  Classes, SysUtils, types, math, Laz_AVL_Tree,
+  // LCL
   Forms, Controls, ExtCtrls, ComCtrls, StdCtrls, Buttons, Dialogs, Menus, Clipbrd,
   // CodeTools
-  CodeToolManager, DefineTemplates, CodeToolsStructs, CTUnitGraph, CTUnitGroupGraph,
-  FileProcs, CodeCache,
+  CodeToolManager, DefineTemplates, CTUnitGraph, CTUnitGroupGraph,
+  FileProcs, CodeCache, AvgLvlTree,
   // LazUtils
   LazLogger, LazFileUtils, LazFileCache, LazUtilities, LazUTF8, LvlGraphCtrl,
   // IDE interface
@@ -545,13 +546,13 @@ begin
   FPendingUnitDependencyRoute:=TStringList.Create;
   CreateUsesGraph(FUsesGraph,FGroups);
 
-  fImgIndexProject   := IDEImages.LoadImage(16, 'item_project');
-  fImgIndexUnit      := IDEImages.LoadImage(16, 'item_unit');
-  fImgIndexPackage   := IDEImages.LoadImage(16, 'pkg_required');
-  fImgIndexDirectory := IDEImages.LoadImage(16, 'pkg_files');
-  fImgIndexOverlayImplUses := IDEImages.LoadImage(16, 'pkg_core_overlay');
-  fImgIndexOverlayIntfCycle := IDEImages.LoadImage(16, 'ce_cycleinterface');
-  fImgIndexOverlayImplCycle := IDEImages.LoadImage(16, 'ce_cycleimplementation');
+  fImgIndexProject   := IDEImages.LoadImage('item_project');
+  fImgIndexUnit      := IDEImages.LoadImage('item_unit');
+  fImgIndexPackage   := IDEImages.LoadImage('pkg_required');
+  fImgIndexDirectory := IDEImages.LoadImage('pkg_files');
+  fImgIndexOverlayImplUses := IDEImages.LoadImage('pkg_core_overlay');
+  fImgIndexOverlayIntfCycle := IDEImages.LoadImage('ce_cycleinterface');
+  fImgIndexOverlayImplCycle := IDEImages.LoadImage('ce_cycleimplementation');
   AllUnitsTreeView.Images:=IDEImages.Images_16;
   SelUnitsTreeView.Images:=IDEImages.Images_16;
 
@@ -1776,23 +1777,23 @@ begin
   AllUnitsGroupBox.Caption:=lisUDAllUnits;
 
   AllUnitsShowDirsSpeedButton.Hint:=lisUDShowNodesForDirectories;
-  AllUnitsShowDirsSpeedButton.LoadGlyphFromResourceName(HInstance, 'pkg_hierarchical');
+  TIDEImages.AssignImage(AllUnitsShowDirsSpeedButton.Glyph, 'pkg_hierarchical');
   AllUnitsShowDirsSpeedButton.Down:=true;
   AllUnitsShowGroupNodesSpeedButton.Hint:=lisUDShowNodesForProjectAndPackages;
-  AllUnitsShowGroupNodesSpeedButton.LoadGlyphFromResourceName(HInstance, 'pkg_hierarchical');
+  TIDEImages.AssignImage(AllUnitsShowGroupNodesSpeedButton.Glyph, 'pkg_hierarchical');
   AllUnitsShowGroupNodesSpeedButton.Down:=true;
 
   AllUnitsSearchNextSpeedButton.Hint:=lisUDSearchNextOccurrenceOfThisPhrase;
-  AllUnitsSearchNextSpeedButton.LoadGlyphFromResourceName(HInstance, 'arrow_down');
+  TIDEImages.AssignImage(AllUnitsSearchNextSpeedButton.Glyph, 'arrow_down');
   AllUnitsSearchPrevSpeedButton.Hint:=lisUDSearchPreviousOccurrenceOfThisPhrase;
-  AllUnitsSearchPrevSpeedButton.LoadGlyphFromResourceName(HInstance, 'arrow_up');
+  TIDEImages.AssignImage(AllUnitsSearchPrevSpeedButton.Glyph, 'arrow_up');
 
   // selected units
   SelectedUnitsGroupBox.Caption:=lisUDSelectedUnits;
   SelUnitsSearchNextSpeedButton.Hint:=lisUDSearchNextUnitOfThisPhrase;
-  SelUnitsSearchNextSpeedButton.LoadGlyphFromResourceName(HInstance, 'arrow_down');
+  TIDEImages.AssignImage(SelUnitsSearchNextSpeedButton.Glyph, 'arrow_down');
   SelUnitsSearchPrevSpeedButton.Hint:=lisUDSearchPreviousUnitOfThisPhrase;
-  SelUnitsSearchPrevSpeedButton.LoadGlyphFromResourceName(HInstance, 'arrow_up');
+  TIDEImages.AssignImage(SelUnitsSearchPrevSpeedButton.Glyph, 'arrow_up');
 
   // popup menu
   UnitsTVCopyFilenameMenuItem.Caption:=uemCopyFilename;

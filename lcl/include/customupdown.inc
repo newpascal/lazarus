@@ -358,6 +358,7 @@ begin
     FAssociate.AddHandlerOnChangeBounds(@OnAssociateChangeBounds,true);
     FAssociate.AddHandlerOnEnabledChanged(@OnAssociateChangeEnabled,true);
     FAssociate.AddHandlerOnVisibleChanged(@OnAssociateChangeVisible,true);
+    FAssociate.AddHandlerOnMouseWheel(@AssociateMouseWheel,true);
   end;
 end;
 
@@ -390,6 +391,24 @@ begin
     Key := 0;
 end;
 
+procedure TCustomUpDown.AssociateMouseWheel(Sender: TObject;
+  Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint;
+  var Handled: Boolean);
+begin
+  //debugln('TCustomUpDown.AssociateMouseWheel A: Handled = ',DbgS(Handled));
+  if (WheelDelta > 0) then
+  begin
+    TCustomSpeedButton(FMaxBtn).Click;
+    Handled := True;
+  end
+  else if (WheelDelta < 0) then
+  begin
+    TCustomSpeedButton(FMinBtn).Click;
+    Handled := True;
+  end;
+  //debugln('TCustomUpDown.AssociateMouseWheel End: Handled = ',DbgS(Handled));
+end;
+
 procedure TCustomUpDown.OnAssociateChangeBounds(Sender: TObject);
 begin
   UpdateAlignButtonPos;
@@ -405,6 +424,36 @@ procedure TCustomUpDown.OnAssociateChangeVisible(Sender: TObject);
 begin
   if Assigned(FAssociate) then
     SetVisible(FAssociate.Visible);
+end;
+
+function TCustomUpDown.DoMouseWheelDown(Shift: TShiftState; MousePos: TPoint): Boolean;
+begin
+  Result := inherited DoMouseWheelDown(Shift, MousePos);
+  if not Result then
+    TCustomSpeedButton(FMinBtn).Click;
+end;
+
+function TCustomUpDown.DoMouseWheelUp(Shift: TShiftState; MousePos: TPoint): Boolean;
+begin
+  Result := inherited DoMouseWheelUp(Shift, MousePos);
+  if not Result then
+    TCustomSpeedButton(FMaxBtn).Click;
+end;
+
+function TCustomUpDown.DoMouseWheelLeft(Shift: TShiftState; MousePos: TPoint): Boolean;
+begin
+  Result := inherited DoMouseWheelLeft(Shift, MousePos);
+  if not Result then
+    if Orientation=udHorizontal then
+      TCustomSpeedButton(FMinBtn).Click;
+end;
+
+function TCustomUpDown.DoMouseWheelRight(Shift: TShiftState; MousePos: TPoint): Boolean;
+begin
+  Result := inherited DoMouseWheelRight(Shift, MousePos);
+  if not Result then
+    if Orientation=udHorizontal then
+      TCustomSpeedButton(FMaxBtn).Click;
 end;
 
 procedure TCustomUpDown.DoSetBounds(ALeft, ATop, AWidth, AHeight: integer);

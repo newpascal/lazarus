@@ -40,12 +40,20 @@ unit ViewUnit_Dlg;
 interface
 
 uses
-  SysUtils, Classes, Controls, Forms, Buttons, StdCtrls,
-  LazarusIdeStrConsts, IDEProcs, CustomFormEditor, LCLType, LCLIntf,
-  ExtCtrls, ButtonPanel, Menus, AVL_Tree, ComCtrls,
-  PackageDefs, IDEWindowIntf, IDEHelpIntf, IDEImagesIntf, ListFilterEdit,
-  CodeToolsStructs, CodeToolManager, FileProcs,
-  lazutf8sysutils, LazFileUtils, LazFileCache;
+  SysUtils, Classes, Laz_AVL_Tree,
+  // LCL
+  LCLType, LCLIntf,
+  Controls, Forms, Buttons, StdCtrls, ExtCtrls, ButtonPanel, Menus, ComCtrls,
+  // LazUtils
+  LazUTF8SysUtils, LazFileUtils, LazFileCache, AvgLvlTree,
+  // Codetools
+  CodeToolManager, FileProcs,
+  // LazControls
+  ListFilterEdit,
+  // IdeIntf
+  IDEWindowIntf, IDEHelpIntf, IDEImagesIntf,
+  // IDE
+  LazarusIdeStrConsts, IDEProcs, CustomFormEditor, PackageDefs;
 
 type
   TIDEProjectItem = (
@@ -314,7 +322,7 @@ begin
   ButtonPanel.HelpButton.Caption:=lisMenuHelp;
   ButtonPanel.CancelButton.Caption:=lisCancel;
   SortAlphabeticallySpeedButton.Hint:=lisPESortFilesAlphabetically;
-  SortAlphabeticallySpeedButton.LoadGlyphFromResourceName(HInstance, 'pkg_sortalphabetically');
+  TIDEImages.AssignImage(SortAlphabeticallySpeedButton.Glyph, 'pkg_sortalphabetically');
 end;
 
 procedure TViewUnitDialog.FormDestroy(Sender: TObject);
@@ -374,7 +382,7 @@ begin
   begin
     Canvas.FillRect(ARect);
     IDEImages.Images_16.Draw(Canvas, 1, ARect.Top, FImageIndex);
-    Canvas.TextRect(ARect, ARect.Left + 20, ARect.Top, Items[Index]);
+    Canvas.TextRect(ARect, ARect.Left + IDEImages.Images_16.Width + Scale96ToFont(4), ARect.Top, Items[Index]);
   end;
 end;
 
@@ -409,6 +417,7 @@ procedure TViewUnitDialog.OnIdle(Sender: TObject; var Done: Boolean);
     i: Integer;
     aFilename: String;
   begin
+    if not FilenameIsAbsolute(aDirectory) then exit;
     aDirectory:=AppendPathDelim(aDirectory);
     //DebugLn(['CheckDirectory ',aDirectory]);
     Files:=nil;
@@ -526,7 +535,7 @@ end;
 
 procedure TViewUnitDialog.UpdateEntries;
 var
-  F2SItem: PStringToStringTreeItem;
+  F2SItem: PStringToStringItem;
 begin
   fEntries.Clear;
   for F2SItem in fFoundFiles do
@@ -539,9 +548,9 @@ begin
   if FItemType=AValue then Exit;
   FItemType:=AValue;
   case ItemType of
-    piComponent: FImageIndex := IDEImages.LoadImage(16, 'item_form');
-    piFrame:     FImageIndex := IDEImages.LoadImage(16, 'tpanel');
-    else         FImageIndex := IDEImages.LoadImage(16, 'item_unit');
+    piComponent: FImageIndex := IDEImages.LoadImage('item_form');
+    piFrame:     FImageIndex := IDEImages.LoadImage('tpanel');
+    else         FImageIndex := IDEImages.LoadImage('item_unit');
   end;
   if FImageIndex<0 then FImageIndex:=0;
 end;

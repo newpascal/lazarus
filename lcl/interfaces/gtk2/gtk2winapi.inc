@@ -1402,7 +1402,7 @@ begin
          (lfItalic = 0) and
          (lfUnderline = 0) and
          (lfOrientation = 0) and
-         (CompareText(lfFacename, 'default') = 0) then
+         IsFontNameDefault(lfFacename) then
       begin
         // use default font
         {$IFDEF VerboseFonts}
@@ -1430,7 +1430,7 @@ begin
       
       // using method 2
 
-      if aFamily = 'default' then
+      if IsFontNameDefault(aFamily) then
       begin
         CurFont := GetDefaultGtkFont(False);
         if PANGO_IS_LAYOUT(CurFont) then
@@ -1902,7 +1902,7 @@ begin
     Exit;
   end;
   {$IFDEF DebugLCLComponents}
-  if DebugGdiObjects.IsDestroyed(GDIObject) then
+  if DebugGdiObjects.IsDestroyed(Pointer(GDIObject)) then
   begin
     DebugLn(['TGtk2WidgetSet.DeleteObject object already deleted ',GDIObject]);
     debugln(DebugGdiObjects.GetInfo(PGdiObject(GDIObject),true));
@@ -2658,7 +2658,7 @@ var
       Points[0].cX := LeftPos + Points[0].cX;
       Points[0].cY := TopPos + tm.tmHeight - TM.tmDescent + 1;
 
-      GetTextExtentPoint(DC, @aStr[pIndex], 1, Points[1]);
+      GetTextExtentPoint(DC, @aStr[pIndex], UTF8CodepointSize(@aStr[pIndex]), Points[1]);
       Points[1].cX := Points[0].cX + Points[1].cX;
       Points[1].cY := Points[0].cY;
 
@@ -3324,7 +3324,8 @@ var
   StylesCount: Integer;
   StylesList: TStringList;
   y: Integer;
-  CharsetList: TFPList;
+  CharsetList: TByteList;
+  CS: Byte;
 
   function Gtk2GetFontFamiliesDefault(var AList: TStringList): Integer;
   var
@@ -3507,11 +3508,12 @@ begin
     FontType := TRUETYPE_FONTTYPE;
     FontList := TStringList.Create;
     StylesList := TStringList.Create;
-    CharsetList := TFPList.Create;
+    CharsetList := TByteList.Create;
     for i := 0 to CharsetEncodingList.Count - 1 do
     begin
-      if CharsetList.IndexOf({%H-}Pointer(PtrUInt(TCharSetEncodingRec(CharsetEncodingList.Items[i]^).CharSet))) = -1 then
-        CharsetList.Add({%H-}Pointer(PtrUInt(TCharSetEncodingRec(CharsetEncodingList.Items[i]^).CharSet)));
+      CS := TCharSetEncodingRec(CharsetEncodingList.Items[i]^).CharSet;
+      if CharsetList.IndexOf(CS) = -1 then
+        CharsetList.Add(CS);
     end;
     try
       if Gtk2GetFontFamilies(FontList, lpLogFont^.lfPitchAndFamily,
@@ -3528,7 +3530,7 @@ begin
           EnumLogFont.elfStyle := AStyle;
 
           if CharSetList.Count > 0 then
-            EnumLogFont.elfLogFont.lfCharSet := {%H-}PtrUInt(CharsetList.Items[0]);
+            EnumLogFont.elfLogFont.lfCharSet := CharsetList.Items[0];
 
           Result := Callback(EnumLogFont, Metric, FontType, LParam);
           for y := 1 to StylesCount - 1 do
@@ -3539,7 +3541,7 @@ begin
           end;
           for y := 1 to CharSetList.Count - 1 do
           begin
-            EnumLogFont.elfLogFont.lfCharSet := {%H-}PtrUInt(CharsetList.Items[y]);
+            EnumLogFont.elfLogFont.lfCharSet := CharsetList.Items[y];
             Result := Callback(EnumLogFont, Metric, FontType, LParam);
           end;
         end;
@@ -3794,7 +3796,7 @@ var
       CurScreenX := X;
       while CurCount > 0 do
       begin
-        CharLen := UTF8CharacterLength(CurStr);
+        CharLen := UTF8CodepointSize(CurStr);
         DevCtx.DrawTextWithColors(CurStr, CharLen, CurScreenX, Y, Foreground, BackgroundColor);
         inc(CurScreenX, CurDx^);
         inc(CurDx);
@@ -4998,11 +5000,21 @@ begin
   else
   {$ENDIF}
   lpmi^.rcWork := lpmi^.rcMonitor;
-  // gtk uses zero position for primary monitor
-  if Monitor = 0 then
-    lpmi^.dwFlags := MONITORINFOF_PRIMARY
-  else
-    lpmi^.dwFlags := 0;
+  // since gtk-2.20 we have correct api to get primary monitor. issue #32464
+  if Assigned(gdk_screen_get_primary_monitor) then
+  begin
+    if (Monitor = gdk_screen_get_primary_monitor(gdk_screen_get_default)) then
+      lpmi^.dwFlags := MONITORINFOF_PRIMARY
+    else
+      lpmi^.dwFlags := 0;
+  end else
+  begin
+    // gtk2 below 2.20
+    if Monitor = 0 then
+      lpmi^.dwFlags := MONITORINFOF_PRIMARY
+    else
+      lpmi^.dwFlags := 0;
+  end;
 end;
 
 {------------------------------------------------------------------------------
@@ -5173,11 +5185,11 @@ begin
         begin
           PLogfont(Buf)^ := GDIObject^.LogFont;
           Result:= SizeOf(TLogFont);
-          if GDIObject^.LogFont.lfFaceName = 'default' then
+          if IsFontNameDefault(GDIObject^.LogFont.lfFaceName) then
           begin
             AFontName := GetDefaultFontName;
 
-            if (AFontName = '') or (AFontName = 'default') then
+            if (AFontName = '') or IsFontNameDefault(AFontName) then
             begin
               AFont := GetDefaultGtkFont(False);
               if PANGO_IS_LAYOUT(AFont) then
@@ -5206,7 +5218,7 @@ begin
               if not pango_font_description_get_size_is_absolute(PangoDesc) or (AFontSize >= PANGO_SCALE) then
                 AFontSize := AFontSize div PANGO_SCALE;
 
-              PLogfont(Buf)^.lfHeight := MulDiv(AFontSize, GetDeviceCaps(0, LOGPIXELSX) , 72);
+              PLogfont(Buf)^.lfHeight := MulDiv(AFontSize, Screen.PixelsPerInch, 72);
             end;
           end;
         end else
@@ -5575,7 +5587,9 @@ var
 {$ifdef HasX}
   ax,ay,ah,aw: gint;
 {$endif}
+{$IFDEF Win32}
   auw, auh: guint;
+{$ENDIF}
   screen: PGdkScreen;
   ARect: TGdkRectangle;
   AValue: TGValue;
@@ -5607,12 +5621,17 @@ begin
     SM_CXCURSOR,
     SM_CYCURSOR:
       begin
-        // Width and height of a cursor, in pixels. For win32 system cannot create cursors of other sizes.
-        // For gtk this should be maximal cursor sizes
-        gdk_display_get_maximal_cursor_size(gdk_display_get_default, @auw, @auh);
-        if nIndex = SM_CXCURSOR
-        then Result := auw // return width
-        else Result := auh; // return height
+        {$IFDEF Win32}
+          // Width and height of a cursor, in pixels. For win32 system cannot create cursors of other sizes.
+          // For gtk this should be maximal cursor sizes
+          gdk_display_get_maximal_cursor_size(gdk_display_get_default, @auw, @auh);
+          if nIndex = SM_CXCURSOR
+          then Result := auw // return width
+          else Result := auh; // return height
+        {$ELSE}
+          // At least on Linux, the default size should be taken: Issue #32385
+          Result := gdk_display_get_default_cursor_size(gdk_display_get_default);
+        {$ENDIF}
       end;
     SM_CXDOUBLECLK:
       begin
@@ -7226,14 +7245,15 @@ const
 
   function GetGroup: PGSList;
   var
-    Item: PGList;
+    Item, orgList: PGList;
     parent : PGTKWidget;
   begin
     Result := nil;
     parent := gtk_widget_get_parent({%H-}Pointer(hndMenu));
     if parent = nil then Exit;
 
-    Item := gtk_container_children(PGTKContainer(parent));
+    Item := gtk_container_get_children(PGTKContainer(parent));
+    orgList := Item;
     while Item <> nil do
     begin
       if (Item^.Data <> {%H-}Pointer(hndMenu)) // exclude ourself
@@ -7245,6 +7265,8 @@ const
       end;
       Item := Item^.Next;
     end;
+    if Assigned(orgList) then
+      g_list_free(orgList);
   end;
 
 var
@@ -9397,6 +9419,8 @@ var
   GtkWindow: PGtkWindow;
   B: Boolean;
   Widget: PGtkWidget;
+  AFlags: TGdkWindowState;
+  AWindow: PGdkWindow;
 begin
   Result := False;
 
@@ -9442,9 +9466,17 @@ begin
       begin
         if not GTK_WIDGET_VISIBLE(PGtkWidget(GtkWindow)) then
           gtk_widget_show(PGtkWidget(GtkWindow));
-        gtk_window_deiconify(GtkWindow);
-        gtk_window_unmaximize(GtkWindow);
-        gtk_window_unfullscreen(GtkWindow);
+        AWindow := PGtkWidget(GtkWindow)^.window;
+        if GDK_IS_WINDOW(AWindow) then
+        begin
+          AFlags := gdk_window_get_state(AWindow);
+          if AFlags and GDK_WINDOW_STATE_ICONIFIED <> 0 then
+            gtk_window_deiconify(GtkWindow);
+          if AFlags and GDK_WINDOW_STATE_MAXIMIZED <> 0 then
+            gtk_window_unmaximize(GtkWindow);
+          if AFlags and GDK_WINDOW_STATE_FULLSCREEN <> 0 then
+            gtk_window_unfullscreen(GtkWindow);
+        end;
       end;
     end;
 
@@ -9460,9 +9492,16 @@ begin
       gtk_widget_show(PGtkWidget(GtkWindow))
     else
     begin
-      gtk_window_deiconify(GtkWindow);
-      gtk_window_unfullscreen(GtkWindow);
-      gtk_window_maximize(GtkWindow);
+      AWindow := PGtkWidget(GtkWindow)^.window;
+      if GDK_IS_WINDOW(AWindow) then
+      begin
+        AFlags := gdk_window_get_state(AWindow);
+        if AFlags and GDK_WINDOW_STATE_ICONIFIED <> 0 then
+          gtk_window_deiconify(GtkWindow);
+        if AFlags and GDK_WINDOW_STATE_FULLSCREEN <> 0 then
+          gtk_window_unfullscreen(GtkWindow);
+        gtk_window_maximize(GtkWindow);
+      end;
     end;
 
   SW_SHOWFULLSCREEN:
@@ -9471,6 +9510,20 @@ begin
     else
       gtk_window_fullscreen(GtkWindow);
 
+  SW_RESTORE:
+    begin
+      AWindow := PGtkWidget(GtkWindow)^.window;
+      if GDK_IS_WINDOW(AWindow) then
+      begin
+        AFlags := gdk_window_get_state(AWindow);
+        if AFlags and GDK_WINDOW_STATE_ICONIFIED <> 0 then
+          gtk_window_deiconify(GtkWindow);
+        if AFlags and GDK_WINDOW_STATE_MAXIMIZED <> 0 then
+          gtk_window_unmaximize(GtkWindow);
+        if AFlags and GDK_WINDOW_STATE_FULLSCREEN <> 0 then
+          gtk_window_unfullscreen(GtkWindow);
+      end;
+    end;
   end;
 
   Result := True;

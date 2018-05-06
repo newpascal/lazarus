@@ -30,7 +30,6 @@ type
   strict protected
     FBitmap: TBGRABitmap;
 
-    function GetFontAngle: Double; override;
     procedure SetAntialiasingMode(AValue: TChartAntialiasingMode);
     function SimpleTextExtent(const AText: String): TPoint; override;
     procedure SimpleTextOut(AX, AY: Integer; const AText: String); override;
@@ -44,6 +43,11 @@ type
     procedure Ellipse(AX1, AY1, AX2, AY2: Integer);
     procedure FillRect(AX1, AY1, AX2, AY2: Integer);
     function GetBrushColor: TChartColor;
+    function GetFontAngle: Double; override;
+    function GetFontColor: TFPColor; override;
+    function GetFontName: String; override;
+    function GetFontSize: Integer; override;
+    function GetFontStyle: TChartFontStyles; override;
     procedure Line(AX1, AY1, AX2, AY2: Integer);
     procedure Line(const AP1, AP2: TPoint);
     procedure LineTo(AX, AY: Integer); override;
@@ -67,10 +71,12 @@ type
     procedure SetTransparency(ATransparency: TChartTransparency);
   end;
 
+
 implementation
 
 uses
-  BGRAText, Graphics, TAGeometry;
+  BGRAText, Graphics, Math, TAGeometry;
+
 
 { TBGRABitmapDrawer }
 
@@ -132,7 +138,31 @@ end;
 
 function TBGRABitmapDrawer.GetFontAngle: Double;
 begin
-  Result := 0.0;
+//  Result := 0.0;
+  Result := OrientToRad(Canvas.Font.Orientation);
+end;
+
+function TBGRABitmapDrawer.GetFontColor: TFPColor;
+begin
+  Result := TColorToFPColor(Canvas.Font.Color);
+end;
+
+function TBGRABitmapDrawer.GetFontName: String;
+begin
+  Result := Canvas.Font.Name;
+end;
+
+function TBGRABitmapDrawer.GetFontSize: Integer;
+begin
+  Result := IfThen(Canvas.Font.Height = 0,
+    DEFAULT_FONT_SIZE,
+    round(abs(Canvas.Font.Height) / ScreenInfo.PixelsPerInchY * 72)
+  );
+end;
+
+function TBGRABitmapDrawer.GetFontStyle: TChartFontStyles;
+begin
+  Result := TChartFontStyles(Canvas.Font.Style);
 end;
 
 procedure TBGRABitmapDrawer.Line(AX1, AY1, AX2, AY2: Integer);
@@ -247,10 +277,12 @@ begin
 end;
 
 procedure TBGRABitmapDrawer.SetFont(AFont: TFPCustomFont);
+var
+  fs: Integer;
 begin
   Canvas.Font.Name := AFont.Name;
-  Canvas.Font.Height :=
-    FontEmHeightSign * AFont.Size * ScreenInfo.PixelsPerInchY div 72;
+  fs := IfThen(AFont.Size = 0, DEFAULT_FONT_SIZE, AFont.Size);
+  Canvas.Font.Height := FontEmHeightSign * fs * ScreenInfo.PixelsPerInchY div 72;
   Canvas.Font.Orientation := FGetFontOrientationFunc(AFont);
   Canvas.Font.BGRAColor := BGRAColorOrMono(AFont.FPColor);
   if AFont is TFont then

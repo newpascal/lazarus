@@ -27,14 +27,16 @@ uses
   Classes, SysUtils, types, CocoaWSCommon, CocoaPrivate, CocoaUtils, LCLType,
   Controls, LazLoggerBase, WSLCLClasses, gl, MacOSAll, CocoaAll;
 
-procedure LOpenGLViewport(Left, Top, Width, Height: integer);
+function LBackingScaleFactor(Handle: HWND): single;
+procedure LSetWantsBestResolutionOpenGLSurface(const AValue: boolean; Handle: HWND);
+procedure LOpenGLViewport(Handle: HWND; Left, Top, Width, Height: integer);
 procedure LOpenGLSwapBuffers(Handle: HWND);
 function LOpenGLMakeCurrent(Handle: HWND): boolean;
 function LOpenGLReleaseContext(Handle: HWND): boolean;
 procedure LOpenGLClip(Handle: HWND);
 function LOpenGLCreateContext(AWinControl: TWinControl;
               {%H-}WSPrivate: TWSPrivateClass; SharedControl: TWinControl;
-              DoubleBuffered: boolean;
+              DoubleBuffered, AMacRetinaMode: boolean;
               MajorVersion, MinorVersion: Cardinal;
               MultiSampling, AlphaBits, DepthBits, StencilBits, AUXBuffers: Cardinal;
               const {%H-}AParams: TCreateParams): HWND;
@@ -52,6 +54,12 @@ const
   NSOpenGLProfileVersion4_1Core = $4100; //requires OSX SDK 10.10 or later, https://github.com/google/gxui/issues/98
 
 type
+  NSOpenGLViewFix = objccategory external (NSOpenGLView)
+    procedure setWantsBestResolutionOpenGLSurface(bool: NSInteger); message 'setWantsBestResolutionOpenGLSurface:';
+  end;
+  NSScreenFix = objccategory external (NSScreen)
+     function backingScaleFactor: CGFloat ; message 'backingScaleFactor';
+  end;
   TDummyNoWarnObjCNotUsed = objc.BOOL;
   TDummyNoWarnObjCBaseNotUsed = objcbase.NSInteger;
 
@@ -62,6 +70,7 @@ type
     Owner: TWinControl;
     //nsGL: NSOpenGLContext;
     callback: TLCLCommonCallback;
+    backingScaleFactor: Single;
     function acceptsFirstResponder: Boolean; override;
     function becomeFirstResponder: Boolean; override;
     function resignFirstResponder: Boolean; override;
@@ -102,9 +111,42 @@ function IsCGLPixelFormatAvailable(Attribs: PInteger): boolean;*)
 
 implementation
 
-procedure LOpenGLViewport(Left, Top, Width, Height: integer);
+//value > 1 if screen is scaled, e.g. default for MOST retina displays is 2
+function LBackingScaleFactor(Handle: HWND): single;
 begin
-  glViewport(Left,Top,Width,Height);
+  result := TCocoaOpenGLView(Handle).backingScaleFactor;
+end;
+
+procedure LSetWantsBestResolutionOpenGLSurface(const AValue: boolean; Handle: HWND);
+var
+  View: TCocoaOpenGLView;
+begin
+  if Handle=0 then exit;
+  View:=TCocoaOpenGLView(Handle);
+  if not View.respondsToSelector(objcselector('setWantsBestResolutionOpenGLSurface:')) then exit;
+  if AValue then
+    View.setWantsBestResolutionOpenGLSurface(1)
+  else
+    View.setWantsBestResolutionOpenGLSurface(0);
+  if (AValue) and (NSScreen.mainScreen.respondsToSelector(objcselector('backingScaleFactor'))) then //MacOS >=10.7
+    View.backingScaleFactor := NSScreen.mainScreen.backingScaleFactor
+  else
+    View.backingScaleFactor := 1;
+end;
+
+procedure LOpenGLViewport(Handle: HWND; Left, Top, Width, Height: integer);
+var
+  View: NSOpenGLView absolute Handle;
+  lFinalWidth, lFinalHeight: Integer;
+begin
+  lFinalWidth := Width;
+  lFinalHeight := Height;
+  if View <> nil then
+  begin
+    lFinalWidth := Round(Width * LBackingScaleFactor(Handle));
+    lFinalHeight := Round(Height * LBackingScaleFactor(Handle));
+  end;
+  glViewport(Left,Top,lFinalWidth,lFinalHeight);
 end;
 
 procedure LOpenGLSwapBuffers(Handle: HWND);
@@ -140,7 +182,8 @@ begin
 end;
 
 function LOpenGLCreateContext(AWinControl: TWinControl;
-  WSPrivate: TWSPrivateClass; SharedControl: TWinControl; DoubleBuffered: boolean;
+  WSPrivate: TWSPrivateClass; SharedControl: TWinControl;
+  DoubleBuffered, AMacRetinaMode: boolean;
   MajorVersion, MinorVersion: Cardinal;
   MultiSampling, AlphaBits, DepthBits, StencilBits,
   AUXBuffers: Cardinal; const AParams: TCreateParams): HWND;
@@ -180,6 +223,7 @@ begin
   View.Owner:=AWinControl;
   //View.nsGL := aNSOpenGLContext;
   View.callback:=TLCLCommonCallback.Create(View, AWinControl);
+  LSetWantsBestResolutionOpenGLSurface(AMacRetinaMode, HWND(View));
   //View.setPixelFormat(PixFmt);
   Result:=TLCLIntfHandle(View);
 end;
@@ -268,6 +312,7 @@ begin
   if OpenGLControlHandle=0 then exit;
   View:=TCocoaOpenGLView(OpenGLControlHandle);
   Result:=CGLContextObj(View.openGLContext.CGLContextObj);
+  NSScreen.mainScreen.colorSpace;
 end;
 
 (*
@@ -391,44 +436,51 @@ end;
 
 procedure TCocoaOpenGLView.mouseDown(event: NSEvent);
 begin
-  if not Assigned(callback) or not callback.MouseUpDownEvent(event) then
-    inherited mouseDown(event);
+  if Assigned(callback)
+    then callback.MouseUpDownEvent(event)
+    else inherited mouseDown(event);
 end;
 
 procedure TCocoaOpenGLView.mouseUp(event: NSEvent);
 begin
-  if not Assigned(callback) or not callback.MouseUpDownEvent(event) then
-    inherited mouseUp(event);
+  if Assigned(callback)
+    then callback.MouseUpDownEvent(event)
+    else inherited mouseUp(event);
 end;
 
 procedure TCocoaOpenGLView.rightMouseDown(event: NSEvent);
 begin
-  if not Assigned(callback) or not callback.MouseUpDownEvent(event) then
-    inherited rightMouseDown(event);
+  if Assigned(callback)
+    then callback.MouseUpDownEvent(event)
+    else inherited rightMouseDown(event);
 end;
 
 procedure TCocoaOpenGLView.rightMouseUp(event: NSEvent);
 begin
-  if not Assigned(callback) or not callback.MouseUpDownEvent(event) then
-    inherited rightMouseUp(event);
+  if Assigned(callback)
+    then callback.MouseUpDownEvent(event)
+    else inherited rightMouseUp(event);
 end;
 
 procedure TCocoaOpenGLView.otherMouseDown(event: NSEvent);
 begin
-  if not Assigned(callback) or not callback.MouseUpDownEvent(event) then
-    inherited otherMouseDown(event);
+  if Assigned(callback)
+    then callback.MouseUpDownEvent(event)
+    else inherited otherMouseDown(event);
 end;
 
 procedure TCocoaOpenGLView.otherMouseUp(event: NSEvent);
 begin
-  if not Assigned(callback) or not callback.MouseUpDownEvent(event) then
-    inherited otherMouseUp(event);
+  if Assigned(callback)
+    then callback.MouseUpDownEvent(event)
+    else inherited otherMouseUp(event);
 end;
 
 procedure TCocoaOpenGLView.mouseDragged(event: NSEvent);
 begin
-  if not Assigned(callback) or not callback.MouseMove(event) then
-    inherited mouseDragged(event);
+  if Assigned(callback)
+    then callback.MouseMove(event)
+    else inherited mouseDragged(event);
 end;
 
 procedure TCocoaOpenGLView.mouseEntered(event: NSEvent);
@@ -443,14 +495,16 @@ end;
 
 procedure TCocoaOpenGLView.mouseMoved(event: NSEvent);
 begin
-  if not Assigned(callback) or not callback.MouseMove(event) then
-    inherited mouseMoved(event);
+  if Assigned(callback)
+    then callback.MouseMove(event)
+    else inherited mouseMoved(event);
 end;
 
 procedure TCocoaOpenGLView.scrollWheel(event: NSEvent);
 begin
-  if not Assigned(callback) or not callback.scrollWheel(event) then
-    inherited scrollWheel(event);
+  if Assigned(callback)
+    then callback.scrollWheel(event)
+    else inherited scrollWheel(event);
 end;
 
 procedure TCocoaOpenGLView.keyDown(event: NSEvent);
