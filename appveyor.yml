@@ -27,7 +27,7 @@ configuration:
   - Release
 
 environment:
-  nodejs_version: "6"
+  nodejs_version: "7"
   BINW32_PATH: '%APPVEYOR_BUILD_FOLDER%\..\binw32'
   PPDIR: '%APPVEYOR_BUILD_FOLDER%\..\freepascal\fpc\bin\i386-win32'
   BINW32_DL: 'https://raw.githubusercontent.com/newpascal/npbuild/master/binw32.7z'
