@@ -38,6 +38,12 @@ environment:
 install:
   - rm appveyor.yml
   - cd ..
+
+  # Get the latest stable version of Node.js or io.js
+  - ps: Install-Product node $env:nodejs_version
+  # install modules
+  - npm install
+
   - appveyor DownloadFile %BINW32_DL%
   - 7z x binw32.7z -o%APPVEYOR_BUILD_FOLDER%\.. -y  
   - npm install @octokit/rest
