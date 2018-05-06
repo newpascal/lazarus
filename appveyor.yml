@@ -27,6 +27,8 @@ configuration:
   - Release
 
 environment:
+  APPVEYOR_RDP_PASSWORD:
+    secure: kBUOx4ER4aHlxqZZlLTOGg==
   nodejs_version: "7"
   BINW32_PATH: '%APPVEYOR_BUILD_FOLDER%\..\binw32'
   PPDIR: '%APPVEYOR_BUILD_FOLDER%\..\freepascal\fpc\bin\i386-win32'
@@ -72,6 +74,9 @@ deploy:
   on:
     branch: release                 # release from master branch only
     appveyor_repo_tag: false       # ?deploy on tag push only
+
+on_finish:
+  - ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
 
 #---------------------------------#
 #     deployment configuration    #
