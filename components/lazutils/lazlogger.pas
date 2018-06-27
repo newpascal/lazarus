@@ -13,7 +13,9 @@ unit LazLogger;
 interface
 
 uses
-  Classes, SysUtils, types, math, LazUTF8, LazLoggerBase, LazClasses, LazFileUtils;
+  Classes, SysUtils, types, math,
+  // LazUtils
+  LazLoggerBase, LazClasses, LazFileUtils, LazUtilities, LazUTF8;
 
 type
 
@@ -27,9 +29,6 @@ function DbgStr(const StringWithSpecialChars: string): string; overload;
 function DbgStr(const StringWithSpecialChars: string; StartPos, Len: PtrInt): string; overload;
 function DbgStr(const p: PChar; Len: PtrInt): string; overload;
 function DbgWideStr(const StringWithSpecialChars: widestring): string; overload;
-procedure DumpExceptionBackTrace;
-
-function ConvertLineEndings(const s: string): string;
 
 type
 
@@ -39,11 +38,12 @@ type
   private
     FActiveLogText: PText; // may point to stdout
     FCloseLogFileBetweenWrites: Boolean;
+    FLastWriteFailed: Boolean;
     FLogName: String;
     FLogText: Text;
     FLogTextInUse, FLogTextFailed: Boolean;
     FUseStdOut: Boolean;
-    FWriteToFileLock: TRTLCriticalSection;
+    FWriteFailedCount: Integer;
     procedure DoOpenFile;
     procedure DoCloseFile;
     function GetWriteTarget: TLazLoggerWriteTarget;
@@ -54,16 +54,59 @@ type
     destructor Destroy; override;
     procedure OpenFile;
     procedure CloseFile;
+    procedure ResetWriteFailedCounter;
 
-    procedure WriteToFile(const s: string); inline;
-    procedure WriteLnToFile(const s: string); inline;
+    procedure WriteToFile(const s: string); virtual;
+    procedure WriteLnToFile(const s: string); virtual;
 
     property  LogName: String read FLogName write SetLogName;
     property  UseStdOut: Boolean read FUseStdOut write FUseStdOut;
     property  CloseLogFileBetweenWrites: Boolean read FCloseLogFileBetweenWrites write SetCloseLogFileBetweenWrites;
     property  WriteTarget: TLazLoggerWriteTarget read GetWriteTarget;
     property  ActiveLogText: PText read FActiveLogText;
+    property  WriteFailedCount: Integer read FWriteFailedCount;
+    property  LastWriteFailed: Boolean read FLastWriteFailed;
   end;
+
+  { TLazLoggerFileHandleThreadSave
+    file operations in critical section
+  }
+
+  TLazLoggerFileHandleThreadSave = class (TLazLoggerFileHandle)
+  private
+    FWriteToFileLock: TRTLCriticalSection;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    procedure WriteToFile(const s: string); override;
+    procedure WriteLnToFile(const s: string); override;
+  end;
+
+  { TLazLoggerFileHandleMainThread
+    file operations queued for main thread
+  }
+
+  TLazLoggerFileHandleMainThread = class (TLazLoggerFileHandle)
+  private
+  type
+    PWriteListEntry = ^TWriteListEntry;
+    TWriteListEntry = record
+      Next: PWriteListEntry;
+      Data: String;
+      Ln: Boolean;
+    end;
+  private
+    FWriteToFileLock: TRTLCriticalSection;
+    FFirst, FLast: PWriteListEntry;
+
+    procedure MainThreadWrite;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    procedure WriteToFile(const s: string); override;
+    procedure WriteLnToFile(const s: string); override;
+  end;
+
 
   { TLazLoggerFile }
 
@@ -175,6 +218,119 @@ begin
   LazLoggerBase.DebugLogger := ALogger;
 end;
 
+{ TLazLoggerFileHandleMainThread }
+
+procedure TLazLoggerFileHandleMainThread.MainThreadWrite;
+var
+  Data, NextData: PWriteListEntry;
+begin
+  EnterCriticalsection(FWriteToFileLock);
+  try
+    Data := FFirst;
+    FFirst := nil;
+    FLast := nil;
+  finally
+    LeaveCriticalsection(FWriteToFileLock);
+  end;
+
+  while Data <> nil do begin
+    NextData := Data^.Next;
+    if Data^.Ln
+    then inherited WriteLnToFile(Data^.Data)
+    else inherited WriteToFile(Data^.Data);
+    Dispose(Data);
+    Data := NextData;
+  end;
+end;
+
+constructor TLazLoggerFileHandleMainThread.Create;
+begin
+  InitCriticalSection(FWriteToFileLock);
+  inherited;
+end;
+
+destructor TLazLoggerFileHandleMainThread.Destroy;
+begin
+  inherited Destroy;
+  DoneCriticalsection(FWriteToFileLock);
+end;
+
+procedure TLazLoggerFileHandleMainThread.WriteToFile(const s: string);
+var
+  Data: PWriteListEntry;
+begin
+  New(Data);
+  Data^.Data := s;
+  Data^.Ln := False;
+  Data^.Next := nil;
+  EnterCriticalsection(FWriteToFileLock);
+  try
+    if FLast = nil then
+      FFirst := Data
+    else
+      FLast^.Next := Data;
+    FLast := Data;
+  finally
+    LeaveCriticalsection(FWriteToFileLock);
+  end;
+  TThread.Queue(nil, @MainThreadWrite);
+end;
+
+procedure TLazLoggerFileHandleMainThread.WriteLnToFile(const s: string);
+var
+  Data: PWriteListEntry;
+begin
+  New(Data);
+  Data^.Data := s;
+  Data^.Ln := True;
+  Data^.Next := nil;
+  EnterCriticalsection(FWriteToFileLock);
+  try
+    if FLast = nil then
+      FFirst := Data
+    else
+      FLast^.Next := Data;
+    FLast := Data;
+  finally
+    LeaveCriticalsection(FWriteToFileLock);
+  end;
+  TThread.Queue(nil, @MainThreadWrite);
+end;
+
+{ TLazLoggerFileHandleThreadSave }
+
+constructor TLazLoggerFileHandleThreadSave.Create;
+begin
+  InitCriticalSection(FWriteToFileLock);
+  inherited;
+end;
+
+destructor TLazLoggerFileHandleThreadSave.Destroy;
+begin
+  inherited Destroy;
+  DoneCriticalsection(FWriteToFileLock);
+end;
+
+procedure TLazLoggerFileHandleThreadSave.WriteToFile(const s: string);
+begin
+  EnterCriticalsection(FWriteToFileLock);
+  try
+    inherited WriteToFile(s);
+  finally
+    LeaveCriticalsection(FWriteToFileLock);
+  end;
+end;
+
+procedure TLazLoggerFileHandleThreadSave.WriteLnToFile(const s: string);
+begin
+  EnterCriticalsection(FWriteToFileLock);
+  try
+    inherited WriteLnToFile(s);
+  finally
+    LeaveCriticalsection(FWriteToFileLock);
+  end;
+end;
+
 (* ArgV *)
 
 
@@ -269,7 +425,6 @@ end;
 
 constructor TLazLoggerFileHandle.Create;
 begin
-  InitCriticalSection(FWriteToFileLock);
   FLogTextInUse := False;
   FLogTextFailed := False;
   {$ifdef WinCE}
@@ -287,7 +442,6 @@ destructor TLazLoggerFileHandle.Destroy;
 begin
   inherited Destroy;
   DoCloseFile;
-  DoneCriticalsection(FWriteToFileLock);
 end;
 
 procedure TLazLoggerFileHandle.OpenFile;
@@ -302,9 +456,13 @@ begin
   FLogTextFailed := False;
 end;
 
+procedure TLazLoggerFileHandle.ResetWriteFailedCounter;
+begin
+  FWriteFailedCount := 0;
+end;
+
 procedure TLazLoggerFileHandle.WriteToFile(const s: string);
 begin
-  EnterCriticalsection(FWriteToFileLock);
   try
   DoOpenFile;
   if FActiveLogText = nil then exit;
@@ -313,14 +471,15 @@ begin
 
   if FCloseLogFileBetweenWrites then
     DoCloseFile;
-  finally
-    LeaveCriticalsection(FWriteToFileLock);
+    FLastWriteFailed := False;
+  except
+    inc(FWriteFailedCount);
+    FLastWriteFailed := True;
   end;
 end;
 
 procedure TLazLoggerFileHandle.WriteLnToFile(const s: string);
 begin
-  EnterCriticalsection(FWriteToFileLock);
   try
   DoOpenFile;
   if FActiveLogText = nil then exit;
@@ -329,8 +488,10 @@ begin
 
   if FCloseLogFileBetweenWrites then
     DoCloseFile;
-  finally
-    LeaveCriticalsection(FWriteToFileLock);
+    FLastWriteFailed := False;
+  except
+    inc(FWriteFailedCount);
+    FLastWriteFailed := True;
   end;
 end;
 
@@ -339,7 +500,7 @@ end;
 function TLazLoggerFile.GetFileHandle: TLazLoggerFileHandle;
 begin
   if FFileHandle = nil then
-    FFileHandle := TLazLoggerFileHandle.Create;
+    FFileHandle := TLazLoggerFileHandleMainThread.Create;
   Result := FFileHandle;
 end;
 
@@ -676,156 +837,24 @@ end;
 
 
 function DbgStr(const StringWithSpecialChars: string): string;
-var
-  i: Integer;
-  s: String;
-  l: Integer;
 begin
-  Result:=StringWithSpecialChars;
-  i:=1;
-  while (i<=length(Result)) do begin
-    case Result[i] of
-    ' '..#126: inc(i);
-    else
-      s:='#'+HexStr(ord(Result[i]),2);
-      // Note: do not use copy, fpc might change broken UTF-8 characters to '?'
-      l:=length(Result)-i;
-      SetLength(Result,length(Result)-1+length(s));
-      if l>0 then
-        system.Move(Result[i+1],Result[i+length(s)],l);
-      system.Move(s[1],Result[i],length(s));
-      inc(i,length(s));
-    end;
-  end;
+  Result := LazLoggerBase.DbgStr(StringWithSpecialChars);
 end;
 
 function DbgStr(const StringWithSpecialChars: string; StartPos, Len: PtrInt
   ): string;
 begin
-  Result:=dbgstr(copy(StringWithSpecialChars,StartPos,Len));
+  Result := LazLoggerBase.DbgStr(StringWithSpecialChars, StartPos, Len);
 end;
 
 function DbgStr(const p: PChar; Len: PtrInt): string;
-const
-  Hex: array[0..15] of char='0123456789ABCDEF';
-var
-  UsedLen: PtrInt;
-  ResultLen: PtrInt;
-  Src: PChar;
-  Dest: PChar;
-  c: Char;
 begin
-  if (p=nil) or (p^=#0) or (Len<=0) then exit('');
-  UsedLen:=0;
-  ResultLen:=0;
-  Src:=p;
-  while Src^<>#0 do begin
-    inc(UsedLen);
-    if Src^ in [' '..#126] then
-      inc(ResultLen)
-    else
-      inc(ResultLen,3);
-    if UsedLen>=Len then break;
-    inc(Src);
-  end;
-  SetLength(Result,ResultLen);
-  Src:=p;
-  Dest:=PChar(Result);
-  while UsedLen>0 do begin
-    dec(UsedLen);
-    c:=Src^;
-    if c in [' '..#126] then begin
-      Dest^:=c;
-      inc(Dest);
-    end else begin
-      Dest^:='#';
-      inc(Dest);
-      Dest^:=Hex[ord(c) shr 4];
-      inc(Dest);
-      Dest^:=Hex[ord(c) and $f];
-      inc(Dest);
-    end;
-    inc(Src);
-  end;
+  Result := LazLoggerBase.DbgStr(p, Len);
 end;
 
 function DbgWideStr(const StringWithSpecialChars: widestring): string;
-var
-  s: String;
-  SrcPos: Integer;
-  DestPos: Integer;
-  i: Integer;
 begin
-  SetLength(Result,length(StringWithSpecialChars));
-  SrcPos:=1;
-  DestPos:=1;
-  while SrcPos<=length(StringWithSpecialChars) do begin
-    i:=ord(StringWithSpecialChars[SrcPos]);
-    case i of
-    32..126:
-      begin
-        Result[DestPos]:=chr(i);
-        inc(SrcPos);
-        inc(DestPos);
-      end;
-    else
-      s:='#'+HexStr(i,4);
-      inc(SrcPos);
-      Result:=copy(Result,1,DestPos-1)+s+copy(Result,DestPos+1,length(Result));
-      inc(DestPos,length(s));
-    end;
-  end;
-end;
-
-procedure DumpAddr(Addr: Pointer);
-begin
-  // preventing another exception, while dumping stack trace
-  try
-    DebugLn(BackTraceStrFunc(Addr));
-  except
-    DebugLn(SysBackTraceStr(Addr));
-  end;
-end;
-
-procedure DumpExceptionBackTrace;
-var
-  FrameCount: integer;
-  Frames: PPointer;
-  FrameNumber:Integer;
-begin
-  DebugLn('  Stack trace:');
-  DumpAddr(ExceptAddr);
-  FrameCount:=ExceptFrameCount;
-  Frames:=ExceptFrames;
-  for FrameNumber := 0 to FrameCount-1 do
-    DumpAddr(Frames[FrameNumber]);
-end;
-
-function ConvertLineEndings(const s: string): string;
-var
-  i: Integer;
-  EndingStart: LongInt;
-begin
-  Result:=s;
-  i:=1;
-  while (i<=length(Result)) do begin
-    if Result[i] in [#10,#13] then begin
-      EndingStart:=i;
-      inc(i);
-      if (i<=length(Result)) and (Result[i] in [#10,#13])
-      and (Result[i]<>Result[i-1]) then begin
-        inc(i);
-      end;
-      if (length(LineEnding)<>i-EndingStart)
-      or (LineEnding<>copy(Result,EndingStart,length(LineEnding))) then begin
-        // line end differs => replace with current LineEnding
-        Result:=
-          copy(Result,1,EndingStart-1)+LineEnding+copy(Result,i,length(Result));
-        i:=EndingStart+length(LineEnding);
-      end;
-    end else
-      inc(i);
-  end;
+  Result := LazLoggerBase.DbgWideStr(StringWithSpecialChars);
 end;
 
 initialization

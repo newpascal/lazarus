@@ -34,14 +34,15 @@ interface
   that allows the exception text to be copied out }
 
 uses
-  SysUtils, Classes, Controls, Forms, StdCtrls;
+  SysUtils, Classes, Controls, Forms, StdCtrls, ButtonPanel;
 
 type
+
+  { TExceptionDialog }
+
   TExceptionDialog = class(TForm)
-    btnOk: TButton;
+    BtnPanel: TButtonPanel;
     mExceptionMessage: TMemo;
-    procedure btnOkClick(Sender: TObject);
-    procedure FormResize(Sender: TObject);
     procedure FormCreate(Sender: TObject);
   private
   public
@@ -91,11 +92,6 @@ begin
   end;
 end;
 
-
-procedure TExceptionDialog.btnOkClick(Sender: TObject);
-begin
-  Close;
-end;
 
 procedure TExceptionDialog.DisplayException(const pE: Exception);
 var
@@ -151,19 +147,6 @@ end;
 procedure TExceptionDialog.FormCreate(Sender: TObject);
 begin
   SetObjectFontToSystemFont(Self);
-end;
-
-procedure TExceptionDialog.FormResize(Sender: TObject);
-const
-  PAD = 4;
-begin
-  btnOk.Top  := ClientHeight - (btnOk.Height + PAD);
-  btnOk.Left := (ClientWidth - btnOk.Width) div 2;
-
-  mExceptionMessage.Left   := PAD;
-  mExceptionMessage.Top    := PAD;
-  mExceptionMessage.Width  := ClientWidth - (PAD * 2);
-  mExceptionMessage.Height := ClientHeight - (btnOk.Height + (PAD * 3));
 end;
 
 end.

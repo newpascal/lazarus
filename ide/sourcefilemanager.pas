@@ -34,10 +34,11 @@ interface
 uses
   Classes, SysUtils, typinfo, math, fpjson, Laz_AVL_Tree,
   // LCL
-  Controls, Forms, Dialogs, LCLIntf, LCLType, LCLProc, LclStrConsts,
+  Controls, Forms, Dialogs, LCLIntf, LCLType, LclStrConsts,
   LResources, LCLMemManager,
   // LazUtils
-  LConvEncoding, LazFileCache, FileUtil, LazFileUtils, LazUTF8, AvgLvlTree,
+  LConvEncoding, LazFileCache, FileUtil, LazFileUtils, LazLoggerBase, LazUtilities,
+  LazUTF8, AvgLvlTree,
   // Codetools
   BasicCodeTools, CodeToolsStructs, CodeToolManager, FileProcs, DefineTemplates,
   CodeCache, CodeTree, FindDeclarationTool, KeywordFuncLists,
@@ -2076,6 +2077,7 @@ var
   Src: String;
   i: Integer;
   LFindDesignerBaseClassByName: Boolean = True;
+  PreventAutoSize: Boolean;  
 begin
   //debugln('TLazSourceFileManager.NewFile A NewFilename=',NewFilename);
   // empty NewFilename is ok, it will be auto generated
@@ -2290,7 +2292,14 @@ begin
                                 DisableAutoSize);
         if DisableAutoSize and (NewUnitInfo.Component<>nil)
         and (NewUnitInfo.Component is TControl) then
-          TControl(NewUnitInfo.Component).EnableAutoSizing{$IFDEF DebugDisableAutoSizing}('TAnchorDockMaster Delayed'){$ENDIF};
+        begin
+          // disable autosizing for docked form editor forms, see issue #32207
+          PreventAutoSize := (IDETabMaster <> nil)
+                             and (NewUnitInfo.Component is TCustomDesignControl)
+                             and IDETabMaster.AutoSizeInShowDesigner(TControl(NewUnitInfo.Component));
+          if not PreventAutoSize then
+            TControl(NewUnitInfo.Component).EnableAutoSizing{$IFDEF DebugDisableAutoSizing}('TAnchorDockMaster Delayed'){$ENDIF};
+        end;
       end;
       if Result<>mrOk then
       begin
@@ -3059,6 +3068,7 @@ var
 var
   SearchPath: String;
   SearchFile: String;
+  ProjFile: TLazProjectFile;
 begin
   {$IFDEF VerboseFindSourceFile}
   debugln(['TLazSourceFileManager.FindSourceFile Filename="',AFilename,'" BaseDirectory="',BaseDirectory,'"']);
@@ -3091,15 +3101,23 @@ begin
   BaseDir:=AppendPathDelim(TrimFilename(BaseDir));
 
   // search file in base directory
-  Result:=TrimFilename(BaseDir+AFilename);
-  {$IFDEF VerboseFindSourceFile}
-  debugln(['TLazSourceFileManager.FindSourceFile trying Base "',Result,'"']);
-  {$ENDIF}
-  if FileExistsCached(Result) then exit;
-  MarkPathAsSearched(BaseDir);
+  if FilenameIsAbsolute(BaseDir) then begin
+    Result:=TrimFilename(BaseDir+AFilename);
+    {$IFDEF VerboseFindSourceFile}
+    debugln(['TLazSourceFileManager.FindSourceFile trying Base "',Result,'"']);
+    {$ENDIF}
+    if FileExistsCached(Result) then exit;
+    MarkPathAsSearched(BaseDir);
+  end else if Project1<>nil then begin
+    // search in virtual files
+    Result:=TrimFilename(BaseDir+AFilename);
+    ProjFile:=Project1.FindFile(Result,[pfsfOnlyVirtualFiles]);
+    if ProjFile<>nil then
+      exit;
+  end;
 
   // search file in debug path
-  if fsfUseDebugPath in Flags then begin
+  if (fsfUseDebugPath in Flags) and (Project1<>nil) then begin
     SearchPath:=EnvironmentOptions.GetParsedDebuggerSearchPath;
     SearchPath:=MergeSearchPaths(Project1.CompilerOptions.GetDebugPath(false),
                                  SearchPath);
@@ -3924,7 +3942,8 @@ begin
   try
     Project1.BeginUpdate(true);
     try
-      Project1.CompilerOptions.CompilerPath:=DefaultCompilerPath;
+      if Project1.CompilerOptions.CompilerPath='' then
+        Project1.CompilerOptions.CompilerPath:=DefaultCompilerPath;
       if pfUseDefaultCompilerOptions in Project1.Flags then begin
         MainIDE.DoMergeDefaultProjectOptions(Project1);
         Project1.Flags:=Project1.Flags-[pfUseDefaultCompilerOptions];
@@ -6320,6 +6339,7 @@ var
   NestedClassName: string;
   NestedClass: TComponentClass;
   DisableAutoSize: Boolean;
+  PreventAutoSize: Boolean;
   NewControl: TControl;
   ARestoreVisible: Boolean;
   AncestorClass: TComponentClass;
@@ -6502,7 +6522,13 @@ begin
           if ofLoadHiddenResource in OpenFlags then
             NewControl.ControlStyle:=NewControl.ControlStyle+[csNoDesignVisible];
           if DisableAutoSize then
-            NewControl.EnableAutoSizing{$IFDEF DebugDisableAutoSizing}('TAnchorDockMaster Delayed'){$ENDIF};
+          begin
+            PreventAutoSize := (IDETabMaster <> nil)
+                               and (NewControl is TCustomDesignControl)
+                               and IDETabMaster.AutoSizeInShowDesigner(NewControl);
+            if not PreventAutoSize then
+              NewControl.EnableAutoSizing{$IFDEF DebugDisableAutoSizing}('TAnchorDockMaster Delayed'){$ENDIF};
+          end;
         end;
 
         if NewComponent is TCustomDesignControl then
@@ -6635,7 +6661,8 @@ begin
       DesignerForm.Visible := ARestoreVisible;
       DesignerForm.WindowState := wsMinimized;
     end else
-      LCLIntf.ShowWindow(DesignerForm.Handle, ShowCommands[AnUnitInfo.ComponentState]);
+      if IDETabMaster = nil then
+        LCLIntf.ShowWindow(DesignerForm.Handle, ShowCommands[AnUnitInfo.ComponentState]);
     MainIDE.LastFormActivated := DesignerForm;
   end;
 
@@ -8090,7 +8117,9 @@ begin
       Ext := ExtractFileExt(AFilename);
       SaveDialog.Title := Format(lisSaveProject, [Project1.GetTitleOrName, Ext]);
       SaveDialog.FileName := AFilename;
-      SaveDialog.Filter := '*' + Ext + '|' + '*' + Ext;
+      // Note: add *.* filter, so users can see the files in the target directory
+      SaveDialog.Filter := '*' + Ext + '|' + '*' + Ext
+         + '|' + dlgFilterAll + ' (' + GetAllFilesMask + ')|' + GetAllFilesMask;
       SaveDialog.DefaultExt := ExtractFileExt(AFilename);
       if not Project1.IsVirtual then
         SaveDialog.InitialDir := Project1.Directory;

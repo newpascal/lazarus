@@ -25,9 +25,20 @@ unit editor_general_options;
 interface
 
 uses
-  Classes, SysUtils, LCLProc, LCLType, StdCtrls, Controls, ExtCtrls, Graphics,
-  EditorOptions, LazarusIDEStrConsts, IDEProcs, IDEOptionsIntf,
-  IDEUtils, SynEdit, SynHighlighterPas, SynPluginMultiCaret, DividerBevel;
+  //Classes, SysUtils, math, LCLProc, LCLType, StdCtrls, Controls, ExtCtrls,
+  //Graphics, EditorOptions, LazarusIDEStrConsts, IDEProcs, IDEOptionsIntf,
+  //IDEUtils, SynEdit, SynHighlighterPas, SynPluginMultiCaret, DividerBevel;
+  Classes, SysUtils, math,
+  // LCL
+  LCLProc, LCLType, StdCtrls, Controls, ExtCtrls, Graphics,
+  // LazControls
+  DividerBevel,
+  // SynEdit
+  SynEdit, SynHighlighterPas, SynPluginMultiCaret,
+  // IdeIntf
+  IDEOptionsIntf, IDEOptEditorIntf, IDEUtils,
+  // IDE
+  EditorOptions, LazarusIDEStrConsts, IDEProcs;
 
 type
   TPreviewEditor = TSynEdit;
@@ -36,6 +47,8 @@ type
   TEditorGeneralOptionsFrame = class(TAbstractIDEOptionsEditor)
     chkMultiCaretColumnMode: TCheckBox;
     chkMultiCaretMode: TCheckBox;
+    chkMultiCaretDelSkipCr: TCheckBox;
+    MultiCaretGroupDivider: TDividerBevel;
     MultiCaretOnColumnSelection: TCheckBox;
     CursorSkipsTabCheckBox: TCheckBox;
     CaretGroupDivider: TDividerBevel;
@@ -82,6 +95,8 @@ type
     function DefaultBookmarkImages: TImageList;
     procedure SetExtendedKeywordsMode(const AValue: Boolean);
     procedure SetStringKeywordMode(const AValue: TSynPasStringMode);
+  protected
+    procedure CreateHandle; override;
   public
     PreviewEdits: array of TPreviewEditor;
     procedure AddPreviewEdit(AEditor: TPreviewEditor);
@@ -133,7 +148,7 @@ begin
 
 
   // caret + key navigation
-  CaretGroupDivider.Caption := dlgCursorGroupOptions;
+  CaretGroupDivider.Caption := dlgCaretGroupOptions;
   KeepCursorXCheckBox.Caption := dlgKeepCursorX;
   PersistentCursorCheckBox.Caption := dlgPersistentCursor;
   AlwaysVisibleCursorCheckBox.Caption := dlgAlwaysVisibleCursor;
@@ -141,9 +156,13 @@ begin
   CursorSkipsTabCheckBox.Caption := dlgCursorSkipsTab;
   HomeKeyJumpsToNearestStartCheckBox.Caption := dlgHomeKeyJumpsToNearestStart;
   EndKeyJumpsToNearestStartCheckBox.Caption := dlgEndKeyJumpsToNearestStart;
+
+  // multi caret
+  MultiCaretGroupDivider.Caption := dlgMultiCaretGroupOptions;
   MultiCaretOnColumnSelection.Caption := dlgMultiCaretOnColumnSelection;
   chkMultiCaretColumnMode.Caption := dlgMultiCaretColumnMode;
   chkMultiCaretMode.Caption := dlgMultiCaretMode;
+  chkMultiCaretDelSkipCr.Caption := dlgMultiCaretDelSkipCr;
 
   // Block
   BlockGroupDivider.Caption := dlgBlockGroupOptions;
@@ -180,6 +199,7 @@ begin
     MultiCaretOnColumnSelection.Checked := MultiCaretOnColumnSelect;
     chkMultiCaretColumnMode.Checked := MultiCaretDefaultColumnSelectMode = mcmMoveAllCarets;
     chkMultiCaretMode.Checked := MultiCaretDefaultMode = mcmMoveAllCarets;
+    chkMultiCaretDelSkipCr.Checked := MultiCaretDeleteSkipLineBreak;
 
     // block
     PersistentBlockCheckBox.Checked := eoPersistentBlock in SynEditOptions2;
@@ -248,7 +268,7 @@ begin
       MultiCaretDefaultMode := mcmMoveAllCarets
     else
       MultiCaretDefaultMode := mcmCancelOnCaretMove;
-
+    MultiCaretDeleteSkipLineBreak := chkMultiCaretDelSkipCr.Checked;
 
     // block
     UpdateOptionFromBool(PersistentBlockCheckBox.Checked, eoPersistentBlock);
@@ -406,6 +426,21 @@ begin
   if FPasStringKeywordMode = AValue then exit;
   FPasStringKeywordMode := AValue;
   UpdatePrevieEdits;
+end;
+
+procedure TEditorGeneralOptionsFrame.CreateHandle;
+var
+  i, w: Integer;
+  c: TControl;
+begin
+  inherited;
+  w := 150;
+  for i := 0 to ControlCount - 1 do begin
+    c := Controls[i];
+    if not (c is TCheckBox) then Continue;
+    w := Max(w, Canvas.TextExtent(c.Caption).cx);
+  end;
+  Constraints.MinWidth := 2 * w + 60;
 end;
 
 procedure TEditorGeneralOptionsFrame.AddPreviewEdit(AEditor: TPreviewEditor);

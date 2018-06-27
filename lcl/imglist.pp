@@ -47,13 +47,13 @@ interface
 uses
   // RTL + FCL
   Types, math, SysUtils, Classes, FPReadBMP, FPimage, FPImgCanv, FPCanvas,
-  Contnrs, zstream,
+  Contnrs, zstream, Laz_AVL_Tree,
   // LazUtils
-  FPCAdds, Laz_AVL_Tree, AvgLvlTree,
+  FPCAdds, LazLoggerBase, LazUtilities, AvgLvlTree,
   // LCL
   LCLStrConsts, LCLIntf, LResources, LCLType, LCLProc, Graphics, GraphType,
   LCLClasses, IntfGraphics,
-  WSReferences;
+  WSReferences, RtlConsts;
 
 type
   TImageIndex = type integer;
@@ -192,6 +192,7 @@ type
     FHeight: Integer;
     function GetCount: Integer;
     function GetSize: TSize;
+    function GetValid: Boolean;
   public
     class function Create(AResolution: TCustomImageListResolution;
       const AScaleFactor: Double): TScaledImageListResolution; static; // FPC record constructor bug
@@ -217,6 +218,7 @@ type
     property Size: TSize read GetSize;
     property Resolution: TCustomImageListResolution read FResolution;
     property Count: Integer read GetCount;
+    property Valid: Boolean read GetValid;
   end;
 
   TCustomImageListResolutionClass = class of TCustomImageListResolution;
@@ -296,6 +298,7 @@ type
       const ACanvasScaleFactor: Double): TScaledImageListResolution;
     function GetWidthForPPI(AImageWidth, APPI: Integer): Integer;
     function GetHeightForPPI(AImageWidth, APPI: Integer): Integer;
+    function GetHeightForWidth(AWidth: Integer): Integer;
     function GetCount: Integer;
     function GetSizeForPPI(AImageWidth, APPI: Integer): TSize;
     function GetBestIconIndexForSize(AIcon: TCustomIcon; AWidth: Integer): Integer; // the icon must be sorted
@@ -398,6 +401,7 @@ type
     property DrawingStyle: TDrawingStyle read FDrawingStyle write SetDrawingStyle default dsNormal;
     property Height: Integer read FHeight write SetHeight default 16;
     property HeightForPPI[AImageWidth, APPI: Integer]: Integer read GetHeightForPPI;
+    property HeightForWidth[AWidth: Integer]: Integer read GetHeightForWidth;
     property Width: Integer read FWidth write SetWidth default 16;
     property WidthForPPI[AImageWidth, APPI: Integer]: Integer read GetWidthForPPI;
     property SizeForPPI[AImageWidth, APPI: Integer]: TSize read GetSizeForPPI;
@@ -417,6 +421,11 @@ type
     property OnGetWidthForPPI: TCustomImageListGetWidthForPPI read FOnGetWidthForPPI write FOnGetWidthForPPI;
   end;
 
+  TLCLGlyphsMissingResources = (
+    gmrAllMustExist, // Show exception if any image/resolution is not found
+    gmrOneMustExist, // Show exception if no resolution is found. Missing resolutions will be auto-generated from the biggest one.
+    gmrIgnoreAll);   // Ignore all missing resources. No image will be added and TLCLGlyphs.GetImageIndex Result is -1 if no resolution is found.
+
   TLCLGlyphs = class(TCustomImageList)
   private type
     TEntryKey = record
@@ -432,19 +441,34 @@ type
       // value
       ImageIndex: Integer; // the image index in TLCLGlyphs
     end;
+    TResolution = record
+      Width: Integer;
+      ScaleSuffix: Integer;
+    end;
+
   private
+    FMissingResources: TLCLGlyphsMissingResources;
     FImageIndexes: TAvgLvlTree;
-    FLoadResolutions: array of Integer;
+    FLoadResolutions: array of TResolution;
+    FSuffix100Scale: Integer;
   public
     function GetImageIndex(const AResourceName: string): Integer;
+
+    // AResolutionWidths must be sorted from smallest to biggest
     procedure RegisterResolutions(const AResolutionWidths: array of Integer); override;
+    procedure RegisterResolutions(const AResolutionWidths, AResolutionScaleSuffixes: array of Integer); overload;
+
+    procedure SetWidth100Suffix(const AWidth100Suffix: Integer);
 
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+
+    property MissingResources: TLCLGlyphsMissingResources read FMissingResources write FMissingResources;
   end;
 
 function LCLGlyphs: TLCLGlyphs;
-function GetDefaultGlyph(ResourceName: string; ScalePercent: Integer = 100): TCustomBitmap;
+function GetDefaultGlyph(ResourceName: string; ScalePercent: Integer = 100;
+  IgnoreMissingResource: Boolean = False): TCustomBitmap;
 
 implementation
 

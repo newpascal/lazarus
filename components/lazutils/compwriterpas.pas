@@ -232,11 +232,6 @@ begin
   end;
 end;
 
-function CompareMethods(const m1, m2: TMethod): boolean;
-begin
-  Result:=(m1.Code=m2.Code) and (m1.Data=m2.Data);
-end;
-
 procedure RegisterDefinePropertiesPas(aClass: TPersistentClass;
   const OnDefineProperties: TCWPDefinePropertiesProc);
 var
@@ -1387,7 +1382,7 @@ var
 begin
   // remove unneeded leading 0 of exponent
   p:=Pos('E',s);
-  if p<1 then exit;
+  if p<1 then exit(s);
   i:=p;
   if s[i+1]='+' then inc(i);
   while (i<length(s)) and (s[i+1]='0') do

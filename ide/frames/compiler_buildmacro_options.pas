@@ -27,11 +27,15 @@ unit Compiler_BuildMacro_Options;
 interface
 
 uses
-  Classes, SysUtils, Controls, Forms, StdCtrls, Buttons, ExtCtrls, Dialogs,
-  ComCtrls,
+  Classes, SysUtils,
+  // LCL
+  Controls, Forms, StdCtrls, Buttons, ExtCtrls, Dialogs, ComCtrls,
+  // CodeTools
   KeywordFuncLists, CodeToolsCfgScript,
-  IDEImagesIntf, IDEOptionsIntf, MacroIntf, CompOptsIntf,
-  CompilerOptions, IDEDialogs, LazarusIDEStrConsts, PackageDefs;
+  // IdeIntf
+  IDEOptionsIntf, IDEOptEditorIntf, CompOptsIntf, MacroIntf, IDEImagesIntf, IDEDialogs,
+  // IDE
+  CompilerOptions, LazarusIDEStrConsts, PackageDefs;
 
 type
   TCBMNodeType = (
@@ -490,9 +494,9 @@ begin
     lisHintADefaultValueCanBeDefinedInTheConditionals;
   BuildMacroDescriptionLabel.Caption:=lisCodeToolsDefsDescription;
 
-  TIDEImages.AssignImage(BMAddMacroSpeedButton.Glyph, 'laz_add');
-  TIDEImages.AssignImage(BMAddMacroValueSpeedButton.Glyph, 'laz_add');
-  TIDEImages.AssignImage(BMDeleteMacroSpeedButton.Glyph, 'laz_delete');
+  IDEImages.AssignImage(BMAddMacroSpeedButton, 'laz_add');
+  IDEImages.AssignImage(BMAddMacroValueSpeedButton, 'laz_add');
+  IDEImages.AssignImage(BMDeleteMacroSpeedButton, 'laz_delete');
 end;
 
 destructor TCompOptBuildMacrosFrame.Destroy;

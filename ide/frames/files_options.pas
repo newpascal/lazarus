@@ -29,10 +29,19 @@ unit files_options;
 interface
 
 uses
-  SysUtils, StdCtrls, Dialogs, Controls, Spin, FileUtil, LazFileUtils,
-  EnvironmentOpts, CodeToolManager, DefineTemplates, IDEOptionsIntf, IDEDialogs,
-  LazarusIDEStrConsts, InputHistory, LazConf, IDEProcs,
-  IDEUtils, InitialSetupProc, DialogProcs;
+  SysUtils,
+  // LCL
+  StdCtrls, Dialogs, Controls, Spin,
+  // LazUtils
+  FileUtil, LazFileUtils,
+  // IDE
+  EnvironmentOpts,
+  // CodeTools
+  CodeToolManager, DefineTemplates,
+  // IdeIntf
+  IDEOptionsIntf, IDEOptEditorIntf, IDEDialogs, IDEUtils,
+  // IDE
+  LazarusIDEStrConsts, InputHistory, LazConf, IDEProcs, DialogProcs, InitialSetupProc;
 
 type
 
@@ -493,7 +502,7 @@ begin
   Result:=false;
   EnvironmentOptions.CompilerFilename:=CompilerPathComboBox.Text;
   NewCompilerFilename:=EnvironmentOptions.GetParsedCompilerFilename;
-  Quality:=CheckCompilerQuality(NewCompilerFilename,Note,
+  Quality:=CheckFPCExeQuality(NewCompilerFilename,Note,
                                 CodeToolBoss.CompilerDefinesCache.TestFilename);
   if Quality<>sddqCompatible then
   begin

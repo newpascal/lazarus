@@ -48,8 +48,8 @@ uses
   KeywordFuncLists, PascalParserTool, CodeCache, CacheCodeTools, CustomCodeTool,
   FileProcs, DefineTemplates,
   // LazUtils
-  AvgLvlTree, FileUtil, LazFileUtils, LazUTF8, LazFileCache,
-  Laz2_DOM, Laz2_XMLRead, Laz2_XMLWrite,
+  AvgLvlTree, FileUtil, LazFileUtils, LazUTF8, LazFileCache, LazMethodList,
+  LazLoggerBase, Laz2_DOM, Laz2_XMLRead, Laz2_XMLWrite,
   // SynEdit
   SynHighlighterPas,
   // IDEIntf

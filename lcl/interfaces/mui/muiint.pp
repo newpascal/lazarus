@@ -124,7 +124,7 @@ var
 implementation
 
 uses
-  MUIWSFactory, MUIWSForms, VInfo, muistdctrls, lazlogger;
+  MUIWSFactory, MUIWSForms, VInfo, muistdctrls, lazloggerbase;
 
 
 {$I muiwinapi.inc}
@@ -197,8 +197,8 @@ var
 
 begin
   // connect Debug log output
-  DebugLogger.OnDbgOut := @DebugOutEvent;
-  DebugLogger.OnDebugLn := @DebugOutLNEvent;
+  //DebugLogger.OnDbgOut := @DebugOutEvent;
+  //DebugLogger.OnDebugLn := @DebugOutLNEvent;
   // Initial Application Values
   Vers := '';
   CopyR := '';

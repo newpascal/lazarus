@@ -1431,10 +1431,10 @@ begin
   // if no preferred size is valid use the class defaults
   if not IsPrefWidthValid then
     PreferredSize[asboHorizontal]:=
-      Control.Constraints.MinMaxWidth(Control.GetControlClassDefaultSize.CX);
+      Control.Constraints.MinMaxWidth(Control.Scale96ToFont(Control.GetControlClassDefaultSize.CX));
   if not IsPrefHeightValid then
     PreferredSize[asboVertical]:=
-      Control.Constraints.MinMaxHeight(Control.GetControlClassDefaultSize.CX);
+      Control.Constraints.MinMaxHeight(Control.Scale96ToFont(Control.GetControlClassDefaultSize.CY));
 
   //DebugLn(['TAutoSizeBox.SetControl ',DbgSName(Control),' ',PreferredSize[asboHorizontal]]);
   Control.BorderSpacing.GetSpaceAround(Border);
@@ -3829,6 +3829,11 @@ begin
   if FClientWidth<0 then FClientWidth:=0;
   if FClientHeight<0 then FClientHeight:=0;
   Exclude(FWinControlFlags,wcfAdjustedLogicalClientRectValid);
+end;
+
+function TWinControl.DoubleBufferedIsStored: Boolean;
+begin
+  Result := not FParentDoubleBuffered;
 end;
 
 {------------------------------------------------------------------------------
@@ -6324,6 +6329,7 @@ begin
       AControl.Perform(CM_PARENTSHOWHINTCHANGED, 0, 0);
       AControl.Perform(CM_PARENTBIDIMODECHANGED, 0, 0);
       AControl.Perform(CM_PARENTFONTCHANGED, 0, 0);
+      AControl.Perform(CM_PARENTDOUBLEBUFFEREDCHANGED, 0, 0);
       AControl.UpdateBaseBounds(false,true,false);
       if AControl is TWinControl then
         TWinControl(AControl).UpdateControlState
@@ -6527,6 +6533,16 @@ begin
   Invalidate;
 end;
 
+procedure TWinControl.SetParentDoubleBuffered(Value: Boolean);
+begin
+  if FParentDoubleBuffered <> Value then
+  begin
+    FParentDoubleBuffered := Value;
+    if Assigned(FParent) and not (csReading in ComponentState) then
+      Perform(CM_PARENTDOUBLEBUFFEREDCHANGED, 0, 0);
+  end;
+end;
+
 {------------------------------------------------------------------------------
   Method: TWinControl.Create
   Params:  None
@@ -6541,6 +6557,7 @@ begin
   // use property that bsNone is zero
   //FBorderStyle := bsNone;
   inherited Create(TheOwner);
+  FParentDoubleBuffered := True;
   FCompStyle := csWinControl;
   FChildSizing:=TControlChildSizing.Create(Self);
   FChildSizing.OnChange:=@DoChildSizingChange;
@@ -6726,6 +6743,12 @@ begin
   Invalidate;
 end;
 
+procedure TWinControl.CMDoubleBufferedChanged(var Message: TLMessage);
+begin
+  NotifyControls(CM_PARENTDOUBLEBUFFEREDCHANGED);
+  Invalidate;
+end;
+
 {------------------------------------------------------------------------------
   Method: TWinControl.WMSetFocus
   Params: Message
@@ -6793,7 +6816,7 @@ begin
 
   //if Name='GroupBox1' then
   //  debugln(['TWinControl.WMPaint ',DbgSName(Self),' DoubleBuffered=',DoubleBuffered,' Msg.DC=',dbgs(Msg.DC),' csCustomPaint=',csCustomPaint in ControlState,' ControlCount=',ControlCount,' ClientRect=',dbgs(ClientRect)]);
-  if (Msg.DC <> 0) or not DoubleBuffered then
+  if (Msg.DC <> 0) or not TWSWinControlClass(WidgetSetClass).GetDoubleBuffered(Self) then
   begin
     if not (csCustomPaint in ControlState) and (ControlCount = 0) then
       begin
@@ -6931,10 +6954,7 @@ begin
       exit;
     end;
   end;
-  if Assigned(Parent) then
-    SetBoundsKeepBase(Message.XPos, Message.YPos, NewWidth, NewHeight)
-  else
-    SetBounds(Message.XPos, Message.YPos, NewWidth, NewHeight);
+  SetBounds(Message.XPos, Message.YPos, NewWidth, NewHeight);
 end;
 
 {------------------------------------------------------------------------------
@@ -7844,6 +7864,8 @@ begin
       // again. To propely initialize control after we need to restore color
       // and font. Request update.
       FWinControlFlags := FWinControlFlags + [wcfColorChanged, wcfFontChanged];
+      if (CaptureControl=Self) then
+        SetCaptureControl(nil);
     finally
       EnableAutoSizing{$IFDEF DebugDisableAutoSizing}('TWinControl.DestroyWnd'){$ENDIF};
     end;
@@ -8011,6 +8033,17 @@ begin
       DockManager := CreateDockManager;
     end;
   end;
+end;
+
+procedure TWinControl.SetDoubleBuffered(Value: Boolean);
+var
+  AChanged: Boolean;
+begin
+  AChanged := FDoubleBuffered <> Value;
+  FDoubleBuffered := Value;
+  FParentDoubleBuffered := False;
+  if AChanged then
+    Perform(CM_DOUBLEBUFFEREDCHANGED, 0, 0);
 end;
 
 function TWinControl.DoDockClientMsg(DragDockObject: TDragDockObject;
@@ -8350,6 +8383,16 @@ end;
 procedure TWinControl.CMExit(var Message: TLMessage);
 begin
   DoExit;
+end;
+
+procedure TWinControl.CMParentDoubleBufferedChanged(var Message: TLMessage);
+begin
+  if FParentDoubleBuffered then
+  begin
+    if Assigned(FParent) then
+      DoubleBuffered := FParent.DoubleBuffered; // call CM_DOUBLEBUFFEREDCHANGED
+    FParentDoubleBuffered := True;
+  end;
 end;
 
 procedure TWinControl.WMContextMenu(var Message: TLMContextMenu);

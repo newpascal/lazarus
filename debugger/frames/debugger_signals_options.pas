@@ -25,9 +25,13 @@ unit debugger_signals_options;
 interface
 
 uses
-  Classes, SysUtils, FileUtil, Forms, StdCtrls, Menus,
-  ComCtrls, Buttons,
-  LazarusIDEStrConsts, IDEOptionsIntf, IDEImagesIntf, Debugger, BaseDebugManager;
+  Classes, SysUtils,
+  // LCL
+  Forms, StdCtrls, Menus, ComCtrls, Buttons,
+  // IdeIntf
+  IDEOptionsIntf, IDEOptEditorIntf, IDEImagesIntf,
+  // IDE
+  LazarusIDEStrConsts, Debugger, BaseDebugManager;
 type
 
   { TDebuggerSignalsOptions }
@@ -89,8 +93,8 @@ begin
   lvSignals.Column[3].Caption := lisDebugOptionsFrmResume;
   cmdSignalAdd.Caption := lisAdd;
   cmdSignalRemove.Caption := lisRemove;
-  TIDEImages.AssignImage(cmdSignalAdd.Glyph, 'laz_add');
-  TIDEImages.AssignImage(cmdSignalRemove.Glyph, 'laz_delete');
+  IDEImages.AssignImage(cmdSignalAdd, 'laz_add');
+  IDEImages.AssignImage(cmdSignalRemove, 'laz_delete');
 
   mnuHandledByProgram.Caption := lisDebugOptionsFrmHandledByProgram;
   mnuiHandledByDebugger.Caption := lisDebugOptionsFrmHandledByDebugger;

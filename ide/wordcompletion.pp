@@ -22,7 +22,8 @@ uses
 
 type
   TWordCompletionGetSource =
-    procedure(var Source:TStrings; SourceIndex:integer) of object;
+    procedure(var Source:TStrings; var TopLine, BottomLine: Integer;
+      var IgnoreWordPos: TPoint; SourceIndex:integer) of object;
 
   TWordCompletion = class
   private
@@ -33,14 +34,17 @@ type
     procedure SetWordBufferCapacity(NewCapacity: integer);
     function CaseInsensitiveIndexOf(const AWord: string):integer;
     function CaseSensitiveIndexOf(const AWord: string):integer;
+  protected
+    procedure DoGetSource(var Source:TStrings; var TopLine, BottomLine: Integer;
+      var IgnoreWordPos: TPoint; SourceIndex:integer); virtual;
   public
     constructor Create;
     destructor Destroy; override;
     procedure AddWord(const AWord:string);
     property WordBufferCapacity:integer
        read GetWordBufferCapacity write SetWordBufferCapacity;
-    procedure GetWordList(AWordList:TStrings; const Prefix:String;
-       CaseSensitive:boolean; MaxResults:integer);
+    procedure GetWordList(AWordList:TStrings; const Filter: String;
+      ContainsFilter, CaseSensitive:boolean; MaxResults:integer);
     procedure CompletePrefix(const Prefix: string; var CompletedPrefix: string;
        CaseSensitive:boolean);
   public
@@ -70,14 +74,44 @@ end;
 
 { TWordCompletion }
 
-procedure TWordCompletion.GetWordList(AWordList:TStrings; const Prefix:String;
-  CaseSensitive:boolean; MaxResults:integer);
-var i, j, Line, x, PrefixLen, MaxHash, LineLen: integer;
-  UpPrefix, LineText, UpLineText, NewWord: string;
-  SourceText: TStringList;
+// fast pos functions used in GetWordList
+
+function MyPos(const SubStr, S: string; Offset, LastPos: SizeInt): SizeInt;
+var
+  i,MaxLen, SubLen : SizeInt;
+  SubFirst: Char;
+  pc: pchar;
+begin
+  Result:=0;
+  SubLen := Length(SubStr);
+  if (SubLen > 0) and (Offset > 0) and (Offset <= LastPos) then
+   begin
+    MaxLen := LastPos- SubLen;
+    SubFirst := SubStr[1];
+    i := IndexByte(S[Offset],LastPos - Offset + 1, Byte(SubFirst));
+    while (i >= 0) and ((i + sizeint(Offset) - 1) <= MaxLen) do
+    begin
+      pc := @S[i+SizeInt(Offset)];
+      //we know now that pc^ = SubFirst, because indexbyte returned a value > -1
+      if (CompareByte(Substr[1],pc^,SubLen) = 0) then
+        Exit(i + SizeInt(Offset));
+      //point Offset to next char in S
+      Offset := sizeint(i) + Offset + 1;
+      i := IndexByte(S[Offset],LastPos - Offset + 1, Byte(SubFirst));
+    end;
+  end;
+end;
+
+procedure TWordCompletion.GetWordList(AWordList: TStrings;
+  const Filter: String; ContainsFilter, CaseSensitive: boolean;
+  MaxResults: integer);
+var i, Line, x, FilterLen, MaxHash, LineLen: integer;
+  UpFilter, LineText, UpLineText, UpWordBuffer: string;
+  SourceText: TStrings;
   HashList: ^integer;// index list. Every entry points to a word in the AWordList
-  SourceTextIndex:integer;
+  SourceTextIndex, SourceTopLine, SourceBottomLine:integer;
   LastCharType:TCharType;
+  IgnoreWordPos: TPoint;
   
   procedure Add(const AWord:string);
   // if AWord is not already in list then add it to AWordList
@@ -108,6 +142,32 @@ var i, j, Line, x, PrefixLen, MaxHash, LineLen: integer;
     end;
   end;
 
+  procedure AddIfMatch(const ALine, ALineUp:string; const AFirstPos, ALength: Integer);
+  var
+    AAdd: Boolean;
+  begin
+    if FilterLen=0 then
+      AAdd := True
+    else
+    begin
+      AAdd := False;
+      if CaseSensitive then begin
+        if ContainsFilter then
+          AAdd := MyPos(Filter, ALine, AFirstPos, AFirstPos+ALength-1)>0
+        else
+          AAdd := strlcomp(PChar(@ALine[AFirstPos]),PChar(Filter),FilterLen)=0;
+      end else
+      begin
+        if ContainsFilter then
+          AAdd := MyPos(UpFilter, ALineUp, AFirstPos, AFirstPos+ALength-1)>0
+        else
+          AAdd := strlcomp(PChar(@ALineUp[AFirstPos]),PChar(UpFilter),FilterLen)=0;
+      end;
+    end;
+    if AAdd then
+      Add(Copy(ALine, AFirstPos, ALength));
+  end;
+
 // TWordCompletion.GetWordList
 begin
   AWordList.Clear;
@@ -116,76 +176,67 @@ begin
   GetMem(HashList,MaxHash*SizeOf(Integer));
   try
     for i:=0 to MaxHash-1 do HashList[i]:=-1;
-    PrefixLen:=length(Prefix);
+    FilterLen:=length(Filter);
     AWordList.Capacity:=MaxResults;
-    UpPrefix:=uppercase(Prefix);
+    UpFilter:=uppercase(Filter);
     // first add all recently used words
     i:=FWordBuffer.Count-1;
+    UpWordBuffer:='';
     while (i>=0) and (AWordList.Count<MaxResults) do begin
-      NewWord:=FWordBuffer[i];
-      if CaseSensitive then begin
-        if copy(NewWord,1,PrefixLen)=Prefix then
-          Add(NewWord);
-      end else if CompareText(copy(NewWord,1,PrefixLen),UpPrefix)=0 then begin
-        if NewWord<>Prefix then
-          Add(NewWord)
-      end;
+      if not CaseSensitive then
+        UpWordBuffer := UpperCase(FWordBuffer[i]);
+      AddIfMatch(FWordBuffer[i], UpWordBuffer, 1, Length(FWordBuffer[i]));
       dec(i);
     end;
     if AWordList.Count>=MaxResults then exit;
     // then search in all sources for more words that could fit
     SourceTextIndex:=0;
-    if Assigned(FOnGetSource) then begin
-      SourceText:=nil;
-      FOnGetSource(SourceText,SourceTextIndex);
-      repeat
-        if SourceText<>nil then begin
-          Line:=0;
-          UpLineText:='';
-          while (Line<SourceText.Count) do begin
-            LineText:=SourceText[line];
-            LineLen:=length(LineText);
-            if not CaseSensitive then
-              UpLineText:=uppercase(LineText);
-            x:=1;
-            LastCharType:=ctNone;
-            while (x<=LineLen) do begin
-              if (LastCharType=ctNone) and (CharTable[LineText[x]]=ctWordBegin)
-              then begin
-                // word found
-                i:=x;
-                repeat
-                  inc(i);
-                until (i>LineLen) or (CharTable[LineText[i]]=ctNone);
-                if i-x>=PrefixLen then begin
-                  if CaseSensitive then begin
-                    j:=1;
-                    while (j<=PrefixLen) and (Prefix[j]=LineText[x+j-1]) do
-                      inc(j);
-                    if (j>PrefixLen) and (copy(LineText,x,i-x)<>Prefix) then
-                      Add(copy(LineText,x,i-x));
-                  end else begin
-                    j:=1;
-                    while (j<=PrefixLen) and (UpPrefix[j]=UpLineText[x+j-1]) do
-                      inc(j);
-                    if (j>PrefixLen) and (copy(LineText,x,i-x)<>Prefix) then
-                      Add(copy(LineText,x,i-x))
-                  end;
-                  if AWordList.Count>=MaxResults then exit;
-                end;
-                x:=i;
-              end else
-                inc(x);
-              LastCharType:=CharTable[LineText[x-1]];
-            end;
-            inc(line);
+
+    SourceText:=nil;
+    SourceTopLine:=0;
+    SourceBottomLine:=-1;
+    IgnoreWordPos:=Point(-1,-1);
+    DoGetSource(SourceText,SourceTopLine,SourceBottomLine,IgnoreWordPos,SourceTextIndex);
+    UpLineText:='';
+    repeat
+      if SourceText<>nil then begin
+        Line:=SourceTopLine;
+        if SourceBottomLine<0 then
+          SourceBottomLine := SourceText.Count-1;
+        while (Line<=SourceBottomLine) do begin
+          LineText:=SourceText[line];
+          LineLen:=length(LineText);
+          if not CaseSensitive then
+            UpLineText:=uppercase(LineText);
+          x:=1;
+          LastCharType:=ctNone;
+          while (x<=LineLen) do begin
+            if (LastCharType=ctNone) and (CharTable[LineText[x]]=ctWordBegin)
+            then begin
+              // word found
+              i:=x;
+              repeat
+                inc(i);
+              until (i>LineLen) or (CharTable[LineText[i]]=ctNone);
+              if (i-x>=FilterLen) and not ((Line=IgnoreWordPos.Y) and (x<=IgnoreWordPos.X) and (IgnoreWordPos.X<=i)) then begin
+                AddIfMatch(LineText,UpLineText,x,i-x);
+                if AWordList.Count>=MaxResults then exit;
+              end;
+              x:=i;
+            end else
+              inc(x);
+            LastCharType:=CharTable[LineText[x-1]];
           end;
+          inc(line);
         end;
-        inc(SourceTextIndex);
-        SourceText:=nil;
-        FOnGetSource(SourceText,SourceTextIndex);
-      until SourceText=nil;
-    end;
+      end;
+      inc(SourceTextIndex);
+      SourceText:=nil;
+      SourceTopLine:=0;
+      SourceBottomLine:=-1;
+      IgnoreWordPos:=Point(-1,-1);
+      DoGetSource(SourceText,SourceTopLine,SourceBottomLine,IgnoreWordPos,SourceTextIndex);
+    until SourceText=nil;
   finally
     FreeMem(HashList);
   end;
@@ -204,7 +255,7 @@ begin
   WordList:=TStringList.Create;
   try
     // fetch all words with Prefix
-    GetWordList(WordList,Prefix,CaseSensitive,10000);
+    GetWordList(WordList,Prefix,False,CaseSensitive,10000);
     if WordList.Count=0 then exit;
     // find the biggest prefix of all available words
     CompletedPrefix:=WordList[0];
@@ -247,6 +298,13 @@ destructor TWordCompletion.Destroy;
 begin
   FWordBuffer.Free;
   inherited Destroy;
+end;
+
+procedure TWordCompletion.DoGetSource(var Source: TStrings; var TopLine,
+  BottomLine: Integer; var IgnoreWordPos: TPoint; SourceIndex: integer);
+begin
+  if Assigned(FOnGetSource) then
+    FOnGetSource(Source,TopLine,BottomLine,IgnoreWordPos,SourceIndex);
 end;
 
 function TWordCompletion.GetWordBufferCapacity:integer;

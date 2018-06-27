@@ -18,7 +18,7 @@ uses
 Type
 
   TPoTestType = (pttCheckNrOfItems, pttCheckFormatArgs, pttCheckMissingIdentifiers,
-                 pttCheckMismatchedOriginals, pttCheckDuplicateOriginals);
+                 pttCheckMismatchedOriginals);
   TPoTestTypes = Set of TPoTestType;
 
   TPoTestOption = (ptoFindAllChildren);
@@ -31,8 +31,7 @@ const
       sCheckNumberOfItems,
       sCheckForIncompatibleFormatArguments,
       sCheckMissingIdentifiers,
-      sCheckForMismatchesInUntranslatedStrings,
-      sCheckForDuplicateUntranslatedValues
+      sCheckForMismatchesInUntranslatedStrings
     );
 
 Type
@@ -141,7 +140,6 @@ Type
 function IsMasterPoName(const Fn: String): Boolean;
 function ExtractMasterNameFromChildName(const AChildName: String): String;
 function ExtractLanguageFromChildName(const AChildName: string): TLangID;
-function FindAllTranslatedPoFiles(const Filename: string): TStringList;
 procedure LocalizePoTestTypeNames;
 
 const
@@ -234,86 +232,13 @@ begin
   Result := LangAbbrToLangId(Abbr);
 end;
 
-function FindAllTranslatedPoFiles(const Filename: string): TStringList;
-var
-  Path: String;
-  Name: String;
-  NameOnly: String;
-  Ext: String;
-  FileInfo: TSearchRec;
-  CurExt: String;
-begin
-  Result := TStringList.Create;
-  Path := ExtractFilePath(Filename);
-  Name := ExtractFilename(Filename);
-  Ext := ExtractFileExt(Filename);
-  NameOnly := LeftStr(Name,length(Name)-length(Ext));
-  if FindFirstUTF8(Path+GetAllFilesMask,faAnyFile,FileInfo)=0 then
-  begin
-    repeat
-      if (FileInfo.Name = '.') or (FileInfo.Name = '..') or (FileInfo.Name = '')
-      or (CompareFilenames(FileInfo.Name,Name) = 0) then continue;
-      CurExt:=ExtractFileExt(FileInfo.Name);
-      if (CompareFilenames(CurExt,'.po') <> 0)
-      or (CompareFilenames(LeftStr(FileInfo.Name,length(NameOnly)),NameOnly) <> 0)
-      then
-        continue;
-      Result.Add(Path+FileInfo.Name);
-    until FindNextUTF8(FileInfo)<>0;
-  end;
-  FindCloseUTF8(FileInfo);
-end;
-
 procedure LocalizePoTestTypeNames;
 begin
   PoTestTypeNames[pttCheckNrOfItems] := sCheckNumberOfItems;
   PoTestTypeNames[pttCheckFormatArgs] := sCheckForIncompatibleFormatArguments;
   PoTestTypeNames[pttCheckMissingIdentifiers] := sCheckMissingIdentifiers;
   PoTestTypeNames[pttCheckMismatchedOriginals] := sCheckForMismatchesInUntranslatedStrings;
-  PoTestTypeNames[pttCheckDuplicateOriginals] := sCheckForDuplicateUntranslatedValues;
 end;
-
-
-
-(*function CompareFormatArgs(S1, S2: String): Boolean;
-var
-  Extr1, Extr2: String;
-  ArgErr1, ArgErr2: Integer;
-begin
-  Result := true;
-  //do not check arguments if strings are equal to save time and avoid some
-  //false positives, e.g. for '{%Region}' string in lazarusidestrconsts
-  if S1 <> S2 then
-  begin
-    Extr1 := ExtractFormatArgs(S1, ArgErr1);
-    Extr2 := ExtractFormatArgs(S2, ArgErr2);
-    //writeln('Extr1 = ',Extr1,' ArgErr1 = ',ArgErr1);
-    //writeln('Extr2 = ',Extr1,' ArgErr2 = ',ArgErr2);
-    if (ArgErr1 = 0) then
-    begin
-      if (ArgErr2 = 0) then
-      begin
-        Result := Utf8CompareText(Extr1, Extr2) = 0;
-      end
-      else
-      begin
-        //Extr2 can have dangling %'s
-        //e.g. Extr1 = "%s %d" Extr2 = "%s %d {%H}", it does not make sense, but it's not illegal
-        if (ArgErr2 = Utf8Length(Extr1)+1) and not (ArgErr2 > Utf8Length(Extr2)) then Extr2 := Utf8Copy(Extr2,1,ArgErr2-1);
-        Result := Utf8CompareText(Extr1, Extr2) = 0;
-      end;
-    end
-    else
-    begin  //ArgErr1 <> 0
-      //Assume Extr1 is always legal, otherwise the IDE would crash in it's default language...
-      //Only compare until the last valid argument in Extr1
-      if (ArgErr1 = Utf8Length(Extr1)) then Utf8Delete(Extr1, ArgErr1, 1);
-      if Utf8Length(Extr2) > Utf8Length(Extr1) then Extr2 := Utf8Copy(Extr2, 1, Utf8Length(Extr1));
-      Result := Utf8CompareText(Extr1, Extr2) = 0;
-    end;
-    //writeln('CompareFormatArgs: Result = ',Result);
-  end;
-end;*)
 
 { TStat }
 
@@ -722,7 +647,6 @@ var
   LastHash, CurHash: Cardinal;
 begin
   //debugln('TPoFamily.CheckMismatchedOriginals');
-  DoTestStart(PoTestTypeNames[pttCheckDuplicateOriginals], ShortMasterName);
   WarningCount := 0;
 
   DupItemsList := TStringHashList.Create(true);
@@ -769,7 +693,6 @@ begin
 
   DupItemsList.Free;
 
-  DoTestEnd(PoTestTypeNames[pttCheckDuplicateOriginals], WarningCount);
   //debugln('TPoFamily.CheckDuplicateOriginals: ',Dbgs(WarningCount),' Errors');
 end;
 
@@ -778,9 +701,9 @@ var
   NrTranslated, NrUntranslated, NrFuzzy, NrTotal: Integer;
 begin
   //debugln('TPoFamily.CheckStatistics');
-  NrTranslated := FChild.NrTranslated;
-  NrUntranslated := FChild.NrUntranslated;
-  NrFuzzy := FChild.NrFuzzy;
+  NrTranslated := FChild.Statistics.Translated;
+  NrUntranslated := FChild.Statistics.Untranslated;
+  NrFuzzy := FChild.Statistics.Fuzzy;
   NrTotal := NrTranslated + NrUntranslated + NrFuzzy;
   if (NrTotal > 0) then
   begin
@@ -835,13 +758,6 @@ begin
       Exit;
     end
   end;
-  if not Assigned(FChild) and not ((pttCheckDuplicateOriginals in FTesttypes) or (ptoFindAllChildren in FTestOptions)) then
-  begin
-    {$ifdef DebugSimplePoFiles}
-    Debugln('TPoFamily.RunTests: no child assigned for ',ShortMasterName);
-    {$endif}
-    Exit;
-  end;
 
   if (ptoFindAllChildren in FTestOptions) then
   begin
@@ -870,22 +786,18 @@ begin
   try
 
     //First run checks that are Master-only
-    if (pttCheckDuplicateOriginals in FTestTypes) then
-    begin
-      CheckDuplicateOriginals(CurrWarnCnt, DupLog);
-      WarningCount := CurrWarnCnt + WarningCount;
-    end;
+    CheckDuplicateOriginals(CurrWarnCnt, DupLog);
+    WarningCount := CurrWarnCnt + WarningCount;
 
     {$ifdef DebugSimplePoFiles}
     Debugln('TPoFamily.RunTests: number of childs for testing = ',DbgS(Sl.Count));
     {$endif}
 
-    if (FTestTypes - [pttCheckDuplicateOriginals] <> []) and (Sl.Count = 0) then
+    if (FTestTypes <> []) and (Sl.Count = 0) then
     begin
       {$ifdef DebugSimplePoFiles}
       Debugln('TPoFamily.RunTests: Warning: No child selected or found for selected tests');
       {$endif}
-      Inc(WarningCount);
       ErrorLog.Add(Divider);
       ErrorLog.Add('Warning: No child selected (or found) for selected tests.');
       ErrorLog.Add(Divider);
@@ -930,9 +842,9 @@ begin
       end;
 
       //Always run this as the last test please
-      TranslatedCount := FChild.NrTranslated;
-      UntranslatedCount := FChild.NrUntranslated;
-      FuzzyCount := FChild.NrFuzzy;
+      TranslatedCount := FChild.Statistics.Translated;
+      UntranslatedCount := FChild.Statistics.Untranslated;
+      FuzzyCount := FChild.Statistics.Fuzzy;
       CheckStatistics(ThisErrCnt);
        {
         if (ptt in FTestTypes) then

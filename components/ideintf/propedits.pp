@@ -31,9 +31,10 @@ uses
   // LazControls
   {$IFnDEF UseOINormalCheckBox} CheckBoxThemed, {$ENDIF}
   // LazUtils
-  FileUtil, StringHashList, FPCAdds, // for StrToQWord in older fpc versions
+  FileUtil, StringHashList, LazMethodList, LazLoggerBase, LazUtilities, UITypes,
+  FPCAdds, // for StrToQWord in older fpc versions
   // IdeIntf
-  ObjInspStrConsts, PropEditUtils, IDEUtils,
+  ObjInspStrConsts, PropEditUtils, PackageDependencyIntf,
   // Forms with .lfm files
   FrmSelectProps, StringsPropEditDlg, KeyValPropEditDlg, CollectionPropEditForm,
   FileFilterPropEditor, PagesPropEditDlg, IDEWindowIntf;
@@ -708,14 +709,18 @@ type
   with the property being edited (e.g. the ActiveControl property). }
 
   TComponentOneFormPropertyEditor = class(TPersistentPropertyEditor)
-  private
+  protected
     fIgnoreClass: TControlClass;
   public
     function AllEqual: Boolean; override;
     procedure GetValues(Proc: TGetStrProc); override;
   end;
 
-  { TCoolBarControlPropertyEditor }
+{ TCoolBarControlPropertyEditor -
+  An editor for TComponents. It allows the user to set the value of this
+  property to point to a component in the same form that is type compatible
+  with the property being edited and is not a TCustomCoolBar
+  (e.g. the TCoolBand.Control property).}
 
   TCoolBarControlPropertyEditor = class(TComponentOneFormPropertyEditor)
   public
@@ -1368,6 +1373,7 @@ type
 
   TPropertyEditorHook = class(TComponent)
   private
+    FComponentPropertyOnlyDesign: boolean;
     FHandlers: array[TPropHookType] of TMethodList;
     // lookup root
     FLookupRoot: TPersistent;
@@ -1442,6 +1448,7 @@ type
     procedure Modified(Sender: TObject; PropName: ShortString = '');
     procedure Revert(Instance: TPersistent; PropInfo: PPropInfo);
     procedure RefreshPropertyValues;
+    property ComponentPropertyOnlyDesign: boolean read FComponentPropertyOnlyDesign write FComponentPropertyOnlyDesign;
     // dependencies
     procedure AddDependency(const AClass: TClass; const AnUnitname: shortstring);
     // other
@@ -2086,8 +2093,8 @@ const
     );
 
 var
-  PropertyEditorMapperList:TList;
-  PropertyClassList:TList;
+  PropertyEditorMapperList:TFPList;
+  PropertyClassList:TFPList;
 
 type
   PPropertyClassRec=^TPropertyClassRec;
@@ -2266,7 +2273,7 @@ var
 begin
   if PropertyType=nil then exit;
   if PropertyClassList=nil then
-    PropertyClassList:=TList.Create;
+    PropertyClassList:=TFPList.Create;
   New(P);
   P^.PropertyType:=PropertyType;
   P^.PersistentClass:=PersistentClass;
@@ -2280,7 +2287,7 @@ var
   P:PPropertyEditorMapperRec;
 begin
   if PropertyEditorMapperList=nil then
-    PropertyEditorMapperList:=TList.Create;
+    PropertyEditorMapperList:=TFPList.Create;
   New(P);
   P^.Mapper:=Mapper;
   PropertyEditorMapperList.Insert(0,P);
@@ -3020,11 +3027,12 @@ end;
 function TPropertyEditor.GetVisualValue: ansistring;
 begin
   if AllEqual then
+  begin
+    Result:=GetValue;
     {$IFDEF LCLCarbon}
-    Result:=StringReplace(GetValue,LineEnding,LineFeedSymbolUTF8,[rfReplaceAll])
-    {$ELSE}
-    Result:=GetValue
+    Result:=StringReplace(Result,LineEnding,LineFeedSymbolUTF8,[rfReplaceAll])
     {$ENDIF}
+  end
   else
     Result:='';
 end;
@@ -4016,7 +4024,8 @@ end;
 function TSetElementPropertyEditor.GetVisualValue: ansistring;
 begin
   Result := inherited GetVisualValue;
-  Assert(Result <> '', 'TSetElementPropertyEditor.GetVisualValue: Result="".');
+  if Result = '' then
+    Result := oisMixed;
 end;
 
 procedure TSetElementPropertyEditor.GetValues(Proc: TGetStrProc);
@@ -4933,8 +4942,10 @@ begin
     for I := 1 to PropCount - 1 do
       if TComponent(GetObjectValueAt(I)) <> AComponent then
         Exit;
-  if AComponent=nil then Exit(True);
-  Result:=csDesigning in AComponent.ComponentState;
+  if (PropertyHook<>nil) and PropertyHook.ComponentPropertyOnlyDesign then
+    Result:=(AComponent=nil) or (csDesigning in AComponent.ComponentState)
+  else
+    Result:=true;
 end;
 
 function TPersistentPropertyEditor.AllEqual: Boolean;
@@ -5048,7 +5059,7 @@ procedure TComponentOneFormPropertyEditor.GetValues(Proc: TGetStrProc);
     i: integer;
   begin
     for i := 0 to Root.ComponentCount - 1 do
-      if not (Root.Components[i] is fIgnoreClass) then
+      if (fIgnoreClass=nil) or not (Root.Components[i] is fIgnoreClass) then
         Proc(Root.Components[i].Name);
   end;
 
@@ -5091,8 +5102,8 @@ begin
     for I := 1 to PropCount - 1 do
       if GetComponent(GetIntfValueAt(I)) <> Component then
         Exit;
-  if Assigned(Component) then
-    Result := csDesigning in Component.ComponentState
+  if (PropertyHook<>nil) and PropertyHook.ComponentPropertyOnlyDesign then
+    Result:=(Component=nil) or (csDesigning in Component.ComponentState)
   else
     Result := True;
 end;
@@ -6531,13 +6542,13 @@ begin
   LookupRoot:=NewLookupRoot;
   // set selection
   if ASelection=nil then exit;
-  //writeln('TPropertyEditorHook.SetSelection A ASelection.Count=',ASelection.Count);
+  //debulgn(['TPropertyEditorHook.SetSelection A ASelection.Count=',ASelection.Count]);
   i:=GetHandlerCount(htSetSelectedPersistents);
   while GetNextHandlerIndex(htSetSelectedPersistents,i) do begin
     Handler:=TPropHookSetSelection(FHandlers[htSetSelectedPersistents][i]);
     Handler(ASelection);
   end;
-  //writeln('TPropertyEditorHook.SetSelection END ASelection.Count=',ASelection.Count);
+  //debugln(['TPropertyEditorHook.SetSelection END ASelection.Count=',ASelection.Count]);
 end;
 
 procedure TPropertyEditorHook.Unselect(const APersistent: TPersistent);
@@ -7652,6 +7663,9 @@ begin
   if FKey=AValue then exit;
   FKey:=AValue;
   s:=KeyAndShiftStateToKeyString(FKey,[]);
+  {$IFDEF VerboseKeyboard}
+  debugln(['TCustomShortCutGrabBox.SetKey ',Key,' "',s,'"']);
+  {$ENDIF}
   i:=KeyComboBox.Items.IndexOf(s);
   if i>=0 then
     KeyComboBox.ItemIndex:=i
@@ -7671,7 +7685,7 @@ begin
   FGrabForm.OnKeyDown:=@OnGrabFormKeyDown;
   FGrabForm.Caption:=oisPressAKey;
   with TLabel.Create(Self) do begin
-    Caption:=oisPressAKey;
+    Caption:=oisPressAKeyEGCtrlP;
     BorderSpacing.Around:=50;
     Parent:=FGrabForm;
   end;
@@ -7700,11 +7714,16 @@ end;
 procedure TCustomShortCutGrabBox.OnGrabFormKeyDown(Sender: TObject;
   var AKey: Word; AShift: TShiftState);
 begin
-  //DebugLn(['TCustomShortCutGrabBox.OnGrabFormKeyDown ',AKey,' ',dbgs(AShift)]);
+  {$IFDEF VerboseKeyboard}
+  DebugLn(['TCustomShortCutGrabBox.OnGrabFormKeyDown ',AKey,' ',dbgs(AShift)]);
+  DumpStack;
+  {$ENDIF}
   if not (AKey in [VK_CONTROL, VK_LCONTROL, VK_RCONTROL,
              VK_SHIFT, VK_LSHIFT, VK_RSHIFT,
              VK_MENU, VK_LMENU, VK_RMENU,
              VK_LWIN, VK_RWIN,
+             VK_PROCESSKEY,
+             VK_MODECHANGE,
              VK_UNKNOWN, VK_UNDEFINED])
   then begin
     if (AKey=VK_ESCAPE) and (AShift=[]) then begin
@@ -7891,9 +7910,10 @@ begin
     Name:='FKeyComboBox';
     AutoSize:=true;
     Items.BeginUpdate;
-    for i:=0 to VK_SCROLL do
+    AddKeyToCombobox(0);
+    for i:=VK_BACK to VK_SCROLL do
       AddKeyToCombobox(i);
-    for i:=VK_BROWSER_BACK to VK_OEM_8 do
+    for i:=VK_BROWSER_BACK to VK_OEM_CLEAR do
       AddKeyToCombobox(i);
     Items.EndUpdate;
     OnEditingDone:=@OnKeyComboboxEditingDone;

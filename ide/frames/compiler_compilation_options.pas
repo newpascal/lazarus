@@ -5,15 +5,17 @@ unit compiler_compilation_options;
 interface
 
 uses
-  // RTL + FCL + LCL
+  // RTL + FCL
   Classes, sysutils,
-  Controls, StdCtrls, Dialogs, ComboEx,
+  // LCL
+  Controls, StdCtrls, Dialogs, CheckLst,
   // CodeTools
   FileProcs, DefineTemplates, CodeToolManager, LinkScanner,
   // LazUtils
   FileUtil, LazFileUtils,
   // IDEIntf
-  IDEOptionsIntf, CompOptsIntf, IDEDialogs, IDEUtils, IDEExternToolIntf,
+  IDEOptionsIntf, IDEOptEditorIntf, CompOptsIntf, IDEExternToolIntf,
+  IDEDialogs, IDEUtils,
   // IDE
   Project, CompilerOptions, PackageDefs, LazarusIDEStrConsts, EnvironmentOpts,
   LazConf, IDEProcs, DialogProcs, InputHistory, InitialSetupProc;
@@ -24,9 +26,8 @@ type
 
   TCompilerCompilationOptionsFrame = class(TAbstractIDEOptionsEditor)
     BrowseCompilerButton: TButton;
-    ExecAfterParsersCheckComboBox: TCheckComboBox;
+    ExecAfterParsersCheckListBox: TCheckListBox;
     ExecAfterParsersLabel: TLabel;
-    ExecAfterParsersSumLabel: TLabel;
     ExecBeforeBrowseButton: TButton;
     chkCompilerBuild: TCheckBox;
     chkCompilerCompile: TCheckBox;
@@ -40,14 +41,13 @@ type
     chkExecBeforeRun: TCheckBox;
     cobCompiler: TComboBox;
     ExecAfterBrowseButton: TButton;
-    ExecBeforeParsersSumLabel: TLabel;
+    ExecBeforeParsersCheckListBox: TCheckListBox;
     ExecuteAfterCommandComboBox: TComboBox;
     ExecuteAfterCommandLabel: TLabel;
     ExecuteAfterGroupBox: TGroupBox;
     ExecuteBeforeCommandComboBox: TComboBox;
     ExecuteBeforeCommandLabel: TLabel;
     ExecuteBeforeGroupBox: TGroupBox;
-    ExecBeforeParsersCheckComboBox: TCheckComboBox;
     ExecBeforeParsersLabel: TLabel;
     grpCompiler: TGroupBox;
     lblCompiler: TLabel;
@@ -55,16 +55,11 @@ type
     lblRunIfExecAfter: TLabel;
     lblRunIfExecBefore: TLabel;
     procedure CompCmdBrowseButtonClick(Sender: TObject);
-    procedure ExecAfterParsersCheckComboBoxItemChange(Sender: TObject;
-      {%H-}AIndex: Integer);
-    procedure ExecBeforeParsersCheckComboBoxItemChange(Sender: TObject;
-      {%H-}AIndex: Integer);
   private
     procedure ReadSettingsParsers(ToolOpts: TCompilationToolOptions;
-      Cmb: TCheckComboBox; Lbl: TLabel);
+      Cmb: TCheckListBox);
     procedure WriteSettingsParsers(ToolOpts: TCompilationToolOptions;
-      Cmb: TCheckComboBox);
-    procedure UpdateParsersLabel(Lbl: TLabel; Cmb: TCheckComboBox);
+      Cmb: TCheckListBox);
   public
     function GetTitle: string; override;
     procedure Setup({%H-}ADialog: TAbstractOptionsEditorDialog); override;
@@ -105,6 +100,7 @@ var
   OldParams: string;
   Combo: TComboBox;
   ok: Boolean;
+  Kind: TPascalCompiler;
 begin
   OpenDialog:=TOpenDialog.Create(nil);
   try
@@ -144,10 +140,14 @@ begin
           ok:=true;
         end;
       else
-        if IsFPCExecutable(NewFilename,s) then begin
-          // check fpc
-          Quality:=CheckCompilerQuality(NewFilename,Note,
-                                     CodeToolBoss.CompilerDefinesCache.TestFilename);
+        if IsCompilerExecutable(NewFilename,s,Kind) then begin
+          // check compiler
+          if Kind=pcPas2js then
+            Quality:=CheckPas2jsQuality(NewFilename,Note,
+                                 CodeToolBoss.CompilerDefinesCache.TestFilename)
+          else
+            Quality:=CheckFPCExeQuality(NewFilename,Note,
+                                CodeToolBoss.CompilerDefinesCache.TestFilename);
           if not ShowQuality(Quality,NewFilename,Note) then exit;
           ok:=true;
         end;
@@ -173,22 +173,8 @@ begin
   end;
 end;
 
-procedure TCompilerCompilationOptionsFrame.
-  ExecAfterParsersCheckComboBoxItemChange(Sender: TObject; AIndex: Integer);
-begin
-  UpdateParsersLabel(ExecAfterParsersSumLabel,ExecAfterParsersCheckComboBox);
-end;
-
-procedure TCompilerCompilationOptionsFrame.
-  ExecBeforeParsersCheckComboBoxItemChange(Sender: TObject; AIndex: Integer);
-begin
-  UpdateParsersLabel(ExecBeforeParsersSumLabel,ExecBeforeParsersCheckComboBox);
-end;
-
 procedure TCompilerCompilationOptionsFrame.ReadSettingsParsers(
-  ToolOpts: TCompilationToolOptions; Cmb: TCheckComboBox; Lbl: TLabel);
-const
-  BoolToChecked: array[boolean] of TCheckBoxState = (cbUnchecked,cbChecked);
+  ToolOpts: TCompilationToolOptions; Cmb: TCheckListBox);
 var
   l: TFPList;
   i, j: Integer;
@@ -212,7 +198,8 @@ begin
     begin
       ParserClass:=TExtToolParserClass(l[i]);
       s:=ParserClass.GetLocalizedParserName;
-      Cmb.AddItem(s,BoolToChecked[ToolOpts.HasParser[ParserClass.GetParserName]]);
+      j:=Cmb.Items.Add(s);
+      Cmb.Checked[j] := ToolOpts.HasParser[ParserClass.GetParserName];
     end;
     // add not registered parsers
     // Note: this happens when opening a project, which needs a designtime-package
@@ -220,16 +207,18 @@ begin
     begin
       s:=ToolOpts.Parsers[i];
       if ExternalToolList.FindParserWithName(s)=nil then
-        Cmb.AddItem(s,cbChecked);
+      begin
+        j:=Cmb.Items.Add(s);
+        Cmb.Checked[j]:=True;
+      end;
     end;
-    UpdateParsersLabel(Lbl,Cmb);
   finally
     l.Free;
   end;
 end;
 
 procedure TCompilerCompilationOptionsFrame.WriteSettingsParsers(
-  ToolOpts: TCompilationToolOptions; Cmb: TCheckComboBox);
+  ToolOpts: TCompilationToolOptions; Cmb: TCheckListBox);
 var
   sl: TStringList;
   i, j: Integer;
@@ -251,24 +240,6 @@ begin
   finally
     sl.Free;
   end;
-end;
-
-procedure TCompilerCompilationOptionsFrame.UpdateParsersLabel(Lbl: TLabel;
-  Cmb: TCheckComboBox);
-var
-  s: String;
-  i: Integer;
-begin
-  s:='';
-  for i:=0 to Cmb.Items.Count-1 do
-  begin
-    if Cmb.Checked[i] then
-    begin
-      if s<>'' then s:=s+', ';
-      s:=s+Cmb.Items[i];
-    end;
-  end;
-  Lbl.Caption:=s;
 end;
 
 function TCompilerCompilationOptionsFrame.GetTitle: string;
@@ -343,8 +314,7 @@ begin
     chkExecBeforeBuild.Visible := False;
     chkExecBeforeRun.Visible := False;
   end;
-  ReadSettingsParsers(Options.ExecuteBefore,ExecBeforeParsersCheckComboBox,
-    ExecBeforeParsersSumLabel);
+  ReadSettingsParsers(Options.ExecuteBefore,ExecBeforeParsersCheckListBox);
 
   // compiler path
   with cobCompiler do begin
@@ -416,8 +386,7 @@ begin
     chkExecAfterBuild.Visible := False;
     chkExecAfterRun.Visible := False;
   end;
-  ReadSettingsParsers(Options.ExecuteAfter,ExecAfterParsersCheckComboBox,
-    ExecAfterParsersSumLabel);
+  ReadSettingsParsers(Options.ExecuteAfter,ExecAfterParsersCheckListBox);
 end;
 
 procedure TCompilerCompilationOptionsFrame.WriteSettings(AOptions: TAbstractIDEOptions);
@@ -442,7 +411,7 @@ begin
     Push(Options.ExecuteBefore.Command);
   end;
 
-  WriteSettingsParsers(Options.ExecuteBefore,ExecBeforeParsersCheckComboBox);
+  WriteSettingsParsers(Options.ExecuteBefore,ExecBeforeParsersCheckListBox);
 
   if Options.ExecuteBefore is TProjectCompilationToolOptions then
   begin
@@ -469,7 +438,7 @@ begin
     Assign(ExecuteAfterCommandComboBox.Items);
     Push(Options.ExecuteAfter.Command);
   end;
-  WriteSettingsParsers(Options.ExecuteAfter,ExecAfterParsersCheckComboBox);
+  WriteSettingsParsers(Options.ExecuteAfter,ExecAfterParsersCheckListBox);
   if Options.ExecuteAfter is TProjectCompilationToolOptions then
   begin
     TProjectCompilationToolOptions(Options.ExecuteAfter).CompileReasons :=

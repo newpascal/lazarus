@@ -15,12 +15,10 @@ interface
 
 uses
   Classes, SysUtils, Math, Laz_AVL_Tree,
-  // LCL
-  LCLProc,
   // LazUtils
-  UTF8Process, LazFileUtils, LazFileCache,
+  UTF8Process, LazFileUtils, LazFileCache, LazMethodList, LazLoggerBase,
   // IdeIntf
-  ObjInspStrConsts, LazLogger, Menus;
+  ObjInspStrConsts;
 
 const
   SubToolFPC = 'FPC';
@@ -29,6 +27,9 @@ const
   SubToolFPCRes = 'FPCRes';
   SubToolFPCWindRes = 'FPCWindRes';
   SubToolFPCAssembler = 'FPCAssembler';
+
+  SubToolPas2js = 'Pas2JS';
+  SubToolPas2jsPriority = 99;
 
   SubToolMake = 'make';
   SubToolMakePriority = 1000; // higher than FPC
@@ -347,6 +348,7 @@ type
   TFPCParserClass = class of TFPCParser;
 var
   IDEFPCParser: TFPCParserClass = nil;
+  IDEPas2jsParser: TFPCParserClass = nil;
 
 type
   { TMakeParser - standard parser for 'make' messages, implemented by IDE }

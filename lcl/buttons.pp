@@ -24,7 +24,6 @@ unit Buttons;
 
 {$mode objfpc}{$H+}
 
-
 interface
 
 {$ifdef Trace}
@@ -32,9 +31,13 @@ interface
 {$endif}
 
 uses
-  Types, Classes, SysUtils, Math, LCLType, LCLProc, LCLIntf, LCLStrConsts,
+  Types, Classes, SysUtils, Math,
+  // LCL
+  LCLType, LCLProc, LCLIntf, LCLStrConsts,
   GraphType, Graphics, ImgList, ActnList, Controls, StdCtrls, LMessages, Forms,
-  Themes, Menus, LResources, ImageListCache;
+  Themes, Menus, LResources, ImageListCache,
+  // LazUtils
+  LazUtilities;
 
 type
   TButtonLayout =
@@ -199,7 +202,7 @@ type
     procedure LoadGlyphFromResourceName(Instance: THandle; const AName: String);
     procedure LoadGlyphFromLazarusResource(const AName: String);
     procedure LoadGlyphFromStock(idButton: Integer);
-    function CanShowGlyph: Boolean;
+    function CanShowGlyph(const AWithShowMode: Boolean = False): Boolean;
   public
     property Caption stored IsCaptionStored;
     property DefaultCaption: Boolean read FDefaultCaption write FDefaultCaption default False;

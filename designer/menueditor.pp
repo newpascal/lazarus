@@ -5,8 +5,11 @@ unit MenuEditor;
 interface
 
 uses
-  // FCL + LCL
+  // FCL
   Classes, SysUtils, Types, typinfo,
+  // LazUtils
+  LazLogger,
+  // LCL
   ActnList, Controls, Dialogs, StdCtrls, ExtCtrls, Menus,
   Forms, Graphics, ImgList, Themes, LCLType, LCLIntf, LCLProc,
   // IdeIntf
@@ -590,26 +593,26 @@ var
   r: TRect;
   TextSize: TSize;
   TextPoint, AddBmpPoint: TPoint;
-  AddBmp: TCustomBitmap;
+  AddBmp: TImageIndex;
+  IL: TLCLGlyphs;
+  Res: TScaledImageListResolution;
 begin
   r:=ClientRect;
   Canvas.FillRect(r);
   Canvas.RoundRect(r, 3, 3);
-  try
-    AddBmp:=TIDEImages.CreateImage('laz_add');
-    TextSize:=Canvas.TextExtent(Caption);
-    TextPoint.y:=(r.Bottom - r.Top - TextSize.cy) div 2;
-    if (TextPoint.y < 1) then
-      TextPoint.y:=1;
-    TextPoint.x:=(r.Right - r.Left - TextSize.cx + AddBmp.Width) div 2;
-    Canvas.TextRect(r, TextPoint.x, TextPoint.y, Caption);
+  IL:=IDEImages.Images_16;
+  AddBmp:=IL.GetImageIndex('laz_add');
+  Res:=IL.ResolutionForControl[0, Self];
+  TextSize:=Canvas.TextExtent(Caption);
+  TextPoint.y:=(r.Bottom - r.Top - TextSize.cy) div 2;
+  if (TextPoint.y < 1) then
+    TextPoint.y:=1;
+  TextPoint.x:=(r.Right - r.Left - TextSize.cx + Res.Width) div 2;
+  Canvas.TextRect(r, TextPoint.x, TextPoint.y, Caption);
 
-    AddBmpPoint.x:=(TextPoint.x - AddBmp.Width) div 2;
-    AddBmpPoint.y:=(r.Bottom - r.Top - AddBmp.Height) div 2;
-    Canvas.Draw(AddBmpPoint.x, AddBmpPoint.y, AddBmp);
-  finally
-    AddBmp.Free;
-  end;
+  AddBmpPoint.x:=(TextPoint.x - Res.Width) div 2;
+  AddBmpPoint.y:=(r.Bottom - r.Top - Res.Height) div 2;
+  Res.Draw(Canvas, AddBmpPoint.x, AddBmpPoint.y, AddBmp);
 end;
 
 procedure TFake.Refresh;
@@ -930,7 +933,7 @@ var
   si: TShadowItemBase;
 begin
   sb:=GetParentBoxForMenuItem(aMI);
-  sb.DisableAutoSizing;
+  sb.DisableAutoSizing{$IFDEF DebugDisableAutoSizing}('TShadowMenu.DeleteBox'){$ENDIF};
   for i:=aMI.Count-1 downto 0 do
     DeleteBox(aMI.Items[i]);
   Assert(sb<>nil,'TShadowMenu.DeleteBox: internal error');
@@ -2285,7 +2288,7 @@ var
       x:=(r.Right - r.Left - sz.cx) div 2;
       if FRealItem.HasIcon and (FRealItem.ImageIndex > -1) and (FShadowMenu.FMenu.Images <> nil) then begin
         pt:=GetIconTopLeft;
-        FShadowMenu.FMenu.Images.Draw(Canvas, 0, pt.y, FRealItem.ImageIndex);
+        FShadowMenu.FMenu.Images.DrawForControl(Canvas, 0, pt.y, FRealItem.ImageIndex, FShadowMenu.FMenu.ImagesWidth, Self);
         Inc(x, MenuBar_Text_Offset);
       end
       else if (FRealItem.Bitmap <> nil) and not FRealItem.Bitmap.Empty then begin
@@ -2312,7 +2315,7 @@ var
       end;
       ThemeServices.DrawElement(Canvas.Handle, dets, r);
       if FRealItem.HasIcon and (FRealItem.ImageIndex > -1) and (FShadowMenu.FMenu.Images <> nil) then
-        ThemeServices.DrawIcon(Canvas, dets, Point(0,0), FShadowMenu.FMenu.Images, FRealItem.ImageIndex)
+        ThemeServices.DrawIcon(Canvas, dets, Point(0,0), FShadowMenu.FMenu.Images, FRealItem.ImageIndex, 0, Self)
       else if (FRealItem.Bitmap <> nil) and not FRealItem.Bitmap.Empty then begin
         pt:=GetBitmapLeftTop;
         Canvas.Draw(pt.x, pt.y, RealItem.Bitmap);
@@ -2387,13 +2390,13 @@ var
         (FRealItem.ImageIndex > -1) and (FShadowMenu.FMenu.Images <> nil) and
         (FRealItem.ImageIndex < FShadowMenu.FMenu.Images.Count) then
           ThemeServices.DrawIcon(Canvas, dets, GetIconTopLeft,
-                                 FShadowMenu.FMenu.Images, FRealItem.ImageIndex)
+                                 FShadowMenu.FMenu.Images, FRealItem.ImageIndex, 0, Self)
       else
         if (FRealItem.ImageIndex > -1) and (FParentBox.Level > 0) and
           (FRealItem.Parent.SubMenuImages <> nil) and
           (FRealItem.ImageIndex < FRealItem.Parent.SubMenuImages.Count) then
             ThemeServices.DrawIcon(Canvas, dets, GetSubImagesIconTopLeft,
-                                   RealItem.Parent.SubMenuImages, RealItem.ImageIndex)
+                                   RealItem.Parent.SubMenuImages, RealItem.ImageIndex, 0, Self)
         else if FRealItem.HasBitmap and not FRealItem.Bitmap.Empty then begin
   	  pt:=GetBitmapLeftTop;
   	  Canvas.Draw(pt.x, pt.y, RealItem.Bitmap);

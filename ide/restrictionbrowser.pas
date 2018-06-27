@@ -98,12 +98,10 @@ begin
       GroupIndex := Integer(P) + 1;
       Down := True;
       AllowAllUp := True;
-      try
-        IDEImages.Images_16.GetBitmap(
-               IDEImages.LoadImage('issue_'+LCLPlatformDirNames[P]), Glyph);
-      except
+      Images := IDEImages.Images_16;
+      ImageIndex := IDEImages.LoadImage('issue_'+LCLPlatformDirNames[P]);
+      if ImageIndex<0 then
         DebugLn('Restriction Browser: Unable to load image for ' + LCLPlatformDirNames[P] + '!');
-      end;
       ShowHint := True;
       Hint := LCLPlatformDisplayNames[P];
       OnClick := @NameFilterEditChange;

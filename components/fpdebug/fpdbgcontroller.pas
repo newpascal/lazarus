@@ -60,6 +60,23 @@ type
     procedure ResolveEvent(var AnEvent: TFPDEvent; out Handled, Finished: boolean); override;
   end;
 
+  { TDbgControllerStepOutInstructionCmd }
+
+  TDbgControllerStepOutInstructionCmd = class(TDbgControllerCmd)
+  private
+    FHiddenBreakpoint: TFpInternalBreakpoint;
+    FIsSet: boolean;
+    FProcess: TDbgProcess;
+    FThread: TDbgThread;
+    FStepCount: Integer;
+    FStepOut: Boolean;
+  protected
+    procedure SetReturnAdressBreakpoint(AProcess: TDbgProcess);
+  public
+    procedure DoContinue(AProcess: TDbgProcess; AThread: TDbgThread); override;
+    procedure ResolveEvent(var AnEvent: TFPDEvent; out Handled, Finished: boolean); override;
+  end;
+
   { TDbgControllerStepOverLineCmd }
 
   TDbgControllerStepOverLineCmd = class(TDbgControllerStepOverInstructionCmd)
@@ -180,6 +197,101 @@ type
 
 implementation
 
+{ TDbgControllerStepOutInstructionCmd }
+
+procedure TDbgControllerStepOutInstructionCmd.SetReturnAdressBreakpoint(AProcess: TDbgProcess);
+var
+  AStackPointerValue, StepOutStackPos, ReturnAddress: TDBGPtr;
+begin
+  AStackPointerValue:=FController.CurrentThread.GetStackBasePointerRegisterValue;
+  StepOutStackPos:=AStackPointerValue+DBGPTRSIZE[FController.FCurrentProcess.Mode];
+
+  if AProcess.ReadAddress(StepOutStackPos, ReturnAddress) then
+  begin
+    FProcess := AProcess;
+    if not AProcess.HasBreak(ReturnAddress) then
+      FHiddenBreakpoint := AProcess.AddBreak(ReturnAddress)
+  end
+  else
+  begin
+    AProcess.Log('Failed to read return-address from stack');
+  end;
+
+  FIsSet:=true;
+end;
+
+procedure TDbgControllerStepOutInstructionCmd.DoContinue(AProcess: TDbgProcess; AThread: TDbgThread);
+var
+  CodeBin: array[0..20] of byte;
+  p: pointer;
+  ADump,
+  AStatement: string;
+begin
+  FThread := AThread;
+  FProcess := AProcess;
+  if FIsSet then
+    // When a breanpoint has already been set on the return-adress, just continue
+    AProcess.Continue(AProcess, AThread, false)
+  else if FStepCount < 12 then
+  begin
+    // During the prologue and epiloge of a procedure the call-stack might not been
+    // setup already. To avoid problems in these cases, start with a few (max
+    // 12) single steps.
+    Inc(FStepCount);
+    if AProcess.ReadData(AThread.GetInstructionPointerRegisterValue,sizeof(CodeBin),CodeBin) then
+    begin
+      p := @CodeBin;
+      Disassemble(p, AProcess.Mode=dm64, ADump, AStatement);
+      if (copy(AStatement,1,4)='call') then
+      begin
+        // Stop with the single-steps, set an hidden breakpoint at the return
+        // address and continue.
+        SetReturnAdressBreakpoint(AProcess);
+        AProcess.Continue(AProcess, AThread, False);
+      end
+      else if (copy(AStatement,1,3)='ret') then
+      begin
+        // Do one more single-step, and we're finished.
+        FStepOut := True;
+        AProcess.Continue(AProcess, AThread, True);
+      end
+      else
+        AProcess.Continue(AProcess, AThread, True);
+    end
+    else
+      AProcess.Continue(AProcess, AThread, True);
+  end
+  else
+  begin
+    // Enough with the single-stepping, set an hidden breakpoint at the return
+    // address, and continue.
+    SetReturnAdressBreakpoint(AProcess);
+    AProcess.Continue(AProcess, AThread, False);
+  end;
+end;
+
+procedure TDbgControllerStepOutInstructionCmd.ResolveEvent(var AnEvent: TFPDEvent; out Handled, Finished: boolean);
+begin
+  Handled := false;
+  Finished := false;
+
+  if FStepOut then
+    // During single-stepping a 'ret' instruction was encountered. So we're just
+    // finished.
+    Finished := true
+  else if FIsSet then
+    Finished := not (AnEvent in [deInternalContinue, deLoadLibrary])
+  else if (AnEvent in [deBreakpoint]) and not FProcess.HasBreak(FThread.GetInstructionPointerRegisterValue) then
+    // Single-stepping, so continue silently.
+    AnEvent := deInternalContinue;
+
+  if Finished and Assigned(FHiddenBreakpoint) then
+  begin
+    FProcess.RemoveBreak(FHiddenBreakpoint);
+    FHiddenBreakpoint.Free;
+  end;
+end;
+
 { TDbgControllerRunToCmd }
 
 constructor TDbgControllerRunToCmd.Create(AController: TDbgController; ALocation: TDBGPtrArray);
@@ -244,13 +356,13 @@ begin
   if not FInfoStored then
   begin
     FInfoStored:=true;
-    FStoredStackFrame:=AProcess.GetStackBasePointerRegisterValue;
+    FStoredStackFrame:=AThread.GetStackBasePointerRegisterValue;
     AThread.StoreStepInfo;
   end;
 
   if not FInto then
   begin
-    if AProcess.ReadData(aProcess.GetInstructionPointerRegisterValue,sizeof(CodeBin),CodeBin) then
+    if AProcess.ReadData(AThread.GetInstructionPointerRegisterValue,sizeof(CodeBin),CodeBin) then
     begin
       p := @CodeBin;
       Disassemble(p, AProcess.Mode=dm64, ADump, AStatement);
@@ -259,7 +371,7 @@ begin
         FInto := true;
         FInstCount := 0;
 
-        ALocation := AProcess.GetInstructionPointerRegisterValue+(PtrUInt(p)-PtrUInt(@codebin));
+        ALocation := AThread.GetInstructionPointerRegisterValue+(PtrUInt(p)-PtrUInt(@codebin));
         if not AProcess.HasBreak(ALocation) then
           FHiddenBreakpoint := AProcess.AddBreak(ALocation);
 
@@ -301,8 +413,8 @@ begin
   if (FHiddenWatchpointOutStackbase<>-1) and FController.FCurrentThread.RemoveWatchpoint(FHiddenWatchpointOutStackbase) then
     FHiddenWatchpointOutStackbase:=-1;
 
-  AStackPointerValue:=FController.CurrentProcess.GetStackPointerRegisterValue;
-  AStackBasePointerValue:=FController.CurrentProcess.GetStackBasePointerRegisterValue;
+  AStackPointerValue:=FController.CurrentThread.GetStackPointerRegisterValue;
+  AStackBasePointerValue:=FController.CurrentThread.GetStackBasePointerRegisterValue;
 
   Handled := false;
   Finished := not (AnEvent in [deInternalContinue, deLoadLibrary]);
@@ -365,7 +477,7 @@ begin
   begin
     FInfoStored:=true;
     AThread.StoreStepInfo;
-    FStoredStackFrame:=AProcess.GetStackBasePointerRegisterValue;
+    FStoredStackFrame:=AThread.GetStackBasePointerRegisterValue;
   end;
 
   inherited DoContinue(AProcess, AThread);
@@ -378,7 +490,7 @@ begin
   begin
     if (FController.FCurrentThread.CompareStepInfo<>dcsiNewLine) or
       (not FController.FCurrentThread.IsAtStartOfLine and
-       (FController.NextOnlyStopOnStartLine or (FStoredStackFrame < FController.CurrentProcess.GetStackBasePointerRegisterValue))) then
+       (FController.NextOnlyStopOnStartLine or (FStoredStackFrame < FController.CurrentThread.GetStackBasePointerRegisterValue))) then
     begin
       AnEvent:=deInternalContinue;
       FHiddenBreakpoint:=nil;
@@ -407,7 +519,7 @@ begin
   else
   begin
     CallInstr:=false;
-    if AProcess.ReadData(aProcess.GetInstructionPointerRegisterValue,sizeof(CodeBin),CodeBin) then
+    if AProcess.ReadData(AThread.GetInstructionPointerRegisterValue,sizeof(CodeBin),CodeBin) then
     begin
       p := @CodeBin;
       Disassemble(p, AProcess.Mode=dm64, ADump, AStatement);
@@ -417,7 +529,7 @@ begin
 
     if CallInstr then
     begin
-      ALocation := AProcess.GetInstructionPointerRegisterValue+(PtrUInt(p)-PtrUInt(@codebin));
+      ALocation := AThread.GetInstructionPointerRegisterValue+(PtrUInt(p)-PtrUInt(@codebin));
       if not AProcess.HasBreak(ALocation) then
         FHiddenBreakpoint := AProcess.AddBreak(ALocation);
     end;
@@ -588,7 +700,7 @@ end;
 
 procedure TDbgController.StepOut;
 begin
-  //FCurrentThread.StepOut;
+  InitializeCommand(TDbgControllerStepOutInstructionCmd.Create(self));
 end;
 
 function TDbgController.Pause: boolean;
@@ -649,9 +761,9 @@ begin
     FPDEvent:=FCurrentProcess.ResolveDebugEvent(FCurrentThread);
     {$ifdef DBG_FPDEBUG_VERBOSE}
     log('Process stopped with event %s. IP=%s, SP=%s, BSP=%s.', [FPDEventNames[FPDEvent],
-                                                                FCurrentProcess.FormatAddress(FCurrentProcess.GetInstructionPointerRegisterValue),
-                                                                FCurrentProcess.FormatAddress(FCurrentProcess.GetStackPointerRegisterValue),
-                                                                FCurrentProcess.FormatAddress(FCurrentProcess.GetStackBasePointerRegisterValue)], dllDebug);
+                                                                FCurrentProcess.FormatAddress(FCurrentThread.GetInstructionPointerRegisterValue),
+                                                                FCurrentProcess.FormatAddress(FCurrentThread.GetStackPointerRegisterValue),
+                                                                FCurrentProcess.FormatAddress(FCurrentThread.GetStackBasePointerRegisterValue)], dllDebug);
     {$endif DBG_FPDEBUG_VERBOSE}
     if assigned(FCommand) then
       begin

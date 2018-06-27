@@ -82,6 +82,8 @@ type
     property ConsoleTty;
     {$ENDIF}
     property MaxDisplayLengthForString;
+    property MaxDisplayLengthForStaticArray;
+    property MaxLocalsLengthForStaticArray;
     property TimeoutForEval;
     property WarnOnTimeOut;
     property WarnOnInternalError;
@@ -93,6 +95,10 @@ type
     //property WarnOnSetBreakpointError;
     property CaseSensitivity;
     property GdbValueMemLimit;
+    property GdbLocalsValueMemLimit;
+    property AssemblerStyle;
+    property DisableStartupShell;
+    property FixStackFrameForFpcAssert;
   end;
 
 procedure Register;

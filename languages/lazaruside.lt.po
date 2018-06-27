@@ -635,7 +635,9 @@ msgid "Alphabetically"
 msgstr "Pagal abėcėlę"
 
 #: lazarusidestrconsts.dlgalwaysvisiblecursor
-msgid "Always visible cursor"
+#, fuzzy
+#| msgid "Always visible cursor"
+msgid "Always keep Caret in visible area of editor"
 msgstr "Visuomet matomas žymeklis"
 
 #: lazarusidestrconsts.dlgambigfileact
@@ -813,6 +815,10 @@ msgstr "Atitinkančios skliaustų poros"
 msgid "You cannot use docked desktop in undocked environment and vice versa."
 msgstr "Įstatomojo darbalaukio negalima naudoti aplinkoje, kurioje įstatymas neveikia, ir atvirkščiai."
 
+#: lazarusidestrconsts.dlgcaretgroupoptions
+msgid "Caret (Text Cursor)"
+msgstr ""
+
 #: lazarusidestrconsts.dlgcasesensitive
 msgctxt "lazarusidestrconsts.dlgcasesensitive"
 msgid "&Case sensitive"
@@ -851,9 +857,9 @@ msgstr "Testas: tikrinama kompiliatoriaus data…"
 msgid "Test: Compiling an empty file ..."
 msgstr "Testas: kompiliuojamas tuščias failas…"
 
-#: lazarusidestrconsts.dlgccotestmissingppu
-msgid "Test: Checking missing fpc ppu ..."
-msgstr "Testas: tikrinama ar trūksta FPC ppu…"
+#: lazarusidestrconsts.dlgccotestrtlunits
+msgid "Test: Checking RTL units ..."
+msgstr ""
 
 #: lazarusidestrconsts.dlgccotestsrcinppupaths
 msgid "Test: Checking sources in fpc ppu search paths ..."
@@ -1270,16 +1276,16 @@ msgstr "Dabar paiso pranešimų langas, šokimų žurnalas ir paieškos rezultat
 msgid "Cursor beyond EOL"
 msgstr "Žymeklis peržengia EOL"
 
-#: lazarusidestrconsts.dlgcursorgroupoptions
-msgid "Cursor"
-msgstr "Žymeklis"
-
 #: lazarusidestrconsts.dlgcursorskipsselection
-msgid "Cursor skips selection"
+#, fuzzy
+#| msgid "Cursor skips selection"
+msgid "Caret skips selection"
 msgstr "Žymeklis atitrūksta nuo pažymėto teksto"
 
 #: lazarusidestrconsts.dlgcursorskipstab
-msgid "Cursor skips tabs"
+#, fuzzy
+#| msgid "Cursor skips tabs"
+msgid "Caret skips tabs"
 msgstr "Žymeklis nepaiso tabuliavimų"
 
 #: lazarusidestrconsts.dlgcustomext
@@ -2154,11 +2160,15 @@ msgid "Highlight Font Color"
 msgstr "Paryškinto šrifto spalva"
 
 #: lazarusidestrconsts.dlghighlightleftofcursor
-msgid "Left Of Cursor"
+#, fuzzy
+#| msgid "Left Of Cursor"
+msgid "Left Of Caret"
 msgstr "Žymeklio kairėje"
 
 #: lazarusidestrconsts.dlghighlightrightofcursor
-msgid "Right Of Cursor"
+#, fuzzy
+#| msgid "Right Of Cursor"
+msgid "Right Of Caret"
 msgstr "Žymeklio dešinėje"
 
 #: lazarusidestrconsts.dlghintsparametersendernotused
@@ -2230,6 +2240,22 @@ msgstr ""
 msgid "Include system variables"
 msgstr "Pridėti sistemos kintamuosius"
 
+#: lazarusidestrconsts.dlgincludewordstoidentcompl
+msgid "Include words"
+msgstr ""
+
+#: lazarusidestrconsts.dlgincludewordstoidentcompl_dontinclude
+msgid "don't include"
+msgstr ""
+
+#: lazarusidestrconsts.dlgincludewordstoidentcompl_includefromallunits
+msgid "from all units"
+msgstr ""
+
+#: lazarusidestrconsts.dlgincludewordstoidentcompl_includefromcurrentunit
+msgid "from current unit"
+msgstr ""
+
 #: lazarusidestrconsts.dlgindentsindentgroupoptions
 msgid "Indent"
 msgstr "Įtrauka"
@@ -2295,7 +2321,9 @@ msgid "Jump directly to method body"
 msgstr "Šokti tiesiai į metodo vidų"
 
 #: lazarusidestrconsts.dlgkeepcursorx
-msgid "Keep cursor X position"
+#, fuzzy
+#| msgid "Keep cursor X position"
+msgid "Keep caret X position when navigating up/down"
 msgstr "Išlaikyti žymeklio horizontaliąją poziciją"
 
 #: lazarusidestrconsts.dlgkeylink
@@ -2894,15 +2922,29 @@ msgid "Warning"
 msgstr "Įspėjimas"
 
 #: lazarusidestrconsts.dlgmulticaretcolumnmode
-msgid "Multi-caret (column-select) move with cursor"
+#, fuzzy
+#| msgid "Multi-caret (column-select) move with cursor"
+msgid "Navigation keys move all carets (column-select)"
 msgstr "Daugelį žymeklių (žymėjimas stulpeliais) perkelti žymekliu"
 
+#: lazarusidestrconsts.dlgmulticaretdelskipcr
+msgid "Skip delete key at EOL (do not join lines)"
+msgstr ""
+
+#: lazarusidestrconsts.dlgmulticaretgroupoptions
+msgid "Multi-caret"
+msgstr ""
+
 #: lazarusidestrconsts.dlgmulticaretmode
-msgid "Multi-caret move with cursor"
+#, fuzzy
+#| msgid "Multi-caret move with cursor"
+msgid "Navigation keys move all carets"
 msgstr "Daugelį žymeklių perkelti žymekliu"
 
 #: lazarusidestrconsts.dlgmulticaretoncolumnselection
-msgid "Enable multi caret for column selection"
+#, fuzzy
+#| msgid "Enable multi caret for column selection"
+msgid "Enable multi-caret for column selection"
 msgstr "Įgalinti daugelį žymeklių žymėjimui stulpeliais"
 
 #: lazarusidestrconsts.dlgmultipleinstances
@@ -3090,7 +3132,9 @@ msgid "Persistent block"
 msgstr "Išliekantis blokas"
 
 #: lazarusidestrconsts.dlgpersistentcursor
-msgid "Persistent cursor"
+#, fuzzy
+#| msgid "Persistent cursor"
+msgid "Visible caret in unfocused editor"
 msgstr "Nuolatinis žymeklis"
 
 #: lazarusidestrconsts.dlgpoapplication
@@ -3414,7 +3458,9 @@ msgid "Scroll past end of file"
 msgstr "Failo pabaiga nesustabdo slinkties"
 
 #: lazarusidestrconsts.dlgscrollpastendline
-msgid "Caret past end of line"
+#, fuzzy
+#| msgid "Caret past end of line"
+msgid "Allow caret to move past end of line"
 msgstr "Eilutės pabaiga nesustabdo slinkties"
 
 #: lazarusidestrconsts.dlgseachdirectorynotfound
@@ -3486,7 +3532,9 @@ msgid "Show all units"
 msgstr "Rodyti visus modulius"
 
 #: lazarusidestrconsts.dlgshowcaptionsofnonvisuals
-msgid "Show captions of non-visual components"
+#, fuzzy
+#| msgid "Show captions of non-visual components"
+msgid "Show captions of nonvisual components"
 msgstr "Rodyti nevizualinių komponenčių antraštes"
 
 #: lazarusidestrconsts.dlgshowcompiledprocedures
@@ -4330,7 +4378,9 @@ msgid "Official:"
 msgstr "Oficialu:"
 
 #: lazarusidestrconsts.lisacannotholdtcontrolsyoucanonlyputnonvisualcomponen
-msgid "A %s cannot hold TControls.%sYou can only put non visual components on it."
+#, fuzzy
+#| msgid "A %s cannot hold TControls.%sYou can only put non visual components on it."
+msgid "A %s cannot hold TControls.%sYou can only put nonvisual components on it."
 msgstr "%s negali turėti „TControl“ klasių.%sĮ jį galima dėti tik ne vizualines komponentes."
 
 #: lazarusidestrconsts.lisacknowledgements
@@ -4425,6 +4475,18 @@ msgstr "Priedėliai"
 #: lazarusidestrconsts.lisaddkeyworddo
 msgid "Add keyword \"do\""
 msgstr "Įdėti raktažodį „do“"
+
+#: lazarusidestrconsts.lisaddmodifieroverload
+msgid "Add modifier \"overload\""
+msgstr ""
+
+#: lazarusidestrconsts.lisaddmodifieroverride
+msgid "Add modifier \"override\""
+msgstr ""
+
+#: lazarusidestrconsts.lisaddmodifierreintroduce
+msgid "Add modifier \"reintroduce\""
+msgstr ""
 
 #: lazarusidestrconsts.lisaddnewbuildmodecopyingsettingsfrom
 msgid "Add new build mode, copying settings from \"%s\""
@@ -5262,9 +5324,9 @@ msgstr "Klaidingas testo projektų aplankas"
 msgid "Missing unit"
 msgstr "Trūksta modulio"
 
-#: lazarusidestrconsts.lisccomsgppunotfound
-msgid "compiled FPC unit not found: %s.ppu"
-msgstr "Nerastas sukompiliuotas FPC modulis: %s.ppu"
+#: lazarusidestrconsts.lisccomsgrtlunitnotfound
+msgid "RTL unit not found: %s"
+msgstr ""
 
 #: lazarusidestrconsts.lisccomultiplecfgfound
 msgid "multiple compiler configs found: "
@@ -5282,13 +5344,13 @@ msgstr "ne ASCII"
 msgid "ppu exists twice: %s, %s"
 msgstr "ppu dubliuojasi: %s, %s"
 
-#: lazarusidestrconsts.lisccoppunotfounddetailed
-msgid "The compiled FPC unit %s.ppu was not found.%sThis typically means your fpc.cfg has a bug. Or your FPC installation is broken."
-msgstr "Nerastas sukompiliuotas FPC modulis „%s.ppu“.%sGreičiausiai, „fpc.cfg“ faile yra klaida. Arba sugadintas įdiegtasis FPC."
-
 #: lazarusidestrconsts.lisccoppuolderthancompiler
 msgid "There is a .ppu file older than the compiler itself:%s%s"
 msgstr "Rastas „.ppu“failas, kuris yra senesnis už patį kompiliatorių:%s%s"
+
+#: lazarusidestrconsts.lisccortlunitnotfounddetailed
+msgid "The RTL unit %s was not found.%sThis typically means your %s has wrong unit paths. Or your installation is broken."
+msgstr ""
 
 #: lazarusidestrconsts.lisccoseveralcompilers
 msgid "There are several Free Pascal Compilers in your path.%s%s%sMaybe you forgot to delete an old compiler?"
@@ -5819,9 +5881,9 @@ msgstr "Nurodykite Lazarus aplanką"
 msgid "Choose \"make\" executable"
 msgstr "Parinkite „make“ vykdomąjį failą"
 
-#: lazarusidestrconsts.lischoosename
-msgid "Choose name"
-msgstr "Suteikite pavadinimą"
+#: lazarusidestrconsts.lischoosenameandtext
+msgid "Choose name and text"
+msgstr ""
 
 #: lazarusidestrconsts.lischooseoneoftheseitemstocreateanewfile
 msgid "Choose one of these items to create a new File"
@@ -6711,6 +6773,10 @@ msgstr "Kompiliuoti projektą"
 msgid "Compiler"
 msgstr "Kompiliatorius"
 
+#: lazarusidestrconsts.liscompilercfgismissing
+msgid "%s is missing."
+msgstr ""
+
 #: lazarusidestrconsts.liscompilerdoesnotsupporttarget
 msgid "Compiler \"%s\" does not support target %s-%s"
 msgstr "„%s“ kompiliatorius nepalaiko paskirties %s-%s"
@@ -6899,6 +6965,12 @@ msgstr "Konstruktoriaus kodas"
 #: lazarusidestrconsts.liscontains
 msgid "contains"
 msgstr "yra"
+
+#: lazarusidestrconsts.liscontents
+#, fuzzy
+msgctxt "lazarusidestrconsts.liscontents"
+msgid "Contents"
+msgstr "Turinys"
 
 #: lazarusidestrconsts.liscontextsensitive
 msgid "Context sensitive"
@@ -8564,6 +8636,14 @@ msgstr "Įterpti pažymėtas komponentes iš iškarpinės"
 msgid "Select parent component"
 msgstr "Pažymėti tėvinę komponentę"
 
+#: lazarusidestrconsts.lisdsgshownonvisualcomponents
+msgid "Show nonvisual components"
+msgstr ""
+
+#: lazarusidestrconsts.lisdsgtoggleshowingnonvisualcomponents
+msgid "Toggle showing nonvisual components"
+msgstr ""
+
 #: lazarusidestrconsts.lisduplicate
 msgid "Duplicate"
 msgstr "Dublikatas"
@@ -9343,6 +9423,10 @@ msgstr "Nustatyti numatytus"
 msgid "These are file filters that will appear in all File Open dialogs"
 msgstr "Tai yra filtrai, kurie bus visuose failo atvėrimo dialoguose"
 
+#: lazarusidestrconsts.lisfilefound
+msgid "File found"
+msgstr ""
+
 #: lazarusidestrconsts.lisfilehaschangedsave
 msgid "File \"%s\" has changed. Save?"
 msgstr "Failas „%s“ pakeistas. Įrašyti?"
@@ -9611,10 +9695,6 @@ msgstr "Dėl „Windows“"
 #: lazarusidestrconsts.lisfoundversionexpected
 msgid "Found version %s, expected %s"
 msgstr "Rasta versija „%s“, tikėtasi „%s“"
-
-#: lazarusidestrconsts.lisfpccfgismissing
-msgid "fpc.cfg is missing."
-msgstr "Trūksta „fpc.cfg“."
 
 #: lazarusidestrconsts.lisfpcfullversioneg20701
 msgid "FPC version as one number (e.g. 20701)"
@@ -10562,6 +10642,10 @@ msgstr "Klaidingas reiškinys: %s%s%s%s"
 #: lazarusidestrconsts.lisinvalidexpressionhintthemakeresourcestringfunction
 msgid "Invalid expression.%sHint: The \"Make Resourcestring\" function expects a string constant in a single file. Please select the expression and try again."
 msgstr "Klaidingas reiškinys.%sUžuomina: funkcijai „Kurti išteklių eilutę“ reikia eilutės konstantos, kuri yra tik viename faile. Pažymėkite reiškinį ir bandykite vėl."
+
+#: lazarusidestrconsts.lisinvalidfilename
+msgid "Invalid file name"
+msgstr ""
 
 #: lazarusidestrconsts.lisinvalidfilter
 msgid "Invalid filter"
@@ -13116,41 +13200,6 @@ msgctxt "lazarusidestrconsts.lismenutemplateabout"
 msgid "About"
 msgstr "Apie"
 
-#: lazarusidestrconsts.lismenutemplatecontents
-msgid "Contents"
-msgstr "Turinys"
-
-#: lazarusidestrconsts.lismenutemplatedescriptionstandardeditmenu
-msgid "Standard Edit Menu"
-msgstr "Standartinis rengyklės meniu"
-
-#: lazarusidestrconsts.lismenutemplatedescriptionstandardfilemenu
-msgid "Standard File Menu"
-msgstr "Standartinis failo meniu"
-
-#: lazarusidestrconsts.lismenutemplatedescriptionstandardhelpmenu
-msgid "Standard Help Menu"
-msgstr "Standartinis žinyno meniu"
-
-#: lazarusidestrconsts.lismenutemplatefind
-msgctxt "lazarusidestrconsts.lismenutemplatefind"
-msgid "Find"
-msgstr "Paieška"
-
-#: lazarusidestrconsts.lismenutemplatefindnext
-msgctxt "lazarusidestrconsts.lismenutemplatefindnext"
-msgid "Find Next"
-msgstr "Ieškoti toliau"
-
-#: lazarusidestrconsts.lismenutemplateopenrecent
-msgctxt "lazarusidestrconsts.lismenutemplateopenrecent"
-msgid "Open Recent"
-msgstr "Atverti paskiausiuosius"
-
-#: lazarusidestrconsts.lismenutemplatetutorial
-msgid "Tutorial"
-msgstr "Pavyzdys"
-
 #: lazarusidestrconsts.lismenutogglecomment
 msgid "Toggle Comment in Selection"
 msgstr "Pažymėtame įjungti arba išjungti komentarą"
@@ -14613,6 +14662,10 @@ msgstr "Keisti pagrindines parinktis"
 msgid "File Properties"
 msgstr "Failo savybės"
 
+#: lazarusidestrconsts.lispckeditfpmakepackage
+msgid "(fpmake)"
+msgstr ""
+
 #: lazarusidestrconsts.lispckeditinstall
 msgid "Install"
 msgstr "Įdiegti"
@@ -15895,6 +15948,10 @@ msgstr "Maksimali versija (nebūtina):"
 msgid "Minimum Version (optional):"
 msgstr "Minimali versija (nebūtina):"
 
+#: lazarusidestrconsts.lisprojaddnewfpmakerequirement
+msgid "New FPMake Requirement"
+msgstr ""
+
 #: lazarusidestrconsts.lisprojaddnewrequirement
 msgid "New Requirement"
 msgstr "Nauja priklausomybė"
@@ -16166,6 +16223,10 @@ msgstr "Kvietimas įvesti vertę"
 #: lazarusidestrconsts.lisproperties
 msgid "Properties (replace or remove)"
 msgstr "Savybės (pakeisti arba pašalinti)"
+
+#: lazarusidestrconsts.lisproperty
+msgid "%s property"
+msgstr ""
 
 #: lazarusidestrconsts.lisprotected
 msgid "Protected"
@@ -17085,6 +17146,10 @@ msgstr "Rodyti informacijos laukelį"
 #: lazarusidestrconsts.lisshowmessagetypeid
 msgid "Show Message Type ID"
 msgstr "Rodyti pranešimo tipo identifikatorių"
+
+#: lazarusidestrconsts.lisshowmultiplelines
+msgid "Show multiple lines"
+msgstr ""
 
 #: lazarusidestrconsts.lisshowonlymodified
 msgid "Show only modified"
@@ -18012,6 +18077,14 @@ msgstr "Šių modulių nepavyko rasti:"
 #: lazarusidestrconsts.listhesourcesofthefreepascalpackagesarerequiredforbro
 msgid "The sources of the Free Pascal packages are required for browsing and code completion. For example it has the file \"%s\"."
 msgstr "Free Pascal pirminis kodas būtinas naršant ir kodo užbaigimui. Pavyzdžiui, jis turi failą „%s“."
+
+#: lazarusidestrconsts.listhetargetdirectoryisafile
+msgid "The target directory is a file:%s"
+msgstr ""
+
+#: lazarusidestrconsts.listhetargetfilenameisadirectory
+msgid "The target file name is a directory."
+msgstr ""
 
 #: lazarusidestrconsts.listhetargetisnotwritable
 msgid "The target %s is not writable."
@@ -20623,6 +20696,14 @@ msgstr "Žymėti lapu aukščiau"
 msgid "Select Right"
 msgstr "Žymėti simboliu dešiniau"
 
+#: lazarusidestrconsts.srkmecselsmartwordleft
+msgid "Smart select word left (start/end of word)"
+msgstr ""
+
+#: lazarusidestrconsts.srkmecselsmartwordright
+msgid "Smart select word right (start/end of word)"
+msgstr ""
+
 #: lazarusidestrconsts.srkmecselsticky
 msgid "Start sticky selecting"
 msgstr "Pradėti lipnų žymėjimą"
@@ -20685,6 +20766,14 @@ msgstr "Rodyti kodo turinį"
 #: lazarusidestrconsts.srkmecshowexecutionpoint
 msgid "show execution point"
 msgstr "Rodyti vykdymo tašką"
+
+#: lazarusidestrconsts.srkmecsmartwordleft
+msgid "Smart move cursor left (start/end of word)"
+msgstr ""
+
+#: lazarusidestrconsts.srkmecsmartwordright
+msgid "Smart move cursor right (start/end of word)"
+msgstr ""
 
 #: lazarusidestrconsts.srkmecstopprogram
 msgid "stop program"

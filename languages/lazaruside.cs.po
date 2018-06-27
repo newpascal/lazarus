@@ -635,7 +635,9 @@ msgid "Alphabetically"
 msgstr "Abecedně"
 
 #: lazarusidestrconsts.dlgalwaysvisiblecursor
-msgid "Always visible cursor"
+#, fuzzy
+#| msgid "Always visible cursor"
+msgid "Always keep Caret in visible area of editor"
 msgstr "Kurzor vždy viditelný"
 
 #: lazarusidestrconsts.dlgambigfileact
@@ -813,6 +815,10 @@ msgstr "Odpovídající závorkový pár"
 msgid "You cannot use docked desktop in undocked environment and vice versa."
 msgstr "Nemůžete použit ukotvovací plochu v prostředí bez ukotvení a naopak."
 
+#: lazarusidestrconsts.dlgcaretgroupoptions
+msgid "Caret (Text Cursor)"
+msgstr ""
+
 #: lazarusidestrconsts.dlgcasesensitive
 msgctxt "lazarusidestrconsts.dlgcasesensitive"
 msgid "&Case sensitive"
@@ -851,9 +857,9 @@ msgstr "Test: Kontrola data překladače..."
 msgid "Test: Compiling an empty file ..."
 msgstr "Test: Překládání prázdného souboru..."
 
-#: lazarusidestrconsts.dlgccotestmissingppu
-msgid "Test: Checking missing fpc ppu ..."
-msgstr "Test: Kontrola chybějících fpc ppu..."
+#: lazarusidestrconsts.dlgccotestrtlunits
+msgid "Test: Checking RTL units ..."
+msgstr ""
 
 #: lazarusidestrconsts.dlgccotestsrcinppupaths
 msgid "Test: Checking sources in fpc ppu search paths ..."
@@ -1270,16 +1276,16 @@ msgstr "Aktuálně respektováno oknem zpráv, historií skoků a výsledky hled
 msgid "Cursor beyond EOL"
 msgstr "Ukazatel za koncem řádku"
 
-#: lazarusidestrconsts.dlgcursorgroupoptions
-msgid "Cursor"
-msgstr "Kurzor"
-
 #: lazarusidestrconsts.dlgcursorskipsselection
-msgid "Cursor skips selection"
+#, fuzzy
+#| msgid "Cursor skips selection"
+msgid "Caret skips selection"
 msgstr "Kurzor přeskakuje výběr"
 
 #: lazarusidestrconsts.dlgcursorskipstab
-msgid "Cursor skips tabs"
+#, fuzzy
+#| msgid "Cursor skips tabs"
+msgid "Caret skips tabs"
 msgstr "Kurzor přeskakuje tabulátory"
 
 #: lazarusidestrconsts.dlgcustomext
@@ -2154,11 +2160,15 @@ msgid "Highlight Font Color"
 msgstr "Barva zvýraznění písma"
 
 #: lazarusidestrconsts.dlghighlightleftofcursor
-msgid "Left Of Cursor"
+#, fuzzy
+#| msgid "Left Of Cursor"
+msgid "Left Of Caret"
 msgstr "Nalevo od kurzoru"
 
 #: lazarusidestrconsts.dlghighlightrightofcursor
-msgid "Right Of Cursor"
+#, fuzzy
+#| msgid "Right Of Cursor"
+msgid "Right Of Caret"
 msgstr "Napravo od kurzoru"
 
 #: lazarusidestrconsts.dlghintsparametersendernotused
@@ -2230,6 +2240,22 @@ msgstr ""
 msgid "Include system variables"
 msgstr "Zahrnout systémové proměnné"
 
+#: lazarusidestrconsts.dlgincludewordstoidentcompl
+msgid "Include words"
+msgstr ""
+
+#: lazarusidestrconsts.dlgincludewordstoidentcompl_dontinclude
+msgid "don't include"
+msgstr ""
+
+#: lazarusidestrconsts.dlgincludewordstoidentcompl_includefromallunits
+msgid "from all units"
+msgstr ""
+
+#: lazarusidestrconsts.dlgincludewordstoidentcompl_includefromcurrentunit
+msgid "from current unit"
+msgstr ""
+
 #: lazarusidestrconsts.dlgindentsindentgroupoptions
 msgid "Indent"
 msgstr "Odsazení"
@@ -2297,7 +2323,9 @@ msgid "Jump directly to method body"
 msgstr ""
 
 #: lazarusidestrconsts.dlgkeepcursorx
-msgid "Keep cursor X position"
+#, fuzzy
+#| msgid "Keep cursor X position"
+msgid "Keep caret X position when navigating up/down"
 msgstr "Udržovat x-ovou pozici kurzoru"
 
 #: lazarusidestrconsts.dlgkeylink
@@ -2900,15 +2928,29 @@ msgid "Warning"
 msgstr "Varování"
 
 #: lazarusidestrconsts.dlgmulticaretcolumnmode
-msgid "Multi-caret (column-select) move with cursor"
+#, fuzzy
+#| msgid "Multi-caret (column-select) move with cursor"
+msgid "Navigation keys move all carets (column-select)"
 msgstr "Více-vsuvkový (vybraný sloupec) přesun s kurzorem"
 
+#: lazarusidestrconsts.dlgmulticaretdelskipcr
+msgid "Skip delete key at EOL (do not join lines)"
+msgstr ""
+
+#: lazarusidestrconsts.dlgmulticaretgroupoptions
+msgid "Multi-caret"
+msgstr ""
+
 #: lazarusidestrconsts.dlgmulticaretmode
-msgid "Multi-caret move with cursor"
+#, fuzzy
+#| msgid "Multi-caret move with cursor"
+msgid "Navigation keys move all carets"
 msgstr "Více-vsuvkový přesun s kurzorem"
 
 #: lazarusidestrconsts.dlgmulticaretoncolumnselection
-msgid "Enable multi caret for column selection"
+#, fuzzy
+#| msgid "Enable multi caret for column selection"
+msgid "Enable multi-caret for column selection"
 msgstr "Povolit více vsuvek pro výběr sloupce"
 
 #: lazarusidestrconsts.dlgmultipleinstances
@@ -3098,7 +3140,9 @@ msgid "Persistent block"
 msgstr "Trvalý blok"
 
 #: lazarusidestrconsts.dlgpersistentcursor
-msgid "Persistent cursor"
+#, fuzzy
+#| msgid "Persistent cursor"
+msgid "Visible caret in unfocused editor"
 msgstr "Trvalý ukazatel"
 
 #: lazarusidestrconsts.dlgpoapplication
@@ -3424,7 +3468,9 @@ msgid "Scroll past end of file"
 msgstr "Posouvání za konec souboru"
 
 #: lazarusidestrconsts.dlgscrollpastendline
-msgid "Caret past end of line"
+#, fuzzy
+#| msgid "Caret past end of line"
+msgid "Allow caret to move past end of line"
 msgstr "Kurzor za koncem řádku"
 
 #: lazarusidestrconsts.dlgseachdirectorynotfound
@@ -3496,7 +3542,9 @@ msgid "Show all units"
 msgstr "Ukázat všechny jednotky"
 
 #: lazarusidestrconsts.dlgshowcaptionsofnonvisuals
-msgid "Show captions of non-visual components"
+#, fuzzy
+#| msgid "Show captions of non-visual components"
+msgid "Show captions of nonvisual components"
 msgstr "Ukázat titulky neviditelných komponent"
 
 #: lazarusidestrconsts.dlgshowcompiledprocedures
@@ -4340,7 +4388,9 @@ msgid "Official:"
 msgstr "Oficiální:"
 
 #: lazarusidestrconsts.lisacannotholdtcontrolsyoucanonlyputnonvisualcomponen
-msgid "A %s cannot hold TControls.%sYou can only put non visual components on it."
+#, fuzzy
+#| msgid "A %s cannot hold TControls.%sYou can only put non visual components on it."
+msgid "A %s cannot hold TControls.%sYou can only put nonvisual components on it."
 msgstr "%s nemůže obsahovat TControls.%sMůžete na ni dát pouze nevizuální komponenty."
 
 #: lazarusidestrconsts.lisacknowledgements
@@ -4435,6 +4485,18 @@ msgstr "Přídavky"
 #: lazarusidestrconsts.lisaddkeyworddo
 msgid "Add keyword \"do\""
 msgstr "Přidat klíčové slovo \"do\""
+
+#: lazarusidestrconsts.lisaddmodifieroverload
+msgid "Add modifier \"overload\""
+msgstr ""
+
+#: lazarusidestrconsts.lisaddmodifieroverride
+msgid "Add modifier \"override\""
+msgstr ""
+
+#: lazarusidestrconsts.lisaddmodifierreintroduce
+msgid "Add modifier \"reintroduce\""
+msgstr ""
 
 #: lazarusidestrconsts.lisaddnewbuildmodecopyingsettingsfrom
 msgid "Add new build mode, copying settings from \"%s\""
@@ -5270,9 +5332,9 @@ msgstr "Neplatný testovací adresář"
 msgid "Missing unit"
 msgstr "Chybějící jednotka"
 
-#: lazarusidestrconsts.lisccomsgppunotfound
-msgid "compiled FPC unit not found: %s.ppu"
-msgstr "nenalezena přeložená FPC jednotka: %s.ppu"
+#: lazarusidestrconsts.lisccomsgrtlunitnotfound
+msgid "RTL unit not found: %s"
+msgstr ""
 
 #: lazarusidestrconsts.lisccomultiplecfgfound
 msgid "multiple compiler configs found: "
@@ -5290,13 +5352,13 @@ msgstr "ne ASCII"
 msgid "ppu exists twice: %s, %s"
 msgstr "ppu existuje dvakrát: %s, %s"
 
-#: lazarusidestrconsts.lisccoppunotfounddetailed
-msgid "The compiled FPC unit %s.ppu was not found.%sThis typically means your fpc.cfg has a bug. Or your FPC installation is broken."
-msgstr "Přeložená jednotka FPC %s.ppu nebyla nalezena.%sTo zpravidla znamená, že fpc.cfg obsahuje chybu nebo je instalace FPC poškozená."
-
 #: lazarusidestrconsts.lisccoppuolderthancompiler
 msgid "There is a .ppu file older than the compiler itself:%s%s"
 msgstr "Existující soubor .ppu je starší než překladač samotný:%s%s"
+
+#: lazarusidestrconsts.lisccortlunitnotfounddetailed
+msgid "The RTL unit %s was not found.%sThis typically means your %s has wrong unit paths. Or your installation is broken."
+msgstr ""
 
 #: lazarusidestrconsts.lisccoseveralcompilers
 msgid "There are several Free Pascal Compilers in your path.%s%s%sMaybe you forgot to delete an old compiler?"
@@ -5828,9 +5890,9 @@ msgstr "Vyberte adresář Lazarusu"
 msgid "Choose \"make\" executable"
 msgstr "Vybrat \"make\" spustitelné"
 
-#: lazarusidestrconsts.lischoosename
-msgid "Choose name"
-msgstr "Vyberte jméno"
+#: lazarusidestrconsts.lischoosenameandtext
+msgid "Choose name and text"
+msgstr ""
 
 #: lazarusidestrconsts.lischooseoneoftheseitemstocreateanewfile
 msgid "Choose one of these items to create a new File"
@@ -6721,6 +6783,10 @@ msgstr "Přeložit projekt"
 msgid "Compiler"
 msgstr "Překladač"
 
+#: lazarusidestrconsts.liscompilercfgismissing
+msgid "%s is missing."
+msgstr ""
+
 #: lazarusidestrconsts.liscompilerdoesnotsupporttarget
 msgid "Compiler \"%s\" does not support target %s-%s"
 msgstr "Překladač \"%s\" nepodporuje cíl %s-%s"
@@ -6909,6 +6975,12 @@ msgstr "Kód konstruktoru"
 #: lazarusidestrconsts.liscontains
 msgid "contains"
 msgstr "obsahuje"
+
+#: lazarusidestrconsts.liscontents
+#, fuzzy
+msgctxt "lazarusidestrconsts.liscontents"
+msgid "Contents"
+msgstr "Obsah"
 
 #: lazarusidestrconsts.liscontextsensitive
 msgid "Context sensitive"
@@ -8574,6 +8646,14 @@ msgstr "Vložit vybrané komponenty ze schránky"
 msgid "Select parent component"
 msgstr "Vybrat rodičovskou komponentu"
 
+#: lazarusidestrconsts.lisdsgshownonvisualcomponents
+msgid "Show nonvisual components"
+msgstr ""
+
+#: lazarusidestrconsts.lisdsgtoggleshowingnonvisualcomponents
+msgid "Toggle showing nonvisual components"
+msgstr ""
+
 #: lazarusidestrconsts.lisduplicate
 msgid "Duplicate"
 msgstr "Duplicitní"
@@ -9359,6 +9439,10 @@ msgstr "Nastavit předvolené"
 msgid "These are file filters that will appear in all File Open dialogs"
 msgstr "Toto jsou souborové filtry, které se zobrazí v dialogu Otevřít souobor"
 
+#: lazarusidestrconsts.lisfilefound
+msgid "File found"
+msgstr ""
+
 #: lazarusidestrconsts.lisfilehaschangedsave
 msgid "File \"%s\" has changed. Save?"
 msgstr "Soubor \"%s\" byl pozměněn. Uložit?"
@@ -9627,10 +9711,6 @@ msgstr "Pro Windows"
 #: lazarusidestrconsts.lisfoundversionexpected
 msgid "Found version %s, expected %s"
 msgstr "Nalezena verze %s, očekávána %s"
-
-#: lazarusidestrconsts.lisfpccfgismissing
-msgid "fpc.cfg is missing."
-msgstr "chybí fpc.cfg"
 
 #: lazarusidestrconsts.lisfpcfullversioneg20701
 msgid "FPC version as one number (e.g. 20701)"
@@ -10569,6 +10649,10 @@ msgstr "Neplatný výraz:%s%s%s%s"
 #: lazarusidestrconsts.lisinvalidexpressionhintthemakeresourcestringfunction
 msgid "Invalid expression.%sHint: The \"Make Resourcestring\" function expects a string constant in a single file. Please select the expression and try again."
 msgstr "Neplatný výraz.%sTip: Funkce \"Vytvořit Řetězce Zdrojů\" očekává řetězcovou konstantu v jediném souboru. Prosím vyberte výraz a zkuste znova."
+
+#: lazarusidestrconsts.lisinvalidfilename
+msgid "Invalid file name"
+msgstr ""
 
 #: lazarusidestrconsts.lisinvalidfilter
 msgid "Invalid filter"
@@ -13193,41 +13277,6 @@ msgctxt "lazarusidestrconsts.lismenutemplateabout"
 msgid "About"
 msgstr "O aplikaci"
 
-#: lazarusidestrconsts.lismenutemplatecontents
-msgid "Contents"
-msgstr "Obsah"
-
-#: lazarusidestrconsts.lismenutemplatedescriptionstandardeditmenu
-msgid "Standard Edit Menu"
-msgstr "Normální nabídka Úpravy"
-
-#: lazarusidestrconsts.lismenutemplatedescriptionstandardfilemenu
-msgid "Standard File Menu"
-msgstr "Normální nabídka Soubor"
-
-#: lazarusidestrconsts.lismenutemplatedescriptionstandardhelpmenu
-msgid "Standard Help Menu"
-msgstr "Normální nabídka Nápověda"
-
-#: lazarusidestrconsts.lismenutemplatefind
-msgctxt "lazarusidestrconsts.lismenutemplatefind"
-msgid "Find"
-msgstr "Najít"
-
-#: lazarusidestrconsts.lismenutemplatefindnext
-msgctxt "lazarusidestrconsts.lismenutemplatefindnext"
-msgid "Find Next"
-msgstr "Najít další"
-
-#: lazarusidestrconsts.lismenutemplateopenrecent
-msgctxt "lazarusidestrconsts.lismenutemplateopenrecent"
-msgid "Open Recent"
-msgstr "Otevřít nedávné"
-
-#: lazarusidestrconsts.lismenutemplatetutorial
-msgid "Tutorial"
-msgstr "Cvičení"
-
 #: lazarusidestrconsts.lismenutogglecomment
 msgid "Toggle Comment in Selection"
 msgstr "Zakomentovat / odkomentovat výběr"
@@ -14698,6 +14747,10 @@ msgstr "Upravit obecná nastavení"
 msgid "File Properties"
 msgstr "Vlastnosti souboru"
 
+#: lazarusidestrconsts.lispckeditfpmakepackage
+msgid "(fpmake)"
+msgstr ""
+
 #: lazarusidestrconsts.lispckeditinstall
 msgid "Install"
 msgstr "Instalovat"
@@ -15988,6 +16041,10 @@ msgstr "Maximální verze (nepovinné):"
 msgid "Minimum Version (optional):"
 msgstr "Minimální verze (nepovinné):"
 
+#: lazarusidestrconsts.lisprojaddnewfpmakerequirement
+msgid "New FPMake Requirement"
+msgstr ""
+
 #: lazarusidestrconsts.lisprojaddnewrequirement
 msgid "New Requirement"
 msgstr "Nové požadavky"
@@ -16259,6 +16316,10 @@ msgstr "Dotázat se na hodnotu"
 #: lazarusidestrconsts.lisproperties
 msgid "Properties (replace or remove)"
 msgstr "Vlastnosti (nahradit nebo odstranit)"
+
+#: lazarusidestrconsts.lisproperty
+msgid "%s property"
+msgstr ""
 
 #: lazarusidestrconsts.lisprotected
 msgid "Protected"
@@ -17170,6 +17231,10 @@ msgstr "Ukázat informační rámeček"
 #: lazarusidestrconsts.lisshowmessagetypeid
 msgid "Show Message Type ID"
 msgstr "Ukázat Typové ID Zprávy"
+
+#: lazarusidestrconsts.lisshowmultiplelines
+msgid "Show multiple lines"
+msgstr ""
 
 #: lazarusidestrconsts.lisshowonlymodified
 msgid "Show only modified"
@@ -18101,6 +18166,14 @@ msgstr "Tyto jednotky nebyly nalezeny:"
 #: lazarusidestrconsts.listhesourcesofthefreepascalpackagesarerequiredforbro
 msgid "The sources of the Free Pascal packages are required for browsing and code completion. For example it has the file \"%s\"."
 msgstr "Zdrojové kódy balíčků Free Pascalu jsou nutné pro prohlížení a doplňování kódu. Například obsahuje soubor \"%s\"."
+
+#: lazarusidestrconsts.listhetargetdirectoryisafile
+msgid "The target directory is a file:%s"
+msgstr ""
+
+#: lazarusidestrconsts.listhetargetfilenameisadirectory
+msgid "The target file name is a directory."
+msgstr ""
 
 #: lazarusidestrconsts.listhetargetisnotwritable
 msgid "The target %s is not writable."
@@ -20724,6 +20797,14 @@ msgstr "Vybrat stránku nahoře"
 msgid "Select Right"
 msgstr "Vybrat vpravo"
 
+#: lazarusidestrconsts.srkmecselsmartwordleft
+msgid "Smart select word left (start/end of word)"
+msgstr ""
+
+#: lazarusidestrconsts.srkmecselsmartwordright
+msgid "Smart select word right (start/end of word)"
+msgstr ""
+
 #: lazarusidestrconsts.srkmecselsticky
 msgid "Start sticky selecting"
 msgstr "Začít lepicí výběr"
@@ -20788,6 +20869,14 @@ msgstr "Ukázat obsah kódu"
 #: lazarusidestrconsts.srkmecshowexecutionpoint
 msgid "show execution point"
 msgstr "ukázat bod vykonávání"
+
+#: lazarusidestrconsts.srkmecsmartwordleft
+msgid "Smart move cursor left (start/end of word)"
+msgstr ""
+
+#: lazarusidestrconsts.srkmecsmartwordright
+msgid "Smart move cursor right (start/end of word)"
+msgstr ""
 
 #: lazarusidestrconsts.srkmecstopprogram
 msgid "stop program"

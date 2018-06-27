@@ -211,8 +211,7 @@ type
     function FillProcessList(AList: TRunningProcessInfoList): boolean; override;
     procedure Detach; override;
 
-    function Evaluate(const AExpression: String; var AResult: String;
-                      var ATypeInfo: TDBGType;
+    function Evaluate(const AExpression: String; ACallback: TDBGEvaluateResultCallback;
                       EvalFlags: TDBGEvaluateFlags = []): Boolean; override;
     function Modify(const AExpression, ANewValue: String): Boolean; override;
 
@@ -656,7 +655,7 @@ begin
         Filename := TrimFilename(AUnitinfo.LocationName);
         Filename := MainIDE.FindSourceFile(Filename, Project1.Directory,
                       [fsfSearchForProject, fsfUseIncludePaths, fsfUseDebugPath,
-                       fsfMapTempToVirtualFiles, fsfSkipPackages]);
+                       {fsfMapTempToVirtualFiles,} fsfSkipPackages]);
         Result := Filename <> '';
         if not Result then
           Result := ResolveFromDbg;
@@ -694,8 +693,14 @@ begin
   // => fix that
   Filename := TrimFilename(Filename);
   SrcFile := MainIDE.FindSourceFile(Filename, Project1.Directory,
-                      [fsfSearchForProject, fsfUseIncludePaths, fsfUseDebugPath,
-                       fsfMapTempToVirtualFiles]);
+                      [fsfSearchForProject, fsfUseIncludePaths, fsfUseDebugPath{,
+                       fsfMapTempToVirtualFiles}]);
+  if (SrcFile <> '') and (not FilenameIsAbsolute(SrcFile)) and
+     (Project1.IsVirtual) and
+     FileExistsUTF8(AppendPathDelim(LazarusIDE.GetTestBuildDirectory)+SrcFile)
+  then
+    SrcFile := AppendPathDelim(LazarusIDE.GetTestBuildDirectory)+SrcFile;
+
   if SrcFile = '' then
     SrcFile := Filename;
   SrcFN := ExtractFilenameOnly(SrcFile);
@@ -1320,6 +1325,8 @@ begin
     while (i < c) do
     begin
       StackEntry := CallStack.CurrentCallStackList.EntriesForThreads[TId].Entries[i];
+      if StackEntry.Validity = ddsRequested then // not yet available
+        break;
       if StackEntry.Line > 0
       then begin
         CurrentSourceUnitInfo := StackEntry.UnitInfo;
@@ -2726,13 +2733,13 @@ begin
 end;
 
 function TDebugManager.Evaluate(const AExpression: String;
-  var AResult: String; var ATypeInfo: TDBGType;EvalFlags: TDBGEvaluateFlags = []): Boolean;
+  ACallback: TDBGEvaluateResultCallback; EvalFlags: TDBGEvaluateFlags): Boolean;
 begin
   Result := (not Destroying)
         and (MainIDE.ToolStatus = itDebugger)
         and (FDebugger <> nil)
         and (dcEvaluate in FDebugger.Commands)
-        and FDebugger.Evaluate(AExpression, AResult, ATypeInfo, EvalFlags);
+        and FDebugger.Evaluate(AExpression, ACallback, EvalFlags);
 end;
 
 function TDebugManager.Modify(const AExpression, ANewValue: String): Boolean;

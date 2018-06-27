@@ -42,7 +42,7 @@ uses
   Forms, Controls, Dialogs, ButtonPanel, StdCtrls, ExtCtrls, LCLType, Buttons, Menus,
   // IdeIntf
   PackageIntf, LazIDEIntf, SrcEditorIntf, ProjectIntf,
-  CompOptsIntf, IDEDialogs, IDEMsgIntf, IDEExternToolIntf,
+  CompOptsIntf, IDEDialogs, IDEMsgIntf, IDEExternToolIntf, ProjPackIntf,
   // Codetools
   CodeCache, BasicCodeTools, CustomCodeTool, CodeToolManager, UnitDictionary,
   CodeTree, LinkScanner, DefineTemplates, FindDeclarationTool,
@@ -52,6 +52,7 @@ uses
 
 const
   PackageNameFPCSrcDir = 'FPCSrcDir';
+  PackageNameDefault = 'PCCfg';
 type
   TCodyUnitDictionary = class;
 
@@ -217,7 +218,8 @@ type
     CurInImplementation: Boolean;
 
     CurOwner: TObject; // only valid after UpdateCurOwnerOfUnit and till next event
-    CurUnitPath: String; // depends on CurOwner
+    CurUnitPath: string; // depends on CurOwner
+    CurOwnerDir: string; // depends on CurOwner
 
     NewIdentifier: string;
     NewUnitFilename: string;
@@ -345,8 +347,12 @@ begin
     exit;
   end;
   // a fpc unit is better
+  if CheckFlag(i1.GroupName=PackageNameDefault,i2.GroupName=PackageNameDefault,Result) then begin
+    //debugln(['CompareCodyIdentifiersScope fpc.cfg unit ',i1.Identifier,' GroupName 1=',i1.GroupName,' 2=',i2.GroupName]);
+    exit;
+  end;
   if CheckFlag(i1.GroupName=PackageNameFPCSrcDir,i2.GroupName=PackageNameFPCSrcDir,Result) then begin
-    //debugln(['CompareCodyIdentifiersScope fpc unit ',i1.Identifier,' GroupName 1=',i1.GroupName,' 2=',i2.GroupName]);
+    //debugln(['CompareCodyIdentifiersScope fpcsrcdir unit ',i1.Identifier,' GroupName 1=',i1.GroupName,' 2=',i2.GroupName]);
     exit;
   end;
   // a near directory is better
@@ -529,6 +535,8 @@ var
   ok: Boolean;
   OldChangeStamp: Int64;
   UnitSet: TFPCUnitSetCache;
+  CfgCache: TPCTargetConfigCache;
+  DefaultFile: String;
 begin
   // check without critical section if currently loading/saving
   if fLoadSaveThread<>nil then
@@ -581,17 +589,38 @@ begin
 
         // check if in FPC source directory
         UnitSet:=CodeToolBoss.GetUnitSetForDirectory('');
-        if (UnitSet<>nil) and (UnitSet.FPCSourceDirectory<>'')
-        and FileIsInPath(fParsingTool.MainFilename,UnitSet.FPCSourceDirectory)
-        then begin
-          BeginCritSec;
-          try
-            UDGroup:=AddUnitGroup(
-              AppendPathDelim(UnitSet.FPCSourceDirectory)+PackageNameFPCSrcDir+'.lpk',
-              PackageNameFPCSrcDir);
-            UDGroup.AddUnit(UDUnit);
-          finally
-            EndCritSec;
+        if UnitSet<>nil then begin
+          if (UnitSet.FPCSourceDirectory<>'')
+          and FileIsInPath(fParsingTool.MainFilename,UnitSet.FPCSourceDirectory)
+          then begin
+            // unit in FPC source directory
+            BeginCritSec;
+            try
+              UDGroup:=AddUnitGroup(
+                AppendPathDelim(UnitSet.FPCSourceDirectory)+PackageNameFPCSrcDir+'.lpk',
+                PackageNameFPCSrcDir);
+              UDGroup.AddUnit(UDUnit);
+            finally
+              EndCritSec;
+            end;
+          end else begin
+            CfgCache:=UnitSet.GetConfigCache(false);
+            if (CfgCache<>nil) and (CfgCache.Units<>nil) then begin
+              DefaultFile:=CfgCache.Units[ExtractFileNameOnly(fParsingTool.MainFilename)];
+              if CompareFilenames(DefaultFile,fParsingTool.MainFilename)=0 then
+              begin
+                // unit source is in default compiler unit path
+                BeginCritSec;
+                try
+                  UDGroup:=AddUnitGroup(
+                    ExtractFilePath(UnitSet.CompilerFilename)+PackageNameDefault+'.lpk',
+                    PackageNameDefault);
+                  UDGroup.AddUnit(UDUnit);
+                finally
+                  EndCritSec;
+                end;
+              end;
+            end;
           end;
         end;
 
@@ -1055,7 +1084,7 @@ var
   procedure AddItems(AddExactMatches: boolean);
   var
     FPCSrcFilename: String;
-    Dir: String;
+    Dir, aFilename: String;
     Group: TUDUnitGroup;
     GroupNode: TAVLTreeNode;
     Item: TUDIdentifier;
@@ -1116,6 +1145,16 @@ var
                 continue; // the unit has no ppu file
             end;
           end;
+        end else if Group.Name=PackageNameDefault then begin
+          // unit was in default unit path
+          // => check if this is still the case
+          if CfgCache<>nil then begin
+            aFilename:=CfgCache.Units[Item.DUnit.Name];
+            if aFilename='' then
+              continue; // the unit is not in current default unit path
+            if CompareFilenames(aFilename,Item.DUnit.Filename)<>0 then
+              continue; // this is another unit (e.g. from another compiler target)
+          end;
         end else if FileExistsCached(Group.Filename) then begin
           // lpk exists
         end else begin
@@ -1168,8 +1207,12 @@ begin
     for i:=0 to FItems.Count-1 do begin
       Item:=TCodyIdentifier(FItems[i]);
       s:=Item.Identifier+' in '+Item.Unit_Name;
-      if Item.GroupName<>'' then
-        s:=s+' of '+Item.GroupName;
+      if Item.GroupName<>'' then begin
+        if Item.GroupName=PackageNameDefault then
+          s:=s+' in compiler unit path'
+        else
+          s:=s+' of '+Item.GroupName;
+      end;
       sl.Add(s);
     end;
     if Found>sl.Count then
@@ -1227,6 +1270,8 @@ begin
     if Item.GroupName='' then
       continue; // other project is always far away
     if Item.GroupName=PackageNameFPCSrcDir then
+      continue; // FPC unit
+    if Item.GroupName=PackageNameDefault then
       continue; // FPC unit
     if CurOwner=nil then continue;
     // package unit
@@ -1373,7 +1418,7 @@ var
   NewY: integer;
   NewTopLine: integer;
   CurUnit: TUDUnit;
-  MainPath: String;
+  NewUnitDir: String;
 
   function OpenDependency: boolean;
   // returns false to abort
@@ -1447,13 +1492,15 @@ begin
   // do some sanity checks
   NewUnitInPath:=false;
   UnitPathAdd:=ChompPathDelim(
-    CreateRelativePath(ExtractFilePath(CurMainFilename),
+    CreateRelativePath(CurOwnerDir,
                        ExtractFilePath(NewUnitFilename)));
   CurUnitName:=ExtractFileNameOnly(CurMainFilename);
   NewUnitName:=ExtractFileNameOnly(NewUnitFilename);
   FPCSrcFilename:='';
   Pkg:=nil;
   PkgDependencyAdded:=false;
+
+  debugln(['TCodyIdentifiersDlg.UseIdentifier CurUnitName="',CurUnitName,'" NewUnitName="',NewUnitName,'"']);
 
   SameUnitName:=CompareDottedIdentifiers(PChar(CurUnitName),PChar(NewUnitName))=0;
   if SameUnitName and (CompareFilenames(CurMainFilename,NewUnitFilename)<>0)
@@ -1465,28 +1512,30 @@ begin
     exit;
   end;
 
+  debugln(['TCodyIdentifiersDlg.UseIdentifier CurMainFilename="',CurMainFilename,'" NewUnitFilename="',NewUnitFilename,'"']);
   if CompareFilenames(CurMainFilename,NewUnitFilename)=0 then begin
     // same file
     NewUnitInPath:=true;
-    debugln(['TCodyIdentifiersDlg.UseIdentifier same unit']);
+    debugln(['TCodyIdentifiersDlg.UseIdentifier same unit CurMainFilename="',CurMainFilename,'" NewUnitFilename="',NewUnitFilename,'"']);
   end
   else if (CompareFilenames(ExtractFilePath(CurMainFilename),
-                        ExtractFilePath(NewUnitFilename))=0)
+                            ExtractFilePath(NewUnitFilename))=0)
   then begin
     // same directory
-    debugln(['TCodyIdentifiersDlg.UseIdentifier same directory']);
+    debugln(['TCodyIdentifiersDlg.UseIdentifier same directory CurMainFilename="',CurMainFilename,'" NewUnitFilename="',NewUnitFilename,'"']);
     NewUnitInPath:=true;
   end
   else if (CurUnitPath<>'')
-  and FilenameIsAbsolute(CurMainFilename) then begin
-    MainPath:=ExtractFilePath(CurMainFilename);
-    if (FindPathInSearchPath(PChar(MainPath),length(MainPath),
+  and FilenameIsAbsolute(NewUnitFilename) then begin
+    NewUnitDir:=ExtractFilePath(NewUnitFilename);
+    if (FindPathInSearchPath(PChar(NewUnitDir),length(NewUnitDir),
                              PChar(CurUnitPath),length(CurUnitPath))<>nil)
     then begin
       // in unit search path
-      debugln(['TCodyIdentifiersDlg.UseIdentifier in unit search path of owner']);
+      debugln(['TCodyIdentifiersDlg.UseIdentifier in unit search path of owner NewUnitDir="',NewUnitDir,'" CurUnitPath="',CurUnitPath,'"']);
       NewUnitInPath:=true;
-    end;
+    end else
+      debugln(['TCodyIdentifiersDlg.UseIdentifier not in unitpath: NewUnitDir="',NewUnitDir,'"']);
   end;
   if not NewUnitInPath then
     debugln(['TCodyIdentifiersDlg.UseIdentifier not in unit path: CurMainFilename="',CurMainFilename,'" NewUnitFilename="',NewUnitFilename,'" CurUnitPath="',CurUnitPath,'"']);
@@ -1507,6 +1556,9 @@ begin
           mtConfirmation, [mrOk, crsExtendUnitPath, mrCancel])<> mrOk then exit;
       end else
         NewUnitInPath:=true;
+    end else if NewGroupName=PackageNameDefault then begin
+      // new unit is in default compiler unit path
+      NewUnitInPath:=true;
     end else if NewGroupName<>'' then begin
       // new unit is part of a package
       debugln(['TCodyIdentifiersDlg.UseIdentifier unit is part of a package in "'+NewGroupFilename+'"']);
@@ -1527,15 +1579,21 @@ begin
                            mrOk, crsCloseOtherPackageAndOpenNew]) <> mrOk
         then exit;
       end;
-    end else begin
+    end;
+    if not NewUnitInPath then begin
       // new unit is a rogue unit (no package)
       debugln(['TCodyIdentifiersDlg.UseIdentifier unit is not in a package']);
+      if UnitSet.GetUnitToSourceTree(false).Contains(NewUnitName) then
+        NewUnitInPath:=true;
     end;
   end;
 
   // open package to get the compiler settings to parse the unit
-  if (CurOwner<>nil) and (not NewUnitInPath)
-  and (NewGroupName<>'') and (NewGroupName<>PackageNameFPCSrcDir) then begin
+  if (CurOwner<>nil)
+  and (not NewUnitInPath)
+  and (NewGroupName<>'')
+  and (NewGroupName<>PackageNameFPCSrcDir)
+  and (NewGroupName<>PackageNameDefault) then begin
     if not OpenDependency then exit;
   end;
 
@@ -1569,9 +1627,12 @@ begin
     debugln(['TCodyIdentifiersDlg.UseIdentifier CurOwner=',DbgSName(CurOwner),' ',NewUnitInPath]);
     if (CurOwner<>nil) and (not NewUnitInPath) then begin
       debugln(['TCodyIdentifiersDlg.UseIdentifier not in unit path, connecting pkg="',NewGroupName,'" ...']);
-      if (NewGroupName<>'') and (NewGroupName<>PackageNameFPCSrcDir) then begin
+      if (NewGroupName<>'') then begin
         // add dependency
-        if not AddDependency then exit;
+        if (NewGroupName<>PackageNameFPCSrcDir)
+        and (NewGroupName<>PackageNameDefault)
+        then
+          if not AddDependency then exit;
       end else if FilenameIsAbsolute(NewUnitFilename)
       and FilenameIsAbsolute(CurMainFilename) then begin
         // extend unit path
@@ -1610,7 +1671,9 @@ begin
   end;
 
   // open package to get proper settings
-  if (NewGroupName<>'') and (NewGroupName<>PackageNameFPCSrcDir) then begin
+  if (NewGroupName<>'')
+  and (NewGroupName<>PackageNameFPCSrcDir)
+  and (NewGroupName<>PackageNameDefault) then begin
     Pkg:=PackageEditingInterface.FindPackageWithName(NewGroupName);
     if (Pkg=nil) or (CompareFilenames(Pkg.Filename,NewGroupFilename)<>0) then
     begin
@@ -1680,6 +1743,7 @@ var
 begin
   CurOwner:=nil;
   CurUnitPath:='';
+  CurOwnerDir:='';
   if CurMainFilename='' then exit;
   GetBest(PackageEditingInterface.GetOwnersOfUnit(CurMainFilename));
   if CurOwner=nil then
@@ -1689,6 +1753,8 @@ begin
     CompOpts:=GetCurOwnerCompilerOptions;
     if CompOpts<>nil then
       CurUnitPath:=CompOpts.GetUnitPath(false);
+    if CurOwner is TIDEProjPackBase then
+      CurOwnerDir:= TIDEProjPackBase(CurOwner).Directory;
   end;
 end;
 

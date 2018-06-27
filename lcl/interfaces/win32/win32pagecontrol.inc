@@ -317,6 +317,28 @@ begin
   Windows.SendMessage(Wnd, TCM_DELETEITEM, Windows.WPARAM(AIndex), 0);
 end;
 
+function CustomTabControlWndProc(Window: HWnd; Msg: UInt; WParam: Windows.WParam;
+    LParam: Windows.LParam): LResult; stdcall;
+var
+  Control: TWinControl;
+  LMessage: TLMessage;
+begin
+  case Msg of
+    // prevent flickering
+    WM_ERASEBKGND:
+      begin
+        Control := GetWin32WindowInfo(Window)^.WinControl;
+        LMessage.msg := Msg;
+        LMessage.wParam := WParam;
+        LMessage.lParam := LParam;
+        LMessage.Result := 0;
+        Result := DeliverMessage(Control, LMessage);
+      end;
+    else
+      Result := WindowProc(Window, Msg, WParam, LParam);
+  end;
+end;
+
 class function TWin32WSCustomTabControl.CreateHandle(const AWinControl: TWinControl;
   const AParams: TCreateParams): HWND;
 const
@@ -336,6 +358,7 @@ begin
   // customization of Params
   with Params do
   begin
+    SubClassWndProc := @CustomTabControlWndProc;
     if AWinControl is TTabControl then begin
       // TTabControl is not really a TabControl, it is a container, and has a child that does the tabs
       pClassName := @ClsName[0];
@@ -630,12 +653,6 @@ begin
   AIndex := Windows.SendMessage(AWinControl.Handle, TCM_HITTEST, 0, LPARAM(@hittestInfo));
   ACurIndex := SendMessage(AWinControl.Handle, TCM_GETCURSEL, 0, 0);
   Result := (AIndex <> -1) and (AIndex <> ACurIndex);
-end;
-
-class function TWin32WSCustomTabControl.GetDoubleBuffered(
-  const AWinControl: TWinControl): Boolean;
-begin
-  Result := GetWin32ThemedDoubleBuffered(AWinControl);
 end;
 
 class procedure TWin32WSCustomTabControl.SetTabSize(

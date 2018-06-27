@@ -22,6 +22,9 @@ unit Interfaces;
 {$IFNDEF CARBON}
 {$ERROR wrong interfaces source}
 {$ENDIF}
+{$IFNDEF cpui386}
+{$ERROR only cpu i386 is supported}
+{$ENDIF}
 
 interface
 

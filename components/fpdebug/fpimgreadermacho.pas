@@ -9,7 +9,7 @@ uses
   macho, FpImgReaderMachoFile, FpImgReaderBase, LazLoggerBase,
   DbgIntfBaseTypes,
   lazfglhash,
-  fpDbgSymTable;
+  fpDbgSymTable, FpDbgUtil;
 
 type
 
@@ -38,6 +38,7 @@ type
     function GetSectionIndex(const SectionName: AnsiString): Integer;
 
     function GetSection(const AName: String): PDbgImageSection; override;
+    procedure AddSubFilesToLoaderList(ALoaderList: TObject; PrimaryLoader: TObject); override;
   public
     class function isValid(ASource: TDbgFileLoader): Boolean; override;
     class function UserName: AnsiString; override;
@@ -54,8 +55,7 @@ uses
   FpDbgLoader;
 
 type
-  PnlistArray = ^TnlistArray;
-  TnlistArray = array[0..maxSmallint] of nlist;
+  PnlistArray = ^nlist; // ^array[0..infinite] of nlist;
 
 const
   // Symbol-map section name
@@ -197,13 +197,13 @@ begin
     SymbolCount := PDbgImageSectionEx(p)^.Sect.Size div sizeof(nlist);
     for i := 0 to SymbolCount-1 do
     begin
-      if (SymbolArr^[i].n_type and $e0)<>0 then
+      if (SymbolArr[i].n_type and $e0)<>0 then
         // This is a stabs-entry. Ignore.
         Continue;
-      if (SymbolArr^[i].n_type and $0e)=$e then
+      if (SymbolArr[i].n_type and $0e)=$e then
       begin
         // Section-index is ignored for now...
-        AfpSymbolInfo.AddObject(pchar(SymbolStr+SymbolArr^[i].n_un.n_strx), TObject(PtrUInt(SymbolArr^[i].n_value)));
+        AfpSymbolInfo.AddObject(pchar(SymbolStr+SymbolArr[i].n_un.n_strx), TObject(PtrUInt(SymbolArr[i].n_value)));
       end
     end;
   end;
@@ -296,6 +296,55 @@ begin
     exit;
   ex^.Loaded  := True;
   fSource.LoadMemory(ex^.Offs, Result^.Size, Result^.RawData);
+end;
+
+procedure TDbgMachoDataSource.AddSubFilesToLoaderList(ALoaderList: TObject;
+  PrimaryLoader: TObject);
+var
+  PLoader: TDbgImageLoader absolute PrimaryLoader;
+  LList: TDbgImageLoaderList absolute ALoaderList;
+  ALoader: TDbgImageLoader;
+  fname, dSYMFilename: String;
+  i: SizeInt;
+begin
+  // JvdS: Mach-O binaries do not contain DWARF-debug info. Instead this info
+  // is stored inside the .o files, and the executable contains a map (in stabs-
+  // format) of all these .o files. An alternative to parsing this map and reading
+  // those .o files a dSYM-bundle could be used, which could be generated
+  // with dsymutil.
+
+  // PLoader.FileName in Contents/MacOs
+  ALoader:=nil;
+
+  fname := PLoader.FileName;
+  i := pos('/Contents/MacOs', fname);
+  if i > 0 then delete(fname, i, Length(fname));
+  dSYMFilename:=ChangeFileExt(PLoader.FileName, '.dSYM');
+  dSYMFilename:=dSYMFilename+'/Contents/Resources/DWARF/'+ExtractFileName(fname); // TDbgProcess.Name
+
+  if ExtractFileExt(dSYMFilename)='.app' then
+    dSYMFilename := ChangeFileExt(dSYMFilename,'');
+
+  if FileExists(dSYMFilename) then
+    begin
+    ALoader := TDbgImageLoader.Create(dSYMFilename);
+    if GUIDToString(ALoader.UUID)<>GUIDToString(PLoader.UUID) then
+      begin
+      Log('The unique UUID''s of the executable and the dSYM bundle with debug-info ('+dSYMFilename+') do not match.');
+      FreeAndNil(ALoader);
+      end
+    else
+      begin
+      log('Load debug-info from dSYM bundle ('+dSYMFilename+').');
+      LList.Add(ALoader);
+      end;
+    end;
+
+  if not assigned(ALoader) then
+    begin
+    log('Read debug-info from separate object files.');
+    TDbgMachoDataSource.LoadSubFiles(PLoader.SubFiles, LList);
+    end;
 end;
 
 constructor TDbgMachoDataSource.Create(ASource: TDbgFileLoader; ADebugMap: TObject; OwnSource: Boolean);
@@ -533,20 +582,20 @@ begin
       case state of
         dtsEnd:
           begin
-            if SymbolArr^[i].n_type = N_SO then
+            if SymbolArr[i].n_type = N_SO then
             begin
               if assigned(DwarfDebugMap) then
                 DwarfDebugMap.Free;
               DwarfDebugMap := TAppleDwarfDebugMap.Create;
-              DwarfDebugMap.Dir := pchar(SymbolStr+SymbolArr^[i].n_un.n_strx);
+              DwarfDebugMap.Dir := pchar(SymbolStr+SymbolArr[i].n_un.n_strx);
               state := dtsDir;
             end;
           end;
         dtsDir:
           begin
-            if SymbolArr^[i].n_type = N_SO then
+            if SymbolArr[i].n_type = N_SO then
             begin
-              DwarfDebugMap.SourceFile:=pchar(SymbolStr+SymbolArr^[i].n_un.n_strx);
+              DwarfDebugMap.SourceFile:=pchar(SymbolStr+SymbolArr[i].n_un.n_strx);
               inc(state);
             end
             else
@@ -554,27 +603,27 @@ begin
           end;
         dtsSource:
           begin
-            if SymbolArr^[i].n_type = N_OSO then
+            if SymbolArr[i].n_type = N_OSO then
             begin
-              DwarfDebugMap.ObjectFile:=pchar(SymbolStr+SymbolArr^[i].n_un.n_strx);
-              DwarfDebugMap.ObjFileAge:=SymbolArr^[i].n_value;
+              DwarfDebugMap.ObjectFile:=pchar(SymbolStr+SymbolArr[i].n_un.n_strx);
+              DwarfDebugMap.ObjFileAge:=SymbolArr[i].n_value;
               inc(state);
             end;
           end;
         dtsObjectFile:
           begin
-            if (SymbolArr^[i].n_type = N_BNSYM) then
+            if (SymbolArr[i].n_type = N_BNSYM) then
             begin
               inc(state);
             end
-            else if (SymbolArr^[i].n_type = N_STSYM) then
+            else if (SymbolArr[i].n_type = N_STSYM) then
             begin
-              AddressMap.NewAddr:=SymbolArr^[i].n_value;
+              AddressMap.NewAddr:=SymbolArr[i].n_value;
               AddressMap.OrgAddr:=0;
               AddressMap.Length:=0;
-              DwarfDebugMap.GlobalList.Add(pchar(SymbolStr+SymbolArr^[i].n_un.n_strx), AddressMap);
+              DwarfDebugMap.GlobalList.Add(pchar(SymbolStr+SymbolArr[i].n_un.n_strx), AddressMap);
             end
-            else if (SymbolArr^[i].n_type = N_SO) and (SymbolArr^[i].n_sect=1) then
+            else if (SymbolArr[i].n_type = N_SO) and (SymbolArr[i].n_sect=1) then
             begin
               state := dtsEnd;
               SubFiles.AddObject(DwarfDebugMap.ObjectFile, DwarfDebugMap);
@@ -583,24 +632,24 @@ begin
           end;
         dtsProc:
           begin
-            if (SymbolArr^[i].n_type = N_FUN) and (SymbolArr^[i].n_sect=1) then
+            if (SymbolArr[i].n_type = N_FUN) and (SymbolArr[i].n_sect=1) then
             begin
-              AddressMap.NewAddr:=SymbolArr^[i].n_value;
-              ProcName:=pchar(SymbolStr+SymbolArr^[i].n_un.n_strx);
+              AddressMap.NewAddr:=SymbolArr[i].n_value;
+              ProcName:=pchar(SymbolStr+SymbolArr[i].n_un.n_strx);
               inc(state);
             end;
           end;
         dtsProcLen:
           begin
-            if (SymbolArr^[i].n_type = N_FUN) and (SymbolArr^[i].n_sect=0) then
+            if (SymbolArr[i].n_type = N_FUN) and (SymbolArr[i].n_sect=0) then
             begin
-              AddressMap.Length:=SymbolArr^[i].n_value;
+              AddressMap.Length:=SymbolArr[i].n_value;
               inc(state);
             end;
           end;
         dtsProcEnd:
           begin
-            if (SymbolArr^[i].n_type = N_ENSYM) and (SymbolArr^[i].n_sect=1) then
+            if (SymbolArr[i].n_type = N_ENSYM) and (SymbolArr[i].n_sect=1) then
             begin
               DwarfDebugMap.GlobalList.Add(ProcName, AddressMap);
               state := dtsObjectFile;
@@ -634,25 +683,25 @@ begin
     SymbolCount := PDbgImageSectionEx(p)^.Sect.Size div sizeof(nlist);
     for i := 0 to SymbolCount-1 do
     begin
-      if SymbolArr^[i].n_type = N_SECT then
+      if SymbolArr[i].n_type = N_SECT then
       begin
-        s := pchar(SymbolStr+SymbolArr^[i].n_un.n_strx);
+        s := pchar(SymbolStr+SymbolArr[i].n_un.n_strx);
         ind := MainDwarfDebugMap.GlobalList.Find(s);
         if assigned(ind) then
           begin
             AddressMap:=MainDwarfDebugMap.GlobalList.Items[s];
-            AddressMap.OrgAddr:=SymbolArr^[i].n_value;
+            AddressMap.OrgAddr:=SymbolArr[i].n_value;
             AddressMapList.Add(AddressMap);
           end;
       end;
-      if SymbolArr^[i].n_type = N_SECT+N_EXT then
+      if SymbolArr[i].n_type = N_SECT+N_EXT then
       begin
-        s := pchar(SymbolStr+SymbolArr^[i].n_un.n_strx);
+        s := pchar(SymbolStr+SymbolArr[i].n_un.n_strx);
         ind := MainDwarfDebugMap.GlobalList.Find(s);
         if assigned(ind) then
           begin
             AddressMap:=MainDwarfDebugMap.GlobalList.Items[s];
-            AddressMap.OrgAddr:=SymbolArr^[i].n_value;
+            AddressMap.OrgAddr:=SymbolArr[i].n_value;
             AddressMapList.Add(AddressMap);
           end;
       end;

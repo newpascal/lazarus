@@ -16,7 +16,7 @@
     <Description Value="Useful units for Lazarus packages."/>
     <License Value="Modified LGPL-2"/>
     <Version Major="1"/>
-    <Files Count="97">
+    <Files Count="100">
       <Item1>
         <Filename Value="LazLoggerImpl.inc"/>
         <Type Value="Include"/>
@@ -395,16 +395,28 @@
       </Item94>
       <Item95>
         <Filename Value="lazpasreadutil.pas"/>
-        <UnitName Value="lazpasreadutil"/>
+        <UnitName Value="LazPasReadUtil"/>
       </Item95>
       <Item96>
         <Filename Value="integerlist.pas"/>
-        <UnitName Value="integerlist"/>
+        <UnitName Value="IntegerList"/>
       </Item96>
       <Item97>
         <Filename Value="lazversion.pas"/>
-        <UnitName Value="lazversion"/>
+        <UnitName Value="LazVersion"/>
       </Item97>
+      <Item98>
+        <Filename Value="uitypes.pas"/>
+        <UnitName Value="UITypes"/>
+      </Item98>
+      <Item99>
+        <Filename Value="graphtype.pp"/>
+        <UnitName Value="GraphType"/>
+      </Item99>
+      <Item100>
+        <Filename Value="laztracer.pas"/>
+        <UnitName Value="LazTracer"/>
+      </Item100>
     </Files>
     <LazDoc Paths="../../docs/xml/lazutils"/>
     <i18n>

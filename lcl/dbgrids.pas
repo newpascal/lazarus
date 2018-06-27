@@ -132,6 +132,33 @@ type
 
 type
 
+  TBookmarkList = class;
+  TBookmarkedRecordEnumeratorOptions = set of
+      (
+        breDisableDataset,
+        breStopOnInvalidBookmark,
+        breRestoreCurrent
+      );
+
+  { TBookmarkedRecordEnumerator }
+
+  TBookmarkedRecordEnumerator = class
+  private
+    fBookmarkList: TBookmarkList;
+    fBookmarkIndex: Integer;
+    fCurrent, fBook: TBookmark;
+    fDataset: TDataset;
+    fOptions: TBookmarkedRecordEnumeratorOptions;
+  public
+    constructor Create(bookList: TBookmarkList; aGrid: TCustomDbGrid;
+        anOptions: TBookmarkedRecordEnumeratorOptions);
+    destructor Destroy; override;
+    function MoveNext: boolean;
+    function GetEnumerator: TBookmarkedRecordEnumerator;
+    property Current: TBookmark read fCurrent;
+    property Options: TBookmarkedRecordEnumeratorOptions read fOptions write fOptions;
+  end;
+
   { TBookmarkList }
 
   TBookmarkList = class
@@ -155,6 +182,8 @@ type
     function  Find(const Item: TBookmark; var AIndex: Integer): boolean;
     function  IndexOf(const Item: TBookmark): Integer;
     function  Refresh: boolean;
+    function  GetEnumerator(opt: TBookmarkedRecordEnumeratorOptions =
+                [breDisableDataset, breRestoreCurrent]): TBookmarkedRecordEnumerator;
 
     property Count: integer read GetCount;
     property CurrentRowSelected: boolean
@@ -571,6 +600,7 @@ type
     property DataSource;
     property DefaultDrawing;
     property DefaultRowHeight;
+    property DoubleBuffered;
     property DragCursor;
     //property DragKind;
     property DragMode;
@@ -589,6 +619,7 @@ type
     property OptionsExtra;
     property ParentBiDiMode;
     property ParentColor default false;
+    property ParentDoubleBuffered;
     property ParentFont;
     //property ParentShowHint;
     property PopupMenu;
@@ -751,6 +782,56 @@ begin
   finally
     ALookupField.LookupDataSet.EnableControls;
   end;
+end;
+
+{ TBookmarkedRecordEnumerator }
+
+constructor TBookmarkedRecordEnumerator.Create(bookList: TBookmarkList;
+  aGrid: TCustomDbGrid; anOptions: TBookmarkedRecordEnumeratorOptions);
+begin
+  inherited Create;
+  fBookmarkList := bookList;
+  fBookmarkIndex := -1;
+  fDataset := aGrid.Datasource.dataset;
+  fOptions := anOptions;
+end;
+
+destructor TBookmarkedRecordEnumerator.Destroy;
+begin
+  if breRestoreCurrent in fOptions then begin
+    if fDataset.BookmarkValid(fBook) then
+      fDataset.GotoBookmark(fBook);
+    fDataset.FreeBookmark(fBook);
+  end;
+  if breDisableDataset in fOptions then
+    fDataset.EnableControls;
+  inherited Destroy;
+end;
+
+function TBookmarkedRecordEnumerator.MoveNext: boolean;
+begin
+  inc(fBookmarkIndex);
+
+  if fBookmarkIndex=0 then begin
+    if breDisableDataset in fOptions then
+      fDataset.DisableControls;
+    if breRestoreCurrent in fOptions then
+      fBook := fDataset.GetBookmark;
+  end;
+
+  result := fBookmarkIndex<fBookmarkList.Count;
+  if result then begin
+    fCurrent := fBookmarkList[fBookmarkIndex];
+    if fDataset.BookmarkValid(fCurrent) then
+      fDataSet.GotoBookmark(fCurrent)
+    else if breStopOnInvalidBookmark in fOptions then
+      result := false;
+  end;
+end;
+
+function TBookmarkedRecordEnumerator.GetEnumerator: TBookmarkedRecordEnumerator;
+begin
+  result := self;
 end;
 
 { TCustomDBGrid }
@@ -1377,6 +1458,8 @@ var
   end;
 
   function DsPos: boolean;
+  var
+    oldMaxPos: Integer;
   begin
     result := false;
     aPos := Message.Pos;
@@ -1384,12 +1467,22 @@ var
       result := true;
       exit;
     end;
-    if aPos>=MaxPos then
+    oldMaxPos := MaxPos;
+    if aPos>=oldMaxPos then
       dsGoto(False)
     else if aPos<=0 then
       dsGoto(True)
-    else if IsSeq then
-      FDatalink.DataSet.RecNo := aPos + 1
+    else if IsSeq then begin
+      FDatalink.DataSet.RecNo := aPos + 1;
+      {$IFDEF MSWINDOWS}
+      // Workaround for scrollbar range not being updated
+      // probably only needed under windows, issue 33799
+      if oldMaxPos<>MaxPos then begin
+        ScrollBarShow(SB_VERT, false);
+        ScrollBarShow(SB_VERT, true);
+      end;
+      {$ENDIF}
+    end
     else begin
       DeltaRec := Message.Pos - FOldPosition;
       if DeltaRec=0 then begin
@@ -3433,15 +3526,18 @@ begin
     else
       result := true;  // field is nil so it's readonly
 
-    EditingColumn(Col, not Result);
   end;
 end;
 
 procedure TCustomDBGrid.EditorTextChanged(const aCol, aRow: Integer;
   const aText: string);
+var
+  isReadOnly: Boolean;
 begin
-  if not EditorIsReadonly then
+  isReadOnly := EditorIsReadonly;
+  if not isReadOnly then
     SetEditText(aCol, aRow, aText);
+  EditingColumn(Col, not isReadOnly);
 end;
 
 procedure TCustomDBGrid.HeaderSized(IsColumn: Boolean; Index: Integer);
@@ -4557,7 +4653,13 @@ begin
   end;
 end;
 
-constructor TBookmarkList.Create(AGrid: TCustomDBGrid);
+function TBookmarkList.GetEnumerator(opt: TBookmarkedRecordEnumeratorOptions
+  ): TBookmarkedRecordEnumerator;
+begin
+  result := TBookmarkedRecordEnumerator.Create(self, fGrid, opt);
+end;
+
+constructor TBookmarkList.Create(AGrid: TCustomDbGrid);
 begin
   inherited Create;
   FGrid := AGrid;

@@ -65,11 +65,11 @@ uses
   LCLProc, LCLType, LclIntf, Forms, Controls, StdCtrls, Dialogs, ComCtrls,
   ActnList, XMLPropStorage,
   // LazUtils
-  LazUTF8Classes, LazFileUtils, LazFileCache,
+  LazUTF8Classes, LazFileUtils, LazFileCache, LazLoggerBase,
   // Codetools
   CodeCache, CodeToolManager, BasicCodeTools, FileProcs,
   // IDEIntf
-  LazIDEIntf, IDEImagesIntf, PackageIntf, ProjectIntf, IDEUtils,
+  LazIDEIntf, IDEImagesIntf, PackageIntf, ProjectIntf, PackageDependencyIntf,
   // ToDoList
   ToDoListStrConsts;
 
@@ -244,7 +244,7 @@ begin
   acGoto.ImageIndex := IDEImages.LoadImage('menu_goto_line');
   acRefresh.ImageIndex := IDEImages.LoadImage('laz_refresh');
   acExport.ImageIndex := IDEImages.LoadImage('menu_saveas');
-  acHelp.ImageIndex := IDEImages.LoadImage('menu_help');
+  acHelp.ImageIndex := IDEImages.LoadImage('btn_help');
 
   SaveDialog.Filter:= dlgFilterCsv+'|*.csv';
 end;

@@ -4,7 +4,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: lazaruside\n"
 "POT-Creation-Date: \n"
-"PO-Revision-Date: 2018-04-25 18:25+0200\n"
+"PO-Revision-Date: 2018-06-19 22:10+0200\n"
 "Last-Translator: Olexandr Pylypchuk <lxlalexlxl@ukr.net>\n"
 "Language-Team: Ukrainian <trans-uk@lists.fedoraproject.org>\n"
 "Language: uk\n"
@@ -636,8 +636,8 @@ msgid "Alphabetically"
 msgstr "За алфавітом"
 
 #: lazarusidestrconsts.dlgalwaysvisiblecursor
-msgid "Always visible cursor"
-msgstr "Завжди видимий курсор"
+msgid "Always keep Caret in visible area of editor"
+msgstr "Завжди тримати курсор у видимій ділянці редактора"
 
 #: lazarusidestrconsts.dlgambigfileact
 msgid "Ambiguous file action:"
@@ -814,6 +814,10 @@ msgstr "Підбір пар дужок"
 msgid "You cannot use docked desktop in undocked environment and vice versa."
 msgstr "Неможливо використати стільницю зі стикуванням в оточенні без стикування, і навпаки."
 
+#: lazarusidestrconsts.dlgcaretgroupoptions
+msgid "Caret (Text Cursor)"
+msgstr "Каретка (текстовий курсор)"
+
 #: lazarusidestrconsts.dlgcasesensitive
 msgctxt "lazarusidestrconsts.dlgcasesensitive"
 msgid "&Case sensitive"
@@ -852,9 +856,9 @@ msgstr "Тест: перевіряю дату компілятора ..."
 msgid "Test: Compiling an empty file ..."
 msgstr "Тест: компілюю порожній файл ..."
 
-#: lazarusidestrconsts.dlgccotestmissingppu
-msgid "Test: Checking missing fpc ppu ..."
-msgstr "Тест: перевіряю відсутній fpc ppu ..."
+#: lazarusidestrconsts.dlgccotestrtlunits
+msgid "Test: Checking RTL units ..."
+msgstr "Тест: перевіряю  модулі RTL ..."
 
 #: lazarusidestrconsts.dlgccotestsrcinppupaths
 msgid "Test: Checking sources in fpc ppu search paths ..."
@@ -1269,16 +1273,12 @@ msgstr "Наразі впливає на вікно повідомлень, іс
 msgid "Cursor beyond EOL"
 msgstr "Курсор за межею рядка"
 
-#: lazarusidestrconsts.dlgcursorgroupoptions
-msgid "Cursor"
-msgstr "Курсор"
-
 #: lazarusidestrconsts.dlgcursorskipsselection
-msgid "Cursor skips selection"
+msgid "Caret skips selection"
 msgstr "Курсор пропускає вибране"
 
 #: lazarusidestrconsts.dlgcursorskipstab
-msgid "Cursor skips tabs"
+msgid "Caret skips tabs"
 msgstr "Курсор пропускає Таби"
 
 #: lazarusidestrconsts.dlgcustomext
@@ -2153,12 +2153,12 @@ msgid "Highlight Font Color"
 msgstr "Підсвічувати Колір Шрифту"
 
 #: lazarusidestrconsts.dlghighlightleftofcursor
-msgid "Left Of Cursor"
-msgstr "Зліва від курсору"
+msgid "Left Of Caret"
+msgstr "Ліворуч від курсора"
 
 #: lazarusidestrconsts.dlghighlightrightofcursor
-msgid "Right Of Cursor"
-msgstr "Справа від курсору"
+msgid "Right Of Caret"
+msgstr "Праворуч від курсора"
 
 #: lazarusidestrconsts.dlghintsparametersendernotused
 msgid "Show hints for parameter \"Sender\" not used"
@@ -2229,6 +2229,22 @@ msgstr "Включити ідентифікатори, що містять пр�
 msgid "Include system variables"
 msgstr "Включити системні змінні"
 
+#: lazarusidestrconsts.dlgincludewordstoidentcompl
+msgid "Include words"
+msgstr "Включити слова"
+
+#: lazarusidestrconsts.dlgincludewordstoidentcompl_dontinclude
+msgid "don't include"
+msgstr "не включати"
+
+#: lazarusidestrconsts.dlgincludewordstoidentcompl_includefromallunits
+msgid "from all units"
+msgstr "зі всіх модулів"
+
+#: lazarusidestrconsts.dlgincludewordstoidentcompl_includefromcurrentunit
+msgid "from current unit"
+msgstr "з поточного модуля"
+
 #: lazarusidestrconsts.dlgindentsindentgroupoptions
 msgid "Indent"
 msgstr "Відступ"
@@ -2294,8 +2310,8 @@ msgid "Jump directly to method body"
 msgstr "Переходити прямо до тіла методу"
 
 #: lazarusidestrconsts.dlgkeepcursorx
-msgid "Keep cursor X position"
-msgstr "Зберігати позицію курсору по осі X"
+msgid "Keep caret X position when navigating up/down"
+msgstr "Зберігати позицію курсора по осі X при навігації вгору/вниз"
 
 #: lazarusidestrconsts.dlgkeylink
 msgid "(Edit Key)"
@@ -2356,7 +2372,7 @@ msgstr " 0 (без оптимізації)"
 
 #: lazarusidestrconsts.dlglinesplitting
 msgid "Line Splitting"
-msgstr "Розчіплювання рядка"
+msgstr "Розривання рядків"
 
 #: lazarusidestrconsts.dlglinksmart
 msgid "Link smart"
@@ -2891,16 +2907,24 @@ msgid "Warning"
 msgstr "Попередження"
 
 #: lazarusidestrconsts.dlgmulticaretcolumnmode
-msgid "Multi-caret (column-select) move with cursor"
-msgstr "При виборі стовпця рухати всі курсори за основним"
+msgid "Navigation keys move all carets (column-select)"
+msgstr "Клавіші навігації рухають всі курсори (при виборі стовпця)"
+
+#: lazarusidestrconsts.dlgmulticaretdelskipcr
+msgid "Skip delete key at EOL (do not join lines)"
+msgstr "Пропускати клавішу Delete в кінці рядка (не об'єднувати рядків)"
+
+#: lazarusidestrconsts.dlgmulticaretgroupoptions
+msgid "Multi-caret"
+msgstr "Декілька курсорів"
 
 #: lazarusidestrconsts.dlgmulticaretmode
-msgid "Multi-caret move with cursor"
-msgstr "Переміщувати всі курсори за основним"
+msgid "Navigation keys move all carets"
+msgstr "Клавіші навігації рухають всі курсори "
 
 #: lazarusidestrconsts.dlgmulticaretoncolumnselection
-msgid "Enable multi caret for column selection"
-msgstr "При виборі стовпців увімкнути декілька курсорів"
+msgid "Enable multi-caret for column selection"
+msgstr "Увімкнути декілька курсорів для вибору стовпців"
 
 #: lazarusidestrconsts.dlgmultipleinstances
 msgid "Multiple Lazarus instances"
@@ -3087,8 +3111,8 @@ msgid "Persistent block"
 msgstr "Постійний блок"
 
 #: lazarusidestrconsts.dlgpersistentcursor
-msgid "Persistent cursor"
-msgstr "Постійний курсор"
+msgid "Visible caret in unfocused editor"
+msgstr "Показувати курсор, якщо редактор не у фокусі"
 
 #: lazarusidestrconsts.dlgpoapplication
 msgid "Application"
@@ -3409,8 +3433,8 @@ msgid "Scroll past end of file"
 msgstr "Прокрутити до кінця файлу"
 
 #: lazarusidestrconsts.dlgscrollpastendline
-msgid "Caret past end of line"
-msgstr "Каретку в кінець рядка"
+msgid "Allow caret to move past end of line"
+msgstr "Дозволити курсору рухатися після кінця рядка"
 
 #: lazarusidestrconsts.dlgseachdirectorynotfound
 msgid "Search directory \"%s\" not found."
@@ -3481,7 +3505,7 @@ msgid "Show all units"
 msgstr "Показати всі модулі"
 
 #: lazarusidestrconsts.dlgshowcaptionsofnonvisuals
-msgid "Show captions of non-visual components"
+msgid "Show captions of nonvisual components"
 msgstr "Показувати підписи невізуальних компонентів"
 
 #: lazarusidestrconsts.dlgshowcompiledprocedures
@@ -4323,7 +4347,7 @@ msgid "Official:"
 msgstr "Офіційний сайт:"
 
 #: lazarusidestrconsts.lisacannotholdtcontrolsyoucanonlyputnonvisualcomponen
-msgid "A %s cannot hold TControls.%sYou can only put non visual components on it."
+msgid "A %s cannot hold TControls.%sYou can only put nonvisual components on it."
 msgstr "%s не може містити компоненти TControl.%sУ ньому можна розміщувати тільки невізуальні компоненти."
 
 #: lazarusidestrconsts.lisacknowledgements
@@ -4418,6 +4442,18 @@ msgstr "Додатки"
 #: lazarusidestrconsts.lisaddkeyworddo
 msgid "Add keyword \"do\""
 msgstr "Додати ключове слово \"do\""
+
+#: lazarusidestrconsts.lisaddmodifieroverload
+msgid "Add modifier \"overload\""
+msgstr "Додати модифікатор \"overload\""
+
+#: lazarusidestrconsts.lisaddmodifieroverride
+msgid "Add modifier \"override\""
+msgstr "Додати модифікатор \"override\""
+
+#: lazarusidestrconsts.lisaddmodifierreintroduce
+msgid "Add modifier \"reintroduce\""
+msgstr "Додати модифікатор \"reintroduce\""
 
 #: lazarusidestrconsts.lisaddnewbuildmodecopyingsettingsfrom
 msgid "Add new build mode, copying settings from \"%s\""
@@ -5248,9 +5284,9 @@ msgstr "Неправильна тестова тека"
 msgid "Missing unit"
 msgstr "Втрачений модуль"
 
-#: lazarusidestrconsts.lisccomsgppunotfound
-msgid "compiled FPC unit not found: %s.ppu"
-msgstr "зібраний модуль FPC не знайдено: %s.ppu"
+#: lazarusidestrconsts.lisccomsgrtlunitnotfound
+msgid "RTL unit not found: %s"
+msgstr "Модуль RTL не знайдено: %s"
 
 #: lazarusidestrconsts.lisccomultiplecfgfound
 msgid "multiple compiler configs found: "
@@ -5268,13 +5304,13 @@ msgstr "не ASCII"
 msgid "ppu exists twice: %s, %s"
 msgstr "ppu наявний двічі: %s, %s"
 
-#: lazarusidestrconsts.lisccoppunotfounddetailed
-msgid "The compiled FPC unit %s.ppu was not found.%sThis typically means your fpc.cfg has a bug. Or your FPC installation is broken."
-msgstr "Скомпільований модуль FPC %s.ppu не знайдено.%sЦе зазвичай означає, що в вашому fpc.cfg є помилка. Або встановлення вашого FPC пошкоджене."
-
 #: lazarusidestrconsts.lisccoppuolderthancompiler
 msgid "There is a .ppu file older than the compiler itself:%s%s"
 msgstr "Існує .ppu файл старший самого компілятора:%s%s"
+
+#: lazarusidestrconsts.lisccortlunitnotfounddetailed
+msgid "The RTL unit %s was not found.%sThis typically means your %s has wrong unit paths. Or your installation is broken."
+msgstr "Модуль RTL %s не знайдено.%sЗазвичай це означає, що %s має хибні шляхи модулів. Або встановлену систему пошкоджено."
 
 #: lazarusidestrconsts.lisccoseveralcompilers
 msgid "There are several Free Pascal Compilers in your path.%s%s%sMaybe you forgot to delete an old compiler?"
@@ -5804,9 +5840,9 @@ msgstr "Виберіть теку Lazarus"
 msgid "Choose \"make\" executable"
 msgstr "Виберіть виконуваний файл \"make\""
 
-#: lazarusidestrconsts.lischoosename
-msgid "Choose name"
-msgstr "Виберіть назву"
+#: lazarusidestrconsts.lischoosenameandtext
+msgid "Choose name and text"
+msgstr "Вибрати назву і текст"
 
 #: lazarusidestrconsts.lischooseoneoftheseitemstocreateanewfile
 msgid "Choose one of these items to create a new File"
@@ -6561,7 +6597,7 @@ msgstr "Помилка запису"
 
 #: lazarusidestrconsts.liscodetoolsoptsat
 msgid "At"
-msgstr "Біля"
+msgstr "Оператор @"
 
 #: lazarusidestrconsts.liscodetoolsoptsbracket
 msgid "Bracket"
@@ -6695,6 +6731,10 @@ msgstr "Компіляція проекту"
 #: lazarusidestrconsts.liscompiler
 msgid "Compiler"
 msgstr "Компілятор"
+
+#: lazarusidestrconsts.liscompilercfgismissing
+msgid "%s is missing."
+msgstr "%s відсутній."
 
 #: lazarusidestrconsts.liscompilerdoesnotsupporttarget
 msgid "Compiler \"%s\" does not support target %s-%s"
@@ -6884,6 +6924,11 @@ msgstr "Код конструктора"
 #: lazarusidestrconsts.liscontains
 msgid "contains"
 msgstr "містить"
+
+#: lazarusidestrconsts.liscontents
+msgctxt "lazarusidestrconsts.liscontents"
+msgid "Contents"
+msgstr "Зміст"
 
 #: lazarusidestrconsts.liscontextsensitive
 msgid "Context sensitive"
@@ -8549,6 +8594,14 @@ msgstr "Вставити вибрані компоненти з буфера"
 msgid "Select parent component"
 msgstr "Вибрати компонент-предок"
 
+#: lazarusidestrconsts.lisdsgshownonvisualcomponents
+msgid "Show nonvisual components"
+msgstr "Показати невізуальні компоненти"
+
+#: lazarusidestrconsts.lisdsgtoggleshowingnonvisualcomponents
+msgid "Toggle showing nonvisual components"
+msgstr "Перемикання показу невізуальних компонентів"
+
 #: lazarusidestrconsts.lisduplicate
 msgid "Duplicate"
 msgstr "Дублікат"
@@ -9326,6 +9379,10 @@ msgstr "Задати типові"
 msgid "These are file filters that will appear in all File Open dialogs"
 msgstr "Це фільтри файлів, які з'являться в усіх діалогах відкриття файлів"
 
+#: lazarusidestrconsts.lisfilefound
+msgid "File found"
+msgstr "Файл знайдено"
+
 #: lazarusidestrconsts.lisfilehaschangedsave
 msgid "File \"%s\" has changed. Save?"
 msgstr "Файл \"%s\" змінено. Зберегти?"
@@ -9594,10 +9651,6 @@ msgstr "Для Windows"
 #: lazarusidestrconsts.lisfoundversionexpected
 msgid "Found version %s, expected %s"
 msgstr "Знайдена версія %s, але очікувалась %s"
-
-#: lazarusidestrconsts.lisfpccfgismissing
-msgid "fpc.cfg is missing."
-msgstr "fpc.cfg загубився."
 
 #: lazarusidestrconsts.lisfpcfullversioneg20701
 msgid "FPC version as one number (e.g. 20701)"
@@ -10545,6 +10598,10 @@ msgstr "Неприпустимий вираз:%s%s%s%s"
 #: lazarusidestrconsts.lisinvalidexpressionhintthemakeresourcestringfunction
 msgid "Invalid expression.%sHint: The \"Make Resourcestring\" function expects a string constant in a single file. Please select the expression and try again."
 msgstr "Неправильний вираз.%sДовідка: функція \"Створити рядок ресурсів\" вимагає рядкової константи в одному файлі. Виберіть вираз і спробуйте ще раз."
+
+#: lazarusidestrconsts.lisinvalidfilename
+msgid "Invalid file name"
+msgstr "Некоректна назва файла"
 
 #: lazarusidestrconsts.lisinvalidfilter
 msgid "Invalid filter"
@@ -13084,41 +13141,6 @@ msgctxt "lazarusidestrconsts.lismenutemplateabout"
 msgid "About"
 msgstr "Про"
 
-#: lazarusidestrconsts.lismenutemplatecontents
-msgid "Contents"
-msgstr "Зміст"
-
-#: lazarusidestrconsts.lismenutemplatedescriptionstandardeditmenu
-msgid "Standard Edit Menu"
-msgstr "Стандартне меню Зміни"
-
-#: lazarusidestrconsts.lismenutemplatedescriptionstandardfilemenu
-msgid "Standard File Menu"
-msgstr "Стандартне меню Файл"
-
-#: lazarusidestrconsts.lismenutemplatedescriptionstandardhelpmenu
-msgid "Standard Help Menu"
-msgstr "Стандартне меню Довідка"
-
-#: lazarusidestrconsts.lismenutemplatefind
-msgctxt "lazarusidestrconsts.lismenutemplatefind"
-msgid "Find"
-msgstr "Знайти"
-
-#: lazarusidestrconsts.lismenutemplatefindnext
-msgctxt "lazarusidestrconsts.lismenutemplatefindnext"
-msgid "Find Next"
-msgstr "Шукати далі"
-
-#: lazarusidestrconsts.lismenutemplateopenrecent
-msgctxt "lazarusidestrconsts.lismenutemplateopenrecent"
-msgid "Open Recent"
-msgstr "Відкрити недавні"
-
-#: lazarusidestrconsts.lismenutemplatetutorial
-msgid "Tutorial"
-msgstr "Посібник"
-
 #: lazarusidestrconsts.lismenutogglecomment
 msgid "Toggle Comment in Selection"
 msgstr "Перемкнути коментар в виборі"
@@ -14579,6 +14601,10 @@ msgstr "Змінити загальні параметри"
 msgid "File Properties"
 msgstr "Властивості файлу"
 
+#: lazarusidestrconsts.lispckeditfpmakepackage
+msgid "(fpmake)"
+msgstr ""
+
 #: lazarusidestrconsts.lispckeditinstall
 msgid "Install"
 msgstr "Встановити"
@@ -15861,6 +15887,10 @@ msgstr "Найвища версія (не обов'язково)"
 msgid "Minimum Version (optional):"
 msgstr "Найнижча версія (не обов'язково)"
 
+#: lazarusidestrconsts.lisprojaddnewfpmakerequirement
+msgid "New FPMake Requirement"
+msgstr ""
+
 #: lazarusidestrconsts.lisprojaddnewrequirement
 msgid "New Requirement"
 msgstr "Нова вимога"
@@ -16132,6 +16162,10 @@ msgstr "Довідка за значенням"
 #: lazarusidestrconsts.lisproperties
 msgid "Properties (replace or remove)"
 msgstr "Властивості (замінити чи видалити)"
+
+#: lazarusidestrconsts.lisproperty
+msgid "%s property"
+msgstr "властивість %s"
 
 #: lazarusidestrconsts.lisprotected
 msgid "Protected"
@@ -17049,6 +17083,10 @@ msgstr "Показувати панель інформації"
 #: lazarusidestrconsts.lisshowmessagetypeid
 msgid "Show Message Type ID"
 msgstr "Виводити ідентифікатор типу повідомлення"
+
+#: lazarusidestrconsts.lisshowmultiplelines
+msgid "Show multiple lines"
+msgstr "Показати декілька рядків"
 
 #: lazarusidestrconsts.lisshowonlymodified
 msgid "Show only modified"
@@ -17976,6 +18014,14 @@ msgstr "Ці модулі не були знайдені:"
 #: lazarusidestrconsts.listhesourcesofthefreepascalpackagesarerequiredforbro
 msgid "The sources of the Free Pascal packages are required for browsing and code completion. For example it has the file \"%s\"."
 msgstr "Сирці пакунків Free Pascal необхідні для перегляду і завершення коду. Наприклад, вони мають файл \"%s\"."
+
+#: lazarusidestrconsts.listhetargetdirectoryisafile
+msgid "The target directory is a file:%s"
+msgstr "Цільова тека є файлом:%s"
+
+#: lazarusidestrconsts.listhetargetfilenameisadirectory
+msgid "The target file name is a directory."
+msgstr "Зазначений цільовий файл є текою."
 
 #: lazarusidestrconsts.listhetargetisnotwritable
 msgid "The target %s is not writable."
@@ -20583,6 +20629,14 @@ msgstr "Вибрати сторінку вгорі"
 msgid "Select Right"
 msgstr "Вибрати справа"
 
+#: lazarusidestrconsts.srkmecselsmartwordleft
+msgid "Smart select word left (start/end of word)"
+msgstr "Розумний вибір слова ліворуч (початок/кінець слова)"
+
+#: lazarusidestrconsts.srkmecselsmartwordright
+msgid "Smart select word right (start/end of word)"
+msgstr "Розумний вибір слова праворуч (початок/кінець слова)"
+
 #: lazarusidestrconsts.srkmecselsticky
 msgid "Start sticky selecting"
 msgstr "Почати вибір з прив'язкою"
@@ -20645,6 +20699,14 @@ msgstr "Показати контекст коду"
 #: lazarusidestrconsts.srkmecshowexecutionpoint
 msgid "show execution point"
 msgstr "показати точку виконання"
+
+#: lazarusidestrconsts.srkmecsmartwordleft
+msgid "Smart move cursor left (start/end of word)"
+msgstr "Розумне переміщення курсора ліворуч (початок/кінець слова)"
+
+#: lazarusidestrconsts.srkmecsmartwordright
+msgid "Smart move cursor right (start/end of word)"
+msgstr "Розумне переміщення курсора праворуч (початок/кінець слова)"
 
 #: lazarusidestrconsts.srkmecstopprogram
 msgid "stop program"

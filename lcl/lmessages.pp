@@ -331,6 +331,22 @@ type
   TLMSysKeyUp = TLMKey;
   TCMWantSpecialKey = TLMKey;
 
+  TLMGetDlgCode = record
+    Msg: Cardinal;
+{$ifdef cpu64}
+    UnusedMsg: Cardinal;
+{$endif}
+{$IFDEF FPC_LITTLE_ENDIAN}
+    CharCode: Word; // VK_XXX constants
+    Unused: Word;
+{$ELSE}
+    Unused: Word;
+    CharCode: Word; // VK_XXX constants
+{$ENDIF}
+    UnusedL: LPARAM;
+    Result: LRESULT;
+  end;
+
 
   TLMCut = TLMNoParams;
   TLMCopy = TLMNoParams;
@@ -1082,8 +1098,8 @@ begin
 //  CM_CONTROLLISTCHANGING         : Result := 'CM_CONTROLLISTCHANGING';
 //  CM_BUFFEREDPRINTCLIENT         : Result := 'CM_BUFFEREDPRINTCLIENT';
 //  CM_UNTHEMECONTROL              : Result := 'CM_UNTHEMECONTROL';
-//  CM_DOUBLEBUFFEREDCHANGED       : Result := 'CM_DOUBLEBUFFEREDCHANGED';
-//  CM_PARENTDOUBLEBUFFEREDCHANGED : Result := 'CM_PARENTDOUBLEBUFFEREDCHANGED';
+  CM_DOUBLEBUFFEREDCHANGED       : Result := 'CM_DOUBLEBUFFEREDCHANGED';
+  CM_PARENTDOUBLEBUFFEREDCHANGED : Result := 'CM_PARENTDOUBLEBUFFEREDCHANGED';
 //  CM_THEMECHANGED                : Result := 'CM_THEMECHANGED';
 //  CM_GESTURE                     : Result := 'CM_GESTURE';
 //  CM_CUSTOMGESTURESCHANGED       : Result := 'CM_CUSTOMGESTURESCHANGED';

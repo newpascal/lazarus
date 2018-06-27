@@ -25,6 +25,8 @@ interface
 
 uses
   Classes, SysUtils, TypInfo, Laz_AVL_Tree,
+  // LazUtils
+  LazLoggerBase, LazUtilities,
   // LCL
   LCLProc, Dialogs, Controls, ComCtrls, Graphics,
   // IdeIntf
@@ -42,7 +44,6 @@ type
     FOnComponentGetImageIndex: TCTVGetImageIndexEvent;
     FOnModified: TNotifyEvent;
     FPropertyEditorHook: TPropertyEditorHook;
-    FImageList: TImageList;
     function CollectionCaption(ACollection: TCollection; DefaultName: string): string;
     function CollectionItemCaption(ACollItem: TCollectionItem): string;
     function ComponentCaption(AComponent: TComponent): String;
@@ -98,8 +99,6 @@ type
     Parent: TComponent;
     Added: boolean;
   end;
-
-  TGetPersistentProc = procedure(APersistent: TPersistent; PropName: string) of object;
 
   { TComponentWalker }
 
@@ -610,23 +609,18 @@ begin
   FComponentList:=TBackupComponentList.Create;
   Options := Options + [tvoAllowMultiselect, tvoAutoItemHeight, tvoKeepCollapsedNodes, tvoReadOnly];
   MultiSelectStyle := MultiSelectStyle + [msShiftSelect];
-  FImageList := TImageList.Create(nil);
-  FImageList.Width := TIDEImages.ScaledSize;
-  FImageList.Height := TIDEImages.ScaledSize;
-  FImageList.Scaled := False;
-  ImgIndexForm := TIDEImages.AddImageToImageList(FImageList, 'oi_form');
-  ImgIndexComponent := TIDEImages.AddImageToImageList(FImageList, 'oi_comp');
-  ImgIndexControl := TIDEImages.AddImageToImageList(FImageList, 'oi_control');
-  ImgIndexBox := TIDEImages.AddImageToImageList(FImageList, 'oi_box');
-  ImgIndexCollection := TIDEImages.AddImageToImageList(FImageList, 'oi_collection');
-  ImgIndexItem := TIDEImages.AddImageToImageList(FImageList, 'oi_item');
-  Images := FImageList;
+  ImgIndexForm := IDEImages.GetImageIndex('oi_form');
+  ImgIndexComponent := IDEImages.GetImageIndex('oi_comp');
+  ImgIndexControl := IDEImages.GetImageIndex('oi_control');
+  ImgIndexBox := IDEImages.GetImageIndex('oi_box');
+  ImgIndexCollection := IDEImages.GetImageIndex('oi_collection');
+  ImgIndexItem := IDEImages.GetImageIndex('oi_item');
+  Images := IDEImages.Images_16;
 end;
 
 destructor TComponentTreeView.Destroy;
 begin
   FreeThenNil(FComponentList);
-  FreeThenNil(FImageList);
   inherited Destroy;
 end;
 
@@ -704,7 +698,7 @@ begin
       // first add the lookup root
       RootNode := Items.Add(nil, CreateNodeCaption(RootObject));
       RootNode.Data := RootObject;
-      RootNode.ImageIndex := 0;
+      RootNode.ImageIndex := ImgIndexForm;
       RootNode.SelectedIndex := RootNode.ImageIndex;
       RootNode.MultiSelected := Selection.IndexOf(RootObject) >= 0;
 

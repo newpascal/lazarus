@@ -49,7 +49,7 @@ uses
   LResources, Controls, Forms, Buttons, Menus, StdCtrls, ComCtrls, ExtCtrls,
   Dialogs, ExtDlgs, ImgList, LCLMessageGlue,
   // LazUtils
-  Masks, FileUtil, LazFileUtils, LazUTF8, DynHashArray,
+  Masks, FileUtil, LazFileUtils, LazLoggerBase, LazUTF8, DynHashArray,
   // Gtk2
   Gtk2FontCache, Gtk2Globals, Gtk2Def, Gtk2Extra, {%H-}Gtk2Debug;
 
@@ -431,8 +431,12 @@ type
     KeyChar: array[0..3] of TVKeyUTF8Char;
   end;
 
+const
+  GdkKeymap: PGdkKeymap = nil;
+  GdkKeyMapChangedID: gulong = 0;
 procedure InitKeyboardTables;
 procedure DoneKeyboardTables;
+procedure DisconnectGdkKeymapChangedSignal;
 function GetVKeyInfo(const AVKey: Byte): TVKeyInfo;
 function GTKEventStateToShiftState(KeyState: LongWord): TShiftState;
 procedure gdk_event_key_get_string(Event: PGDKEventKey; var theString: Pointer);
@@ -839,11 +843,12 @@ var
 {$ifdef UseOwnShiftState}
 {$ifdef HasX}
   // KeyStateMap is a quick index to scan the results of a XQueryKeymap
+  // which returns for the 256 possible keycodes a boolean bit array (32 bytes)
   // Shift is set when the mask for the Keymapkeys_return[index] is set
 var
   MKeyStateMap: array of record
-    Index: Byte;
-    Mask: Byte;
+    Index: Byte; // KeyCode shr 3
+    Mask: Byte;  // 1 shl (KeyCode and 7);
     Enum: TShiftStateEnum;
   end;
 {$endif}
@@ -881,9 +886,6 @@ begin
   // event^.length ?
   // event^._string ?
   hardware_keycode:=event^.hardware_keycode;
-  {$IFDEF LCLGtk2Fix30544}
-  debugln(['TLCLHandledKeyEvent.Create thetype=',thetype,' window=',dbgs(Pointer(window)),' send_event=',send_event,' time=',time,' state=',state,' keyval=',keyval,' hardware_keycode=',hardware_keycode]);
-  {$ENDIF}
 end;
 
 function TLCLHandledKeyEvent.IsEqual(Event: PGdkEventKey): boolean;
@@ -892,13 +894,7 @@ begin
       and (window=Event^.window)
       and (send_event=Event^.send_event)
       and (time=Event^.time)
-      {$IFDEF LCLGtk2Fix30544}
-      and (state=Event^.state) // bug 30544
-      {$ENDIF}
       and (keyval=Event^.keyval)
-      {$IFDEF LCLGtk2Fix30544}
-      and (hardware_keycode=Event^.hardware_keycode) // bug 30544
-      {$ENDIF}
       ;
 end;
 

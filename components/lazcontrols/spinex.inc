@@ -27,6 +27,8 @@ begin
   Result := NvbStrings[ANvb];
 end;
 
+{ TSpinEditEx }
+
 
 procedure TSpinEditExBase.UpdateControl;
 var
@@ -66,8 +68,6 @@ begin
   end;
 end;
 
-
-
 procedure TSpinEditExBase.UpDownChangingEx(Sender: TObject;
   var AllowChange: Boolean; NewValue: SmallInt; Direction: TUpDownDirection);
 begin
@@ -83,13 +83,10 @@ begin
   BuddyClick;
 end;
 
-
 function TSpinEditExBase.GetBuddyClassType: TControlClass;
 begin
   Result := TUpDown;
 end;
-
-
 
 procedure TSpinEditExBase.DoEnter;
 begin
@@ -168,7 +165,6 @@ begin
   UpdateControl;
 end;
 
-
 procedure TSpinEditExBase.SetIncrement(const AIncrement: T);
 begin
   if AIncrement = FIncrement then Exit;
@@ -177,7 +173,6 @@ begin
   else
     FIncrement := -AIncrement;
 end;
-
 
 procedure TSpinEditExBase.InitializeWnd;
 begin
@@ -197,7 +192,6 @@ begin
   Result := not SameValue(FMaxValue, DefMaxValue);
 end;
 
-
 procedure TSpinEditExBase.EditMouseWheelUp(Shift: TShiftState;
   MousePos: TPoint; var Handled: Boolean);
 begin
@@ -213,7 +207,6 @@ begin
   if not Handled then
     SpinUpDown(False);
 end;
-
 
 procedure TSpinEditExBase.SetValue(const AValue: T);
 var
@@ -259,7 +252,6 @@ begin
   Result := IsLimited and ((AValue < MinValue) or (AValue > MaxValue));
 end;
 
-
 function TSpinEditExBase.GetEdit: TGEEdit;
 begin
   Result := BaseEditor;
@@ -272,7 +264,6 @@ begin
   if not (csLoading in ComponentState) then
     UpDown.MinRepeatInterval := FMinRepeatValue;
 end;
-
 
 procedure TSpinEditExBase.SpinUpDown(Up: Boolean);
 var
@@ -324,6 +315,7 @@ begin
   FNullValueBehaviour := nvbMinValue;
   FMinRepeatValue := DefMinRepeatValue;
 
+  UpDown.ControlStyle := UpDown.ControlStyle + [csNoDesignVisible];
   Edit.Alignment := taRightJustify;
 
   {
@@ -567,8 +559,4 @@ begin
   {$endif}
 end;
 
-constructor TCustomSpinEditEx.Create(TheOwner: TComponent);
-begin
-  inherited Create(TheOwner);
-end;
 

@@ -339,6 +339,8 @@ begin
     ecWordEndRight            : Result:= srkmecWordEndRight;
     ecHalfWordLeft            : Result:= srkmecHalfWordLeft;
     ecHalfWordRight           : Result:= srkmecHalfWordRight;
+    ecSmartWordLeft           : Result:= srkmecSmartWordLeft;
+    ecSmartWordRight          : Result:= srkmecSmartWordRight;
     ecLineStart               : Result:= srkmecLineStart;
     ecLineEnd                 : Result:= srkmecLineEnd;
     ecPageUp                  : Result:= srkmecPageUp;
@@ -361,10 +363,12 @@ begin
     ecSelDown                 : Result:= srkmecSelDown;
     ecSelWordLeft             : Result:= srkmecSelWordLeft;
     ecSelWordRight            : Result:= srkmecSelWordRight;
-    ecSelWordEndLeft          : Result:= srkmecWordEndLeft;
-    ecSelWordEndRight         : Result:= srkmecWordEndRight;
-    ecSelHalfWordLeft         : Result:= srkmecHalfWordLeft;
-    ecSelHalfWordRight        : Result:= srkmecHalfWordRight;
+    ecSelWordEndLeft          : Result:= srkmecSelWordEndLeft;
+    ecSelWordEndRight         : Result:= srkmecSelWordEndRight;
+    ecSelHalfWordLeft         : Result:= srkmecSelHalfWordLeft;
+    ecSelHalfWordRight        : Result:= srkmecSelHalfWordRight;
+    ecSelSmartWordLeft        : Result:= srkmecSelSmartWordLeft;
+    ecSelSmartWordRight       : Result:= srkmecSelSmartWordRight;
     ecSelLineStart            : Result:= srkmecSelLineStart;
     ecSelLineEnd              : Result:= srkmecSelLineEnd;
     ecSelPageUp               : Result:= srkmecSelPageUp;
@@ -1059,7 +1063,7 @@ begin
   ecPluginMultiCaretSetCaret:    SetSingle(VK_INSERT,[ssShift, XCtrl]);
   ecPluginMultiCaretUnsetCaret:  SetSingle(VK_DELETE,[ssShift, XCtrl]);
   //ecPluginMultiCaretToggleCaret: SetSingle(VK_INSERT,[ssShift, XCtrl]);
-  ecPluginMultiCaretClearAll:    SetSingle(VK_ESCAPE,[ssShift, XCtrl]);
+  ecPluginMultiCaretClearAll:    SetSingle(VK_ESCAPE,[ssShift, ssCtrl], VK_ESCAPE,[]);
 
   ecPluginMultiCaretModeCancelOnMove:  SetCombo(VK_Q,[ssShift, XCtrl], VK_X,[ssShift, XCtrl]);
   ecPluginMultiCaretModeMoveAll:       SetCombo(VK_Q,[ssShift, XCtrl], VK_M,[ssShift, XCtrl]);
@@ -1377,6 +1381,7 @@ begin
   ecDesignerMoveToBack:  SetSingle(VK_NEXT,[ssShift]);
   ecDesignerForwardOne:  SetSingle(VK_PRIOR,[XCtrl]);
   ecDesignerBackOne:     SetSingle(VK_NEXT,[XCtrl]);
+  ecDesignerToggleNonVisComps: SetSingle(VK_UNKNOWN,[]);
 
   // macro
   ecSynMacroRecord:      SetSingle(VK_R,[ssShift, XCtrl]);
@@ -1529,7 +1534,7 @@ begin
   ecPluginMultiCaretSetCaret:    SetSingle(VK_INSERT,[ssShift, ssCtrl]);
   ecPluginMultiCaretUnsetCaret:  SetSingle(VK_DELETE,[ssShift, ssCtrl]);
   //ecPluginMultiCaretToggleCaret: SetSingle(VK_INSERT,[ssShift, ssCtrl]);
-  ecPluginMultiCaretClearAll:    SetSingle(VK_ESCAPE,[ssShift, ssCtrl], VK_ESCAPE,[ssShift]);
+  ecPluginMultiCaretClearAll:    SetSingle(VK_ESCAPE,[ssShift, ssCtrl], VK_ESCAPE,[]);
 
   ecPluginMultiCaretModeCancelOnMove:  SetCombo(VK_Q,[ssShift, ssCtrl], VK_X,[ssShift, ssCtrl]);
   ecPluginMultiCaretModeMoveAll:       SetCombo(VK_Q,[ssShift, ssCtrl], VK_M,[ssShift, ssCtrl]);
@@ -1816,6 +1821,7 @@ begin
   ecDesignerMoveToBack:  SetSingle(VK_NEXT,[ssShift]);
   ecDesignerForwardOne:  SetSingle(VK_PRIOR,[ssCtrl]);
   ecDesignerBackOne:     SetSingle(VK_NEXT,[ssCtrl]);
+  ecDesignerToggleNonVisComps: SetSingle(VK_UNKNOWN,[]);
 
   // macro
   ecSynMacroRecord:      SetSingle(VK_R,[ssShift, ssCtrl]);
@@ -2152,7 +2158,7 @@ begin
   ecPluginMultiCaretSetCaret:    SetSingle(VK_INSERT,[ssShift, ssCtrl]);
   ecPluginMultiCaretUnsetCaret:  SetSingle(VK_DELETE,[ssShift, ssCtrl]);
   //ecPluginMultiCaretToggleCaret: SetSingle(VK_INSERT,[ssShift, ssCtrl]);
-  ecPluginMultiCaretClearAll:    SetSingle(VK_ESCAPE,[ssShift, ssCtrl], VK_ESCAPE,[ssShift]);
+  ecPluginMultiCaretClearAll:    SetSingle(VK_ESCAPE,[ssShift, ssCtrl], VK_ESCAPE,[]);
 
   ecPluginMultiCaretModeCancelOnMove:  SetCombo(VK_Q,[ssShift, ssCtrl], VK_X,[ssShift, ssCtrl]);
   ecPluginMultiCaretModeMoveAll:       SetCombo(VK_Q,[ssShift, ssCtrl], VK_M,[ssShift, ssCtrl]);
@@ -2442,6 +2448,7 @@ begin
   ecDesignerMoveToBack:  SetSingle(VK_NEXT,[ssShift]);
   ecDesignerForwardOne:  SetSingle(VK_PRIOR,[ssMeta]);
   ecDesignerBackOne:     SetSingle(VK_NEXT,[ssMeta]);
+  ecDesignerToggleNonVisComps: SetSingle(VK_UNKNOWN,[]);
 
   // macro
   ecSynMacroRecord:      SetSingle(VK_R,[ssShift, ssCtrl]);
@@ -2610,6 +2617,8 @@ begin
   AddDefault(C, 'Move cursor word end right', srkmecWordEndRight, ecWordEndRight);
   AddDefault(C, 'Move cursor half word left', srkmecHalfWordLeft, ecHalfWordLeft);
   AddDefault(C, 'Move cursor half word right', srkmecHalfWordRight, ecHalfWordRight);
+  AddDefault(C, 'Smart move cursor word left', srkmecSmartWordLeft, ecSmartWordLeft);
+  AddDefault(C, 'Smart move cursor word right', srkmecSmartWordRight, ecSmartWordRight);
   AddDefault(C, 'Move cursor to line start', srkmecLineStart, ecLineStart);
   AddDefault(C, 'Move cursor to text start in line', srkmecLineTextStart, ecLineTextStart);
   AddDefault(C, 'Move cursor to line end', srkmecLineEnd, ecLineEnd);
@@ -2659,6 +2668,8 @@ begin
   AddDefault(C, 'Select word end right', srkmecSelWordEndRight, ecSelWordEndRight);
   AddDefault(C, 'Select half word left', srkmecSelHalfWordLeft, ecSelHalfWordLeft);
   AddDefault(C, 'Select half word right', srkmecSelHalfWordRight, ecSelHalfWordRight);
+  AddDefault(C, 'Smart select word left', srkmecSelSmartWordLeft, ecSelSmartWordLeft);
+  AddDefault(C, 'Smart select word right', srkmecSelSmartWordRight, ecSelSmartWordRight);
   AddDefault(C, 'Select line start', lisKMSelectLineStart, ecSelLineStart);
   AddDefault(C, 'Select to text start in line', srkmecSelLineTextStart, ecSelLineTextStart);
   AddDefault(C, 'Select line end', lisKMSelectLineEnd, ecSelLineEnd);
@@ -2709,13 +2720,14 @@ begin
   AddDefault(C, 'Column Select to absolute end', srkmecColSelEditorBottom, ecColSelEditorBottom);
 
   // multi caret
-  C:=Categories[AddCategory('MultiCaret', srkmCatMultiCaret, nil)];
+  C:=Categories[AddCategory('MultiCaret', srkmCatMultiCaret, IDECmdScopeSrcEditOnly)];
   AddDefault(C, 'Add extra caret', srkmecPluginMultiCaretSetCaret, ecPluginMultiCaretSetCaret);
   AddDefault(C, 'Remove extra caret', srkmecPluginMultiCaretUnsetCaret, ecPluginMultiCaretUnsetCaret);
   AddDefault(C, 'Toggle extra caret', srkmecPluginMultiCaretToggleCaret, ecPluginMultiCaretToggleCaret);
-  AddDefault(C, 'Clear all extra carets', srkmecPluginMultiCaretClearAll, ecPluginMultiCaretClearAll);
   AddDefault(C, 'Cursor keys clear all extra carets', srkmecPluginMultiCaretModeCancelOnMove, ecPluginMultiCaretModeCancelOnMove);
   AddDefault(C, 'Cursor keys move all extra carets', srkmecPluginMultiCaretModeMoveAll, ecPluginMultiCaretModeMoveAll);
+  C:=Categories[AddCategory('MultiCaret', srkmCatMultiCaret, IDECmdScopeSrcEditOnlyMultiCaret)];
+  AddDefault(C, 'Clear all extra carets', srkmecPluginMultiCaretClearAll, ecPluginMultiCaretClearAll);
 
   // editing - without menu items in the IDE bar
   C:=Categories[AddCategory(CommandCategoryTextEditingName,srkmCatEditing,
@@ -2951,7 +2963,7 @@ begin
   AddDefault(C, 'Edit Syncro (sel) Start', srkmecSynPSyncroEdStart, ecIdePSyncroEdSelStart);
 
   // source notebook - without menu items in the IDE bar
-  C:=Categories[AddCategory('SourceNotebook',srkmCatSrcNoteBook,IDECmdScopeSrcEdit)];
+  C:=Categories[AddCategory('SourceNotebook',srkmCatSrcNoteBook,IDECmdScopeSrcEditOnly)];
   AddDefault(C, 'Go to next editor', srkmecNextEditor, ecNextEditor);
   AddDefault(C, 'Go to prior editor', srkmecPrevEditor, ecPrevEditor);
   AddDefault(C, 'Go to previous editor in history', srkmecPrevEditorInHistory, ecPrevEditorInHistory);
@@ -3154,6 +3166,8 @@ begin
   AddDefault(C, 'Move component to back', lisDsgOrderMoveToBack, ecDesignerMoveToBack);
   AddDefault(C, 'Move component one forward', lisDsgOrderForwardOne, ecDesignerForwardOne);
   AddDefault(C, 'Move component one back', lisDsgOrderBackOne, ecDesignerBackOne);
+  AddDefault(C, 'Toggle showing non visual components',
+    lisDsgToggleShowingNonVisualComponents, ecDesignerToggleNonVisComps);
 
   // object inspector - without menu items in the IDE bar (at least no direct)
   C:=Categories[AddCategory('Object Inspector',lisKeyCatObjInspector,IDECmdScopeObjectInspectorOnly)];

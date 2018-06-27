@@ -65,7 +65,6 @@ type
     class procedure RemovePage(const ATabControl: TCustomTabControl;
       const AIndex: integer); override;
 
-    class function GetDoubleBuffered(const AWinControl: TWinControl): Boolean; override;
     class function GetNotebookMinTabHeight(const AWinControl: TWinControl): integer; override;
     class function GetNotebookMinTabWidth(const AWinControl: TWinControl): integer; override;
     class function GetTabIndexAtPos(const ATabControl: TCustomTabControl; const AClientPos: TPoint): integer; override;
@@ -97,7 +96,6 @@ type
     class procedure SetPanelText(const AStatusBar: TStatusBar; PanelIndex: integer); override;
     class procedure SetSizeGrip(const AStatusBar: TStatusBar; SizeGrip: Boolean); override;
     class procedure SetText(const AWinControl: TWinControl; const AText: string); override;
-    class function GetDoubleBuffered(const AWinControl: TWinControl): Boolean; override;
     class procedure GetPreferredSize(const AWinControl: TWinControl;
                         var PreferredWidth, PreferredHeight: integer;
                         WithThemeSpace: Boolean); override;
@@ -243,7 +241,6 @@ type
     class procedure InsertToolButton(const AToolBar: TToolbar; const AControl: TControl); override;
     class procedure DeleteToolButton(const AToolBar: TToolbar; const AControl: TControl); override;
 {$endif}
-    class function GetDoubleBuffered(const AWinControl: TWinControl): Boolean; override;
   end;
 
   { TWin32WSTrackBar }
@@ -264,7 +261,6 @@ type
 
   TWin32WSCustomTreeView = class(TWSCustomTreeView)
   published
-    class function GetDoubleBuffered(const AWinControl: TWinControl): Boolean; override;
   end;
 
   { TWin32WSTreeView }
@@ -488,12 +484,6 @@ begin
         UpdateStatusBarPanel(AStatusBar.Panels[PanelIndex]);
       end;
   end;
-end;
-
-class function TWin32WSStatusBar.GetDoubleBuffered(
-  const AWinControl: TWinControl): Boolean;
-begin
-  Result := GetWin32ThemedDoubleBuffered(AWinControl);
 end;
 
 class function TWin32WSStatusBar.CreateHandle(const AWinControl: TWinControl;
@@ -766,7 +756,7 @@ var
   Params: TCreateWindowExParams;
 begin
   // general initialization of Params
-  PrepareCreateWindow(AWinControl, Params);
+  PrepareCreateWindow(AWinControl, AParams, Params);
   // customization of Params
   with Params do
   begin
@@ -778,7 +768,7 @@ begin
   Result := Params.Window;
 end;
 
-function  TWin32WSToolbar.GetButtonCount(const AToolBar: TToolBar): integer;
+class function TWin32WSToolbar.GetButtonCount(const AToolBar: TToolBar): integer;
 begin
   Result := SendMessage(AToolbar.Handle, TB_BUTTONCOUNT, 0, 0)
 end;
@@ -829,12 +819,6 @@ begin
 end;
 
 {$endif}
-
-class function TWin32WSToolBar.GetDoubleBuffered(
-  const AWinControl: TWinControl): Boolean;
-begin
-  Result := GetWin32ThemedDoubleBuffered(AWinControl);
-end;
 
 function TrackBarParentMsgHandler(const AWinControl: TWinControl; Window: HWnd;
       Msg: UInt; WParam: Windows.WParam; LParam: Windows.LParam;

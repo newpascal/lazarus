@@ -12,6 +12,9 @@
 unit CarbonBars;
 
 {$mode objfpc}{$H+}
+{$IFNDEF cpui386}
+{$ERROR only cpu i386 is supported}
+{$ENDIF}
 
 interface
 

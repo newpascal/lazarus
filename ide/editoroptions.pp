@@ -65,7 +65,8 @@ uses
   // codetools
   LinkScanner, CodeToolManager,
   // IDEIntf
-  IDECommands, SrcEditorIntf, IDEOptionsIntf, IDEDialogs, EditorSyntaxHighlighterDef,
+  IDECommands, SrcEditorIntf, IDEOptionsIntf, IDEOptEditorIntf, IDEDialogs,
+  EditorSyntaxHighlighterDef,
   // IDE
   SourceMarks, LazarusIDEStrConsts, IDEProcs, KeyMapping, LazConf;
 
@@ -79,6 +80,7 @@ type
   TSynHighlightElement = TSynHighlighterAttributes;
   TCustomSynClass = class of TSrcIDEHighlighter;
 
+  TLazSynPluginTemplateMultiCaret = class(TForm)     end;
   TLazSynPluginTemplateEditForm = class(TForm)     end;
   TLazSynPluginTemplateEditFormOff = class(TForm)  end;
   TLazSynPluginSyncroEditFormSel = class(TForm)    end;
@@ -1342,6 +1344,7 @@ type
     FCompletionLongLineHintType: TSynCompletionLongHintType;
     FMultiCaretDefaultColumnSelectMode: TSynPluginMultiCaretDefaultMode;
     FMultiCaretDefaultMode: TSynPluginMultiCaretDefaultMode;
+    FMultiCaretDeleteSkipLineBreak: Boolean;
     FPasExtendedKeywordsMode: Boolean;
     FHideSingleTabInWindow: Boolean;
     FPasStringKeywordMode: TSynPasStringMode;
@@ -1663,6 +1666,8 @@ type
       read FMultiCaretOnColumnSelect write FMultiCaretOnColumnSelect default True;
     property MultiCaretDefaultMode: TSynPluginMultiCaretDefaultMode
              read FMultiCaretDefaultMode write FMultiCaretDefaultMode default mcmMoveAllCarets;
+    property MultiCaretDeleteSkipLineBreak: Boolean
+             read FMultiCaretDeleteSkipLineBreak write FMultiCaretDeleteSkipLineBreak default False;
     property MultiCaretDefaultColumnSelectMode: TSynPluginMultiCaretDefaultMode
              read FMultiCaretDefaultColumnSelectMode write FMultiCaretDefaultColumnSelectMode default mcmCancelOnCaretMove;
 
@@ -4522,6 +4527,7 @@ begin
   FMultiCaretOnColumnSelect := True;
   FMultiCaretDefaultMode := mcmMoveAllCarets;
   FMultiCaretDefaultColumnSelectMode := mcmCancelOnCaretMove;
+  FMultiCaretDeleteSkipLineBreak := False;
 
   // Display options
   fEditorFont := SynDefaultFontName;
@@ -5212,6 +5218,19 @@ begin
       end;
     end;
 
+    if (ASynEdit.Plugin[c] is TSynPluginMultiCaret) then begin
+      // Only ecPluginMultiCaretClearAll
+      // the others are handled in SynEdit.Keystrokes
+      TSynPluginMultiCaret(ASynEdit.Plugin[c]).Keystrokes.Clear;
+      if i >= 0 then begin
+        TSynPluginMultiCaret(ASynEdit.Plugin[c]).Keystrokes.Assign(
+                               TSynPluginMultiCaret(SimilarEdit.Plugin[i]).KeyStrokes);
+      end else begin
+        KeyMap.AssignTo(TSynPluginMultiCaret(ASynEdit.Plugin[c]).Keystrokes,
+                        TLazSynPluginTemplateMultiCaret, 0); //ecIdePTmplOffset);
+      end;
+    end;
+
     dec(c);
   end;
 end;
@@ -5742,6 +5761,9 @@ begin
       TIDESynEditor(ASynEdit).MultiCaret.EnableWithColumnSelection := MultiCaretOnColumnSelect;
       TIDESynEditor(ASynEdit).MultiCaret.DefaultMode := FMultiCaretDefaultMode;
       TIDESynEditor(ASynEdit).MultiCaret.DefaultColumnSelectMode := FMultiCaretDefaultColumnSelectMode;
+      if FMultiCaretDeleteSkipLineBreak
+      then TIDESynEditor(ASynEdit).MultiCaret.Options := TIDESynEditor(ASynEdit).MultiCaret.Options + [smcoDeleteSkipLineBreak]
+      else TIDESynEditor(ASynEdit).MultiCaret.Options := TIDESynEditor(ASynEdit).MultiCaret.Options - [smcoDeleteSkipLineBreak];
     end;
     {$ENDIF}
 

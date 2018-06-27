@@ -45,7 +45,7 @@ interface
 
 uses
   LCLProc, LCLIntf, LCLType, LazUTF8, LMessages, Classes, Graphics, Forms,
-  Controls, StdCtrls, ExtCtrls, Menus, SysUtils, types,
+  Controls, StdCtrls, ExtCtrls, Menus, SysUtils, types, Themes,
   SynEditMiscProcs, SynEditKeyCmds, SynEdit, SynEditTypes, SynEditPlugins
   {$IF FPC_FULLVERSION >= 20701}, character{$ENDIF};
 
@@ -96,12 +96,20 @@ type
   private
     FMouseDownPos, FMouseLastPos, FWinSize: TPoint;
   protected
+    procedure DoAutoAdjustLayout(const AMode: TLayoutAdjustmentPolicy;
+      const AXProportion, AYProportion: Double); override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
   public
     constructor Create(TheOwner: TComponent); override;
     procedure Paint; override;
+  end;
+
+  TSynBaseCompletionFormScrollBar = class(TScrollBar)
+  protected
+    procedure DoAutoAdjustLayout(const AMode: TLayoutAdjustmentPolicy;
+      const AXProportion, AYProportion: Double); override;
   end;
 
   { TSynBaseCompletionForm }
@@ -147,6 +155,7 @@ type
     procedure KeyDown(var Key: Word; Shift: TShiftState); override;
     procedure KeyPress(var Key: char); override;
     procedure AddCharAtCursor(AUtf8Char: TUTF8Char); virtual;
+    procedure DeleteCharAfterCursor; virtual;
     procedure DeleteCharBeforeCursor; virtual;
     procedure Paint; override;
     procedure AppDeactivated(Sender: TObject); // Because Form.Deactivate isn't called
@@ -213,8 +222,7 @@ type
     property OnCancel: TNotifyEvent read FOnCancel write FOnCancel;
     property ItemList: TStrings read FItemList write SetItemList;
     property Position: Integer read FPosition write SetPosition;
-    property NbLinesInWindow: Integer read FNbLinesInWindow
-      write SetNbLinesInWindow;
+    property NbLinesInWindow: Integer read FNbLinesInWindow write SetNbLinesInWindow;
     property ClSelect: TColor read FClSelect write FClSelect;
     property CaseSensitive: boolean read FCaseSensitive write FCaseSensitive;
     property FontHeight:integer read FFontHeight;
@@ -246,6 +254,7 @@ type
   TSynCompletionForm = class(TSynBaseCompletionForm)
   protected
     procedure AddCharAtCursor(AUtf8Char: TUTF8Char); override;
+    procedure DeleteCharAfterCursor; override;
     procedure DeleteCharBeforeCursor; override;
   end;
 
@@ -390,7 +399,7 @@ type
     constructor Create(AOwner: TComponent); override;
     function EditorsCount: integer; deprecated; // use EditorCount
     procedure AddCharAtCursor(AUtf8Char: TUTF8Char);
-    procedure DeleteCharBeforoCursor;
+    procedure DeleteCharBeforeCursor;
   published
     property ShortCut: TShortCut read FShortCut write SetShortCut;
     property EndOfTokenChr: string read FEndOfTokenChr write FEndOfTokenChr;
@@ -475,6 +484,16 @@ begin
   {$ENDIF}
 end;
 
+{ TSynBaseCompletionFormScrollBar }
+
+procedure TSynBaseCompletionFormScrollBar.DoAutoAdjustLayout(
+  const AMode: TLayoutAdjustmentPolicy; const AXProportion, AYProportion: Double
+  );
+begin
+  if AMode in [lapAutoAdjustWithoutHorizontalScrolling, lapAutoAdjustForDPI] then
+    Width := ScaleScreenToFont(GetSystemMetrics(SM_CYVSCROLL));
+end;
+
 { TSynCompletionForm }
 
 procedure TSynCompletionForm.AddCharAtCursor(AUtf8Char: TUTF8Char);
@@ -482,6 +501,13 @@ begin
   inherited AddCharAtCursor(AUtf8Char);
   if CurrentEditor <> nil then
     (CurrentEditor as TCustomSynEdit).CommandProcessor(ecChar, AUtf8Char, nil);
+end;
+
+procedure TSynCompletionForm.DeleteCharAfterCursor;
+begin
+  if CurrentEditor <> nil then
+    (CurrentEditor as TCustomSynEdit).CommandProcessor(ecDeleteChar, #0, nil);
+  inherited DeleteCharAfterCursor;
 end;
 
 procedure TSynCompletionForm.DeleteCharBeforeCursor;
@@ -548,18 +574,33 @@ begin
   FMouseDownPos.y := -1;
 end;
 
+procedure TSynBaseCompletionFormSizeDrag.DoAutoAdjustLayout(
+  const AMode: TLayoutAdjustmentPolicy; const AXProportion, AYProportion: Double
+  );
+begin
+  // do nothing
+end;
+
 procedure TSynBaseCompletionFormSizeDrag.Paint;
+var
+  I: Integer;
+  D: TThemedElementDetails;
 begin
   Canvas.Brush.Color := clBtnFace;
   Canvas.Brush.Style := bsSolid;
   Canvas.FillRect(ClientRect);
   Canvas.Pen.Color := clBtnShadow;
-  Canvas.MoveTo(ClientRect.Right-2, ClientRect.Bottom-1);
-  Canvas.LineTo(ClientRect.Right-1, ClientRect.Bottom-2);
-  Canvas.MoveTo(ClientRect.Right-5, ClientRect.Bottom-1);
-  Canvas.LineTo(ClientRect.Right-1, ClientRect.Bottom-5);
-  Canvas.MoveTo(ClientRect.Right-8, ClientRect.Bottom-1);
-  Canvas.LineTo(ClientRect.Right-1, ClientRect.Bottom-8);
+
+  D := ThemeServices.GetElementDetails(tsUpperTrackVertNormal);
+  ThemeServices.DrawElement(Canvas.Handle, D, ClientRect);
+
+  I := 2;
+  while I < Height do
+  begin
+    Canvas.MoveTo(ClientRect.Right-I, ClientRect.Bottom-1-1);
+    Canvas.LineTo(ClientRect.Right-1, ClientRect.Bottom-I-1);
+    Inc(I, 3);
+  end;
 end;
 
 { TSynBaseCompletionForm }
@@ -575,7 +616,7 @@ begin
   // we have no resource => must be constructed using CreateNew
   inherited CreateNew(AOwner, 1);
   FItemList := TStringList.Create;
-  Scroll := TScrollBar.Create(self);
+  Scroll := TSynBaseCompletionFormScrollBar.Create(self);
   Scroll.Kind := sbVertical;
   Scroll.OnChange := @ScrollChange;
   Scroll.Parent := Self;
@@ -583,7 +624,6 @@ begin
   Scroll.OnScroll := @ScrollScroll;
   Scroll.TabStop := False;
   Scroll.Visible := True;
-  //Scroll.Align:=alRight;
 
   SizeDrag := TSynBaseCompletionFormSizeDrag.Create(Self);
   SizeDrag.Parent := Self;
@@ -599,7 +639,6 @@ begin
   SizeDrag.AnchorSideRight.Control := Self;
   SizeDrag.AnchorSideBottom.Side := asrBottom;
   SizeDrag.AnchorSideBottom.Control := Self;
-  SizeDrag.Height := Max(7, abs(Font.Height) * 2 div 3);
   SizeDrag.Cursor := crSizeNWSE;
   SizeDrag.Visible := False;
 
@@ -628,6 +667,7 @@ begin
   FHint.OnMouseDown :=@HintWindowMouseDown;
   {$ENDIF}
   FHintTimer := TTimer.Create(nil);
+  FHintTimer.Enabled := False;
   FHintTimer.OnTimer := @OnHintTimer;
   FHintTimer.Interval := 0;
   FLongLineHintTime := 0;
@@ -784,6 +824,11 @@ begin
         if Assigned(OnKeyDelete) then OnKeyDelete(Self);
         DeleteCharBeforeCursor;
       end;
+    VK_DELETE:
+      begin
+        if Assigned(OnKeyDelete) then OnKeyDelete(Self);
+        DeleteCharAfterCursor;
+      end;
     VK_TAB:
       begin
         if Assigned(OnKeyCompletePrefix) then OnKeyCompletePrefix(Self);
@@ -886,7 +931,7 @@ end;
 procedure TSynBaseCompletionForm.Paint;
 var
   i, Ind: integer;
-  PaintWidth, YYY, RightC, BottomC: Integer;
+  PaintWidth, YYY, LeftC, RightC, BottomC: Integer;
   Capt: String;
 begin
 //Writeln('[TSynBaseCompletionForm.Paint]');
@@ -907,18 +952,20 @@ begin
     Scroll.Max := 0;
   end;
 
-  PaintWidth := Width - Scroll.Width;
-  RightC := PaintWidth - 2 * DrawBorderWidth;
+  PaintWidth := Width - Scroll.Width - 2*DrawBorderWidth;
+  LeftC := DrawBorderWidth;
+  RightC := LeftC + PaintWidth;
+
   //DebugLn(['TSynBaseCompletionForm.Paint NbLinesInWindow=',NbLinesInWindow,' ItemList.Count=',ItemList.Count]);
   for i := 0 to Min(NbLinesInWindow - 1, ItemList.Count - Scroll.Position - 1) do
   begin
-    YYY := DrawBorderWidth + FFontHeight * i;
+    YYY := LeftC + FFontHeight * i;
     BottomC := (FFontHeight * (i + 1))+1;
     if i + Scroll.Position = Position then
     begin
       Canvas.Brush.Color := clSelect;
       Canvas.Pen.Color := clSelect;
-      Canvas.Rectangle(DrawBorderWidth, YYY, RightC, BottomC);
+      Canvas.Rectangle(LeftC, YYY, RightC, BottomC);
       Canvas.Pen.Color := clBlack;
       Canvas.Font.Color := TextSelectedColor;
       Hint := ItemList[Position];
@@ -927,33 +974,31 @@ begin
     begin
       Canvas.Brush.Color := BackgroundColor;
       Canvas.Font.Color := TextColor;
-      Canvas.FillRect(Rect(DrawBorderWidth, YYY, RightC, BottomC));
+      Canvas.FillRect(Rect(LeftC, YYY, RightC, BottomC));
     end;
     //DebugLn(['TSynBaseCompletionForm.Paint ',i,' ',ItemList[Scroll.Position + i]]);
     Ind := i + Scroll.Position;
     Capt := ItemList[Scroll.Position + i];
     if not Assigned(OnPaintItem)
-    or not OnPaintItem(Capt, Canvas, DrawBorderWidth, YYY, Ind = Position, Ind)
+    or not OnPaintItem(Capt, Canvas, LeftC, YYY, Ind = Position, Ind)
     then
-      Canvas.TextOut(DrawBorderWidth+2, YYY, Capt);
+      Canvas.TextOut(LeftC+2, YYY, Capt);
   end;
   // paint the rest of the background
   if NbLinesInWindow > ItemList.Count - Scroll.Position then
   begin
     Canvas.brush.color := color;
     i:=(FFontHeight * ItemList.Count)+1;
-    Canvas.FillRect(Rect(0, i, PaintWidth, Height));
+    Canvas.FillRect(Rect(LeftC, i, RightC, Height));
   end;
   // draw a rectangle around the window
   if DrawBorderWidth > 0 then
   begin
-    Canvas.Pen.Color := DrawBorderColor;
-    Canvas.Pen.Width := DrawBorderWidth;
-    Canvas.Moveto(0, 0);
-    Canvas.LineTo(Width - 1, 0);
-    Canvas.LineTo(Width - 1, Height - 1);
-    Canvas.LineTo(0, Height - 1);
-    Canvas.LineTo(0, 0);
+    Canvas.Brush.Color := DrawBorderColor;
+    Canvas.FillRect(0, 0, Width, DrawBorderWidth);
+    Canvas.FillRect(Width-DrawBorderWidth, 0, Width, Height);
+    Canvas.FillRect(0, Height-DrawBorderWidth, Width, Height);
+    Canvas.FillRect(0, 0, DrawBorderWidth, Height);
   end;
 end;
 
@@ -1188,6 +1233,10 @@ begin
   if FShowSizeDrag = AValue then exit;
   FShowSizeDrag := AValue;
   SizeDrag.Visible := AValue;
+  if SizeDrag.Visible then
+    Scroll.BorderSpacing.Bottom := 0
+  else
+    Scroll.BorderSpacing.Bottom := FDrawBorderWidth;
 end;
 
 procedure TSynBaseCompletionForm.RegisterHandlers(EditOnly: Boolean);
@@ -1264,6 +1313,11 @@ begin
   dec(FHintLock);
   if FHintLock = 0 then
     ShowItemHint(Position);
+end;
+
+procedure TSynBaseCompletionForm.DeleteCharAfterCursor;
+begin
+  // do nothing
 end;
 
 procedure TSynBaseCompletionForm.DoOnDragResize(Sender: TObject);
@@ -1934,7 +1988,7 @@ begin
   Form.AddCharAtCursor(AUtf8Char);
 end;
 
-procedure TSynCompletion.DeleteCharBeforoCursor;
+procedure TSynCompletion.DeleteCharBeforeCursor;
 begin
   Form.DeleteCharBeforeCursor;
 end;

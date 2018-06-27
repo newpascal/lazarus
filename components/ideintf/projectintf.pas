@@ -17,10 +17,10 @@ interface
 
 uses
   Classes, SysUtils, Contnrs,
-  FileUtil, LazFileUtils, LazFileCache, LazMethodList, AvgLvlTree,
-  Controls, Forms, ImgList, Graphics,
-  IDEOptionsIntf, NewItemIntf, ProjPackIntf, CompOptsIntf, ObjInspStrConsts,
-  IDEImagesIntf;
+  // LazUtils
+  FileUtil, LazFileUtils, LazFileCache, LazMethodList, UITypes, AvgLvlTree,
+  // IdeIntf
+  IDEOptionsIntf, NewItemIntf, ProjPackIntf, CompOptsIntf, ObjInspStrConsts;
 
 const
   FileDescGroupName = 'File';
@@ -635,9 +635,6 @@ const
                          pfMainUnitHasTitleStatement,
                          pfMainUnitHasScaledStatement];
 
-function LoadProjectIconIntoImages(const ProjFile: string;
-  const Images: TCustomImageList; const Index: TStringList): Integer;
-
 function ProjectFlagsToStr(Flags: TProjectFlags): string;
 function StrToProjectSessionStorage(const s: string): TProjectSessionStorage;
 function CompilationExecutableTypeNameToType(const s: string
@@ -665,9 +662,9 @@ procedure RegisterProjectDescriptor(ProjDesc: TProjectDescriptor;
   Description: A brief summary of your form class as it appears in the New... dialog
   Units: A list of units to add the uses clause of a unit with your form class
     (Typically just the name of the unit defining your form class) }
-procedure RegisterForm(const Package: string; FormClass: TCustomFormClass;
+{procedure RegisterForm(const Package: string; FormClass: TCustomFormClass;
   const Category, Caption, Description, Units: string);
-
+}
 
 implementation
 
@@ -759,51 +756,6 @@ end;
 function ProjectDescriptorEmptyProject: TProjectDescriptor;
 begin
   Result:=ProjectDescriptors.FindByName(ProjDescNameEmpty);
-end;
-
-type
-  TLoadProjectIconIntoImagesObject = class
-    ImageIndex: Integer;
-  end;
-
-function LoadProjectIconIntoImages(const ProjFile: string;
-  const Images: TCustomImageList; const Index: TStringList): Integer;
-var
-  xIconFile: String;
-  xIcon: TIcon;
-  I: Integer;
-  xObj: TLoadProjectIconIntoImagesObject;
-begin
-  //ToDo: better index
-
-  I := Index.IndexOf(ProjFile);
-  if I >= 0 then
-    Exit(TLoadProjectIconIntoImagesObject(Index.Objects[I]).ImageIndex);
-
-  if not Index.Sorted or (Index.Count = 0) then
-  begin // initialize index
-    Index.Sorted := True;
-    Index.Duplicates := dupIgnore;
-    Index.CaseSensitive := False;
-    Index.OwnsObjects := True;
-  end;
-
-  Result := -1;
-  xIconFile := ChangeFileExt(ProjFile, '.ico');
-  if FileExists(xIconFile) then
-  begin
-    xIcon := TIcon.Create;
-    try
-      xIcon.LoadFromFile(xIconFile);
-      Result := Images.AddIcon(xIcon);
-    finally
-      xIcon.Free;
-    end;
-  end;
-
-  xObj := TLoadProjectIconIntoImagesObject.Create;
-  xObj.ImageIndex := Result;
-  Index.AddObject(ProjFile, xObj);
 end;
 
 function ProjectFlagsToStr(Flags: TProjectFlags): string;
@@ -1625,7 +1577,7 @@ begin
 end;
 
 { TCustomFormDescriptor }
-
+{
 type
   TCustomFormDescriptor = class(TFileDescPascalUnitWithResource)
   private
@@ -1673,9 +1625,9 @@ begin
   Result := inherited GetInterfaceUsesSection
     + ', Controls, Forms,'#13#10 + '  ' + FUnits;
 end;
-
+}
 { RegisterForm }
-
+{
 procedure RegisterForm(const Package: string; FormClass: TCustomFormClass;
   const Category, Caption, Description, Units: string);
 begin
@@ -1685,7 +1637,7 @@ begin
   RegisterProjectFileDescriptor(TCustomFormDescriptor.Create(Package, FormClass,
     Caption, Description, Units), Category);
 end;
-
+}
 initialization
   ProjectFileDescriptors:=nil;
 

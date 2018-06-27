@@ -39,7 +39,8 @@ uses
   LResources, GraphType, Graphics, Menus, LMessages, CustomTimer, ActnList,
   ClipBrd, HelpIntfs, Controls, ImgList, Themes,
   // LazUtils
-  LazFileUtils, LazUTF8, Maps, IntegerList
+  LazFileUtils, LazUTF8, Maps, IntegerList, LazMethodList, LazLoggerBase,
+  LazUtilities, UITypes
   {$ifndef wince},gettext{$endif}// remove ifdefs when gettext is fixed and a new fpc is released
   ;
 
@@ -413,8 +414,8 @@ type
     );
   TFormState = set of TFormStateType;
 
-  TModalResult = low(Integer)..high(Integer);
-  PModalResult = ^TModalResult;
+  TModalResult = UITypes.TModalResult;
+  PModalResult = ^UITypes.TModalResult;
 
   TFormHandlerType = (
     fhtFirstShow,
@@ -792,6 +793,7 @@ type
     property DefaultMonitor;
     property DesignTimePPI;
     property DockSite;
+    property DoubleBuffered;
     property DragKind;
     property DragMode;
     property Enabled;
@@ -845,6 +847,7 @@ type
     property OnUTF8KeyPress;
     property OnWindowStateChange;
     property ParentBiDiMode;
+    property ParentDoubleBuffered;
     property ParentFont;
     property PixelsPerInch;
     property PopupMenu;
@@ -1238,7 +1241,6 @@ type
   TApplicationFlag = (
     AppWaiting,
     AppIdleEndSent,
-    AppHandlingException,
     AppNoExceptionMessages,
     AppActive, // application has focus
     AppDestroying,
@@ -1325,6 +1327,11 @@ type
                     // Some Linux window managers do not support it. For example Cinnamon.
   );
 
+  TApplicationDoubleBuffered = ( // what Forms.DoubleBuffered with ParentDoubleBuffered=True will gain when created
+    adbDefault, // widgetset dependent (LCLWin32: True unless in remote desktop connection; other WSs: False)
+    adbFalse,   // False
+    adbTrue);   // True
+
   { TApplication }
 
   TApplication = class(TCustomApplication)
@@ -1335,6 +1342,7 @@ type
     FComponentsToRelease: TFPList;
     FComponentsReleasing: TFPList;
     FCreatingForm: TForm;// currently created form (CreateForm), candidate for MainForm
+    FDoubleBuffered: TApplicationDoubleBuffered;
     FExceptionDialog: TApplicationExceptionDlg;
     FExtendedKeysSupport: Boolean;
     FFindGlobalComponentEnabled: boolean;
@@ -1403,10 +1411,12 @@ type
     FTaskBarBehavior: TTaskBarBehavior;
     FUpdateFormatSettings: Boolean;
     FRemoveStayOnTopCounter: Integer;
+    FExceptionCounter: Byte;
     procedure DoOnIdleEnd;
     function GetActive: boolean;
     function GetCurrentHelpFile: string;
     function GetExename: String;
+    function GetHandle: THandle;
     function GetMainFormHandle: HWND;
     function GetTitle: string;
     procedure FreeIconHandles;
@@ -1421,6 +1431,7 @@ type
     procedure UpdateMouseControl(NewMouseControl: TControl);
     procedure UpdateMouseHint(CurrentControl: TControl);
     procedure SetCaptureExceptions(const AValue: boolean);
+    procedure SetHandle(const AHandle: THandle);
     procedure SetHint(const AValue: string);
     procedure SetHintColor(const AValue: TColor);
     procedure SetIcon(AValue: TIcon);
@@ -1576,12 +1587,14 @@ type
     property BidiMode: TBiDiMode read FBidiMode write SetBidiMode;
     property CaptureExceptions: boolean read FCaptureExceptions
                                         write SetCaptureExceptions;
+    property DoubleBuffered: TApplicationDoubleBuffered read FDoubleBuffered write FDoubleBuffered default adbDefault; platform;
     property ExtendedKeysSupport: Boolean read FExtendedKeysSupport write FExtendedKeysSupport; // See VK_LSHIFT in LCLType for more details
     property ExceptionDialog: TApplicationExceptionDlg read FExceptionDialog write FExceptionDialog;
     property FindGlobalComponentEnabled: boolean read FFindGlobalComponentEnabled
                                                write FFindGlobalComponentEnabled;
     property Flags: TApplicationFlags read FFlags write SetFlags;
     //property HelpSystem : IHelpSystem read FHelpSystem;
+    property Handle: THandle read GetHandle write SetHandle; platform;
     property Hint: string read FHint write SetHint;
     property HintColor: TColor read FHintColor write SetHintColor;
     property HintHidePause: Integer read FHintHidePause write FHintHidePause;
@@ -2247,12 +2260,17 @@ end;
 //==============================================================================
 
 procedure ImageDrawEvent(AImageList: TPersistent; ACanvas: TPersistent;
-                     AX, AY, AIndex: Integer; ADrawEffect: TGraphicsDrawEffect);
+                     AX, AY, AIndex: Integer; ADrawEffect: TGraphicsDrawEffect;
+                     AImageWidth: Integer; ARefControl: TPersistent);
 var
   ImageList: TCustomImageList absolute AImageList;
   Canvas: TCanvas absolute ACanvas;
+  RefControl: TControl absolute ARefControl;
 begin
-  ImageList.Draw(Canvas,AX,AY,AIndex,ADrawEffect);
+  if (RefControl<>nil) and ImageList.Scaled then
+    ImageList.DrawForControl(Canvas,AX,AY,AIndex,AImageWidth,RefControl,ADrawEffect)
+  else
+    ImageList.Draw(Canvas,AX,AY,AIndex,ADrawEffect)
 end;
 
 function IsFormDesignFunction(AForm: TWinControl): boolean;

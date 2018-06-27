@@ -204,6 +204,15 @@ const
     'FPC', 'ObjFPC', 'Delphi', 'TP', 'MacPas', 'ISO'
     );
 
+  Pas2jsPlatformNames: array[1..2] of shortstring = (
+    'Browser',
+    'NodeJS'
+    );
+  Pas2jsProcessorNames: array[1..2] of shortstring = (
+    'ECMAScript5',
+    'ECMAScript6'
+    );
+
   Lazarus_CPU_OS_Widget_Combinations: array[1..91] of shortstring = (
     'i386-linux-gtk',
     'i386-linux-gtk2',
@@ -794,6 +803,7 @@ type
     ConfigFiles: TPCConfigFileStateList;
     UnitPaths: TStrings;
     IncludePaths: TStrings;
+    UnitScopes: TStrings;
     Defines: TStringToStringTree; // macro to value
     Undefines: TStringToStringTree; // macro
     Units: TStringToStringTree; // unit name to file name
@@ -976,6 +986,8 @@ type
     procedure IncreaseChangeStamp;
     function GetUnitSetID: string;
     function GetFirstFPCCfg: string;
+    function GetUnitScopes: string;
+    function GetCompilerKind: TPascalCompiler;
   end;
 
   { TCompilerDefinesCache }
@@ -1035,9 +1047,11 @@ function GetCompiledTargetOS: string;
 function GetCompiledTargetCPU: string;
 function GetDefaultCompilerFilename(const TargetCPU: string = ''; Cross: boolean = false): string;
 procedure GetTargetProcessors(const TargetCPU: string; aList: TStrings);
-function GetFPCTargetOS(TargetOS: string): string;
-function GetFPCTargetCPU(TargetCPU: string): string;
+function GetFPCTargetOS(TargetOS: string): string; // normalize
+function GetFPCTargetCPU(TargetCPU: string): string; // normalize
 function GetPascalCompilerFromExeName(Filename: string): TPascalCompiler;
+function IsCTExecutable(AFilename: string; out ErrorMsg: string): boolean; // not thread-safe
+function IsCompilerExecutable(AFilename: string; out ErrorMsg: string; out Kind: TPascalCompiler): boolean; // not thread-safe
 function IsFPCExecutable(AFilename: string; out ErrorMsg: string): boolean; // not thread-safe
 function IsPas2JSExecutable(AFilename: string; out ErrorMsg: string): boolean; // not thread-safe
 
@@ -1069,6 +1083,7 @@ type
 const
   AllFPCFrontEndParams = [low(TFPCFrontEndParam)..high(TFPCFrontEndParam)];
 
+function GuessCompilerType(Filename: string): TPascalCompiler;
 function ParseFPCInfo(FPCInfo: string; InfoTypes: TFPCInfoTypes;
                       out Infos: TFPCInfoStrings): boolean;
 function RunFPCInfo(const CompilerFilename: string;
@@ -1081,13 +1096,15 @@ function ParseFPCVerbose(List: TStrings; // fpc -va output
                          out ConfigFiles: TStrings; // prefix '-' for file not found, '+' for found and read
                          out RealCompilerFilename: string; // what compiler is used by fpc
                          out UnitPaths: TStrings; // unit search paths
-                         out IncludePaths: TStrings; // inc search paths
+                         out IncludePaths: TStrings; // include search paths
+                         out UnitScopes: TStrings; // unit scopes/namespaces
                          out Defines, Undefines: TStringToStringTree): boolean;
 function RunFPCVerbose(const CompilerFilename, TestFilename: string;
                        out ConfigFiles: TStrings;
                        out RealCompilerFilename: string;
                        out UnitPaths: TStrings;
                        out IncludePaths: TStrings;
+                       out UnitScopes: TStrings; // unit scopes/namespaces
                        out Defines, Undefines: TStringToStringTree;
                        const Options: string = ''): boolean;
 procedure GatherUnitsInSearchPaths(SearchUnitPaths, SearchIncludePaths: TStrings;
@@ -1483,6 +1500,14 @@ begin
   end;
 end;
 
+function GuessCompilerType(Filename: string): TPascalCompiler;
+begin
+  Filename:=ExtractFileNameOnly(Filename);
+  if Pos('pas2js',lowercase(Filename))>0 then
+    exit(pcPas2js);
+  Result:=pcFPC;
+end;
+
 function ParseFPCInfo(FPCInfo: string; InfoTypes: TFPCInfoTypes;
   out Infos: TFPCInfoStrings): boolean;
 var
@@ -1588,33 +1613,56 @@ end;
 
 function ParseFPCVerbose(List: TStrings; const WorkDir: string; out
   ConfigFiles: TStrings; out RealCompilerFilename: string; out
-  UnitPaths: TStrings; out IncludePaths: TStrings; out Defines,
-  Undefines: TStringToStringTree): boolean;
+  UnitPaths: TStrings; out IncludePaths: TStrings; out UnitScopes: TStrings; out
+  Defines, Undefines: TStringToStringTree): boolean;
+
+  function DeQuote(const s: string): string;
+  begin
+    if (length(s)>1) and (s[1]='"') and (s[length(s)]='"') then
+      Result:=AnsiDequotedStr(s,'"')
+    else
+      Result:=s;
+  end;
 
   procedure UndefineSymbol(const MacroName: string);
   begin
-    //DebugLn(['UndefineSymbol ',MacroName]);
+    {$IFDEF VerboseFPCSrcScan}
+    DebugLn(['UndefineSymbol ',MacroName]);
+    {$ENDIF}
     Defines.Remove(MacroName);
     Undefines[MacroName]:='';
   end;
 
   procedure DefineSymbol(const MacroName, Value: string);
   begin
-    //DebugLn(['DefineSymbol ',MacroName]);
+    {$IFDEF VerboseFPCSrcScan}
+    if Value='' then
+      DebugLn(['DefineSymbol ',MacroName])
+    else
+      DebugLn(['DefineSymbol ',MacroName,':=',Value]);
+    {$ENDIF}
     Undefines.Remove(MacroName);
     Defines[MacroName]:=Value;
   end;
 
   function ExpFile(const aFilename: string): string;
   begin
-    Result:=aFilename;
+    Result:=DeQuote(aFilename);
     if FilenameIsAbsolute(Result) then exit;
     Result:=AppendPathDelim(WorkDir)+Result;
   end;
 
   procedure ProcessOutputLine(Line: string);
   var
-    SymbolName, SymbolValue, UpLine, NewPath: string;
+    UpLine: string;
+
+    function IsUpLine(p: integer; const s: string): boolean;
+    begin
+      Result:=StrLComp(@UpLine[p], PChar(s), length(s)) = 0;
+    end;
+
+  var
+    SymbolName, SymbolValue, NewPath: string;
     i, len, CurPos: integer;
     Filename: String;
     p: SizeInt;
@@ -1636,44 +1684,50 @@ function ParseFPCVerbose(List: TStrings; const WorkDir: string; out
     end;
 
     UpLine:=UpperCaseStr(Line);
-
     case UpLine[CurPos] of
-    'C':
-      if StrLComp(@UpLine[CurPos], 'CONFIGFILE SEARCH: ', 19) = 0 then
-      begin
-        // skip keywords
-        Inc(CurPos, 19);
-        Filename:=ExpFile(GetForcedPathDelims(copy(Line,CurPos,length(Line))));
-        ConfigFiles.Add('-'+Filename);
-      end else if StrLComp(@UpLine[CurPos], 'COMPILER: ', 10) = 0 then begin
-        // skip keywords
-        Inc(CurPos, 10);
-        RealCompilerFilename:=ExpFile(copy(Line,CurPos,length(Line)));
-      end;
+    'I':
+      if IsUpLine(CurPos,'INFO: ') then
+        inc(CurPos,6);
     'E':
-      if StrLComp(@UpLine[CurPos], 'ERROR: ', 7) = 0 then begin
+      if IsUpLine(CurPos,'ERROR: ') then begin
         inc(CurPos,7);
         if RealCompilerFilename='' then begin
           p:=Pos(' returned an error exitcode',Line);
           if p>0 then
             RealCompilerFilename:=copy(Line,CurPos,p-CurPos);
         end;
+        exit;
+      end;
+    end;
+
+    case UpLine[CurPos] of
+    'C':
+      if IsUpLine(CurPos,'CONFIGFILE SEARCH: ') then
+      begin
+        // skip keywords
+        Inc(CurPos, 19);
+        Filename:=ExpFile(GetForcedPathDelims(copy(Line,CurPos,length(Line))));
+        ConfigFiles.Add('-'+Filename);
+      end else if IsUpLine(CurPos,'COMPILER: ') then begin
+        // skip keywords
+        Inc(CurPos, 10);
+        RealCompilerFilename:=ExpFile(copy(Line,CurPos,length(Line)));
       end;
     'M':
-      if StrLComp(@UpLine[CurPos], 'MACRO ', 6) = 0 then begin
+      if IsUpLine(CurPos,'MACRO ') then begin
         // skip keyword macro
         Inc(CurPos, 6);
 
-        if (StrLComp(@UpLine[CurPos], 'DEFINED: ', 9) = 0) then begin
+        if IsUpLine(CurPos,'DEFINED: ') then begin
           Inc(CurPos, 9);
-          SymbolName:=copy(UpLine, CurPos, len);
+          SymbolName:=copy(Line, CurPos, len);
           DefineSymbol(SymbolName,'');
           Exit;
         end;
 
-        if (StrLComp(@UpLine[CurPos], 'UNDEFINED: ', 11) = 0) then begin
+        if IsUpLine(CurPos,'UNDEFINED: ') then begin
           Inc(CurPos, 11);
-          SymbolName:=copy(UpLine,CurPos,len);
+          SymbolName:=copy(Line,CurPos,len);
           UndefineSymbol(SymbolName);
           Exit;
         end;
@@ -1681,17 +1735,18 @@ function ParseFPCVerbose(List: TStrings; const WorkDir: string; out
         // MACRO something...
         i := CurPos;
         while (i <= len) and (Line[i]<>' ') do inc(i);
-        SymbolName:=copy(UpLine,CurPos,i-CurPos);
+        SymbolName:=copy(Line,CurPos,i-CurPos);
         CurPos := i + 1; // skip space
 
-        if StrLComp(@UpLine[CurPos], 'SET TO ', 7) = 0 then begin
+        if IsUpLine(CurPos,'SET TO ') then begin
+          // MACRO name SET TO
           Inc(CurPos, 7);
-          SymbolValue:=copy(Line, CurPos, len);
+          SymbolValue:=DeQuote(copy(Line, CurPos, len));
           DefineSymbol(SymbolName, SymbolValue);
         end;
       end;
     'R':
-      if StrLComp(@UpLine[CurPos], 'READING OPTIONS FROM FILE ', 26) = 0 then
+      if IsUpLine(CurPos,'READING OPTIONS FROM FILE ') then
       begin
         // skip keywords
         Inc(CurPos, 26);
@@ -1699,29 +1754,35 @@ function ParseFPCVerbose(List: TStrings; const WorkDir: string; out
         if (ConfigFiles.Count>0)
         and (ConfigFiles[ConfigFiles.Count-1]='-'+Filename) then
           ConfigFiles.Delete(ConfigFiles.Count-1);
+        {$IFDEF VerboseFPCSrcScan}
+        DebugLn('Used options file: "',Filename,'"');
+        {$ENDIF}
         ConfigFiles.Add('+'+Filename);
       end;
     'U':
-      if (StrLComp(@UpLine[CurPos], 'USING UNIT PATH: ', 17) = 0) then begin
+      if IsUpLine(CurPos,'USING UNIT PATH: ') then begin
         Inc(CurPos, 17);
-        NewPath:=GetForcedPathDelims(copy(Line,CurPos,len));
-        if not FilenameIsAbsolute(NewPath) then
-          NewPath:=ExpFile(NewPath);
+        NewPath:=ExpFile(GetForcedPathDelims(DeQuote(copy(Line,CurPos,len))));
         NewPath:=ChompPathDelim(TrimFilename(NewPath));
         {$IFDEF VerboseFPCSrcScan}
         DebugLn('Using unit path: "',NewPath,'"');
         {$ENDIF}
         UnitPaths.Add(NewPath);
-      end else if (StrLComp(@UpLine[CurPos], 'USING INCLUDE PATH: ', 20) = 0) then begin
+      end else if IsUpLine(CurPos,'USING INCLUDE PATH: ') then begin
         Inc(CurPos, 20);
-        NewPath:=GetForcedPathDelims(copy(Line,CurPos,len));
-        if not FilenameIsAbsolute(NewPath) then
-          NewPath:=ExpFile(NewPath);
+        NewPath:=ExpFile(GetForcedPathDelims(DeQuote(copy(Line,CurPos,len))));
         NewPath:=ChompPathDelim(TrimFilename(NewPath));
         {$IFDEF VerboseFPCSrcScan}
         DebugLn('Using include path: "',NewPath,'"');
         {$ENDIF}
         IncludePaths.Add(NewPath);
+      end else if IsUpLine(CurPos,'USING UNIT SCOPE: ') then begin
+        Inc(CurPos, 18);
+        NewPath:=Trim(DeQuote(copy(Line,CurPos,len)));
+        {$IFDEF VerboseFPCSrcScan}
+        DebugLn('Using unit scope: "',NewPath,'"');
+        {$ENDIF}
+        UnitScopes.Add(NewPath);
       end;
     end;
   end;
@@ -1734,6 +1795,7 @@ begin
   RealCompilerFilename:='';
   UnitPaths:=TStringList.Create;
   IncludePaths:=TStringList.Create;
+  UnitScopes:=TStringList.Create;
   Defines:=TStringToStringTree.Create(false);
   Undefines:=TStringToStringTree.Create(false);
   try
@@ -1745,15 +1807,16 @@ begin
       FreeAndNil(ConfigFiles);
       FreeAndNil(UnitPaths);
       FreeAndNil(IncludePaths);
+      FreeAndNil(UnitScopes);
       FreeAndNil(Undefines);
       FreeAndNil(Defines);
     end;
   end;
 end;
 
-function RunFPCVerbose(const CompilerFilename, TestFilename: string;
-  out ConfigFiles: TStrings; out RealCompilerFilename: string;
-  out UnitPaths: TStrings; out IncludePaths: TStrings;
+function RunFPCVerbose(const CompilerFilename, TestFilename: string; out
+  ConfigFiles: TStrings; out RealCompilerFilename: string; out
+  UnitPaths: TStrings; out IncludePaths: TStrings; out UnitScopes: TStrings;
   out Defines, Undefines: TStringToStringTree; const Options: string): boolean;
 var
   Params: String;
@@ -1767,6 +1830,7 @@ begin
   RealCompilerFilename:='';
   UnitPaths:=nil;
   IncludePaths:=nil;
+  UnitScopes:=nil;
   Defines:=nil;
   Undefines:=nil;
 
@@ -1794,7 +1858,7 @@ begin
       exit;
     end;
     Result:=ParseFPCVerbose(List,WorkDir,ConfigFiles,RealCompilerFilename,
-                            UnitPaths,IncludePaths,Defines,Undefines);
+                            UnitPaths,IncludePaths,UnitScopes,Defines,Undefines);
   finally
     List.Free;
     DeleteFileUTF8(TestFilename);
@@ -3037,7 +3101,7 @@ begin
       'e': Add('e',PChar(@p[1]),fpkValue);
       'F':
         case p[1] of
-        'a','f','i','l','o','u': Add('Fa',PChar(@p[2]),fpkMultiValue);
+        'a','f','i','l','N','o','u': Add('F'+p[1],PChar(@p[2]),fpkMultiValue);
         'c','C','D','e','E','L','m','M','r','R','U','W','w': Add('F'+p[1],PChar(@p[2]),fpkValue);
         else AddBooleanFlag(p,2);
         end;
@@ -3677,9 +3741,7 @@ begin
   Result:=pcFPC;
 end;
 
-function IsFPCExecutable(AFilename: string; out ErrorMsg: string): boolean;
-var
-  ShortFilename: String;
+function IsCTExecutable(AFilename: string; out ErrorMsg: string): boolean;
 begin
   Result:=false;
   AFilename:=ResolveDots(aFilename);
@@ -3706,6 +3768,44 @@ begin
     exit;
   end;
   ErrorMsg:='';
+  Result:=true;
+end;
+
+function IsCompilerExecutable(AFilename: string; out ErrorMsg: string; out
+  Kind: TPascalCompiler): boolean;
+var
+  ShortFilename: String;
+begin
+  Result:=IsCTExecutable(AFilename,ErrorMsg);
+  if not Result then exit;
+  Kind:=pcFPC;
+
+  // allow scripts like fpc.sh and fpc.bat
+  ShortFilename:=ExtractFileNameOnly(AFilename);
+  //debugln(['IsFPCompiler Short=',ShortFilename]);
+  if CompareFilenames(ShortFilename,'fpc')=0 then
+    exit(true);
+
+  // allow ppcxxx.exe
+  if (CompareFilenames(LeftStr(ShortFilename,3),'ppc')=0)
+  and ((ExeExt='') or (CompareFileExt(AFilename,ExeExt)=0))
+  then
+    exit(true);
+
+  if CompareText(LeftStr(ShortFilename,6),'pas2js')=0 then begin
+    Kind:=pcPas2js;
+    exit(true);
+  end;
+
+  ErrorMsg:='fpc executable should start with fpc or ppc';
+end;
+
+function IsFPCExecutable(AFilename: string; out ErrorMsg: string): boolean;
+var
+  ShortFilename: String;
+begin
+  Result:=IsCTExecutable(AFilename,ErrorMsg);
+  if not Result then exit;
 
   // allow scripts like fpc.sh and fpc.bat
   ShortFilename:=ExtractFileNameOnly(AFilename);
@@ -3726,29 +3826,8 @@ function IsPas2JSExecutable(AFilename: string; out ErrorMsg: string): boolean;
 var
   ShortFilename: String;
 begin
-  Result:=false;
-  AFilename:=ResolveDots(aFilename);
-  if aFilename='' then begin
-    ErrorMsg:='missing file name';
-    exit;
-  end;
-  if not FilenameIsAbsolute(AFilename) then begin
-    ErrorMsg:='file missing path';
-    exit;
-  end;
-  if not FileExistsCached(AFilename) then begin
-    ErrorMsg:='file not found';
-    exit;
-  end;
-  if DirPathExistsCached(AFilename) then begin
-    ErrorMsg:='file is a directory';
-    exit;
-  end;
-  if not FileIsExecutableCached(AFilename) then begin
-    ErrorMsg:='file is not executable';
-    exit;
-  end;
-  ErrorMsg:='';
+  Result:=IsCTExecutable(AFilename,ErrorMsg);
+  if not Result then exit;
 
   // allow scripts like pas2js*
   ShortFilename:=ExtractFileNameOnly(AFilename);
@@ -8006,10 +8085,12 @@ begin
       case p[1] of
       'F':
         case p[2] of
-        'u':
-          UnitPath+=';'+copy(Param,4,length(Param));
         'i':
           IncPath+=';'+copy(Param,4,length(Param));
+        'u':
+          UnitPath+=';'+copy(Param,4,length(Param));
+        'N':
+          Namespaces+=';'+copy(Param,4,length(Param));
         end;
 
       'd':
@@ -8048,7 +8129,7 @@ begin
 
       'N':
         case p[2] of
-        'S': Namespaces:=Namespaces+copy(Param,4,length(Param))
+        'S': Namespaces+=';'+copy(Param,4,length(Param))
         end;
 
       'W':
@@ -8394,6 +8475,7 @@ end;
 procedure TPCTargetConfigCache.Clear;
 begin
   // keep keys
+  Kind:=pcFPC;
   CompilerDate:=0;
   RealCompiler:='';
   RealCompilerDate:=0;
@@ -8409,6 +8491,7 @@ begin
   FreeAndNil(Undefines);
   FreeAndNil(UnitPaths);
   FreeAndNil(IncludePaths);
+  FreeAndNil(UnitScopes);
   FreeAndNil(Units);
   FreeAndNil(Includes);
 end;
@@ -8468,6 +8551,7 @@ begin
   if not CompareStringTrees(Undefines,Item.Undefines) then exit;
   if not CompareStrings(UnitPaths,Item.UnitPaths) then exit;
   if not CompareStrings(IncludePaths,Item.IncludePaths) then exit;
+  if not CompareStrings(UnitScopes,Item.UnitScopes) then exit;
   if not CompareStringTrees(Units,Item.Units) then exit;
   if not CompareStringTrees(Includes,Item.Includes) then exit;
   Result:=true;
@@ -8521,6 +8605,7 @@ begin
     AssignStringTree(Undefines,Item.Undefines);
     AssignStringList(UnitPaths,Item.UnitPaths);
     AssignStringList(IncludePaths,Item.IncludePaths);
+    AssignStringList(UnitScopes,Item.UnitScopes);
     AssignStringTree(Units,Item.Units);
     AssignStringTree(Includes,Item.Includes);
 
@@ -8532,21 +8617,12 @@ end;
 
 procedure TPCTargetConfigCache.LoadFromXMLConfig(XMLConfig: TXMLConfig;
   const Path: string);
-var
-  Cnt: integer;
-  SubPath: String;
-  DefineName, DefineValue: String;
-  s: String;
-  i: Integer;
-  p: Integer;
-  StartPos: Integer;
-  Filename: String;
 
   procedure LoadPathsFor(out ADest: TStrings; const ASubPath: string);
   var
     i: Integer;
     List: TStringList;
-    BaseDir: String;
+    BaseDir, s: String;
   begin
     // Paths: format: semicolon separated compressed list
     List:=TStringList.Create;
@@ -8572,19 +8648,36 @@ var
     end;
   end;
 
+  procedure LoadSemicolonList(out UnitScopes: TStrings; const ASubPath: string);
+  var
+    s, Scope: String;
+    p: Integer;
+  begin
+    UnitScopes:=TStringList.Create;
+    s:=XMLConfig.GetValue(Path+ASubPath,'');
+    p:=1;
+    while p<=length(s) do begin
+      Scope:=GetNextDelimitedItem(s,';',p);
+      if Scope<>'' then
+        UnitScopes.Add(Scope);
+    end;
+  end;
+
   procedure LoadFilesFor(var ADest: TStringToStringTree; const ASubPath: string);
   var
     i: Integer;
     List: TStringList;
-    File_Name: String;
+    File_Name, CurPath, s, Filename: String;
     FileList: TStringList;
   begin
     // files: format: ASubPath+Values semicolon separated list of compressed filename
+    if ADest=nil then
+      ADest:=TStringToStringTree.Create(false);
     List:=TStringList.Create;
     FileList:=nil;
     try
-      SubPath:=Path+ASubPath+'Value';
-      s:=XMLConfig.GetValue(SubPath,'');
+      CurPath:=Path+ASubPath+'Value';
+      s:=XMLConfig.GetValue(CurPath,'');
       List.Delimiter:=';';
       List.StrictDelimiter:=true;
       List.DelimitedText:=s;
@@ -8593,11 +8686,9 @@ var
         Filename:=TrimFilename(FileList[i]);
         File_Name:=ExtractFileNameOnly(Filename);
         if (File_Name='') or not IsDottedIdentifier(File_Name) then begin
-          DebugLn(['Warning: [TPCTargetConfigCache.LoadFromXMLConfig] invalid filename "',File_Name,'" in "',XMLConfig.Filename,'" at "',SubPath,'"']);
+          DebugLn(['Warning: [TPCTargetConfigCache.LoadFromXMLConfig] invalid filename "',File_Name,'" in "',XMLConfig.Filename,'" at "',CurPath,'"']);
           continue;
         end;
-        if ADest=nil then
-          ADest:=TStringToStringTree.Create(false);
         ADest[File_Name]:=Filename;
       end;
     finally
@@ -8606,6 +8697,14 @@ var
     end;
   end;
 
+var
+  Cnt: integer;
+  SubPath: String;
+  DefineName, DefineValue: String;
+  s: String;
+  i: Integer;
+  p: Integer;
+  StartPos: Integer;
 begin
   Clear;
 
@@ -8660,6 +8759,9 @@ begin
   LoadPathsFor(UnitPaths,'UnitPaths/');
   LoadPathsFor(IncludePaths,'IncludePaths/');
 
+  // Unit scopes
+  LoadSemicolonList(UnitScopes, 'UnitScopes');
+
   // Files
   LoadFilesFor(Units,'Units/');
   LoadFilesFor(Includes,'Includes/');
@@ -8667,18 +8769,12 @@ end;
 
 procedure TPCTargetConfigCache.SaveToXMLConfig(XMLConfig: TXMLConfig;
   const Path: string);
-var
-  Node: TAVLTreeNode;
-  Item: PStringToStringItem;
-  Cnt: Integer;
-  SubPath: String;
-  s: String;
 
   procedure SavePathsFor(const ASource: TStrings; const ASubPath: string);
   var
     List: TStringList;
     RelativeUnitPaths: TStringList;
-    BaseDir: string;
+    BaseDir, s: string;
   begin
     // Paths: write as semicolon separated compressed list
     s:='';
@@ -8702,11 +8798,26 @@ var
     XMLConfig.SetDeleteValue(Path+ASubPath+'Value',s,'');
   end;
 
+  procedure SaveSemicolonList(List: TStrings; const ASubPath: string);
+  var
+    i: Integer;
+    s: String;
+  begin
+    s:='';
+    if List<>nil then
+      for i:=0 to List.Count-1 do
+        s:=s+';'+List[i];
+    delete(s,1,1);
+    XMLConfig.SetDeleteValue(Path+ASubPath,s,'');
+  end;
+
   procedure SaveFilesFor(const ASource: TStringToStringTree; const ASubPath: string);
   var
     List: TStringList;
     FileList: TStringList;
-    Filename: String;
+    Filename, s: String;
+    Node: TAVLTreeNode;
+    Item: PStringToStringItem;
   begin
     // Files: ASubPath+Values semicolon separated list of compressed filenames
     // Files contains thousands of file names. This needs compression.
@@ -8740,6 +8851,12 @@ var
     XMLConfig.SetDeleteValue(Path+ASubPath+'Value',s,'');
   end;
 
+var
+  Node: TAVLTreeNode;
+  Item: PStringToStringItem;
+  Cnt: Integer;
+  SubPath: String;
+  s: String;
 begin
   XMLConfig.SetDeleteValue(Path+'Kind',PascalCompilerNames[Kind],PascalCompilerNames[pcFPC]);
   XMLConfig.SetDeleteValue(Path+'TargetOS',TargetOS,'');
@@ -8792,6 +8909,9 @@ begin
   SavePathsFor(UnitPaths, 'UnitPaths/');
   SavePathsFor(IncludePaths, 'IncludePaths/');
 
+  // Unit scopes
+  SaveSemicolonList(UnitScopes, 'UnitScopes');
+
   // Files
   SaveFilesFor(Units, 'Units/');
   SaveFilesFor(Includes, 'Includes/');
@@ -8828,6 +8948,7 @@ var
   AFilename: String;
 begin
   Result:=true;
+
   if (not FileExistsCached(Compiler)) then begin
     if CTConsoleVerbosity>0 then
       debugln(['Hint: [TPCTargetConfigCache.NeedsUpdate] TargetOS="',TargetOS,'" TargetCPU="',TargetCPU,'" Options="',CompilerOptions,'" compiler file missing "',Compiler,'"']);
@@ -8894,6 +9015,16 @@ end;
 
 function TPCTargetConfigCache.Update(TestFilename: string;
   ExtraOptions: string; const OnProgress: TDefinePoolProgress): boolean;
+
+  procedure PreparePaths(APaths: TStrings);
+  var
+    i: Integer;
+  begin
+    if APaths<>nil then
+      for i:=0 to APaths.Count-1 do
+        APaths[i]:=ChompPathDelim(TrimFilename(APaths[i]));
+  end;
+
 var
   i: Integer;
   OldOptions: TPCTargetConfigCache;
@@ -8906,16 +9037,6 @@ var
   InfoTypes: TFPCInfoTypes;
   BaseDir: String;
   FullFilename: String;
-
-  procedure PreparePaths(APaths: TStrings);
-  var
-    i: Integer;
-  begin
-    if APaths<>nil then
-      for i:=0 to APaths.Count-1 do
-        APaths[i]:=ChompPathDelim(TrimFilename(APaths[i]));
-  end;
-
 begin
   OldOptions:=TPCTargetConfigCache.Create(nil);
   CfgFiles:=nil;
@@ -8930,6 +9051,9 @@ begin
     if FileExistsCached(Compiler) then begin
       ExtraOptions:=GetFPCInfoCmdLineOptions(ExtraOptions);
       BaseDir:='';
+
+      // kind
+      Kind:=GuessCompilerType(Compiler);
 
       // get version and real OS and CPU
       InfoTypes:=[fpciTargetOS,fpciTargetProcessor,fpciFullVersion];
@@ -8946,20 +9070,30 @@ begin
         if RealTargetCPU='' then
           RealTargetCPU:=GetCompiledTargetCPU;
       end;
-      RealCompilerInPath:=FindRealCompilerInPath(TargetCPU,true);
+      if Kind=pcFPC then
+        RealCompilerInPath:=FindRealCompilerInPath(TargetCPU,true);
 
-      // run fpc and parse output
+      // run fpc/pas2js and parse output
       HasPPUs:=false;
       RunFPCVerbose(Compiler,TestFilename,CfgFiles,RealCompiler,UnitPaths,
-                    IncludePaths,Defines,Undefines,ExtraOptions);
+                    IncludePaths,UnitScopes,Defines,Undefines,ExtraOptions);
+
+      //debugln(['TPCTargetConfigCache.Update UnitPaths="',UnitPaths.Text,'"']);
+      //debugln(['TPCTargetConfigCache.Update UnitScopes="',UnitScopes.Text,'"']);
+      //debugln(['TPCTargetConfigCache.Update IncludePaths="',IncludePaths.Text,'"']);
+
+      if Defines.Contains('PAS2JS') and Defines.Contains('PAS2JS_FULLVERSION') then
+        Kind:=pcPas2js
+      else
+        Kind:=pcFPC;
       PreparePaths(UnitPaths);
       PreparePaths(IncludePaths);
       // store the real compiler file and date
       if (RealCompiler<>'') and FileExistsCached(RealCompiler) then begin
         RealCompilerDate:=FileAgeCached(RealCompiler);
-      end else begin
+      end else if Kind=pcFPC then begin
         if CTConsoleVerbosity>=-1 then
-          debugln(['Warning: [TPCTargetConfigCache.Update] invalid compiler: Compiler="'+Compiler+'" Options="'+ExtraOptions+'" RealCompiler="',RealCompiler,'"']);
+          debugln(['Warning: [TPCTargetConfigCache.Update] cannot find real compiler for this platform: Compiler="'+Compiler+'" Options="'+ExtraOptions+'" RealCompiler="',RealCompiler,'"']);
       end;
       // store the list of tried and read cfg files
       if CfgFiles<>nil then
@@ -8970,7 +9104,7 @@ begin
           Filename:=copy(Filename,2,length(Filename));
           FullFilename:=ExpandFileNameUTF8(TrimFileName(Filename),BaseDir);
           if CfgFileExists<>FileExistsCached(FullFilename) then begin
-            debugln(['Warning: [TPCTargetConfigCache.Update] fpc found cfg a file, the IDE did not: "',Filename,'"']);
+            debugln(['Warning: [TPCTargetConfigCache.Update] '+ExtractFileName(Compiler)+' found cfg a file, the IDE did not: "',Filename,'"']);
             CfgFileExists:=not CfgFileExists;
           end;
           CfgFileDate:=0;
@@ -8978,14 +9112,30 @@ begin
             CfgFileDate:=FileAgeCached(Filename);
           ConfigFiles.Add(Filename,CfgFileExists,CfgFileDate);
         end;
-      // gather all units in all unit and inc files search paths
+      // gather all units and include files in search paths
       GatherUnitsInSearchPaths(UnitPaths,IncludePaths,OnProgress,Units,Includes,true);
+      //if Kind=pcPas2js then begin
+      //  debugln(['TPCTargetConfigCache.Update Units:']);
+      //  for e in Units do
+      //    debugln(['  ',E^.Name,' ',E^.Value]);
+      //end;
       if (UnitPaths.Count=0) then begin
         if CTConsoleVerbosity>=-1 then
           debugln(['Warning: [TPCTargetConfigCache.Update] no unit paths: ',Compiler,' ',ExtraOptions]);
       end;
       // check if the system ppu exists
-      HasPPUs:=CompareFileExt(Units['system'],'ppu',false)=0;
+      HasPPUs:=(Kind=pcFPC) and (CompareFileExt(Units['system'],'ppu',false)=0);
+      if CTConsoleVerbosity>=-1 then begin
+        case Kind of
+          pcFPC:
+            if not Defines.Contains('FPC_FULLVERSION') then
+              debugln(['Warning: [TPCTargetConfigCache.Update] invalid fpc: Compiler="'+Compiler+'" Options="'+ExtraOptions+'" RealCompiler="',RealCompiler,'" missing FPC_FULLVERSION']);
+          pcDelphi: ;
+          pcPas2js:
+            if not Defines.Contains('PAS2JS_FULLVERSION') then
+              debugln(['Warning: [TPCTargetConfigCache.Update] invalid pas2js: Compiler="'+Compiler+'" Options="'+ExtraOptions+'" missing PAS2JS_FULLVERSION']);
+        end;
+      end;
     end;
     // check for changes
     if not Equals(OldOptions) then begin
@@ -9040,11 +9190,12 @@ var
   Postfix: String;
 begin
   Result:='';
+  if Kind<>pcFPC then exit;
 
   CompiledTargetCPU:=GetCompiledTargetCPU;
   if aTargetCPU='' then
     aTargetCPU:=CompiledTargetCPU;
-  Cross:=aTargetCPU<>CompiledTargetCPU;
+  Cross:=not SameText(aTargetCPU,CompiledTargetCPU);
 
   // The -V<postfix> parameter searches for ppcx64-postfix instead of ppcx64
   Postfix:=GetLastFPCParameter(CompilerOptions,'-V');
@@ -9074,9 +9225,11 @@ function TPCTargetConfigCache.GetFPCVerNumbers(out FPCVersion, FPCRelease,
 var
   v: string;
 begin
+  // get default FPC version
   v:={$I %FPCVERSION%};
   Result:=SplitFPCVersion(v,FPCVersion,FPCRelease,FPCPatch);
   if Defines<>nil then begin
+    // use defines
     FPCVersion:=StrToIntDef(Defines['FPC_VERSION'],FPCVersion);
     FPCRelease:=StrToIntDef(Defines['FPC_RELEASE'],FPCRelease);
     FPCPatch:=StrToIntDef(Defines['FPC_PATCH'],FPCPatch);
@@ -10164,15 +10317,19 @@ begin
   if (fuscfSrcRulesNeedUpdate in fFlags)
   or (fRulesStampOfConfig<>Cfg.ChangeStamp) then begin
     Exclude(fFlags,fuscfSrcRulesNeedUpdate);
-    NewRules:=DefaultFPCSourceRules.Clone;
-    try
-      if Cfg.Units<>nil then
-        AdjustFPCSrcRulesForPPUPaths(Cfg.Units,NewRules);
-      fSourceRules.Assign(NewRules); // increases ChangeStamp if something changed
-      fRulesStampOfConfig:=Cfg.ChangeStamp;
-    finally
-      NewRules.Free;
+    if Cfg.Kind=pcFPC then begin
+      NewRules:=DefaultFPCSourceRules.Clone;
+      try
+        if Cfg.Units<>nil then
+          AdjustFPCSrcRulesForPPUPaths(Cfg.Units,NewRules);
+        fSourceRules.Assign(NewRules); // increases ChangeStamp if something changed
+      finally
+        NewRules.Free;
+      end;
+    end else begin
+      fSourceRules.Clear;
     end;
+    fRulesStampOfConfig:=Cfg.ChangeStamp;
   end;
   Result:=fSourceRules;
 end;
@@ -10190,37 +10347,46 @@ begin
   SrcRules:=GetSourceRules(AutoUpdate);
   ConfigCache:=GetConfigCache(false); // Note: update already done by GetSourceRules(AutoUpdate)
 
-  if (fuscfUnitTreeNeedsUpdate in fFlags)
-  or (fUnitStampOfFPC<>ConfigCache.ChangeStamp)
-  or (fUnitStampOfFiles<>Src.ChangeStamp)
-  or (fUnitStampOfRules<>SrcRules.ChangeStamp)
-  then begin
-    Exclude(fFlags,fuscfUnitTreeNeedsUpdate);
-    NewSrcDuplicates:=nil;
-    NewUnitToSourceTree:=nil;
-    try
-      NewSrcDuplicates:=TStringToStringTree.Create(false);
-      NewUnitToSourceTree:=GatherUnitsInFPCSources(Src.Files,
-                     ConfigCache.RealTargetOS,ConfigCache.RealTargetCPU,
-                     NewSrcDuplicates,SrcRules);
-      if NewUnitToSourceTree=nil then
-        NewUnitToSourceTree:=TStringToStringTree.Create(false);
-      // ToDo: add/replace sources in PPU search paths
-      if not fUnitToSourceTree.Equals(NewUnitToSourceTree) then begin
-        fUnitToSourceTree.Assign(NewUnitToSourceTree);
-        IncreaseChangeStamp;
+  if ConfigCache.Kind=pcFPC then begin
+    if (fuscfUnitTreeNeedsUpdate in fFlags)
+    or (fUnitStampOfFPC<>ConfigCache.ChangeStamp)
+    or (fUnitStampOfFiles<>Src.ChangeStamp)
+    or (fUnitStampOfRules<>SrcRules.ChangeStamp)
+    then begin
+      Exclude(fFlags,fuscfUnitTreeNeedsUpdate);
+      NewSrcDuplicates:=nil;
+      NewUnitToSourceTree:=nil;
+      try
+        NewSrcDuplicates:=TStringToStringTree.Create(false);
+        NewUnitToSourceTree:=GatherUnitsInFPCSources(Src.Files,
+                       ConfigCache.RealTargetOS,ConfigCache.RealTargetCPU,
+                       NewSrcDuplicates,SrcRules);
+        if NewUnitToSourceTree=nil then
+          NewUnitToSourceTree:=TStringToStringTree.Create(false);
+        // ToDo: add/replace sources in PPU search paths
+        if not fUnitToSourceTree.Equals(NewUnitToSourceTree) then begin
+          fUnitToSourceTree.Assign(NewUnitToSourceTree);
+          IncreaseChangeStamp;
+        end;
+        if not fSrcDuplicates.Equals(NewSrcDuplicates) then begin
+          fSrcDuplicates.Assign(NewSrcDuplicates);
+          IncreaseChangeStamp;
+        end;
+        fUnitStampOfFPC:=ConfigCache.ChangeStamp;
+        fUnitStampOfFiles:=Src.ChangeStamp;
+        fUnitStampOfRules:=SrcRules.ChangeStamp;
+      finally
+        NewUnitToSourceTree.Free;
+        NewSrcDuplicates.Free;
       end;
-      if not fSrcDuplicates.Equals(NewSrcDuplicates) then begin
-        fSrcDuplicates.Assign(NewSrcDuplicates);
-        IncreaseChangeStamp;
-      end;
-      fUnitStampOfFPC:=ConfigCache.ChangeStamp;
-      fUnitStampOfFiles:=Src.ChangeStamp;
-      fUnitStampOfRules:=SrcRules.ChangeStamp;
-    finally
-      NewUnitToSourceTree.Free;
-      NewSrcDuplicates.Free;
     end;
+  end else begin
+    fUnitToSourceTree.Clear;
+    fSrcDuplicates.Clear;
+    Exclude(fFlags,fuscfUnitTreeNeedsUpdate);
+    fUnitStampOfFPC:=ConfigCache.ChangeStamp;
+    fUnitStampOfFiles:=Src.ChangeStamp;
+    fUnitStampOfRules:=SrcRules.ChangeStamp;
   end;
   Result:=fUnitToSourceTree;
 end;
@@ -10327,17 +10493,48 @@ function TFPCUnitSetCache.GetFirstFPCCfg: string;
 var
   Cfg: TPCTargetConfigCache;
   i: Integer;
+  Files: TPCConfigFileStateList;
 begin
   Result:='';
   Cfg:=GetConfigCache(false);
   if Cfg=nil then exit;
-  if Cfg.ConfigFiles=nil then exit;
-  for i:=0 to Cfg.ConfigFiles.Count-1 do begin
-    if Cfg.ConfigFiles[i].FileExists then begin
-      Result:=Cfg.ConfigFiles[i].Filename;
+  Files:=Cfg.ConfigFiles;
+  if Files=nil then exit;
+  for i:=0 to Files.Count-1 do begin
+    if Files[i].FileExists then begin
+      Result:=Files[i].Filename;
       exit;
     end;
   end;
+end;
+
+function TFPCUnitSetCache.GetUnitScopes: string;
+var
+  Cfg: TPCTargetConfigCache;
+  Scopes: TStrings;
+  Scope: String;
+  i: Integer;
+begin
+  Result:='';
+  Cfg:=GetConfigCache(false);
+  if Cfg=nil then exit;
+  Scopes:=Cfg.UnitScopes;
+  if Scopes=nil then exit;
+  for i:=0 to Scopes.Count-1 do begin
+    Scope:=Scopes[i];
+    if Scope='' then continue;
+    Result:=Result+';'+Scope;
+  end;
+  Delete(Result,1,1);
+end;
+
+function TFPCUnitSetCache.GetCompilerKind: TPascalCompiler;
+var
+  Cfg: TPCTargetConfigCache;
+begin
+  Cfg:=GetConfigCache(false);
+  if Cfg=nil then exit(pcFPC);
+  Result:=Cfg.Kind;
 end;
 
 initialization

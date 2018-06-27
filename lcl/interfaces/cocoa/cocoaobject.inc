@@ -106,6 +106,10 @@ begin
         NSApp.sendEvent(event);
       NSApp.updateWindows;
     end;
+
+    SyncClipboard(); // NSPasteboard doesn't provide any notifications regarding the change
+                     // Thus we have to check the clipboard on every loop
+
     pool.release;
   until event = nil;
 end;
@@ -130,6 +134,9 @@ begin
       NSApp.sendEvent(event);
     NSApp.updateWindows;
   end;
+
+  SyncClipboard(); // NSPasteboard doesn't provide any notifications regarding the change
+                   // Thus we have to check the clipboard on every loop
   pool.release;
 end;
 
@@ -519,6 +526,7 @@ var
   lNSWin: TCocoaWindow absolute lNSObj;
 begin
   Result := False;
+  Exit; // todo: the whole function might need to go away
   {$ifndef COCOA_USE_NATIVE_MODAL}
   if CurModalForm = nil then Exit;
   lNSObj := NSWindow(AControl.window());

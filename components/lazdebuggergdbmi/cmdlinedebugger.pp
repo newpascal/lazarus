@@ -78,7 +78,7 @@ type
   public
     constructor Create(const AExternalDebugger: String); override;
     destructor Destroy; override;
-    procedure TestCmd(const ACommand: String); virtual;// For internal debugging purposes
+    procedure TestCmd(const ACommand: String); override;// For internal debugging purposes
     class function CanExternalDebugSymbolsFile: boolean; override;
   public
     property DebugProcess: TProcessUTF8 read FDbgProcess;
@@ -425,8 +425,8 @@ function TCmdLineDebugger.ReadLine(const APeek: Boolean; ATimeOut: Integer = -1)
   var
     S: String;
   begin
-    SetLength(S, 1024);
-    Result := AStream.Read(S[1], 1024);
+    SetLength(S, 8192);
+    Result := AStream.Read(S[1], 8192);
     if Result > 0
     then begin
       SetLength(S, Result);
@@ -613,7 +613,7 @@ begin
 end;
 
 initialization
-  DBG_CMD_ECHO      := DebugLogger.RegisterLogGroup('DBG_CMD_ECHO' {$IF defined(DBG_VERBOSE) or defined(DBG_CMD_ECHO)} , True {$ENDIF} );
-  DBG_CMD_ECHO_FULL := DebugLogger.RegisterLogGroup('DBG_CMD_ECHO_FULL' {$IF defined(DBG_VERBOSE_FULL_DATA) or defined(DBG_CMD_ECHO_FULL)} , True {$ENDIF} );
+  DBG_CMD_ECHO      := DebugLogger.FindOrRegisterLogGroup('DBG_CMD_ECHO' {$IF defined(DBG_VERBOSE) or defined(DBG_CMD_ECHO)} , True {$ENDIF} );
+  DBG_CMD_ECHO_FULL := DebugLogger.FindOrRegisterLogGroup('DBG_CMD_ECHO_FULL' {$IF defined(DBG_VERBOSE_FULL_DATA) or defined(DBG_CMD_ECHO_FULL)} , True {$ENDIF} );
 
 end.

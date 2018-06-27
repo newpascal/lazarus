@@ -46,30 +46,31 @@ uses
   MemCheck,
   {$ENDIF}
   // RTL, FCL
-  TypInfo, math, Classes, SysUtils, contnrs,
+  TypInfo, math, Classes, SysUtils, contnrs, Laz_AVL_Tree,
   // LCL
-  LCLProc, Forms, Controls, Dialogs, Menus, ComCtrls, LResources,
+  Forms, Controls, Dialogs, Menus, ComCtrls, LResources,
   // LazUtils
-  LazUTF8, Laz2_XMLCfg, lazutf8classes, LazFileUtils, LazFileCache, StringHashList,
-  Translations, AvgLvlTree, Laz_AVL_Tree,
+  LazUTF8, Laz2_XMLCfg, LazUTF8Classes, LazTracer, LazUtilities,
+  LazFileUtils, LazFileCache, StringHashList, Translations, AvgLvlTree,
   // Codetools
   CodeToolsConfig, CodeToolManager, CodeCache, BasicCodeTools,
   FileProcs, CodeTree, CTUnitGraph,
   // IDE Interface
-  NewItemIntf, ProjPackIntf, ProjectIntf, PackageIntf, PackageDependencyIntf, PackageLinkIntf,
+  NewItemIntf, ProjPackIntf, ProjectIntf,
+  PackageIntf, PackageDependencyIntf, PackageLinkIntf,
   CompOptsIntf, MenuIntf, IDEWindowIntf, IDEExternToolIntf, MacroIntf, LazIDEIntf,
   IDEMsgIntf, SrcEditorIntf, ComponentReg, PropEdits, IDEDialogs, UnitResources,
   // IDE
-  PkgRegisterBase, IDECmdLine, LazarusIDEStrConsts, IDEProcs, ObjectLists,
-  DialogProcs, IDECommands, IDEOptionDefs, EnvironmentOpts, MiscOptions,
-  InputHistory, Project, PackageEditor, AddToPackageDlg,
+  IDECmdLine, LazarusIDEStrConsts, IDEProcs, ObjectLists,
+  DialogProcs, IDECommands, IDEOptionDefs, EnvironmentOpts,
+  MiscOptions, InputHistory, Project, PackageEditor, AddToPackageDlg,
   PackageDefs, PackageLinks, PackageSystem, OpenInstalledPkgDlg,
-  PkgGraphExplorer, BrokenDependenciesDlg, CompilerOptions,
-  IDETranslations, TransferMacros, BuildLazDialog, NewDialog, FindInFilesDlg,
-  ProjectInspector, SourceEditor, ProjPackChecks, AddFileToAPackageDlg,
-  LazarusPackageIntf, PublishProjectDlg, PkgLinksDlg,
-  InterPkgConflictFiles, InstallPkgSetDlg, ConfirmPkgListDlg, NewPkgComponentDlg,
-  BaseBuildManager, BasePkgManager, MainBar, MainIntf, MainBase, ModeMatrixOpts;
+  PkgGraphExplorer, BrokenDependenciesDlg, CompilerOptions, IDETranslations,
+  TransferMacros, BuildLazDialog, NewDialog, FindInFilesDlg, ProjectInspector,
+  SourceEditor, ProjPackChecks, AddFileToAPackageDlg, LazarusPackageIntf,
+  PublishProjectDlg, PkgLinksDlg, InterPkgConflictFiles, InstallPkgSetDlg,
+  ConfirmPkgListDlg, NewPkgComponentDlg, BaseBuildManager, BasePkgManager,
+  MainBar, MainIntf, MainBase, ModeMatrixOpts;
 
 type
   { TPkgManager }
@@ -640,6 +641,7 @@ begin
     NewDependency:=TPkgDependency.Create;
     try
       NewDependency.PackageName:=APackageName;
+      NewDependency.DependencyType:=pdtLazarus;
       LoadResult:=PackageGraph.OpenDependency(NewDependency,false);
       if LoadResult<>lprSuccess then exit;
     finally
@@ -1591,6 +1593,7 @@ begin
   //DebugLn('TPkgManager.LoadInstalledPackage PackageName="',PackageName,'" Quiet=',Quiet);
   NewDependency:=TPkgDependency.Create;
   NewDependency.Owner:=Self;
+  NewDependency.DependencyType:=pdtLazarus;
   NewDependency.PackageName:=PackageName;
   PackageGraph.OpenInstalledDependency(NewDependency,pitStatic,Quiet);
   Result:=NewDependency.RequiredPackage;
@@ -3509,7 +3512,7 @@ var
 begin
   Result:=mrCancel;
   // create a new package with standard dependencies
-  NewPackage:=PackageGraph.CreateNewPackage(lisPkgMangNewPackage);
+  NewPackage:=PackageGraph.CreateNewPackage(ExtractPasIdentifier(lisPkgMangNewPackage,true));
   PackageGraph.AddDependencyToPackage(NewPackage,
                 PackageGraph.FCLPackage.CreateDependencyWithOwner(NewPackage));
   NewPackage.Modified:=false;
@@ -5229,7 +5232,7 @@ begin
   if APackage=nil then begin
     // create new package
     // create a new package with standard dependencies
-    APackage:=PackageGraph.CreateNewPackage(lisPkgMangNewPackage);
+    APackage:=PackageGraph.CreateNewPackage(ExtractPasIdentifier(lisPkgMangNewPackage,true));
     PackageGraph.AddDependencyToPackage(APackage,
                   PackageGraph.IDEIntfPackage.CreateDependencyWithOwner(APackage));
     APackage.Modified:=false;
@@ -5350,6 +5353,7 @@ end;
 function TPkgManager.DoInstallPackage(APackage: TLazPackage): TModalResult;
 var
   PkgList: TFPList;
+  FPMakeList: TFPList;
   
   function GetPkgListIndex(APackage: TLazPackage): integer;
   begin
@@ -5431,6 +5435,7 @@ begin
 
     PackageGraph.BeginUpdate(true);
     PkgList:=nil;
+    FPMakeList:=nil;
     try
 
       // check if package is designtime package
@@ -5469,7 +5474,7 @@ begin
       if Result<>mrOk then exit;
 
       // get all required packages, which will also be auto installed
-      APackage.GetAllRequiredPackages(PkgList,false);
+      APackage.GetAllRequiredPackages(PkgList,FPMakeList,false);
       if PkgList=nil then PkgList:=TFPList.Create;
 
       // remove packages already marked for installation
@@ -5525,6 +5530,7 @@ begin
     finally
       PackageGraph.EndUpdate;
       PkgList.Free;
+      FPMakeList.Free;
     end;
 
     if NeedSaving then begin
@@ -5657,15 +5663,15 @@ var
   var
     i: Integer;
     PkgID: TLazPackageID;
+    PkgName: string;
   begin
+    PkgName := ADependency.PackageName; // DeleteDependencyInList destroys ADependency -> don't use it anymore!
     DeleteDependencyInList(ADependency,NewFirstAutoInstallDependency,pdlRequires);
     if piiifRemoveConflicts in Flags then
       for i:=PkgIDList.Count-1 downto 0 do begin
         PkgID:=TLazPackageID(PkgIDList[i]);
-        if SysUtils.CompareText(PkgID.Name,ADependency.PackageName)=0 then begin
-          PkgIDList.Delete(i);
-          PkgID.Free;
-        end;
+        if SysUtils.CompareText(PkgID.Name,PkgName)=0 then
+          PkgIDList.Delete(i); // PkgID is automatically destroyed
       end;
   end;
 

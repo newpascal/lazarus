@@ -42,12 +42,30 @@ begin
   Result := GLCLGlyphs;
 end;
 
-function GetDefaultGlyph(ResourceName: string; ScalePercent: Integer = 100): TCustomBitmap;
+function GetDefaultGlyph(ResourceName: string; ScalePercent: Integer;
+  IgnoreMissingResource: Boolean): TCustomBitmap;
+var
+  LRes: TLResource;
 begin
-  Result := TPortableNetworkGraphic.Create;
   if ScalePercent<>100 then
     ResourceName := ResourceName+'_'+IntToStr(ScalePercent);
-  Result.LoadFromResourceName(hInstance, ResourceName);
+
+  Result := CreateBitmapFromResourceName(HINSTANCE, ResourceName);
+  if Result=nil then
+  begin
+    LRes := LazarusResources.Find(ResourceName);
+    if LRes<>nil then
+      Result := CreateBitmapFromLazarusResource(LRes);
+  end;
+  if (Result is TBitmap) and not Result.Transparent // BMP left-bottom transparency
+  and (Result.Width>0) and (Result.Height>0) then
+  begin
+    Result.Transparent := True;
+    Result.TransparentMode := tmFixed;
+    Result.TransparentColor := Result.Canvas.Pixels[0, Result.Height-1];
+  end;
+  if (Result=nil) and not IgnoreMissingResource then
+    raise EResNotFound.CreateFmt(SResNotFound,[ResourceName]);
 end;
 
 {------------------------------------------------------------------------------
@@ -162,6 +180,11 @@ function TScaledImageListResolution.GetSize: TSize;
 begin
   Result.cx := Width;
   Result.cy := Height;
+end;
+
+function TScaledImageListResolution.GetValid: Boolean;
+begin
+  Result := Assigned(FResolution);
 end;
 
 procedure TScaledImageListResolution.DrawOverlay(ACanvas: TCanvas; AX, AY,
@@ -330,9 +353,6 @@ begin
   if FCount = 0 then Exit;
   if HandleAllocated
   then TWSCustomImageListResolutionClass(WidgetSetClass).Clear(Self);
-  {$ifdef windows}
-  DestroyReference; //Issue #0029905: images added after clear aren't shown if width or height changed
-  {$endif}
   SetLength(FData, 0);
   FAllocCount := 0;
 end;
@@ -458,7 +478,7 @@ var
   ListImg, DeviceImg: TLazIntfImage;
   ImgHandle, MskHandle: HBitmap;
 begin
-  if (FCount = 0) or (Image = nil) then Exit;
+  if (Index < 0) or (Index >= FCount) or (Image = nil) then Exit;
 
   GetRawImage(Index, RawImg);
 
@@ -1163,7 +1183,7 @@ begin
     Result.FImageList := FImageList;
     Result.FWidth := AImageWidth;
     if FImageList.Width<>0 then
-      Result.FHeight := FImageList.Height * AImageWidth div FImageList.Width
+      Result.FHeight := FImageList.GetHeightForWidth(AImageWidth)
     else
       Result.FHeight := 0;
     Result.FAutoCreatedInDesignTime := AutoCreatedInDesignTime and (AImageWidth<>FImageList.Width);
@@ -1759,33 +1779,8 @@ end;
 
 procedure TCustomImageList.GetBitmap(Index: Integer; Image: TCustomBitmap;
   AEffect: TGraphicsDrawEffect);
-var
-  RawImg: TRawImage;
-  ListImg, DeviceImg: TLazIntfImage;
-  ImgHandle, MskHandle: HBitmap;
 begin
-  if (Count = 0) or (Image = nil) then Exit;
-
-  GetRawImage(Index, RawImg);
-  
-  RawImg.PerformEffect(AEffect, True);
-
-  MskHandle := 0;
-  if not CreateCompatibleBitmaps(RawImg, ImgHandle, MskHandle, True)
-  then begin
-    // bummer, the widgetset doesn't support our 32bit format, try device
-    ListImg := TLazIntfImage.Create(RawImg, False);
-    DeviceImg := TLazIntfImage.Create(0,0,[]);
-    DeviceImg.DataDescription := GetDescriptionFromDevice(0, FWidth, FHeight);
-    DeviceImg.CopyPixels(ListImg);
-    DeviceImg.GetRawImage(RawImg);
-    RawImage_CreateBitmaps(RawImg, ImgHandle, MskHandle);
-    DeviceImg.Free;
-    ListImg.Free;
-  end;
-  Image.SetHandles(ImgHandle, MskHandle);
-
-  RawImg.FreeData;
+  GetResolution(FWidth).GetBitmap(Index, Image, AEffect);
 end;
 
 function TCustomImageList.GetCount: Integer;
@@ -1809,12 +1804,15 @@ begin
   if FData.Find(AImageWidth, I) then
     Result := FData[I].Height
   else
-  begin
-    if FWidth<>0 then
-      Result := AImageWidth * FHeight div FWidth
-    else
-      Result := 0;
-  end;
+    Result := GetHeightForWidth(AImageWidth)
+end;
+
+function TCustomImageList.GetHeightForWidth(AWidth: Integer): Integer;
+begin
+  if FWidth<>0 then
+    Result := AWidth * FHeight div FWidth
+  else
+    Result := 0;
 end;
 
 procedure TCustomImageList.GetIcon(Index: Integer; Image: TIcon; AEffect: TGraphicsDrawEffect);
@@ -2713,6 +2711,7 @@ begin
 
   FImageIndexes := TAvgLvlTree.Create(@TLCLGlyphs_TEntry_Compare);
   Scaled := True;
+  FMissingResources := gmrIgnoreAll;
 end;
 
 destructor TLCLGlyphs.Destroy;
@@ -2725,29 +2724,41 @@ end;
 
 function TLCLGlyphs.GetImageIndex(const AResourceName: string): Integer;
 
-  function AddBtnImage(ResolutionWidth: Integer): Integer;
+  function AddNewBtnImage(Resolution: TResolution): Integer;
   var
     G: TCustomBitmap;
+    ImageRect: TRect;
   begin
-    G := GetDefaultGlyph(AResourceName, MulDiv(ResolutionWidth, 100, 16));
+    G := GetDefaultGlyph(AResourceName, Resolution.ScaleSuffix, True);
+    if G=nil then
+      Exit(-1);
     try
-      if ResolutionWidth=Width then
-        Result := AddSliceCentered(G)
-      else
-      begin
-        Result := Count-1;
-        ReplaceSliceCentered(Result, ResolutionWidth, G, False);
-      end;
+      ImageRect := Rect(0, 0, Resolution.Width, GetHeightForWidth(Resolution.Width));
+      OffsetRect(ImageRect, (G.Width-ImageRect.Right) div 2, (G.Height-ImageRect.Bottom) div 2);
+      Result := AddSlice(G, ImageRect);
     finally
       G.Free;
     end;
+  end;
+
+  procedure AddBtnImageRes(ImageIndex: Integer; Resolution: TResolution);
+  var
+    G: TCustomBitmap;
+  begin
+    G := GetDefaultGlyph(AResourceName, Resolution.ScaleSuffix, FMissingResources in [gmrIgnoreAll, gmrOneMustExist]);
+    if G<>nil then
+      try
+        ReplaceSliceCentered(ImageIndex, Resolution.Width, G, False);
+      finally
+        G.Free;
+      end;
   end;
 
 var
   K: TEntryKey;
   ANode: TAVLTreeNode;
   E: TEntry;
-  I: Integer;
+  I, FirstLoadedResolutionI: Integer;
 begin
   K.GlyphName := AResourceName;
 
@@ -2756,26 +2767,68 @@ begin
     Result := TEntry(ANode.Data).ImageIndex
   else
   begin
+    Result := -1;
+    FirstLoadedResolutionI := Low(FLoadResolutions)-1;
+    for I := High(FLoadResolutions) downto Low(FLoadResolutions) do // start with the biggest one
+    begin
+      Result := AddNewBtnImage(FLoadResolutions[I]);
+      if Result>=0 then
+      begin
+        FirstLoadedResolutionI := I;
+        break;
+      end;
+    end;
+    if (Result>=0) and (FirstLoadedResolutionI>=Low(FLoadResolutions)) then
+    begin
+      for I := FirstLoadedResolutionI-1 downto Low(FLoadResolutions) do // load the smaller ones
+        AddBtnImageRes(Result, FLoadResolutions[I]);
+    end else
+    if FMissingResources in [gmrAllMustExist, gmrOneMustExist] then
+      raise EResNotFound.CreateFmt(SResNotFound,[AResourceName]);
+
     E := TEntry.Create;
-    E.GlyphName := AResourceName;
-    E.ImageIndex := AddBtnImage(FLoadResolutions[Low(FLoadResolutions)]);
-    for I := Low(FLoadResolutions)+1 to High(FLoadResolutions) do
-      AddBtnImage(FLoadResolutions[I]);
     FImageIndexes.Add(E);
-    Result := E.ImageIndex;
+    E.GlyphName := AResourceName;
+    E.ImageIndex := Result;
   end;
+end;
+
+procedure TLCLGlyphs.RegisterResolutions(const AResolutionWidths,
+  AResolutionScaleSuffixes: array of Integer);
+var
+  I: Integer;
+begin
+  RegisterResolutions(AResolutionWidths);
+
+  for I := Low(FLoadResolutions) to High(FLoadResolutions) do
+    FLoadResolutions[I].ScaleSuffix := AResolutionScaleSuffixes[I];
 end;
 
 procedure TLCLGlyphs.RegisterResolutions(
   const AResolutionWidths: array of Integer);
 var
-  I: Integer;
+  I, LastWidth: Integer;
 begin
   inherited RegisterResolutions(AResolutionWidths);
 
   SetLength(FLoadResolutions, Length(AResolutionWidths));
+  LastWidth := 0;
   for I := Low(FLoadResolutions) to High(FLoadResolutions) do
-    FLoadResolutions[I] := AResolutionWidths[I];
+  begin
+    if AResolutionWidths[I]<=LastWidth then
+      raise Exception.Create('AResolutionWidths not sorted.');
+    LastWidth := AResolutionWidths[I];
+    FLoadResolutions[I].Width := AResolutionWidths[I];
+    FLoadResolutions[I].ScaleSuffix := MulDiv(FLoadResolutions[I].Width, 100, Width);
+  end;
+end;
+
+procedure TLCLGlyphs.SetWidth100Suffix(const AWidth100Suffix: Integer);
+var
+  I: Integer;
+begin
+  for I := 0 to High(FLoadResolutions) do
+    FLoadResolutions[I].ScaleSuffix := MulDiv(FLoadResolutions[I].Width, 100, AWidth100Suffix);
 end;
 
 procedure InterfaceFinal;

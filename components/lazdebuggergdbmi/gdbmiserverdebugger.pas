@@ -56,18 +56,22 @@ type
   private
     FDebugger_Remote_Hostname: string;
     FDebugger_Remote_Port: string;
+    FDebugger_Remote_DownloadExe: boolean;
   public
     constructor Create; override;
     procedure Assign(Source: TPersistent); override;
   published
     property Debugger_Remote_Hostname: String read FDebugger_Remote_Hostname write FDebugger_Remote_Hostname;
     property Debugger_Remote_Port: String read FDebugger_Remote_Port write FDebugger_Remote_Port;
+    property Debugger_Remote_DownloadExe: boolean read FDebugger_Remote_DownloadExe write FDebugger_Remote_DownloadExe;
   published
     property Debugger_Startup_Options;
     {$IFDEF UNIX}
     property ConsoleTty;
     {$ENDIF}
     property MaxDisplayLengthForString;
+    property MaxDisplayLengthForStaticArray;
+    property MaxLocalsLengthForStaticArray;
     property TimeoutForEval;
     property WarnOnTimeOut;
     property WarnOnInternalError;
@@ -79,6 +83,10 @@ type
     //property WarnOnSetBreakpointError;
     property CaseSensitivity;
     property GdbValueMemLimit;
+    property GdbLocalsValueMemLimit;
+    property AssemblerStyle;
+    property DisableStartupShell;
+    property FixStackFrameForFpcAssert;
   end;
 
 procedure Register;
@@ -102,6 +110,8 @@ type
   TGDBMIServerDebuggerCommandStartDebugging = class(TGDBMIDebuggerCommandStartDebugging)
   protected
     function GdbRunCommand: String; override;
+    procedure DetectTargetPid(InAttach: Boolean = False); override;
+    function  DoTargetDownload: boolean; override;
   end;
 
 { TGDBMIServerDebuggerCommandStartDebugging }
@@ -109,6 +119,23 @@ type
 function TGDBMIServerDebuggerCommandStartDebugging.GdbRunCommand: String;
 begin
   Result := '-exec-continue';
+end;
+
+procedure TGDBMIServerDebuggerCommandStartDebugging.DetectTargetPid(InAttach: Boolean);
+begin
+  // do nothing // prevent dsError in inherited
+end;
+
+function TGDBMIServerDebuggerCommandStartDebugging.DoTargetDownload: boolean;
+begin
+  Result := True;
+  if TGDBMIServerDebuggerProperties(DebuggerProperties).FDebugger_Remote_DownloadExe then
+  begin
+    // Called after -file-exec-and-symbols, so gdb knows what file to download
+    // If call sequence is different, then supply binary file name below as parameter
+    Result := ExecuteCommand('-target-download', [], [cfCheckError]);
+    Result := Result and (DebuggerState <> dsError);
+  end;
 end;
 
 { TGDBMIServerDebuggerCommandInitDebugger }
@@ -142,6 +169,7 @@ begin
   inherited Create;
   FDebugger_Remote_Hostname:= '';
   FDebugger_Remote_Port:= '2345';
+  FDebugger_Remote_DownloadExe := False;
   UseAsyncCommandMode := True;
 end;
 
@@ -151,6 +179,7 @@ begin
   if Source is TGDBMIServerDebuggerProperties then begin
     FDebugger_Remote_Hostname := TGDBMIServerDebuggerProperties(Source).FDebugger_Remote_Hostname;
     FDebugger_Remote_Port := TGDBMIServerDebuggerProperties(Source).FDebugger_Remote_Port;
+    FDebugger_Remote_DownloadExe := TGDBMIServerDebuggerProperties(Source).FDebugger_Remote_DownloadExe;
     UseAsyncCommandMode := True;
   end;
 end;

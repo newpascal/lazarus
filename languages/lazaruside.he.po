@@ -641,7 +641,9 @@ msgid "Alphabetically"
 msgstr "לפי סדר א' ב'"
 
 #: lazarusidestrconsts.dlgalwaysvisiblecursor
-msgid "Always visible cursor"
+#, fuzzy
+#| msgid "Always visible cursor"
+msgid "Always keep Caret in visible area of editor"
 msgstr "הסמן תמיד גלוי"
 
 #: lazarusidestrconsts.dlgambigfileact
@@ -829,6 +831,10 @@ msgstr "זוגות סוגריים תואמים"
 msgid "You cannot use docked desktop in undocked environment and vice versa."
 msgstr ""
 
+#: lazarusidestrconsts.dlgcaretgroupoptions
+msgid "Caret (Text Cursor)"
+msgstr ""
+
 #: lazarusidestrconsts.dlgcasesensitive
 #, fuzzy
 #| msgid "&Case Sensitive"
@@ -869,9 +875,9 @@ msgstr "בדיקה: בודק תאריך מהדר ..."
 msgid "Test: Compiling an empty file ..."
 msgstr "בדיקה: מהדר קובץ ריק ..."
 
-#: lazarusidestrconsts.dlgccotestmissingppu
-msgid "Test: Checking missing fpc ppu ..."
-msgstr "בדיקה: ppu חסר של fpc ..."
+#: lazarusidestrconsts.dlgccotestrtlunits
+msgid "Test: Checking RTL units ..."
+msgstr ""
 
 #: lazarusidestrconsts.dlgccotestsrcinppupaths
 msgid "Test: Checking sources in fpc ppu search paths ..."
@@ -1326,18 +1332,16 @@ msgstr ""
 msgid "Cursor beyond EOL"
 msgstr "סמן לאחר סיום השורה"
 
-#: lazarusidestrconsts.dlgcursorgroupoptions
-#, fuzzy
-#| msgid "Cursor:"
-msgid "Cursor"
-msgstr "סמן:"
-
 #: lazarusidestrconsts.dlgcursorskipsselection
-msgid "Cursor skips selection"
+#, fuzzy
+#| msgid "Cursor skips selection"
+msgid "Caret skips selection"
 msgstr "הסמן מדלג על בחירה"
 
 #: lazarusidestrconsts.dlgcursorskipstab
-msgid "Cursor skips tabs"
+#, fuzzy
+#| msgid "Cursor skips tabs"
+msgid "Caret skips tabs"
 msgstr "סמן מדלג על טאבים"
 
 #: lazarusidestrconsts.dlgcustomext
@@ -2243,11 +2247,15 @@ msgid "Highlight Font Color"
 msgstr "צכע הגופן המודגש"
 
 #: lazarusidestrconsts.dlghighlightleftofcursor
-msgid "Left Of Cursor"
+#, fuzzy
+#| msgid "Left Of Cursor"
+msgid "Left Of Caret"
 msgstr "שמאל הסמן"
 
 #: lazarusidestrconsts.dlghighlightrightofcursor
-msgid "Right Of Cursor"
+#, fuzzy
+#| msgid "Right Of Cursor"
+msgid "Right Of Caret"
 msgstr "ימין הסמן"
 
 #: lazarusidestrconsts.dlghintsparametersendernotused
@@ -2323,6 +2331,22 @@ msgstr ""
 msgid "Include system variables"
 msgstr "כלול משתני מערכת"
 
+#: lazarusidestrconsts.dlgincludewordstoidentcompl
+msgid "Include words"
+msgstr ""
+
+#: lazarusidestrconsts.dlgincludewordstoidentcompl_dontinclude
+msgid "don't include"
+msgstr ""
+
+#: lazarusidestrconsts.dlgincludewordstoidentcompl_includefromallunits
+msgid "from all units"
+msgstr ""
+
+#: lazarusidestrconsts.dlgincludewordstoidentcompl_includefromcurrentunit
+msgid "from current unit"
+msgstr ""
+
 #: lazarusidestrconsts.dlgindentsindentgroupoptions
 msgid "Indent"
 msgstr ""
@@ -2390,7 +2414,9 @@ msgid "Jump directly to method body"
 msgstr ""
 
 #: lazarusidestrconsts.dlgkeepcursorx
-msgid "Keep cursor X position"
+#, fuzzy
+#| msgid "Keep cursor X position"
+msgid "Keep caret X position when navigating up/down"
 msgstr "שמור על המיקום האופקי של הסמן"
 
 #: lazarusidestrconsts.dlgkeylink
@@ -3024,15 +3050,23 @@ msgid "Warning"
 msgstr "אזהרה"
 
 #: lazarusidestrconsts.dlgmulticaretcolumnmode
-msgid "Multi-caret (column-select) move with cursor"
+msgid "Navigation keys move all carets (column-select)"
+msgstr ""
+
+#: lazarusidestrconsts.dlgmulticaretdelskipcr
+msgid "Skip delete key at EOL (do not join lines)"
+msgstr ""
+
+#: lazarusidestrconsts.dlgmulticaretgroupoptions
+msgid "Multi-caret"
 msgstr ""
 
 #: lazarusidestrconsts.dlgmulticaretmode
-msgid "Multi-caret move with cursor"
+msgid "Navigation keys move all carets"
 msgstr ""
 
 #: lazarusidestrconsts.dlgmulticaretoncolumnselection
-msgid "Enable multi caret for column selection"
+msgid "Enable multi-caret for column selection"
 msgstr ""
 
 #: lazarusidestrconsts.dlgmultipleinstances
@@ -3242,7 +3276,9 @@ msgid "Persistent block"
 msgstr "בלוק מתמשך"
 
 #: lazarusidestrconsts.dlgpersistentcursor
-msgid "Persistent cursor"
+#, fuzzy
+#| msgid "Persistent cursor"
+msgid "Visible caret in unfocused editor"
 msgstr "סמן קבוע"
 
 #: lazarusidestrconsts.dlgpoapplication
@@ -3587,7 +3623,9 @@ msgid "Scroll past end of file"
 msgstr "גלול עד לסוף הקובץ"
 
 #: lazarusidestrconsts.dlgscrollpastendline
-msgid "Caret past end of line"
+#, fuzzy
+#| msgid "Caret past end of line"
+msgid "Allow caret to move past end of line"
 msgstr "סמן אחרי סוף השורה"
 
 #: lazarusidestrconsts.dlgseachdirectorynotfound
@@ -3664,7 +3702,7 @@ msgid "Show all units"
 msgstr ""
 
 #: lazarusidestrconsts.dlgshowcaptionsofnonvisuals
-msgid "Show captions of non-visual components"
+msgid "Show captions of nonvisual components"
 msgstr ""
 
 #: lazarusidestrconsts.dlgshowcompiledprocedures
@@ -4593,7 +4631,7 @@ msgstr "רשמי:"
 #: lazarusidestrconsts.lisacannotholdtcontrolsyoucanonlyputnonvisualcomponen
 #, fuzzy,badformat
 #| msgid "A %s can not hold TControls.%sYou can only put non visual components on it."
-msgid "A %s cannot hold TControls.%sYou can only put non visual components on it."
+msgid "A %s cannot hold TControls.%sYou can only put nonvisual components on it."
 msgstr "ה s% אינו יכול להכיל TControls. אתה יכול לשים עליו רק רכיבים בלתי נראים."
 
 #: lazarusidestrconsts.lisacknowledgements
@@ -4687,6 +4725,18 @@ msgstr ""
 
 #: lazarusidestrconsts.lisaddkeyworddo
 msgid "Add keyword \"do\""
+msgstr ""
+
+#: lazarusidestrconsts.lisaddmodifieroverload
+msgid "Add modifier \"overload\""
+msgstr ""
+
+#: lazarusidestrconsts.lisaddmodifieroverride
+msgid "Add modifier \"override\""
+msgstr ""
+
+#: lazarusidestrconsts.lisaddmodifierreintroduce
+msgid "Add modifier \"reintroduce\""
 msgstr ""
 
 #: lazarusidestrconsts.lisaddnewbuildmodecopyingsettingsfrom
@@ -5579,9 +5629,9 @@ msgstr "ספריית בדיקות שגויה"
 msgid "Missing unit"
 msgstr "יחידה חסרה"
 
-#: lazarusidestrconsts.lisccomsgppunotfound
-msgid "compiled FPC unit not found: %s.ppu"
-msgstr "לא נמצאה היחידה המהודרת של FPC: %s.ppu"
+#: lazarusidestrconsts.lisccomsgrtlunitnotfound
+msgid "RTL unit not found: %s"
+msgstr ""
 
 #: lazarusidestrconsts.lisccomultiplecfgfound
 msgid "multiple compiler configs found: "
@@ -5599,15 +5649,14 @@ msgstr "לא ASCII"
 msgid "ppu exists twice: %s, %s"
 msgstr "קובץ ה ppu קיים פעמיים: %s, %s"
 
-#: lazarusidestrconsts.lisccoppunotfounddetailed
-#, fuzzy,badformat
-msgid "The compiled FPC unit %s.ppu was not found.%sThis typically means your fpc.cfg has a bug. Or your FPC installation is broken."
-msgstr "היחידה s%.ppu המהודרת של FPC לא נמצאה. בדרך כלל זה אומר שיש באג בקובץ fpc.cfg, או שההתקנה של FPC שבורה."
-
 #: lazarusidestrconsts.lisccoppuolderthancompiler
 #, fuzzy,badformat
 msgid "There is a .ppu file older than the compiler itself:%s%s"
 msgstr "יש קובץ ppu. ישן יותר מהמהדר עצמו:s%s%"
+
+#: lazarusidestrconsts.lisccortlunitnotfounddetailed
+msgid "The RTL unit %s was not found.%sThis typically means your %s has wrong unit paths. Or your installation is broken."
+msgstr ""
 
 #: lazarusidestrconsts.lisccoseveralcompilers
 #, fuzzy,badformat
@@ -6174,9 +6223,9 @@ msgstr "בחר את ספריית לזרוס"
 msgid "Choose \"make\" executable"
 msgstr ""
 
-#: lazarusidestrconsts.lischoosename
-msgid "Choose name"
-msgstr "בחר שם"
+#: lazarusidestrconsts.lischoosenameandtext
+msgid "Choose name and text"
+msgstr ""
 
 #: lazarusidestrconsts.lischooseoneoftheseitemstocreateanewfile
 msgid "Choose one of these items to create a new File"
@@ -7107,6 +7156,10 @@ msgstr ""
 msgid "Compiler"
 msgstr "מהדר"
 
+#: lazarusidestrconsts.liscompilercfgismissing
+msgid "%s is missing."
+msgstr ""
+
 #: lazarusidestrconsts.liscompilerdoesnotsupporttarget
 msgid "Compiler \"%s\" does not support target %s-%s"
 msgstr "מהדר  \"%s\"  לא תומך ביעד %s-%s"
@@ -7309,6 +7362,12 @@ msgstr "קוד הפונקציה הבונה"
 
 #: lazarusidestrconsts.liscontains
 msgid "contains"
+msgstr "מכיל"
+
+#: lazarusidestrconsts.liscontents
+#, fuzzy
+msgctxt "lazarusidestrconsts.liscontents"
+msgid "Contents"
 msgstr "מכיל"
 
 #: lazarusidestrconsts.liscontextsensitive
@@ -9062,6 +9121,14 @@ msgstr "בחר את הרכיבים שנבחרו מהלוח הזמני"
 msgid "Select parent component"
 msgstr "בחר רכיב הורה"
 
+#: lazarusidestrconsts.lisdsgshownonvisualcomponents
+msgid "Show nonvisual components"
+msgstr ""
+
+#: lazarusidestrconsts.lisdsgtoggleshowingnonvisualcomponents
+msgid "Toggle showing nonvisual components"
+msgstr ""
+
 #: lazarusidestrconsts.lisduplicate
 msgid "Duplicate"
 msgstr ""
@@ -9878,6 +9945,10 @@ msgstr ""
 msgid "These are file filters that will appear in all File Open dialogs"
 msgstr ""
 
+#: lazarusidestrconsts.lisfilefound
+msgid "File found"
+msgstr ""
+
 #: lazarusidestrconsts.lisfilehaschangedsave
 #, fuzzy,badformat
 #| msgid "File %s%s%s has changed. Save?"
@@ -10158,10 +10229,6 @@ msgstr ""
 
 #: lazarusidestrconsts.lisfoundversionexpected
 msgid "Found version %s, expected %s"
-msgstr ""
-
-#: lazarusidestrconsts.lisfpccfgismissing
-msgid "fpc.cfg is missing."
 msgstr ""
 
 #: lazarusidestrconsts.lisfpcfullversioneg20701
@@ -11118,6 +11185,10 @@ msgstr "ביטוי לא חוקי: s%s%s%"
 #, fuzzy,badformat
 msgid "Invalid expression.%sHint: The \"Make Resourcestring\" function expects a string constant in a single file. Please select the expression and try again."
 msgstr "ביטוי לא חוקי: הפונקציה \"Make Resourcestring\" מצפה למחרוזת קבועה בקובץ יחיד. בחר את הביטוי ונסה שוב."
+
+#: lazarusidestrconsts.lisinvalidfilename
+msgid "Invalid file name"
+msgstr ""
 
 #: lazarusidestrconsts.lisinvalidfilter
 msgid "Invalid filter"
@@ -14002,41 +14073,6 @@ msgctxt "lazarusidestrconsts.lismenutemplateabout"
 msgid "About"
 msgstr "אודות"
 
-#: lazarusidestrconsts.lismenutemplatecontents
-msgid "Contents"
-msgstr "מכיל"
-
-#: lazarusidestrconsts.lismenutemplatedescriptionstandardeditmenu
-msgid "Standard Edit Menu"
-msgstr "תפריט ערוך סטנדרטי"
-
-#: lazarusidestrconsts.lismenutemplatedescriptionstandardfilemenu
-msgid "Standard File Menu"
-msgstr "תפריט קובץ סטנדרטי"
-
-#: lazarusidestrconsts.lismenutemplatedescriptionstandardhelpmenu
-msgid "Standard Help Menu"
-msgstr "תפריט עזרה סטנדרטי"
-
-#: lazarusidestrconsts.lismenutemplatefind
-msgctxt "lazarusidestrconsts.lismenutemplatefind"
-msgid "Find"
-msgstr "מצא"
-
-#: lazarusidestrconsts.lismenutemplatefindnext
-msgctxt "lazarusidestrconsts.lismenutemplatefindnext"
-msgid "Find Next"
-msgstr "מצא את הבא"
-
-#: lazarusidestrconsts.lismenutemplateopenrecent
-msgctxt "lazarusidestrconsts.lismenutemplateopenrecent"
-msgid "Open Recent"
-msgstr "פתח אחרונים"
-
-#: lazarusidestrconsts.lismenutemplatetutorial
-msgid "Tutorial"
-msgstr "מדריך"
-
 #: lazarusidestrconsts.lismenutogglecomment
 #, fuzzy
 #| msgid "Toggle comment"
@@ -15566,6 +15602,10 @@ msgstr "ערוך אפשרויות כלליות"
 msgid "File Properties"
 msgstr "תכונות קובץ"
 
+#: lazarusidestrconsts.lispckeditfpmakepackage
+msgid "(fpmake)"
+msgstr ""
+
 #: lazarusidestrconsts.lispckeditinstall
 msgid "Install"
 msgstr "התקן"
@@ -17005,6 +17045,10 @@ msgstr "גירסה מקסימלית (לא חובה):"
 msgid "Minimum Version (optional):"
 msgstr "גגירסה מינימלית (לא חובה):"
 
+#: lazarusidestrconsts.lisprojaddnewfpmakerequirement
+msgid "New FPMake Requirement"
+msgstr ""
+
 #: lazarusidestrconsts.lisprojaddnewrequirement
 msgid "New Requirement"
 msgstr "דרישה חדשה"
@@ -17302,6 +17346,10 @@ msgstr "שאל על ערך"
 #| msgid "Properties (replace or delete)"
 msgid "Properties (replace or remove)"
 msgstr "תכונות (החלף או מחק)"
+
+#: lazarusidestrconsts.lisproperty
+msgid "%s property"
+msgstr ""
 
 #: lazarusidestrconsts.lisprotected
 msgid "Protected"
@@ -18264,6 +18312,10 @@ msgstr "הראה תיבת מידע"
 
 #: lazarusidestrconsts.lisshowmessagetypeid
 msgid "Show Message Type ID"
+msgstr ""
+
+#: lazarusidestrconsts.lisshowmultiplelines
+msgid "Show multiple lines"
 msgstr ""
 
 #: lazarusidestrconsts.lisshowonlymodified
@@ -19311,6 +19363,14 @@ msgstr "היחידות לא נמצאו:"
 
 #: lazarusidestrconsts.listhesourcesofthefreepascalpackagesarerequiredforbro
 msgid "The sources of the Free Pascal packages are required for browsing and code completion. For example it has the file \"%s\"."
+msgstr ""
+
+#: lazarusidestrconsts.listhetargetdirectoryisafile
+msgid "The target directory is a file:%s"
+msgstr ""
+
+#: lazarusidestrconsts.listhetargetfilenameisadirectory
+msgid "The target file name is a directory."
 msgstr ""
 
 #: lazarusidestrconsts.listhetargetisnotwritable
@@ -22120,6 +22180,14 @@ msgstr "בחר דף למעלה"
 msgid "Select Right"
 msgstr "בחר ימינה"
 
+#: lazarusidestrconsts.srkmecselsmartwordleft
+msgid "Smart select word left (start/end of word)"
+msgstr ""
+
+#: lazarusidestrconsts.srkmecselsmartwordright
+msgid "Smart select word right (start/end of word)"
+msgstr ""
+
 #: lazarusidestrconsts.srkmecselsticky
 msgid "Start sticky selecting"
 msgstr ""
@@ -22190,6 +22258,14 @@ msgstr "הראה את הקשר הקוד"
 #: lazarusidestrconsts.srkmecshowexecutionpoint
 msgid "show execution point"
 msgstr "הצג נקודת ריצה"
+
+#: lazarusidestrconsts.srkmecsmartwordleft
+msgid "Smart move cursor left (start/end of word)"
+msgstr ""
+
+#: lazarusidestrconsts.srkmecsmartwordright
+msgid "Smart move cursor right (start/end of word)"
+msgstr ""
 
 #: lazarusidestrconsts.srkmecstopprogram
 msgid "stop program"

@@ -43,7 +43,7 @@ uses
   // IdeIntf
   IDEImagesIntf, IDEHelpIntf, ObjInspStrConsts,
   PropEdits, PropEditUtils, ComponentTreeView, OIFavoriteProperties,
-  ComponentEditors, ChangeParentDlg;
+  ComponentEditors, ChangeParentDlg, ImgList;
 
 const
   OIOptionsFileVersion = 3;
@@ -236,7 +236,8 @@ type
     pgsBuildPropertyListNeeded,
     pgsGetComboItemsCalled,
     pgsIdleEnabled,
-    pgsCallingEdit   // calling property editor Edit
+    pgsCallingEdit,                 // calling property editor Edit
+    pgsFocusPropertyEditorDisabled  // by building PropertyList no editor should be focused
     );
   TOIPropertyGridStates = set of TOIPropertyGridState;
 
@@ -306,7 +307,7 @@ type
     FStates: TOIPropertyGridStates;
     FTopY: integer;
     FDrawHorzGridLines: Boolean;
-    FActiveRowBmp: TCustomBitmap;
+    FActiveRowImages: TLCLGlyphs;
     FFirstClickTime: DWORD;
     FKeySearchText: string;
     FHideClassNames: Boolean;
@@ -328,6 +329,8 @@ type
     {$ENDIF}
     ValueButton: TSpeedButton;
 
+    procedure ActiveRowImagesGetWidthForPPI(Sender: TCustomImageList;
+      {%H-}AImageWidth, {%H-}APPI: Integer; var AResultWidth: Integer);
     procedure HintMouseLeave(Sender: TObject);
     procedure HintTimer(Sender: TObject);
     procedure ResetLongHintTimer;
@@ -470,7 +473,7 @@ type
     function PropertyPath(Index: integer):string;
     function PropertyPath(Row: TOIPropertyGridRow):string;
     function TopMax: integer;
-    procedure BuildPropertyList(OnlyIfNeeded: boolean = False);
+    procedure BuildPropertyList(OnlyIfNeeded: Boolean = False; FocusEditor: Boolean = True);
     procedure Clear;
     procedure Paint; override;
     procedure PropEditLookupRootChange;
@@ -617,6 +620,7 @@ type
     ComponentPanel: TPanel;
     CompFilterLabel: TLabel;
     CompFilterEdit: TTreeFilterEdit;
+    PnlClient: TPanel;
     StatusBar: TStatusBar;
     procedure MainPopupMenuClose(Sender: TObject);
     procedure MainPopupMenuPopup(Sender: TObject);
@@ -667,6 +671,7 @@ type
     FInfoBoxHeight: integer;
     FLastActiveRowName: String;
     FPropertyEditorHook: TPropertyEditorHook;
+    FPropFilterUpdating: Boolean;
     FRefreshingSelectionCount: integer;
     FRestricted: TOIRestrictedProperties;
     FSelection: TPersistentSelectionList;
@@ -1126,11 +1131,23 @@ begin
   end;
 
   FHintManager := THintWindowManager.Create;
-  FActiveRowBmp := TIDEImages.CreateImage('pg_active_row', 9);
+  FActiveRowImages := TLCLGlyphs.Create(Self);
+  FActiveRowImages.Width := 9;
+  FActiveRowImages.Height := 9;
+  FActiveRowImages.RegisterResolutions([9, 13, 18], [100, 150, 200]);
+  FActiveRowImages.OnGetWidthForPPI := @ActiveRowImagesGetWidthForPPI;
 
   FDefaultItemHeight:=DefItemHeight;
 
   BuildPropertyList;
+end;
+
+procedure TOICustomPropertyGrid.ActiveRowImagesGetWidthForPPI(
+  Sender: TCustomImageList; AImageWidth, APPI: Integer;
+  var AResultWidth: Integer);
+begin
+  if (12<=AResultWidth) and (AResultWidth<=16) then
+    AResultWidth := 13;
 end;
 
 constructor TOICustomPropertyGrid.Create(TheOwner: TComponent);
@@ -1157,7 +1174,6 @@ begin
   FreeAndNil(FLongHintTimer);
   FreeAndNil(FHintManager);
   FreeAndNil(FNewComboBoxItems);
-  FreeAndNil(FActiveRowBmp);
   inherited Destroy;
 end;
 
@@ -1915,6 +1931,7 @@ begin
       FCurrentEdit.Visible:=true;
       if (FDragging=false) and FCurrentEdit.Showing and FCurrentEdit.Enabled
       and (not NewRow.IsReadOnly) and CanFocus and (Column=oipgcValue)
+      and not (pgsFocusPropertyEditorDisabled in FStates)
       then
         SetActiveControl(FCurrentEdit);
     end;
@@ -1941,7 +1958,8 @@ begin
   Result:=FRows.Count;
 end;
 
-procedure TOICustomPropertyGrid.BuildPropertyList(OnlyIfNeeded: boolean);
+procedure TOICustomPropertyGrid.BuildPropertyList(OnlyIfNeeded: Boolean;
+  FocusEditor: Boolean);
 var
   a: integer;
   CurRow: TOIPropertyGridRow;
@@ -1949,7 +1967,7 @@ var
 begin
   if OnlyIfNeeded and (not (pgsBuildPropertyListNeeded in FStates)) then exit;
   Exclude(FStates,pgsBuildPropertyListNeeded);
-
+  if not FocusEditor then Include(FStates, pgsFocusPropertyEditorDisabled);
   OldSelectedRowPath:=PropertyPath(ItemIndex);
   // unselect
   ItemIndex:=-1;
@@ -1988,6 +2006,7 @@ begin
   CurRow:=GetRowByPath(OldSelectedRowPath);
   if CurRow<>nil then
     ItemIndex:=CurRow.Index;
+  Exclude(FStates, pgsFocusPropertyEditorDisabled);
   // paint
   Invalidate;
 end;
@@ -2205,7 +2224,7 @@ begin
   // check if circling
   if (Row.Editor is TPersistentPropertyEditor) then begin
     if (Row.Editor is TInterfacePropertyEditor) then
-      AnObject:=TPersistent(Row.Editor.GetIntfValue)
+      AnObject:={%H-}TPersistent(Row.Editor.GetIntfValue)
     else
       AnObject:=TPersistent(Row.Editor.GetObjectValue);
     if FSelection.IndexOf(AnObject)>=0 then exit;
@@ -2924,6 +2943,7 @@ var
     Details: TThemedElementDetails;
     sz: TSize;
     IconY: integer;
+    Res: TScaledImageListResolution;
   begin
     if CurRow.Expanded then
       Details := ThemeServices.GetElementDetails(ttGlyphOpened)
@@ -2938,8 +2958,10 @@ var
     end else
     if (ARow = FItemIndex) then
     begin
-      IconY:=((NameRect.Bottom - NameRect.Top - FActiveRowBmp.Height) div 2) + NameRect.Top;
-      Canvas.Draw(IconX, IconY, FActiveRowBmp);
+      Res := FActiveRowImages.ResolutionForControl[0, Self];
+
+      IconY:=((NameRect.Bottom - NameRect.Top - Res.Height) div 2) + NameRect.Top;
+      Res.Draw(Canvas, IconX, IconY, FActiveRowImages.GetImageIndex('pg_active_row'));
     end;
   end;
 
@@ -4234,6 +4256,7 @@ begin
   FShowRestricted := False;
   FShowStatusBar := True;
   FInfoBoxHeight := 80;
+  FPropFilterUpdating := False;
   FShowInfoBox := True;
   FComponentEditor := nil;
   FFilter := DefaultOITypeKinds;
@@ -4356,7 +4379,7 @@ begin
     Constraints.MinHeight := 8;
     Caption := '';
     Height := InfoBoxHeight;
-    Parent := Self;
+    Parent := PnlClient;
     BevelOuter := bvNone;
     BevelInner := bvNone;
     Align := alBottom;
@@ -4375,7 +4398,7 @@ begin
   begin
     Name := 'PropertyPanel';
     Caption := '';
-    Parent := self;
+    Parent := PnlClient;
     BevelOuter := bvNone;
     BevelInner := bvNone;
     Align := alClient;
@@ -4430,9 +4453,10 @@ end;
 
 procedure TObjectInspectorDlg.PropFilterEditAfterFilter(Sender: TObject);
 begin
+  FPropFilterUpdating := True;
   GetActivePropertyGrid.PropNameFilter := PropFilterEdit.Filter;
   RebuildPropertyLists;
-  PropFilterEdit.SetFocus;
+  FPropFilterUpdating := False;
 end;
 
 procedure TObjectInspectorDlg.PropFilterEditResize(Sender: TObject);
@@ -4853,7 +4877,7 @@ begin
     Exclude(FFLags,oifRebuildPropListsNeeded);
     for Page:=Low(TObjectInspectorPage) to High(TObjectInspectorPage) do
       if GridControl[Page]<>nil then
-        GridControl[Page].BuildPropertyList;
+        GridControl[Page].BuildPropertyList(False, not FPropFilterUpdating);
   end;
 end;
 
@@ -5342,7 +5366,7 @@ begin
   with Splitter1 do
   begin
     Name := 'Splitter1';
-    Parent := Self;
+    Parent := PnlClient;
     Align := alTop;
     Top := ComponentPanelHeight;
     Height := 5;
@@ -5387,7 +5411,7 @@ begin
   with Splitter2 do
   begin
     Name := 'Splitter2';
-    Parent := Self;
+    Parent := PnlClient;
     Align := alBottom;
     Top := InfoPanel.Top - 1;
     Height := 5;

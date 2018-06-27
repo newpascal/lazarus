@@ -36,13 +36,21 @@ unit SourceEditProcs;
 interface
 
 uses
-  Classes, SysUtils, RegExpr, LCLProc, LCLType, Graphics, Controls,
-  SynCompletion, BasicCodeTools, CodeTree,
-  CodeAtom, CodeCache, SourceChanger, CustomCodeTool, CodeToolManager,
-  PascalParserTool, KeywordFuncLists, FileProcs, IdentCompletionTool,
-  PascalReaderTool,
+  Classes, SysUtils, RegExpr,
+  // LCL
+  LCLType, Graphics, Controls,
+  // LazUtils
+  LazFileUtils, LazUtilities,
+  // SynEdit
+  SynCompletion,
+  // CodeTools
+  BasicCodeTools, CodeTree, CodeAtom, CodeCache, SourceChanger, CustomCodeTool,
+  CodeToolManager, PascalParserTool, KeywordFuncLists, FileProcs,
+  IdentCompletionTool, PascalReaderTool,
+  // IdeIntf
   LazIDEIntf, IDEImagesIntf, TextTools, IDETextConverter,
-  DialogProcs, LazFileUtils, EditorOptions, CodeToolsOptions;
+  // IDE
+  DialogProcs, EditorOptions, CodeToolsOptions;
 
 type
 
@@ -102,7 +110,7 @@ type
     BackgroundSelectedColor: TColor;
     TextColor: TColor;
     TextSelectedColor: TColor;
-    TextHighLightColor: TColor;
+    TextHilightColor: TColor;
   end;
   PPaintCompletionItemColors = ^TPaintCompletionItemColors;
 
@@ -117,6 +125,10 @@ function GetIdentCompletionValue(aCompletion : TSynCompletion;
   AddChar: TUTF8Char;
   out ValueType: TIdentComplValue; out CursorToLeft: integer): string;
 function BreakLinesInText(const s: string; MaxLineLength: integer): string;
+
+const
+  ctnWord = ctnUser + 1;
+  WordCompatibility = icompUnknown;
 
 implementation
 
@@ -154,8 +166,9 @@ var
   BGGreen: Integer;
   BGBlue: Integer;
   TokenStart: Integer;
-  BackgroundColor: TColorRef;
-  ForegroundColor: TColorRef;
+  BackgroundColor: TColor;
+  ForegroundColor: TColor;
+  TextHilightColor: TColor;
   AllowFontColor: Boolean;
 
   procedure SetFontColor(NewColor: TColor; Force: boolean = false);
@@ -233,12 +246,14 @@ var
     nTokenLen: integer;
     Attr: TSynHighlightElement;
     CurForeground: TColor;
+    LeftText: string;
   begin
     if MeasureOnly then begin
       Inc(Result.X,ACanvas.TextWidth(s));
       exit;
     end;
     if (Highlighter<>nil) and AllowFontColor then begin
+      LeftText := '';
       Highlighter.ResetRange;
       Highlighter.SetLine(s,0);
       while not Highlighter.GetEol do begin
@@ -251,8 +266,8 @@ var
           if CurForeground=clNone then
             CurForeground:=TColor(ForegroundColor);
           SetFontColor(CurForeground);
-          ACanvas.TextOut(x,y,s);
-          inc(x,ACanvas.TextWidth(s));
+          ACanvas.TextOut(x+1+ACanvas.TextWidth(LeftText),y,s);
+          LeftText += s;
         end;
         Highlighter.Next;
       end;
@@ -273,7 +288,7 @@ var
   IsReadOnly: boolean;
   UseImages: boolean;
   ImageIndex, ImageIndexCC: longint;
-  Prefix: String;
+  Token: String;
   PrefixPosition: Integer;
   HintModifiers: TPascalHintModifiers;
   HintModifier: TPascalHintModifier;
@@ -283,22 +298,25 @@ begin
   begin
     if ItemSelected then
     begin
-      ForegroundColor := Colors^.TextSelectedColor;
-      AllowFontColor := ForegroundColor=clNone;
-      if ForegroundColor=clNone then
-        ForegroundColor := Colors^.TextColor;
+      AllowFontColor := Colors^.TextSelectedColor=clNone;
+      if AllowFontColor then
+        ForegroundColor := ColorToRGB(Colors^.TextColor)
+      else
+        ForegroundColor := ColorToRGB(Colors^.TextSelectedColor);
       BackgroundColor:=ColorToRGB(Colors^.BackgroundSelectedColor);
     end else
     begin
-      ForegroundColor := Colors^.TextColor;
+      ForegroundColor := ColorToRGB(Colors^.TextColor);
       AllowFontColor := True;
       BackgroundColor:=ColorToRGB(Colors^.BackgroundColor);
     end;
+    TextHilightColor:=ColorToRGB(Colors^.TextHilightColor);
   end else
   begin
     ForegroundColor := clBlack;
     AllowFontColor := True;
     BackgroundColor:=ColorToRGB(ACanvas.Brush.Color);
+    TextHilightColor := clWhite;
   end;
 
   BGRed:=(BackgroundColor shr 16) and $ff;
@@ -473,6 +491,12 @@ begin
           end;
       end;
 
+    ctnWord:
+      begin
+        AColor:=clGray;
+        s:='text';
+      end;
+
     ctnNone:
       if not UseImages then
       begin
@@ -522,18 +546,28 @@ begin
       Inc(Result.X, 1+ACanvas.TextWidth(s))
     else begin
       //DebugLn(['PaintCompletionItem ',x,',',y,' ',s]);
-      ACanvas.TextOut(x+1,y,s);
       // highlighting the prefix
-      if (Colors<>nil) and (Colors^.TextHighLightColor<>clNone)
+      if (Colors<>nil) and (TextHilightColor<>clNone)
       and (aCompletion.CurrentString<>'') then
       begin
         PrefixPosition := Pos(LowerCase(aCompletion.CurrentString), LowerCase(s));
-        Prefix := Copy(s, PrefixPosition, Length(aCompletion.CurrentString));
         if PrefixPosition > 0 then
-          PrefixPosition := ACanvas.TextWidth(Copy(s, 1, PrefixPosition-1));
-        SetFontColor(ColorToRGB(Colors^.TextHighLightColor));
-        ACanvas.TextOut(x+PrefixPosition+1,y,Prefix);
-      end;
+        begin
+          // paint before prefix
+          Token := Copy(s, 1, PrefixPosition-1);
+          ACanvas.TextOut(x+1,y,Token);
+          // paint highlight prefix
+          SetFontColor(TextHilightColor);
+          Token := Copy(s, PrefixPosition, Length(aCompletion.CurrentString));
+          ACanvas.TextOut(x+1+ACanvas.TextWidth(Copy(s, 1, PrefixPosition-1)),y,Token);
+          // paint after prefix
+          SetFontColor(ForegroundColor);
+          Token := Copy(s, PrefixPosition+Length(aCompletion.CurrentString), High(Integer));
+          ACanvas.TextOut(x+1+ACanvas.TextWidth(Copy(s, 1, PrefixPosition-1+Length(aCompletion.CurrentString))),y,Token);
+        end else
+          ACanvas.TextOut(x+1,y,s);
+      end else
+        ACanvas.TextOut(x+1,y,s);
       inc(x,ACanvas.TextWidth(s)+1);
       if x>MaxX then exit;
     end;

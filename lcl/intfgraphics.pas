@@ -29,9 +29,9 @@ uses
   Classes, SysUtils, Math, fpImage, FPReadBMP, FPWriteBMP, BMPComn,
   FPReadPNG, FPWritePNG, FPReadTiff, FPWriteTiff, FPTiffCmn, Laz_AVL_Tree,
   // LazUtils
-  FPCAdds,
+  FPCAdds, LazLoggerBase, LazTracer,
   // LCL
-  LCLType, LCLversion, LCLProc, GraphType, IcnsTypes;
+  LCLType, LCLversion, GraphType, IcnsTypes;
 
 type
   { TLazIntfImage }

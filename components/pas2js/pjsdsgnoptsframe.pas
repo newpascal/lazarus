@@ -10,9 +10,15 @@ unit PJSDsgnOptsFrame;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, StdCtrls, Dialogs, Spin, IDEOptionsIntf,
-  IDEUtils, LazFileCache, PJSDsgnOptions,
-  LazFileUtils;
+  Classes, SysUtils,
+  // LCL
+  Forms, StdCtrls, Dialogs, Spin,
+  // LazUtils
+  LazFileCache, LazFileUtils,
+  // IdeIntf
+  IDEOptionsIntf, IDEOptEditorIntf, IDEUtils,
+  // Pas2Js
+  PJSDsgnOptions;
 
 Type
   { TPas2jsOptionsFrame }
@@ -37,7 +43,7 @@ Type
     procedure NodeJSBrowseButtonClick(Sender: TObject);
     procedure Pas2jsPathBrowseButtonClick(Sender: TObject);
   private
-    function CheckCompiler(Buttons: TMsgDlgButtons): boolean;
+    function CheckCompiler({%H-}Buttons: TMsgDlgButtons): boolean;
   public
     function GetTitle: String; override;
     procedure Setup({%H-}ADialog: TAbstractOptionsEditorDialog); override;

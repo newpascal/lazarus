@@ -9,7 +9,7 @@ uses
   ColorBox, LCLProc, LCLType, LCLIntf, Dialogs, Menus, Forms, Spin, SynEdit,
   SynGutterCodeFolding, SynEditTypes,
   SynEditMouseCmds, SynEditHighlighter, SynTextDrawer,
-  EditorOptions, IDEOptionsIntf,
+  EditorOptions,
   editor_general_options, IDEImagesIntf, LazarusIDEStrConsts, IDEProcs, typinfo,
   LazConf, SourceMarks, types, math, FPCanvas;
 
@@ -401,6 +401,8 @@ begin
   CheckControl(FrameColorUseDefaultCheckBox);
 
   ColumnPosBevel.AnchorSide[akLeft].Control := MinAnchor;
+  Constraints.MinHeight := pnlItalic.Top + pnlItalic.Height;
+  Constraints.MinWidth := BackPriorSpin.Left + BackPriorSpin.Width;
 end;
 
 procedure TSynColorAttrEditor.TextStyleRadioOnChange(Sender: TObject);

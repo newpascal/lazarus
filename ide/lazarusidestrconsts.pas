@@ -123,6 +123,7 @@ resourcestring
   lisRunButtonHint = 'Run';
   lisPause = 'Pause';
   lisStop = 'Stop';
+  lisContents = 'Contents';
   lisSorting = 'Sorting';
   lisAppearance = 'Appearance';
   lisBuilding = 'Building';
@@ -1031,8 +1032,12 @@ resourcestring
   lisTheProjectUsesFPCResourcesWhichRequireAtLeast = 'The project uses '
     +'FPC resources, which require at least FPC 2.4';
   lisCreateDirectory = 'Create directory?';
+  lisFileFound = 'File found';
+  lisTheTargetDirectoryIsAFile = 'The target directory is a file:%s';
   lisTheOutputDirectoryIsMissing = 'The output directory "%s" is missing.';
   lisCreateIt = 'Create it';
+  lisInvalidFileName = 'Invalid file name';
+  lisTheTargetFileNameIsADirectory = 'The target file name is a directory.';
 
   // file dialogs
   lisOpenFile = 'Open File';
@@ -1460,7 +1465,7 @@ resourcestring
   dlgRuberbandCreationColor = 'Rubberband Creation';
   dlgRubberbandSelectsGrandChildren = 'Select grandchildren';
   dlgSelectAllChildControls = 'Select all child controls together with their parent.';
-  dlgShowCaptionsOfNonVisuals = 'Show captions of non-visual components';
+  dlgShowCaptionsOfNonVisuals = 'Show captions of nonvisual components';
   dlgDrawComponentsNameBelowIt = 'Draw the component''s name below it.';
   dlgShowDesignerHints = 'Show designer hints';
   dlgShowDesignerHintsHint = 'Hint shows control''s position or size while moving or resizing it.';
@@ -1618,23 +1623,24 @@ resourcestring
   dlgIndentsTabsGroupOptions = 'Tabs';
   dlgIndentsIndentGroupOptions = 'Indent';
   dlgCommentIndentGroupOptions = 'Comments';
-  dlgCursorGroupOptions = 'Cursor';
+  dlgCaretGroupOptions = 'Caret (Text Cursor)';
+  dlgMultiCaretGroupOptions = 'Multi-caret';
   dlgBlockGroupOptions = 'Selection';
-  dlgAlwaysVisibleCursor = 'Always visible cursor';
+  dlgAlwaysVisibleCursor = 'Always keep Caret in visible area of editor';
   dlgAutoIndent = 'Auto indent';
   dlgAutoIndentLink = '(Set up smart indent)';
   dlgAutoHideCursor  = 'Hide mouse when typing';
   dlgGroupUndo = 'Group Undo';
   dlgHalfPageScroll = 'Half page scroll';
-  dlgKeepCursorX = 'Keep cursor X position';
-  dlgPersistentCursor = 'Persistent cursor';
+  dlgKeepCursorX = 'Keep caret X position when navigating up/down';
+  dlgPersistentCursor = 'Visible caret in unfocused editor';
   dlgPersistentBlock = 'Persistent block';
   dlgOverwriteBlock = 'Overwrite block';
-  dlgCursorSkipsSelection = 'Cursor skips selection';
-  dlgCursorSkipsTab = 'Cursor skips tabs';
+  dlgCursorSkipsSelection = 'Caret skips selection';
+  dlgCursorSkipsTab = 'Caret skips tabs';
   dlgScrollByOneLess = 'Scroll by one less';
   dlgScrollPastEndFile = 'Scroll past end of file';
-  dlgScrollPastEndLine = 'Caret past end of line';
+  dlgScrollPastEndLine = 'Allow caret to move past end of line';
   dlgScrollHint = 'Show scroll hint';
   lisShowSpecialCharacters = 'Show special characters';
   dlgCloseButtonsNotebook = 'Show close buttons in notebook';
@@ -1844,15 +1850,16 @@ resourcestring
   dlgCopyWordAtCursorOnCopyNone = 'Copy word on copy none';
   dlgHomeKeyJumpsToNearestStart = 'Home key jumps to nearest start';
   dlgEndKeyJumpsToNearestStart = 'End key jumps to nearest end';
-  dlgMultiCaretOnColumnSelection = 'Enable multi caret for column selection';
-  dlgMultiCaretColumnMode = 'Multi-caret (column-select) move with cursor';
-  dlgMultiCaretMode = 'Multi-caret move with cursor';
+  dlgMultiCaretOnColumnSelection = 'Enable multi-caret for column selection';
+  dlgMultiCaretColumnMode = 'Navigation keys move all carets (column-select)';
+  dlgMultiCaretMode = 'Navigation keys move all carets';
+  dlgMultiCaretDelSkipCr = 'Skip delete key at EOL (do not join lines)';
   dlgColorLink = '(Edit Color)';
   dlgKeyLink = '(Edit Key)';
   dlgBracketHighlight = 'Bracket highlight';
   dlgNoBracketHighlight = 'No Highlight';
-  dlgHighlightLeftOfCursor = 'Left Of Cursor';
-  dlgHighlightRightOfCursor = 'Right Of Cursor';
+  dlgHighlightLeftOfCursor = 'Left Of Caret';
+  dlgHighlightRightOfCursor = 'Right Of Caret';
   gldHighlightBothSidesOfCursor = 'On Both Sides';
   dlgBlockIndentKeys = 'Block indent';
   dlgBlockIndentLink = '(edit keys)';
@@ -1973,6 +1980,10 @@ resourcestring
   lisAutomaticFeatures = 'Completion and Hints';
   lisAutoMarkup = 'Markup and Matches';
   dlgUseIconsInCompletionBox = 'Icons in code completion box';
+  dlgIncludeWordsToIdentCompl = 'Include words';
+  dlgIncludeWordsToIdentCompl_IncludeFromAllUnits = 'from all units';
+  dlgIncludeWordsToIdentCompl_IncludeFromCurrentUnit = 'from current unit';
+  dlgIncludeWordsToIdentCompl_DontInclude = 'don''t include';
 
   dlgMarkupUserDefined = 'User defined markup';
   dlgMarkupUserDefinedNoLists = 'No lists';
@@ -2457,11 +2468,11 @@ resourcestring
   lisCCOUnableToCreateTestPascalFile = 'Unable to create Test Pascal file "%s".';
   dlgCCOTestToolCompilingEmptyFile = 'Test: Compiling an empty file';
   dlgCCOTestCheckingCompilerConfig = 'Test: Checking compiler configuration ...';
-  lisCCOMsgPPUNotFound = 'compiled FPC unit not found: %s.ppu';
+  lisCCOMsgRTLUnitNotFound = 'RTL unit not found: %s';
   lisCCOMissingUnit = 'Missing unit';
-  lisCCOPPUNotFoundDetailed = 'The compiled FPC unit %s.ppu was not found.%s'
-    +'This typically means your fpc.cfg has a bug. Or your FPC installation is broken.';
-  dlgCCOTestMissingPPU = 'Test: Checking missing fpc ppu ...';
+  lisCCORTLUnitNotFoundDetailed = 'The RTL unit %s was not found.%s'
+    +'This typically means your %s has wrong unit paths. Or your installation is broken.';
+  dlgCCOTestRTLUnits = 'Test: Checking RTL units ...';
   dlgCCOTestCompilerDate = 'Test: Checking compiler date ...';
   lisCCOErrorCaption = 'Error';
   lisFatal = 'Fatal';
@@ -2952,6 +2963,8 @@ resourcestring
   srkmecWordEndRight          = 'Move cursor word-end right';
   srkmecHalfWordLeft          = 'Move cursor part-word left (e.g. CamelCase)';
   srkmecHalfWordRight         = 'Move cursor part-word right (e.g. CamelCase)';
+  srkmecSmartWordLeft         = 'Smart move cursor left (start/end of word)';
+  srkmecSmartWordRight        = 'Smart move cursor right (start/end of word)';
   srkmecLineStart             = 'Move cursor to line start';
   srkmecLineEnd               = 'Move cursor to line end';
   srkmecPageUp                = 'Move cursor up one page';
@@ -2974,10 +2987,12 @@ resourcestring
   srkmecSelDown               = 'Select Down';
   srkmecSelWordLeft           = 'Select Word Left';
   srkmecSelWordRight          = 'Select Word Right';
-  srkmecSelWordEndLeft           = 'Select word-end left';
-  srkmecSelWordEndRight          = 'Select word-end right';
-  srkmecSelHalfWordLeft          = 'Select part-word left (e.g. CamelCase)';
-  srkmecSelHalfWordRight         = 'Select part-word right (e.g. CamelCase)';
+  srkmecSelWordEndLeft        = 'Select word-end left';
+  srkmecSelWordEndRight       = 'Select word-end right';
+  srkmecSelHalfWordLeft       = 'Select part-word left (e.g. CamelCase)';
+  srkmecSelHalfWordRight      = 'Select part-word right (e.g. CamelCase)';
+  srkmecSelSmartWordLeft      = 'Smart select word left (start/end of word)';
+  srkmecSelSmartWordRight     = 'Smart select word right (start/end of word)';
   srkmecSelLineStart          = 'Select Line Start';
   srkmecSelLineEnd            = 'Select Line End';
   srkmecSelPageUp             = 'Select Page Up';
@@ -3700,7 +3715,7 @@ resourcestring
   lisCodeToolsDefsnoneSelected = 'none selected';
   lisCodeToolsDefsInvalidParent = 'Invalid parent';
   lisACanNotHoldTControlsYouCanOnlyPutNonVisualComponen = 'A %s cannot hold '
-    +'TControls.%sYou can only put non visual components on it.';
+    +'TControls.%sYou can only put nonvisual components on it.';
   lisUpdateReferences = 'Update references?';
   lisTheUnitIsUsedByOtherFilesUpdateReferencesAutomatic = 'The unit %s is '
     +'used by other files.%sUpdate references automatically?';
@@ -3989,6 +4004,7 @@ resourcestring
     +'already exists in the selection%swith file: "%s".';
   lisProjAddToProject = 'Add to Project';
   lisProjAddNewRequirement = 'New Requirement';
+  lisProjAddNewFPMakeRequirement = 'New FPMake Requirement';
   lisProjAddEditorFile = 'Add Editor Files';
   lisProjFiles = 'Files:';
   lisProjAddAddFilesToProject = 'Add Files to Project';
@@ -4632,6 +4648,7 @@ resourcestring
   lisPckEditRemovedRequiredPackages = 'Removed required packages';
   lisPckEditDefault = '%s, default: %s';
   lisPckEditAvailableOnline = '(available online)';
+  lisPckEditFPMakePackage = '(fpmake)';
   lisPckEditDependencyProperties = 'Dependency Properties';
   lisFilesHasRegisterProcedureInPackageUsesSection = 'Files: %s, has Register '
     +'procedure: %s, in package uses section: %s';
@@ -4957,19 +4974,9 @@ resourcestring
   lisMenuEditorYouMustEnterTextForTheCaption = 'You must enter text for the Caption';
 
   // Standard File menu
-  lisMenuTemplateDescriptionStandardFileMenu = 'Standard File Menu';
   lisKMNewUnit = 'New Unit';
-  lisMenuTemplateOpenRecent = 'Open Recent';
-
-  // Standard Edit menu
-  lisMenuTemplateDescriptionStandardEditMenu = 'Standard Edit Menu';
-  lisMenuTemplateFind = 'Find';
-  lisMenuTemplateFindNext = 'Find Next';
 
   // Standard Help menu
-  lisMenuTemplateDescriptionStandardHelpMenu = 'Standard Help Menu';
-  lisMenuTemplateContents = 'Contents';
-  lisMenuTemplateTutorial = 'Tutorial';
   lisMenuTemplateAbout = 'About';
   lisContributors = 'Contributors';
   lisAcknowledgements = 'Acknowledgements';
@@ -5280,6 +5287,7 @@ resourcestring
   lisFPCMessagesAppendix = 'FPC messages: Appendix';
   lisRelativePaths = 'Relative paths';
   lisInheritedParameters = 'Inherited parameters';
+  lisShowMultipleLines = 'Show multiple lines';
   lisShowRelativePaths = 'Show relative paths';
   lisCommandLineParameters = 'Command line parameters';
   liswlWatchList = 'Watches';
@@ -5853,11 +5861,12 @@ resourcestring
   lisTheOwnerHasThisName = 'The owner has this name';
   lisTheOwnerClassHasThisName = 'The owner class has this name';
   lisTheUnitHasThisName = 'The unit has this name';
-  lisChooseName = 'Choose name';
+  lisChooseNameAndText = 'Choose name and text';
   lisTheComponentNameMustBeUniqueInAllComponentsOnTheFo = 'The component name '
     +'must be unique in all components on the form/datamodule.The name is '
     +'compared case insensitive like a normal Pascal identifier.';
   lisChooseANameForTheComponent = 'Choose a name for the component';
+  lisProperty = '%s property';
   lisAskForFileNameOnNewFile = 'Ask for file name on new file';
   lisSuggestDefaultNameOfNewFileInLowercase = 'Suggest default name of new '
     +'file in lowercase';
@@ -6124,7 +6133,7 @@ resourcestring
     +'together with the FPC compiler.';
   lisUnusualCompilerFileNameUsuallyItStartsWithFpcPpcOr = 'Unusual compiler '
     +'file name. Usually it starts with fpc, ppc or ppcross.';
-  lisFpcCfgIsMissing = 'fpc.cfg is missing.';
+  lisCompilerCfgIsMissing = '%s is missing.';
   lisSystemPpuNotFoundCheckYourFpcCfg = 'system.ppu not found. Check your fpc.cfg.';
   lisWelcomeToLazarusIDE = 'Welcome to Lazarus IDE %s';
   lisStartIDE = 'Start IDE';
@@ -6390,6 +6399,9 @@ resourcestring
   lisPositionOutsideOfSource = '%s (position outside of source)';
   lisHideMessageByInsertingWarnOffToUnit = 'Hide message by inserting {$warn %'
     +'s off} to unit "%s"';
+  lisAddModifierOverload = 'Add modifier "overload"';
+  lisAddModifierReintroduce = 'Add modifier "reintroduce"';
+  lisAddModifierOverride = 'Add modifier "override"';
   lisHideWithProjectOptionVm = 'Hide with project option (-vm%s)';
   lisHideWithPackageOptionVm = 'Hide with package option (-vm%s)';
   lisRemoveLocalVariable3 = 'Remove local variable "%s"';
@@ -6425,6 +6437,9 @@ resourcestring
   lisUnableToRun2 = 'Unable to run "%s"';
 
   lisSelectFrame = 'Select Frame';
+  lisDsgToggleShowingNonVisualComponents = 'Toggle showing nonvisual '
+    +'components';
+  lisDsgShowNonVisualComponents = 'Show nonvisual components';
 implementation
 
 end.

@@ -41,13 +41,14 @@ interface
 uses
   Classes, SysUtils, Laz_AVL_Tree,
   // LCL
-  Forms, LCLProc,
+  Forms,
   // LazUtils
-  Laz2_XMLCfg, LazFileCache, AvgLvlTree, LazUTF8Classes, LazFileUtils, FileUtil,
+  Laz2_XMLCfg, LazFileCache, LazUTF8Classes, LazFileUtils, FileUtil,
+  LazTracer, LazUtilities, AvgLvlTree,
   // Codetools
   FileProcs, CodeToolManager,
   // IdeIntf
-  MacroIntf, PackageDependencyIntf, PackageLinkIntf, PackageIntf,
+  PackageDependencyIntf, PackageLinkIntf, PackageIntf, MacroIntf,
   // IDE
   IDEProcs, EnvironmentOpts, LazConf, IDECmdLine, PackageDefs;
   
