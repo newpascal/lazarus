@@ -16,8 +16,13 @@ unit IDEMsgIntf;
 interface
 
 uses
-  Classes, SysUtils, contnrs, Forms, Menus,
-  IDECommands, IDEExternToolIntf, MenuIntf, LazFileUtils, LazLoggerBase;
+  Classes, SysUtils, contnrs,
+  // LCL
+  Forms, Menus,
+  // LazUtils
+  IDEExternToolIntf, LazFileUtils, LazLoggerBase,
+  // IdeIntf
+  MenuIntf;
 
 type
   TMsgQuickFixes = class;
@@ -41,6 +46,8 @@ type
   protected
     fMsg: TFPList; // list of TMessageLine
     fItems: TObjectList; // list of TMsgQuickFix
+    FCurrentSender: TObject;
+    FCurrentCommand: TIDEMenuCommand;
   public
     constructor Create(aOwner: TComponent); override;
     destructor Destroy; override;
@@ -52,6 +59,8 @@ type
     property Lines[Index: integer]: TMessageLine read GetLines;
     function AddMenuItem(Fix: TMsgQuickFix; Msg: TMessageLine; aCaption: string;
       aTag: PtrInt = 0): TIDEMenuCommand; virtual; abstract;
+    property CurrentSender: TObject read FCurrentSender;
+    property CurrentCommand: TIDEMenuCommand read FCurrentCommand;
   end;
 
 var

@@ -40,9 +40,12 @@ DefaultGroupName={#AppName}
 AppendDefaultDirName=no
 DirExistsWarning=no
 OutputBaseFilename={#OutputFileName}
-InternalCompressLevel=ultra
 ;InternalCompressLevel=ultra64
-;Compression=lzma2/ultra64
+Compression=lzma2/ultra64
+LZMADictionarySize=131072
+;LZMADictionarySize=262144
+LZMAUseSeparateProcess=yes
+LZMANumFastBytes=270
 SolidCompression=yes
 VersionInfoVersion={#FileVersion}
 VersionInfoTextVersion={#AppVersion}-{#SetupDate}
@@ -59,6 +62,8 @@ UsePreviousTasks=no
 ; since appid can change, UsePreviousLanguage must be off
 UsePreviousLanguage=no
 UninstallDisplayIcon={app}\lazarus.exe
+DisableWelcomePage=no
+DisableDirPage=no
 
 [Tasks]
 Name: desktopicon; Description: {cm:CreateDesktopIcon}; GroupDescription: {cm:AdditionalIcons}; Flags: unchecked
@@ -112,6 +117,7 @@ Source: {#QtInfDir}\*.dll; DestDir: {sys}; Flags: sharedfile replacesameversion
 #else
 Source: {#QtInfDir}\*.dll; DestDir: {sys}; Flags: sharedfile replacesameversion; Components: installqtintfdll; Tasks: 
 #endif
+Source: {#QtInfDir}\*.dll; DestDir: {app} 
 #if FPCVersion=="2.2.0"
 Source: {#BuildDir}\fpc\{#FPCVersion}\bin\{#FPCFullTarget}\cpp.exe; DestDir: {app}\ide; MinVersion: 1,0
 #endif

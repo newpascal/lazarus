@@ -30,8 +30,13 @@ unit IDECommands;
 interface
 
 uses
-  Classes, SysUtils, LCLProc, Forms, LCLType, Menus, PropEdits, IDEImagesIntf,
-  ExtCtrls, LCLIntf;
+  Classes, SysUtils,
+  // LCL
+  LCLProc, LCLType, LCLIntf, Forms, Menus,
+  // LazUtils
+  LazMethodList, LazLoggerBase,
+  // IdeIntf
+  PropEdits, IDEImagesIntf;
   
 const
   { editor commands constants. see syneditkeycmds.pp for more
@@ -357,6 +362,7 @@ const
   ecDesignerMoveToBack      = ecFirstLazarus + 1005;
   ecDesignerForwardOne      = ecFirstLazarus + 1006;
   ecDesignerBackOne         = ecFirstLazarus + 1007;
+  ecDesignerToggleNonVisComps= ecFirstLazarus + 1008;
 
 
   (* SynEdit Plugins
@@ -782,6 +788,7 @@ var
 var
   IDECmdScopeSrcEdit: TIDECommandScope;
   IDECmdScopeSrcEditOnly: TIDECommandScope;
+  IDECmdScopeSrcEditOnlyMultiCaret: TIDECommandScope;
   IDECmdScopeSrcEditOnlyTmplEdit: TIDECommandScope;
   IDECmdScopeSrcEditOnlyTmplEditOff: TIDECommandScope;
   IDECmdScopeSrcEditOnlySyncroEditSel: TIDECommandScope;
@@ -883,6 +890,7 @@ begin
   IDECommandScopes:=TIDECommandScopes.Create;
   IDECmdScopeSrcEdit:=RegisterIDECommandScope('SourceEditor');
   IDECmdScopeSrcEditOnly:=RegisterIDECommandScope('SourceEditorOnly');
+  IDECmdScopeSrcEditOnlyMultiCaret:=RegisterIDECommandScope('IDECmdScopeSrcEditOnlyMultiCaret');
   IDECmdScopeSrcEditOnlyTmplEdit:=RegisterIDECommandScope('SourceEditorOnlyTemplateEdit');
   IDECmdScopeSrcEditOnlyTmplEditOff:=RegisterIDECommandScope('SourceEditorOnlyTemplateEditOff');
   IDECmdScopeSrcEditOnlySyncroEditSel:=RegisterIDECommandScope('SourceEditorOnlySyncroEditSel');
@@ -1914,7 +1922,7 @@ begin
 end;
 
 const
-  IDEEditorCommandStrs: array[0..316] of TIdentMapEntry = (
+  IDEEditorCommandStrs: array[0..317] of TIdentMapEntry = (
   // search
     (Value: ecFind;                                   Name: 'ecFind'),
     (Value: ecFindAgain;                              Name: 'ecFindAgain'),
@@ -2218,6 +2226,7 @@ const
     (Value: ecDesignerMoveToBack;                     Name: 'ecDesignerMoveToBack'),
     (Value: ecDesignerForwardOne;                     Name: 'ecDesignerForwardOne'),
     (Value: ecDesignerBackOne;                        Name: 'ecDesignerBackOne'),
+    (Value: ecDesignerToggleNonVisComps;              Name: 'ecDesignerToggleNonVisComps'),
 
   // TSynPluginTemplateEdit - In cell
     (Value: ecIdePTmplEdNextCell;                     Name: 'ecIdePTmplEdNextCell'),

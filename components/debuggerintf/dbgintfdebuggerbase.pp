@@ -1710,6 +1710,8 @@ type
                                AType: TDBGFeedbackType; AButtons: TDBGFeedbackResults
                               ): TDBGFeedbackResult of object;
 
+  TDBGEvaluateResultCallback = procedure(Sender: TObject; ASuccess: Boolean; ResultText: String;
+    ResultDBGType: TDBGType) of object;
 
   TDebuggerNotifyReason = (dnrDestroy);
 
@@ -1764,13 +1766,17 @@ type
     FOnBreakPointHit: TDebuggerBreakPointHitEvent;
     FWorkingDir: String;
     FDestroyNotificationList: array [TDebuggerNotifyReason] of TMethodList;
+    FReleaseLock: Integer;
     procedure DebuggerEnvironmentChanged(Sender: TObject);
     procedure EnvironmentChanged(Sender: TObject);
     //function GetUnitInfoProvider: TDebuggerUnitInfoProvider;
     function  GetState: TDBGState;
     function  ReqCmd(const ACommand: TDBGCommand;
-                     const AParams: array of const): Boolean;
-    procedure SetDebuggerEnvironment (const AValue: TStrings );
+                     const AParams: array of const): Boolean; overload;
+    function  ReqCmd(const ACommand: TDBGCommand;
+                     const AParams: array of const;
+                     const ACallback: TMethod): Boolean;
+    procedure SetDebuggerEnvironment (const AValue: TStrings ); overload;
     procedure SetEnvironment(const AValue: TStrings);
     procedure SetFileName(const AValue: String);
   protected
@@ -1803,12 +1809,16 @@ type
     function  GetWaiting: Boolean; virtual;
     function  GetIsIdle: Boolean; virtual;
     function  RequestCommand(const ACommand: TDBGCommand;
-                             const AParams: array of const): Boolean;
+                             const AParams: array of const;
+                             const ACallback: TMethod): Boolean;
                              virtual; abstract; // True if succesful
     procedure SetExitCode(const AValue: Integer);
     procedure SetState(const AValue: TDBGState);
     procedure SetErrorState(const AMsg: String; const AInfo: String = '');
     procedure DoRelease; virtual;
+    // prevent destruction while nested in any call
+    procedure LockRelease; virtual;
+    procedure UnlockRelease; virtual;
   public
     class function Caption: String; virtual;         // The name of the debugger as shown in the debuggeroptions
     class function ExePaths: String; virtual;        // The default locations of the exe
@@ -1829,6 +1839,7 @@ type
        Errors should also be reported by debugger
     *)
     class function  RequiresLocalExecutable: Boolean; virtual;
+    procedure TestCmd(const ACommand: String); virtual;// For internal debugging purposes
   public
     constructor Create(const AExternalDebugger: String); virtual;
     destructor Destroy; override;
@@ -1849,8 +1860,7 @@ type
     procedure Attach(AProcessID: String);
     procedure Detach;
     procedure SendConsoleInput(AText: String);
-    function  Evaluate(const AExpression: String; var AResult: String;
-                       var ATypeInfo: TDBGType;
+    function  Evaluate(const AExpression: String; ACallback: TDBGEvaluateResultCallback;
                        EvalFlags: TDBGEvaluateFlags = []): Boolean;                     // Evaluates the given expression, returns true if valid
     function GetProcessList({%H-}AList: TRunningProcessInfoList): boolean; virtual;
     function  Modify(const AExpression, AValue: String): Boolean;                // Modifies the given expression, returns true if valid
@@ -1883,7 +1893,7 @@ type
     property State: TDBGState read FState;                                       // The current state of the debugger
     property SupportedCommands: TDBGCommands read GetSupportedCommands;          // All available commands of the debugger
     property TargetWidth: Byte read GetTargetWidth;                              // Currently only 32 or 64
-    property Waiting: Boolean read GetWaiting;                                   // Set when the debugger is wating for a command to complete
+    //property Waiting: Boolean read GetWaiting;                                   // Set when the debugger is wating for a command to complete
     property Watches: TWatchesSupplier read FWatches;                                 // list of all watches etc
     property Threads: TThreadsSupplier read FThreads;
     property WorkingDir: String read FWorkingDir write FWorkingDir;              // The working dir of the exe being debugged
@@ -4552,8 +4562,9 @@ begin
   end;
   It.Free;
 
-  if Monitor <> nil
-  then Monitor.DoModified;
+  if Monitor <> nil then
+    ACallstack.DoEntriesUpdated; // calls Monitor.DoModified;
+  //Monitor.DoModified;
 end;
 
 //procedure TCallStackSupplier.CurrentChanged;
@@ -5833,11 +5844,10 @@ begin
   Result := False;
 end;
 
-function TDebuggerIntf.Evaluate(const AExpression: String; var AResult: String;
-  var ATypeInfo: TDBGType; EvalFlags: TDBGEvaluateFlags = []): Boolean;
+function TDebuggerIntf.Evaluate(const AExpression: String;
+  ACallback: TDBGEvaluateResultCallback; EvalFlags: TDBGEvaluateFlags): Boolean;
 begin
-  FreeAndNIL(ATypeInfo);
-  Result := ReqCmd(dcEvaluate, [AExpression, @AResult, @ATypeInfo, Integer(EvalFlags)]);
+  Result := ReqCmd(dcEvaluate, [AExpression, Integer(EvalFlags)], TMethod(ACallback));
 end;
 
 function TDebuggerIntf.GetProcessList(AList: TRunningProcessInfoList): boolean;
@@ -5890,6 +5900,16 @@ end;
 function TDebuggerIntf.GetState: TDBGState;
 begin
   Result := FState;
+end;
+
+function TDebuggerIntf.ReqCmd(const ACommand: TDBGCommand;
+  const AParams: array of const): Boolean;
+var
+  dummy: TMethod;
+begin
+  dummy.Code := nil;
+  dummy.Data := nil;
+  ReqCmd(ACommand, AParams, dummy);
 end;
 
 function TDebuggerIntf.GetSupportedCommands: TDBGCommands;
@@ -5947,12 +5967,12 @@ begin
 end;
 
 function TDebuggerIntf.ReqCmd(const ACommand: TDBGCommand;
-  const AParams: array of const): Boolean;
+  const AParams: array of const; const ACallback: TMethod): Boolean;
 begin
   if FState = dsNone then Init;
   if ACommand in Commands
   then begin
-    Result := RequestCommand(ACommand, AParams);
+    Result := RequestCommand(ACommand, AParams, ACallback);
     if not Result then begin
       DebugLn(DBG_WARNINGS, 'TDebuggerIntf.ReqCmd failed: ',dbgs(ACommand));
     end;
@@ -6042,6 +6062,11 @@ begin
   Result := True;
 end;
 
+procedure TDebuggerIntf.TestCmd(const ACommand: String);
+begin
+  //
+end;
+
 procedure TDebuggerIntf.SetState(const AValue: TDBGState);
 var
   OldState: TDBGState;
@@ -6095,7 +6120,25 @@ end;
 
 procedure TDebuggerIntf.DoRelease;
 begin
+  SetState(dsDestroying);
+  if FReleaseLock > 0
+  then exit;
+
   Self.Free;
+end;
+
+procedure TDebuggerIntf.LockRelease;
+begin
+  inc(FReleaseLock);
+  DebugLnEnter(DBG_VERBOSE, ['> TLldbDebugger.LockRelease ',FReleaseLock]);
+end;
+
+procedure TDebuggerIntf.UnlockRelease;
+begin
+  DebugLnExit(DBG_VERBOSE, ['< TLldbDebugger.UnlockRelease ',FReleaseLock]);
+  dec(FReleaseLock);
+  if (FReleaseLock = 0) and (State = dsDestroying)
+  then Release;
 end;
 
 procedure TDebuggerIntf.StepInto;

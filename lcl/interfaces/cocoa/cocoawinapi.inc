@@ -294,6 +294,22 @@ begin
 
   DataStream := TMemoryStream.Create;
   try
+    FormatToOwnArray := nil;
+    if FormatCount>0 then
+    begin
+      FormatToOwnArray := NSArray(NSMutableArray.array_);
+      for i := 0 to FormatCount-1 do
+      begin
+        lCurFormat := TCocoaClipboardData(Formats[i]);
+        if lCurFormat = nil then Continue;
+        FormatToOwn := lCurFormat.CocoaFormat;
+        NSMutableArray(FormatToOwnArray).addObject(FormatToOwn);
+      end;
+    end;
+
+    if Assigned(FormatToOwnArray) and (FormatToOwnArray.count>0) then
+      pasteboard.declareTypes_owner(FormatToOwnArray, nil);
+
     for i := 0 to FormatCount-1 do
     begin
       lCurFormat := TCocoaClipboardData(Formats[i]);
@@ -305,34 +321,22 @@ begin
       case lCurFormat.DataType of
       ccdtText:
       begin
-        FormatToOwn := lCurFormat.CocoaFormat;
-        FormatToOwnArray := NSArray.arrayWithObjects_count(@FormatToOwn, 1);
-
         DataStream.Position := 0;
         SetLength(lText, DataStream.Size);
         DataStream.Read(lText[1], DataStream.Size);
         lNSText := NSStringUtf8(lText);
 
-        pasteboard.declareTypes_owner(FormatToOwnArray, nil);
         pasteboard.setString_forType(lNSText, lCurFormat.CocoaFormat);
       end;
       ccdtCocoaStandard, ccdtNonStandard:
       begin
-        FormatToOwn := lCurFormat.CocoaFormat;
-        FormatToOwnArray := NSArray.arrayWithObjects_count(@FormatToOwn, 1);
-
         DataStream.Position := 0;
         lNSData := NSData.dataWithBytes_length(DataStream.Memory, DataStream.Size);
 
-        pasteboard.declareTypes_owner(FormatToOwnArray, nil);
         pasteboard.setData_forType(lNSData, lCurFormat.CocoaFormat);
-        //lNSData.release; // this causes a crash
       end;
       ccdtBitmap:
       begin
-        FormatToOwn := lCurFormat.CocoaFormat;
-        FormatToOwnArray := NSArray.arrayWithObjects_count(@FormatToOwn, 1);
-
         Image := TFPMemoryImage.Create(10, 10);
         Reader := TFPReaderBMP.Create;
         Writer := TFPWriterPNG.Create;
@@ -343,9 +347,7 @@ begin
           Image.SaveToStream(lTmpStream, Writer);
           lTmpStream.Position := 0;
           lNSData := NSData.dataWithBytes_length(lTmpStream.Memory, lTmpStream.Size);
-          pasteboard.declareTypes_owner(FormatToOwnArray, nil);
           pasteboard.setData_forType(lNSData, lCurFormat.CocoaFormat);
-          //lNSData.release;
         finally
           Image.Free;
           Reader.Free;
@@ -358,6 +360,16 @@ begin
   finally
     DataStream.Free;
   end;
+
+  Pasteboards[ClipboardType].pasteboard:=pasteboard;
+  Pasteboards[ClipboardType].dataProc:=OnRequestProc;
+  if Assigned(pasteboard) then
+  begin
+    Pasteboards[ClipboardType].changeCount:=pasteboard.changeCount;
+    Pasteboards[ClipboardType].isOwned:=true;
+  end else
+    Pasteboards[ClipboardType].isOwned:=false;
+
 
   Result := True;
 end;
@@ -396,29 +408,26 @@ begin
 
   lDataType := ccdtNonStandard;
   // See PredefinedClipboardMimeTypes for the most common mime-types
-  {$IF not defined(MAC_OS_X_VERSION_MIN_REQUIRED) or (MAC_OS_X_VERSION_MIN_REQUIRED >= 1060)}
   case AMimeType of
   'text/plain':
   begin
-    lNSStr := NSPasteboardTypeString;
-    lNSStr.retain;
+    //hack: the name of constants is a hack
+    //      should be replaced with either weaklinking
+    //      or dynamic loading (dlsym)
+    lNSStr := NSSTR('public.utf8-plain-text'); // NSPasteboardTypeString; // commented out for OSX < 10.6  see #33672
     lDataType := ccdtText;
   end;
   'image/png':
   begin
-    lNSStr := NSPasteboardTypePNG;
-    lNSStr.retain;
+    lNSStr := NSSTR('public.png'); // NSPasteboardTypePNG
     lDataType := ccdtCocoaStandard;
   end;
   'image/bmp':
   begin
-    lNSStr := NSPasteboardTypePNG;
+    lNSStr := NSSTR('public.png'); // NSPasteboardTypePNG
     lDataType := ccdtBitmap;
   end;
   else
-  {$ELSE}
-  begin
-  {$ENDIF}
     lNSStr := NSStringUtf8(AMimeType);
     lDataType := ccdtNonStandard;
   end;

@@ -2242,9 +2242,16 @@ begin
   EventStopped := False;
   HandledByLCL := KeyEventWasHandledByLCL(AEvent, ABeforeEvent);
 
-  {$IF defined(VerboseKeyboard) or defined(LCLGtk2Fix30544)}
+  {$IFDEF VerboseKeyboard}
   DebugLn(['[HandleGTKKeyUpDown] START ',DbgSName(TControl(AData)),
-    ' ',(AEvent^. _Type),' Widget=',GetWidgetClassName(AWidget),
+    ' _Type=',(AEvent^._Type),
+    ' state=',(AEvent^.state),
+    ' keyval=',(AEvent^.keyval),'=$',hexstr(AEvent^.keyval,4),
+    ' hardware_keycode=',(AEvent^.hardware_keycode),
+    ' length=',(AEvent^.length),
+    ' _string="',dbgMemRange(PByte(AEvent^._string),AEvent^.length),'"',
+    ' group=',(AEvent^.group),
+    ' Widget=',GetWidgetClassName(AWidget),
     ' Before=',ABeforeEvent,' Down=',AHandleDown,' HandledByLCL=',HandledByLCL]);
   {$ENDIF}
   
@@ -2301,7 +2308,7 @@ begin
 
   gdk_event_key_get_string(AEvent, EventString{%H-});
   {$IFDEF VerboseKeyboard}
-  DebugLn(['HandleGTKKeyUpDown EVENTSTRING TargetWidget=',GetWidgetDebugReport(TargetWidget),' "',DbgStr(EventString),'" state=',AEvent^.state,' keyval=',AEvent^.keyval]);
+  DebugLn(['HandleGTKKeyUpDown EVENTSTRING "',DbgStr(EventString),'" TargetWidget=',GetWidgetDebugReport(TargetWidget),' state=',AEvent^.state,' keyval=',AEvent^.keyval]);
   {$ENDIF}
 
   {$IfDef Gtk2LatinAccents}
@@ -2325,6 +2332,9 @@ begin
   else begin
     KCInfo := MKeyCodeInfo[KeyCode];
 
+    {$IFDEF VerboseKeyboard}
+    debugln(['HandleGTKKeyUpDown AEvent^.hardware_keycode=',AEvent^.hardware_keycode,',keyval=',AEvent^.keyval,',group=',AEvent^.group,' KeyCode=',KeyCode,' ',dbgs(ShiftState),' KCInfo.VKey1=',KCInfo.VKey1,',VKey2=',KCInfo.VKey2]);
+    {$ENDIF}
     if (KCInfo.Flags and KCINFO_FLAG_SHIFT_XOR_NUM <> 0)
     and ((ssShift in ShiftState) xor (ssNum in ShiftState))
     then VKey := KCInfo.VKey2
@@ -2336,7 +2346,10 @@ begin
 
     // ssAlt + a key pressed is always a syskey
     // ssAltGr + a key is only a syskey when the key pressed has no levelshift or when ssShift is pressed too
-    SysKey := (ssAlt in ShiftState);
+    if ssAltGr in ShiftState then
+      SysKey := ssAlt in ShiftState
+    else
+      SysKey := [ssAlt,ssCtrl]*ShiftState=[ssAlt]; // Alt+Ctrl = AltGr, on Windows and on Linux via VNC, see bug 30544
     if not SysKey then
     begin
       // Check ssAltGr
@@ -2354,7 +2367,7 @@ begin
       end;
     end;
 
-    if SysKey then
+    if SysKey or (ssAlt in ShiftState) then
       Flags := Flags or KF_ALTDOWN;
 
     CommonKeyData := KeyCode shl 16; // Not really scancode, but will do
@@ -2362,7 +2375,7 @@ begin
     if AHandleDown then
     begin
       {$IFDEF VerboseKeyboard}
-      DebugLn('[HandleGTKKeyUpDown] GDK_KEY_PRESS VKey=',dbgs(VKey),' SysKey=',dbgs(SysKey));
+      DebugLn(['[HandleGTKKeyUpDown] GDK_KEY_PRESS VKey=',dbgs(VKey),' SysKey=',dbgs(SysKey),' ShiftState=',dbgs(ShiftState),' KCInfo=Key1=',KCInfo.VKey1,',Key2=',KCInfo.VKey2,',Flags=',hexstr(KCInfo.Flags,2)]);
       {$ENDIF}
 
       Msg.CharCode := VKey;
@@ -2418,19 +2431,19 @@ begin
     if ABeforeEvent then
     begin
       // try to get the UTF8 representation of the key
-        if im_context_string <> '' then
-        begin
-          Character := UTF8Copy(im_context_string,1,1);
-          im_context_string:='';// clear, to avoid sending again
-        end
+      if im_context_string <> '' then
+      begin
+        Character := UTF8Copy(im_context_string,1,1);
+        im_context_string:='';// clear, to avoid sending again
+      end
+      else
+      begin
+        KeyPressesChar := GetSpecialChar;
+        if KeyPressesChar <> #0 then
+          Character := KeyPressesChar
         else
-        begin
-          KeyPressesChar := GetSpecialChar;
-          if KeyPressesChar <> #0 then
-            Character := KeyPressesChar
-          else
-            Character := '';
-        end;
+          Character := '';
+      end;
 
       {$IFDEF VerboseKeyboard}
       debugln('[HandleGTKKeyUpDown] GDK_KEY_PRESS UTF8="',DbgStr(Character),'"',
@@ -2614,6 +2627,17 @@ const
     VK_X, //GDK_KEY_Cyrillic_CAPITAL_CHE = $6fe;
     0 ////Ord(']') //GDK_KEY_Cyrillic_CAPITAL_HARDSIGN = $6ff;
     );
+
+function gdkKeyMapChanged(aKeymap: PGdkKeymap; Data: gPointer) : GBoolean; cdecl;
+begin
+  Result:=CallBackDefaultReturn;
+  if aKeymap=nil then ;
+  if Data=nil then ;
+  {$IFDEF VerboseKeyboard}
+  debugln(['gdkKeyMapChanged']);
+  {$ENDIF}
+  InitKeyboardTables;
+end;
 
 {------------------------------------------------------------------------------
   Procedure: InitKeyboardTables
@@ -2855,7 +2879,9 @@ procedure InitKeyboardTables;
       GDK_Key_Cancel:       AVKey := VK_CANCEL;
       GDK_Key_Help:         AVKey := VK_HELP;
       GDK_Key_Break:        AVKey := VK_CANCEL;
-      GDK_Key_Mode_switch:  AVKey := VK_MODECHANGE;
+      GDK_Key_Mode_switch,
+      GDK_KEY_ISO_Level3_Shift,
+      GDK_KEY_ISO_Level5_Shift:  AVKey := VK_MODECHANGE;
       GDK_Key_Caps_Lock:    AVKey := VK_CAPITAL;
       GDK_Key_Shift_L:      AVKey := VK_SHIFT;
       GDK_Key_Shift_R:
@@ -3162,7 +3188,7 @@ const
 {
  Starting gdk 2.10 Alt, meta, hyper are reported by a own mask. Since we support
  older versions, we need to create the modifiermap ourselves for X and we cannot
- ise them
+ use them
 }
 type
   TModMap = array[Byte] of Cardinal;
@@ -3209,7 +3235,7 @@ type
   
   procedure UpdateModifierMap(const AModMap: TModMap; AKeyCode: Byte; AKeySym: Cardinal);
   var
-  {$ifdef VerboseModifiermap}
+  {$if defined(VerboseModifiermap) or defined(VerboseKeyboard)}
     s: string;
   {$endif}
     ShiftState: TShiftStateEnum;
@@ -3245,9 +3271,9 @@ type
     MModifiers[ShiftState].Mask := AModMap[AKeyCode];
     MModifiers[ShiftState].UseValue := False;
     
-    {$ifdef VerboseModifiermap}
+    {$if defined(VerboseModifiermap) or defined(VerboseKeyboard)}
     WriteStr(s, ShiftState);
-    DebugLn('Mapped keycode=%u, keysym=$%x, modifier=$%2.2x to shiftstate %s',
+    DebugLn('UpdateModifierMap Mapped keycode=%u, keysym=$%x, modifier=$%2.2x to shiftstate %s',
             [AKeyCode, AKeySym, AModMap[AKeyCode], s]);
     {$endif}
 
@@ -3257,23 +3283,41 @@ type
   procedure UpdateKeyStateMap(var AIndex: integer; AKeyCode: Byte; AKeySym: Cardinal);
   var
     Enum: TShiftStateEnum;
+    {$IFDEF VerboseKeyboard}
+    s: string;
+    {$ENDIF}
   begin
+    // gdk emulates some keys by creating extra key signals without the
+    // current modifier state. Thus the LCL has to query the current state
+    // of the following modifiers (e.g. bug 30544).
     case AKeySym of
+      GDK_KEY_Control_L,
+      GDK_KEY_Control_R: Enum := ssCtrl; // see bug 30544, Alt+Ctrl
       GDK_KEY_Alt_L, GDK_KEY_Alt_R:     Enum := ssAlt;
       GDK_KEY_Meta_L, GDK_KEY_Meta_R:   Enum := ssMeta;
       GDK_KEY_Super_L, GDK_KEY_Super_R: Enum := ssSuper;
       GDK_KEY_Hyper_L, GDK_KEY_Hyper_R: Enum := ssHyper;
-      GDK_KEY_ISO_Level3_Shift:         Enum := ssAltGr;
+      GDK_KEY_Mode_switch,
+      GDK_KEY_ISO_Level3_Shift,
+      GDK_KEY_ISO_Level3_Latch,
+      GDK_KEY_ISO_Level3_Lock,
+      GDK_KEY_ISO_Level5_Shift,
+      GDK_KEY_ISO_Level5_Latch,
+      GDK_KEY_ISO_Level5_Lock:         Enum := ssAltGr;
     else
       Exit;
     end;
 
     if High(MKeyStateMap) < AIndex
-    then SetLength(MKeyStateMap, AIndex + 8);
+    then SetLength(MKeyStateMap, AIndex + 16);
 
     MKeyStateMap[AIndex].Index := AKeyCode shr 3;
     MKeyStateMap[AIndex].Mask := 1 shl (AKeyCode and 7);
     MKeyStateMap[AIndex].Enum := Enum;
+    {$IFDEF VerboseKeyboard}
+    writestr(s,Enum);
+    debugln(['UpdateKeyStateMap AKeySym=$',HexStr(AKeySym,4),'=',AKeySym,' ShiftState=',s,' Index=',MKeyStateMap[AIndex].Index,' Mask=',HexStr(MKeyStateMap[AIndex].Mask,4)]);
+    {$ENDIF}
     Inc(AIndex)
   end;
   {$endif UseOwnShiftState}
@@ -3283,7 +3327,6 @@ type
 const
   // first OEM specific VK
   VK_FIRST_OEM = $92;
-
 var
   KeySyms: array of guint;
   KeyVals: Pguint = nil;
@@ -3295,8 +3338,9 @@ var
   KeySymCharLen: Integer;
 
 {$ifdef HasX}
-  XDisplay: Pointer;
+  XDisplay: PDisplay;
   ModMap: TModMap;
+  NewKeyMap: PGdkKeymap;
 {$endif}
 {$ifdef UseOwnShiftState}
   KeyStateMapIndex: Integer;
@@ -3312,10 +3356,22 @@ begin
 {$ifdef HasX}
   XDisplay := gdk_display;
   if XDisplay = nil then Exit;
-
   FillByte(MKeyStateMap, SizeOF(MKeyStateMap), 0);
   SetupModifiers(XDisplay, ModMap{%H-});
 {$endif}
+
+  NewKeyMap:=gdk_keymap_get_for_display(gdk_display_get_default);
+  if NewKeyMap<>GdkKeymap then begin
+    if GdkKeymap<>nil then
+      DisconnectGdkKeymapChangedSignal;
+    GdkKeymap:=NewKeyMap;
+    if GdkKeymap<>nil then
+      GdkKeyMapChangedID:=g_signal_connect_after(GdkKeymap, 'keys-changed',
+                                        TGTKSignalFunc(@gdkKeyMapChanged), nil);
+  end;
+
+  FillChar(MKeyCodeInfo, SizeOf(MKeyCodeInfo), $FF);
+  FillChar(MVKeyInfo, SizeOf(MVKeyInfo), 0);
 
   LoKey := 0;
   HiKey := 255;
@@ -3326,8 +3382,9 @@ begin
   FreeVK := VK_FIRST_OEM;
   for KeyCode := LoKey to HiKey do
   begin
-
-    if not gdk_keymap_get_entries_for_keycode(nil, KeyCode, KeymapKeys, KeyVals, @KeySymCount) then Continue;
+    // get all values for this keycode for all groups and level
+    if not gdk_keymap_get_entries_for_keycode(GdkKeymap, KeyCode, KeymapKeys, KeyVals, @KeySymCount) then
+      Continue;
     SetLength(KeySyms, KeySymCount);
     Move(KeyVals^, KeySyms[0], SizeOf(KeySyms[0]) * KeySymCount);
     g_free(KeymapKeys); // unused but we cannot pass a nil as param
@@ -3336,7 +3393,8 @@ begin
     //DebugLn(['InitKeyboardTables ',KeyCode,' ',HasKey,' ',KeySyms[0]]);
 
   {$ifdef HasX}
-    // Check if this keycode is in the modifiers map
+    // Check if this keycode is a modifier
+    // and if yes add it to modifiers map
     // loop through all keysyms till one found.
     // Some maps have a modifier with an undefined first keysym. It is checked for
     // modifiers, but not for vkeys
@@ -3384,7 +3442,7 @@ begin
 
     if VKey = VK_UNDEFINED
     then begin
-      MKeyCodeInfo[KeyCode].Flags := $FF
+      MKeyCodeInfo[KeyCode].Flags := $FF;
     end
     else begin
       MKeyCodeInfo[KeyCode].Flags := EXTFLAG[Extended] or MULTIFLAG[HasMultiVK];
@@ -3402,7 +3460,7 @@ begin
         if m >= 2 then Break; // Only process shift
 
         // The keypadkeys have 2 VK_keycodes :(
-        // In that case we have to FIndKeyInfo for every keysym
+        // In that case we have to FindKeyInfo for every keysym
         if m = 1
         then begin
           FindVKeyInfo(KeySyms[m], VKey, Extended, DummyBool, DummyBool{%H-});
@@ -3440,6 +3498,7 @@ procedure DoneKeyboardTables;
 var
   i: Integer;
 begin
+  DisconnectGdkKeymapChangedSignal;
   if LCLHandledKeyEvents<>nil then begin
     for i:=0 to LCLHandledKeyEvents.Count-1 do
       TObject(LCLHandledKeyEvents[i]).Free;
@@ -3452,6 +3511,13 @@ begin
     LCLHandledKeyAfterEvents.Free;
     LCLHandledKeyAfterEvents:=nil;
   end;
+end;
+
+procedure DisconnectGdkKeymapChangedSignal;
+begin
+  if GdkKeymap=nil then exit;
+  g_signal_handler_disconnect(GdkKeymap, GdkKeyMapChangedID);
+  GdkKeyMapChangedID:=0;
 end;
 
 {------------------------------------------------------------------------------
@@ -3488,7 +3554,6 @@ function GTKEventStateToShiftState(KeyState: LongWord): TShiftState;
     begin
       if Ord(Keys[MKeyStateMap[n].Index]) and MKeyStateMap[n].Mask = 0 then Continue;
       Include(Result, MKeyStateMap[n].Enum);
-      Break;
     end;
   end;
   {$else}
@@ -3515,6 +3580,10 @@ begin
   {$else}
   Result := [];
   {$endif}
+  {$IFDEF VerboseKeyboard}
+  if (KeyState<>0) or (Result-[ssLeft,ssRight]<>[]) then
+    debugln(['GTKEventStateToShiftState KeyState=',HexStr(KeyState,8),' X-State=',dbgs(Result)]);
+  {$ENDIF}
   for State := Low(State) to High(State) do
   begin
     if MModifiers[State].Mask = 0 then Continue;
@@ -3528,6 +3597,10 @@ begin
       then Include(Result, State);
     end;
   end;
+  {$IFDEF VerboseKeyboard}
+  if (KeyState<>0) or (Result-[ssLeft,ssRight]<>[]) then
+    debugln(['GTKEventStateToShiftState KeyState=',HexStr(KeyState,8),' Result=',dbgs(Result)]);
+  {$ENDIF}
 end;
 
 {------------------------------------------------------------------------------

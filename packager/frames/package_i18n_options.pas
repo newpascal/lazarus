@@ -5,9 +5,15 @@ unit package_i18n_options;
 interface
 
 uses
-  Classes, SysUtils, FileUtil, Forms, Controls, StdCtrls, EditBtn,
-  IDEOptionsIntf, LazarusIDEStrConsts, PackageDefs, IDEDialogs,
-  IDEImagesIntf;
+  SysUtils,
+  // LazUtils
+  FileUtil,
+  // LCL
+  Forms, StdCtrls, EditBtn,
+  // IdeIntf
+  IDEOptionsIntf, IDEOptEditorIntf, IDEImagesIntf, IDEDialogs,
+  // IDE
+  LazarusIDEStrConsts, PackageDefs;
 
 type
 
@@ -76,7 +82,7 @@ begin
   POOutDirEdit.Text := FLazPackage.POOutputDirectory;
   PoForFormsCheckBox.Checked:=FLazPackage.EnableI18NForLFM;
 
-  TIDEImages.AssignImage(POOutDirEdit.Button.Glyph, ResBtnSelDir); //DirectoryEdit
+  IDEImages.AssignImage(POOutDirEdit.Button, ResBtnSelDir); //DirectoryEdit
 end;
 
 procedure TPackageI18NOptionsFrame.WriteSettings(AOptions: TAbstractIDEOptions);

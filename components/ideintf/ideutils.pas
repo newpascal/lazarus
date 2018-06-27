@@ -14,7 +14,11 @@ unit IDEUtils;
 interface
 
 uses
-  Classes, SysUtils, StdCtrls, LazUTF8, LazFileUtils;
+  Classes, SysUtils,
+  // LCL
+  StdCtrls, ImgList, Graphics,
+  // LazUtils
+  LazUTF8, LazFileUtils;
 
 type
   TCmpStrType = (
@@ -26,8 +30,9 @@ type
 function IndexInStringList(List: TStrings; Cmp: TCmpStrType; s: string): integer;
 procedure SetComboBoxText(AComboBox: TComboBox; const AText: String;
                           Cmp: TCmpStrType; MaxCount: integer = 1000);
-function LazIsValidIdent(const Ident: string; AllowDots: Boolean = False;
-                         StrictDots: Boolean = False): Boolean;
+function LoadProjectIconIntoImages(const ProjFile: string;
+  const Images: TCustomImageList; const Index: TStringList): Integer;
+
 
 implementation
 
@@ -66,42 +71,49 @@ begin
   AComboBox.Text := AText;
 end;
 
-function LazIsValidIdent(const Ident: string; AllowDots: Boolean = False;
-                         StrictDots: Boolean = False): Boolean;
-// This is a copy of IsValidIdent from FPC 3.1.
-// ToDo: Switch to using IsValidIdent from FPC 3.2 when it is the minimum requirement.
-const
-  Alpha = ['A'..'Z', 'a'..'z', '_'];
-  AlphaNum = Alpha + ['0'..'9'];
-  Dot = '.';
-var
-  First: Boolean;
-  I, Len: Integer;
-begin
-  Len := Length(Ident);
-  if Len < 1 then
-    Exit(False);
-  First := True;
-  for I := 1 to Len do
-  begin
-    if First then
-    begin
-      Result := Ident[I] in Alpha;
-      First := False;
-    end
-    else if AllowDots and (Ident[I] = Dot) then
-    begin
-      if StrictDots then
-      begin
-        Result := I < Len;
-        First := True;
-      end;
-    end
-    else
-      Result := Ident[I] in AlphaNum;
-    if not Result then
-      Break;
+type
+  TLoadProjectIconIntoImagesObject = class
+    ImageIndex: Integer;
   end;
+
+function LoadProjectIconIntoImages(const ProjFile: string;
+  const Images: TCustomImageList; const Index: TStringList): Integer;
+var
+  xIconFile: String;
+  xIcon: TIcon;
+  I: Integer;
+  xObj: TLoadProjectIconIntoImagesObject;
+begin
+  //ToDo: better index
+
+  I := Index.IndexOf(ProjFile);
+  if I >= 0 then
+    Exit(TLoadProjectIconIntoImagesObject(Index.Objects[I]).ImageIndex);
+
+  if not Index.Sorted or (Index.Count = 0) then
+  begin // initialize index
+    Index.Sorted := True;
+    Index.Duplicates := dupIgnore;
+    Index.CaseSensitive := False;
+    Index.OwnsObjects := True;
+  end;
+
+  Result := -1;
+  xIconFile := ChangeFileExt(ProjFile, '.ico');
+  if FileExists(xIconFile) then
+  begin
+    xIcon := TIcon.Create;
+    try
+      xIcon.LoadFromFile(xIconFile);
+      Result := Images.AddIcon(xIcon);
+    finally
+      xIcon.Free;
+    end;
+  end;
+
+  xObj := TLoadProjectIconIntoImagesObject.Create;
+  xObj.ImageIndex := Result;
+  Index.AddObject(ProjFile, xObj);
 end;
 
 end.

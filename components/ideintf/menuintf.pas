@@ -18,7 +18,12 @@ unit MenuIntf;
 interface
 
 uses
-  Classes, SysUtils, LCLType, LCLProc, Menus, ImgList, Graphics,
+  Classes, SysUtils,
+  // LCL
+  LCLType, LCLProc, Menus, ImgList, Graphics,
+  // LazUtils
+  LazMethodList, LazLoggerBase,
+  // IdeIntf
   IDECommands, IDEImagesIntf;
   
 type

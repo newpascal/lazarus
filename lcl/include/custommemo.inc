@@ -236,14 +236,27 @@ begin
   end;
 end;
 
-procedure TCustomMemo.WMGetDlgCode(var Message: TLMNoParams);
+procedure TCustomMemo.WMGetDlgCode(var Message: TLMGetDlgCode);
 begin
   inherited;
-  Message.Result := Message.Result and not (DLGC_WANTTAB or DLGC_WANTALLKEYS);
-  if WantTabs then
-    Message.Result := Message.Result or DLGC_WANTTAB;
-  if WantReturns then
-    Message.Result := Message.Result or DLGC_WANTALLKEYS;
+  case Message.CharCode of
+    VK_TAB:
+    begin
+      if WantTabs then
+        Message.Result := Message.Result or (DLGC_WANTTAB or DLGC_WANTALLKEYS)
+      else
+        Message.Result := Message.Result and not (DLGC_WANTTAB or DLGC_WANTALLKEYS);
+    end;
+    VK_RETURN:
+    begin
+      if WantReturns then
+        Message.Result := Message.Result or DLGC_WANTALLKEYS
+      else
+        Message.Result := Message.Result and not DLGC_WANTALLKEYS;
+    end;
+    VK_ESCAPE:
+      Message.Result := Message.Result and not DLGC_WANTALLKEYS;
+  end;
 end;
 
 class function TCustomMemo.GetControlClassDefaultSize: TSize;

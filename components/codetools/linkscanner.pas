@@ -160,6 +160,21 @@ type
     cmISO,
     cmExtPas
     );
+const
+  // upper case
+  CompilerModeNames: array[TCompilerMode] of string=(
+    'FPC',
+    'DELPHI',
+    'DELPHIUNICODE',
+    'GPC',
+    'TP',
+    'OBJFPC',
+    'MACPAS',
+    'ISO',
+    'EXTPAS'
+    );
+type
+
   { TCompilerModeSwitch - see fpc/compiler/globtype.pas  tmodeswitch }
   TCompilerModeSwitch = (
     //cms_FPC,cms_ObjFPC,cms_Delphi,cms_TP7,cms_Mac,cms_ISO,cms_ExtPas,
@@ -202,10 +217,11 @@ type
     cmsISOlike_IO,         { I/O as it required by an ISO compatible compiler }
     cmsISOLike_Program_Para, { program parameters as it required by an ISO compatible compiler }
     cmsISOLike_Mod,        { mod operation as it is required by an iso compatible compiler }
+    cmsArrayOperators,     { use Delphi compatible array operators instead of custom ones ("+") }
+    // not yet in FPC, supported by pas2js:
     cmsPrefixedAttributes, { allow Delphi attributes, disable FPC [] proc modifier }
     cmsExternalClass,      { pas2js: allow  class external [pkgname] name [symbol] }
-    cmsIgnoreAttributes,   { pas2js: ignore attributes }
-    cmsIgnoreInterfaces    { pas2js: ignore class interfaces }
+    cmsIgnoreAttributes    { pas2js: ignore attributes }
     );
   TCompilerModeSwitches = set of TCompilerModeSwitch;
 const
@@ -220,14 +236,14 @@ const
      cmsPointer_2_procedure,cmsAutoderef,cmsTp_procvar,cmsInitfinal,cmsDefault_ansistring,
      cmsOut,cmsDefault_para,cmsDuplicate_names,cmsHintdirective,
      cmsProperty,cmsDefault_inline,cmsExcept,cmsAdvancedRecords,
-     cmsPrefixedAttributes],
+     cmsPrefixedAttributes,cmsArrayOperators],
     // cmDELPHIUNICODE
     [cmsClass,cmsObjpas,cmsResult,cmsString_pchar,
      cmsPointer_2_procedure,cmsAutoderef,cmsTp_procvar,cmsInitfinal,
      cmsOut,cmsDefault_para,cmsDuplicate_names,cmsHintdirective,
      cmsProperty,cmsDefault_inline,cmsExcept,cmsAdvancedRecords,
      cmsSystemcodepage,cmsDefault_unicodestring,
-     cmsPrefixedAttributes],
+     cmsPrefixedAttributes,cmsArrayOperators],
     // cmGPC
     [cmsTp_procvar],
     // cmTP
@@ -249,6 +265,50 @@ const
      cmsISOLike_Mod]
     );
   cmAllModesWithGeneric = [cmDELPHI,cmDELPHIUNICODE,cmOBJFPC];
+
+  // upper case (see fpc/compiler/globtype.pas  modeswitchstr )
+  CompilerModeSwitchNames: array[TCompilerModeSwitch] of string=(
+    'POINTERARITHMETICS',
+    'CLASS',
+    'OBJPAS',
+    'RESULT',
+    'PCHARTOSTRING',
+    'CVAR',
+    'NESTEDCOMMENTS',
+    'CLASSICPROCVARS',
+    'MACPROCVARS',
+    'REPEATFORWARD',
+    'POINTERTOPROCVAR',
+    'AUTODEREF',
+    'INITFINAL',
+    'ANSISTRINGS',
+    'OUT',
+    'DEFAULTPARAMETERS',
+    'HINTDIRECTIVE',
+    'DUPLICATELOCALS',
+    'PROPERTIES',
+    'ALLOWINLINE',
+    'EXCEPTIONS',
+    'OBJECTIVEC1',
+    'OBJECTIVEC2',
+    'NESTEDPROCVARS',
+    'NONLOCALGOTO',
+    'ADVANCEDRECORDS',
+    'ISOUNARYMINUS',
+    'SYSTEMCODEPAGE',
+    'FINALFIELDS',
+    'UNICODESTRINGS',
+    'TYPEHELPERS',
+    'CBLOCKS',
+    'ISOIO',
+    'ISOPROGRAMPARAS',
+    'ISOMOD',
+    'ARRAYOPERATORS',
+    'PREFIXEDATTRIBUTES',
+    'EXTERNALCLASS',
+    'IGNOREATTRIBUTES'
+    );
+
 
 type
   // see fpcsrc/compiler/globtype.pas toptimizerswitch
@@ -282,7 +342,22 @@ type
     pcFPC,
     pcDelphi,
     pcPas2js);
-  
+const  
+  // upper case
+  PascalCompilerNames: array[TPascalCompiler] of string=(
+    'FPC', 'DELPHI', 'PAS2JS'
+    );
+  PascalCompilerUnitExt: array[TPascalCompiler] of string = (
+    'pp;pas;ppu', // + p  if TCompilerMode=cmMacPas
+    'pas;dcu',
+    'pas;pp;pcu;pju'
+    );
+  PascalCompilerSrcExt: array[TPascalCompiler] of string = (
+    'pp;pas', // + p  if TCompilerMode=cmMacPas
+    'pas',
+    'pas;pp'
+    );
+
 type
   TLSSkippingDirective = (
     lssdNone,
@@ -779,68 +854,6 @@ type
     procedure DisposePSourceChangeStep(Step: PSourceChangeStep);
     function NewPSourceChangeStep: PSourceChangeStep;
   end;
-
-const
-  // upper case
-  CompilerModeNames: array[TCompilerMode] of string=(
-    'FPC',
-    'DELPHI',
-    'DELPHIUNICODE',
-    'GPC',
-    'TP',
-    'OBJFPC',
-    'MACPAS',
-    'ISO',
-    'EXTPAS'
-    );
-
-  // upper case (see fpc/compiler/globtype.pas  modeswitchstr )
-  CompilerModeSwitchNames: array[TCompilerModeSwitch] of string=(
-    'POINTERARITHMETICS',
-    'CLASS',
-    'OBJPAS',
-    'RESULT',
-    'PCHARTOSTRING',
-    'CVAR',
-    'NESTEDCOMMENTS',
-    'CLASSICPROCVARS',
-    'MACPROCVARS',
-    'REPEATFORWARD',
-    'POINTERTOPROCVAR',
-    'AUTODEREF',
-    'INITFINAL',
-    'ANSISTRINGS',
-    'OUT',
-    'DEFAULTPARAMETERS',
-    'HINTDIRECTIVE',
-    'DUPLICATELOCALS',
-    'PROPERTIES',
-    'ALLOWINLINE',
-    'EXCEPTIONS',
-    'OBJECTIVEC1',
-    'OBJECTIVEC2',
-    'NESTEDPROCVARS',
-    'NONLOCALGOTO',
-    'ADVANCEDRECORDS',
-    'ISOUNARYMINUS',
-    'SYSTEMCODEPAGE',
-    'FINALFIELDS',
-    'UNICODESTRINGS',
-    'TYPEHELPERS',
-    'CBLOCKS',
-    'ISOIO',
-    'ISOPROGRAMPARAS',
-    'ISOMOD',
-    'PREFIXEDATTRIBUTES',
-    'EXTERNALCLASS',
-    'IGNOREATTRIBUTES',
-    'IGNOREINTERFACES'
-    );
-
-  // upper case
-  PascalCompilerNames: array[TPascalCompiler] of string=(
-    'FPC', 'DELPHI', 'PAS2JS'
-    );
 
 const
   DirectiveSequenceName: array [TSequenceDirective] of string =
@@ -1371,7 +1384,8 @@ begin
     FDirectivesSorted[i]:=@FDirectives[i];
   for i:=FDirectivesCount to FDirectivesCapacity-1 do
     FDirectivesSorted[i]:=nil;
-  MergeSort(PPointer(FDirectivesSorted),FDirectivesCount,@CompareLSDirectiveCodeSrcPosCleanPos);
+  MergeSortWithLen(PPointer(FDirectivesSorted),FDirectivesCount,
+                   @CompareLSDirectiveCodeSrcPosCleanPos);
 end;
 
 procedure TLinkScanner.AddLink(ASrcPos: integer; ACode: Pointer;

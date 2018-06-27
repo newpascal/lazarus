@@ -5,7 +5,7 @@ unit HeapTrcView;
 interface
 
 uses
-  Classes, SysUtils, XMLConf, contnrs, Clipbrd, LCLProc, LCLType,
+  Classes, SysUtils, XMLConf, DOM, contnrs, Clipbrd, LCLProc, LCLType,
   LResources, Forms, Controls, Graphics, Dialogs, StdCtrls, ComCtrls, ExtCtrls,
   // LazUtils
   FileUtil, LazFileUtils,
@@ -247,11 +247,14 @@ var
   i   : integer;
   sz  : Integer;
 begin
-  sz := 16 + trace.Count * 16; // 8 hex digits for Size + 8 hex digits for Size
+  sz := 32 + trace.Count * 16; // 8 hex digits for Size + 8 hex digits for Size
   SetLength(Result, sz);
   HexInt64ToStr(trace.BlockSize, Result, 1);
+  HexInt64ToStr(hash(trace.RawStackData), Result, 17);
   for i := 0 to trace.Count - 1 do
-    HexInt64ToStr(trace.lines[i].Addr, Result, 17 + i * 16);
+    if trace.lines[i].Addr <> 0
+    then HexInt64ToStr(trace.lines[i].Addr, Result, 33 + i * 16)
+    else HexInt64ToStr(Hash(trace.lines[i].RawLineData), Result, 17 + i * 16);
 end;
 
 procedure THeapTrcViewForm.ItemsToTree;
@@ -437,7 +440,7 @@ begin
   cfg.SetValue('bottom', b.Bottom);
   cfg.CloseKey;
   for i:=0 to edtTrcFileName.Items.Count-1 do
-    cfg.SetValue('path'+IntToStr(i), UTF8Decode(edtTrcFileName.Items[i]) );
+    cfg.SetValue(DOMString('path'+IntToStr(i)), UTF8Decode(edtTrcFileName.Items[i]) );
 end;
 
 function PointInRect(p: TPoint; const r: TRect): Boolean;
@@ -491,7 +494,7 @@ begin
     if b.Bottom-b.Top<=0 then b.Bottom:=b.Top+40;
 
     for i:=0 to 7 do begin
-      s:=cfg.GetValue('path'+IntToStr(i), '');
+      s:=cfg.GetValue(DOMString('path'+IntToStr(i)), '');
       if s<>'' then st.Add(UTF8Encode(s));
     end;
 

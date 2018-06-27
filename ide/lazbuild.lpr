@@ -30,17 +30,18 @@ uses
   {$ENDIF}
   Classes, SysUtils, math, CustApp,
   Interfaces, // this includes the NoGUI widgetset
+  // LazUtils
+  Masks, LConvEncoding, FileUtil, LazFileUtils, LazLoggerBase, LazUtilities,
+  LazUTF8, Laz2_XMLCfg,
   // LCL
-  LCLPlatformDef, LCLProc, Controls, Dialogs, Forms,
-  // codetools
+  LCLPlatformDef, Controls, Dialogs, Forms,
+  // Codetools
   CodeCache, CodeToolManager, DefineTemplates, FileProcs,
   // IDEIntf
   MacroIntf, PackageIntf, IDEDialogs, ProjectIntf, IDEExternToolIntf,
-  CompOptsIntf, IDEOptionsIntf, LazIDEIntf,
-  // LazUtils
-  Masks, LConvEncoding, Laz2_XMLCfg, FileUtil, LazFileUtils, LazUTF8,
+  CompOptsIntf, IDEOptionsIntf, LazIDEIntf, PackageDependencyIntf,
   // IDE
-  IDEProcs, IDEUtils, InitialSetupProc, ExtTools, CompilerOptions,
+  IDEProcs, InitialSetupProc, ExtTools, CompilerOptions,
   ApplicationBundle, TransferMacros, EnvironmentOpts, IDETranslations,
   LazarusIDEStrConsts, IDECmdLine, MiscOptions, Project, LazConf, PackageDefs,
   PackageLinks, PackageSystem, InterPkgConflictFiles, BuildLazDialog,
@@ -1152,7 +1153,7 @@ begin
   LoadMiscellaneousOptions;
   SetupLazarusDirectory;
   SetupCodetools;
-  SetupCompilerFilename;
+  SetupFPCExeFilename;
   SetupPackageSystem;
   MainBuildBoss.SetupExternalTools;
   ExtToolConsole:=TLazExtToolConsole.Create(nil);

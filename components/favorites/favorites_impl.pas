@@ -30,9 +30,16 @@ unit favorites_impl;
 interface
 
 uses
-  Classes, SysUtils, ToolBarIntf, IDEImagesIntf, Graphics, PackageIntf,
-  Menus, LazIDEIntf, ProjectIntf, Laz2_XMLCfg, IDEOptionsIntf,
-  IDECommands, ComCtrls, favoritesstr, ImgList, LazFileUtils;
+  Classes, SysUtils,
+  // LCL
+  Graphics, ComCtrls, Menus, ImgList,
+  // LazUtils
+  LazFileUtils, Laz2_XMLCfg,
+  // IdeIntf
+  ToolBarIntf, IDEImagesIntf, LazIDEIntf, ProjectIntf, IDEOptionsIntf,
+  IDECommands, IDEUtils,
+  // Favorites
+  favoritesstr;
 
 type
   TFavoritesHandler = class
@@ -111,7 +118,7 @@ end;
 
 procedure TOpenFileFavToolButton.DoOnAdded;
 var
-  xImg: TCustomBitmap;
+  xGlyphs: TLCLGlyphs;
 begin
   inherited DoOnAdded;
 
@@ -123,21 +130,11 @@ begin
     DropdownMenu := TPopupMenu.Create(Self);
 
   if DropdownMenu.Images=nil then
-  begin
-    DropdownMenu.Images := TCustomImageList.Create(Self);
-    DropdownMenu.Images.Width := 16;
-    DropdownMenu.Images.Height := 16;
-  end;
+    DropdownMenu.Images := LCLGlyphs;
+  xGlyphs := DropdownMenu.Images as TLCLGlyphs;
 
-  xImg := TBitmap.Create;
-  try
-    IDEImages.Images_16.GetBitmap(IDEImages.LoadImage('laz_add'), xImg);
-    FAddImageIndex := DropdownMenu.Images.Add(xImg, nil);
-    IDEImages.Images_16.GetBitmap(IDEImages.LoadImage('laz_delete'), xImg);
-    FRemoveImageIndex := DropdownMenu.Images.Add(xImg, nil);
-  finally
-    xImg.Free;
-  end;
+  FAddImageIndex := xGlyphs.GetImageIndex('laz_add');
+  FRemoveImageIndex := xGlyphs.GetImageIndex('laz_delete');
 
   FOrigOnPopup := DropdownMenu.OnPopup;
   DropdownMenu.OnPopup := @RefreshMenu;

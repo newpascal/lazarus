@@ -48,6 +48,7 @@ type
     procedure TestMissingGenericKeywordObjFPCFail;
     procedure TestParseGenericsDelphi;
     procedure TestParseExternalConcat;
+    procedure TestParseExternalConst;
     procedure TestParseModeTP;
   end;
 
@@ -445,6 +446,21 @@ begin
   'program test1;',
   '{$mode objfpc}',
   'procedure foo; cdecl; external name concat(''foo'', ''bar'');',
+  'begin']);
+  ParseModule;
+end;
+
+procedure TTestPascalParser.TestParseExternalConst;
+begin
+  Add([
+  'program test1;',
+  'const NaN: double; external;',
+  'const nan: double; external name ''NaN'';',
+  '{$modeswitch externalclass}',
+  'type',
+  '  TExtA = class external name ''ExtA''',
+  '    const id;',
+  '  end;',
   'begin']);
   ParseModule;
 end;

@@ -46,7 +46,7 @@ uses
   // CodeTools
   FileProcs, CodeToolManager, DefineTemplates,
   // LazUtils
-  FileUtil, LazUTF8, LazUTF8Classes, LazFileUtils, LazFileCache, LazLogger,
+  FileUtil, LazUTF8, LazUTF8Classes, LazFileUtils, LazFileCache, LazLoggerBase,
   // Other
   MacroDefIntf, GDBMIDebugger, DbgIntfDebuggerBase,
   TransferMacros, LazarusIDEStrConsts, LazConf, EnvironmentOpts, IDEImagesIntf,
@@ -489,7 +489,7 @@ begin
   ImgIDError := Imagelist1.AddResourceName(HInstance, 'state_error');
   ImgIDWarning := Imagelist1.AddResourceName(HInstance, 'state_warning');
 
-  TIDEImages.AssignImage(StopScanButton.Glyph, 'menu_stop');
+  IDEImages.AssignImage(StopScanButton, 'menu_stop');
 
   UpdateCaptions;
 
@@ -845,7 +845,7 @@ var
   Files: TSDFileInfoList;
 begin
   Exclude(FFlags,sdfCompilerFilenameNeedsUpdate);
-  Files:=SearchCompilerCandidates(false,CodeToolBoss.CompilerDefinesCache.TestFilename);
+  Files:=SearchFPCExeCandidates(false,CodeToolBoss.CompilerDefinesCache.TestFilename);
   FreeAndNil(FCandidates[sddtCompilerFilename]);
   FCandidates[sddtCompilerFilename]:=Files;
   FillComboboxWithFileInfoList(CompilerComboBox,Files);
@@ -979,7 +979,7 @@ begin
   fLastParsedCompiler:=EnvironmentOptions.GetParsedCompilerFilename;
   //debugln(['TInitialSetupDialog.UpdateCompilerNote ',fLastParsedCompiler]);
 
-  Quality:=CheckCompilerQuality(fLastParsedCompiler,Note,
+  Quality:=CheckFPCExeQuality(fLastParsedCompiler,Note,
                                 CodeToolBoss.CompilerDefinesCache.TestFilename);
   if Quality<>sddqInvalid then begin
     CodeToolBoss.CompilerDefinesCache.ConfigCaches.Find(

@@ -35,9 +35,17 @@ unit CodeToolsOptions;
 interface
 
 uses
-  Classes, SysUtils, LazConf, LazFileUtils, Laz2_XMLCfg, LazUTF8, LazUTF8Classes,
-  LazFileCache, LclProc, LCLType, CodeToolManager, DefineTemplates, SourceChanger,
-  IDEOptionsIntf, MacroIntf, LazarusIDEStrConsts, IDEProcs;
+  Classes, SysUtils,
+  // LazUtils
+  LazFileUtils, Laz2_XMLCfg, LazUTF8, LazUTF8Classes, LazFileCache,
+  // LCL
+  LCLProc, LCLType,
+  // CodeTools
+  CodeToolManager, DefineTemplates, SourceChanger,
+  // IdeIntf
+  IDEOptionsIntf, IDEOptEditorIntf, MacroIntf,
+  // IDE
+  LazConf, LazarusIDEStrConsts, IDEProcs;
 
 const
   DefaultIndentationFilename = 'laz_indentation.pas'; // in directory GetPrimaryConfigPath
@@ -45,6 +53,9 @@ const
     '$(LazarusDir)'+PathDelim+'components'+PathDelim+'codetools'+PathDelim+'codecompletiontemplates.xml';
 
 type
+
+  TIdentComplIncludeWords = (icwDontInclude, icwIncludeFromCurrentUnit,
+    icwIncludeFromAllUnits);
 
   { TCodeToolsOptions }
 
@@ -113,6 +124,7 @@ type
     FIdentComplAutoStartAfterPoint: boolean;
     FIdentComplAutoUseSingleIdent: boolean;
     FIdentComplUseContainsFilter: Boolean;
+    FIdentComplIncludeWords: TIdentComplIncludeWords;
     FIdentComplShowIcons: Boolean;
 
     // auto indentation
@@ -244,6 +256,8 @@ type
                                            write FIdentComplAutoUseSingleIdent;
     property IdentComplUseContainsFilter: boolean read FIdentComplUseContainsFilter
                                            write FIdentComplUseContainsFilter;
+    property IdentComplIncludeWords: TIdentComplIncludeWords read FIdentComplIncludeWords
+                                           write FIdentComplIncludeWords;
     property IdentComplShowIcons: boolean read FIdentComplShowIcons
                                            write FIdentComplShowIcons;
     property IdentComplAddParameterBrackets: boolean
@@ -280,6 +294,12 @@ function GetTranslatedAtomTypes(a: TAtomType): string;
 function TranslatedAtomToType(const s: string): TAtomType;
 function ReadIdentifier(const s, DefaultIdent: string): string;
 
+const
+  IdentComplIncludeWordsNames: array[TIdentComplIncludeWords] of shortstring = (
+      'No', 'FromCurrentUnit', 'FromAllUnits'
+    );
+function IdentComplIncludeWordsNamesToEnum(const s: string): TIdentComplIncludeWords;
+
 implementation
 
 {$R lazarus_indentation.res}
@@ -288,6 +308,13 @@ const
   CodeToolsOptionsVersion = 2;
   DefaultCodeToolsOptsFile = 'codetoolsoptions.xml';
   
+function IdentComplIncludeWordsNamesToEnum(const s: string): TIdentComplIncludeWords;
+begin
+  for Result:=Low(TIdentComplIncludeWords) to High(TIdentComplIncludeWords) do
+    if SysUtils.CompareText(IdentComplIncludeWordsNames[Result],s)=0 then exit;
+  Result:=icwDontInclude;
+end;
+
 function GetTranslatedAtomTypes(a: TAtomType): string;
 begin
   case a of
@@ -547,6 +574,9 @@ begin
       'CodeToolsOptions/IdentifierCompletion/AutoUseSingleIdent',true);
     FIdentComplUseContainsFilter:=XMLConfig.GetValue(
       'CodeToolsOptions/IdentifierCompletion/UseContainsFilter',true);
+    FIdentComplIncludeWords:=IdentComplIncludeWordsNamesToEnum(XMLConfig.GetValue(
+      'CodeToolsOptions/IdentifierCompletion/IncludeWords',
+      IdentComplIncludeWordsNames[icwIncludeFromAllUnits]));
     FIdentComplShowIcons:=XMLConfig.GetValue(
       'CodeToolsOptions/IdentifierCompletion/ShowIcons',false);
     FIdentComplAddParameterBrackets:=XMLConfig.GetValue(
@@ -719,6 +749,9 @@ begin
       FIdentComplAutoUseSingleIdent,true);
     XMLConfig.SetDeleteValue('CodeToolsOptions/IdentifierCompletion/UseContainsFilter',
       FIdentComplUseContainsFilter,true);
+    XMLConfig.SetDeleteValue('CodeToolsOptions/IdentifierCompletion/IncludeWords',
+      IdentComplIncludeWordsNames[FIdentComplIncludeWords],
+      IdentComplIncludeWordsNames[icwIncludeFromAllUnits]);
     XMLConfig.SetDeleteValue('CodeToolsOptions/IdentifierCompletion/ShowIcons',
       FIdentComplShowIcons,false);
     XMLConfig.SetDeleteValue('CodeToolsOptions/IdentifierCompletion/AutoAddParameterBrackets',

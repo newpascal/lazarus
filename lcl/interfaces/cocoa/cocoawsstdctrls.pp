@@ -137,6 +137,11 @@ type
     class procedure SetReadOnly(const ACustomEdit: TCustomEdit; NewReadOnly: boolean); override;
     class procedure SetSelStart(const ACustomEdit: TCustomEdit; NewStart: integer); override;
     class procedure SetSelLength(const ACustomEdit: TCustomEdit; NewLength: integer); override;
+
+    class procedure Cut(const ACustomEdit: TCustomEdit); override;
+    class procedure Copy(const ACustomEdit: TCustomEdit); override;
+    class procedure Paste(const ACustomEdit: TCustomEdit); override;
+    class procedure Undo(const ACustomEdit: TCustomEdit); override;
   end;
   
   { TCocoaMemoStrings }
@@ -172,6 +177,8 @@ type
 
     // WSControl functions
     class procedure SetColor(const AWinControl: TWinControl); override;
+    class procedure SetSelStart(const ACustomEdit: TCustomEdit; NewStart: integer); override;
+    class procedure SetSelLength(const ACustomEdit: TCustomEdit; NewLength: integer); override;
 
     // WSEdit functions
     //class function GetCanUndo(const ACustomEdit: TCustomEdit): Boolean; override;
@@ -801,6 +808,30 @@ begin
   curEditor.setSelectedRange(lRange);
 end;
 
+class procedure TCocoaWSCustomEdit.Cut(const ACustomEdit: TCustomEdit);
+begin
+  if not Assigned(ACustomEdit) or not (ACustomEdit.HandleAllocated) then Exit;
+  NSApplication(NSApp).sendAction_to_from(objcselector('cut:'), nil, id(ACustomEdit.Handle));
+end;
+
+class procedure TCocoaWSCustomEdit.Copy(const ACustomEdit: TCustomEdit);
+begin
+  if not Assigned(ACustomEdit) or not (ACustomEdit.HandleAllocated) then Exit;
+  NSApplication(NSApp).sendAction_to_from(objcselector('copy:'), nil, id(ACustomEdit.Handle));
+end;
+
+class procedure TCocoaWSCustomEdit.Paste(const ACustomEdit: TCustomEdit);
+begin
+  if not Assigned(ACustomEdit) or not (ACustomEdit.HandleAllocated) then Exit;
+  NSApplication(NSApp).sendAction_to_from(objcselector('paste:'), nil, id(ACustomEdit.Handle));
+end;
+
+class procedure TCocoaWSCustomEdit.Undo(const ACustomEdit: TCustomEdit);
+begin
+  if not Assigned(ACustomEdit) or not (ACustomEdit.HandleAllocated) then Exit;
+  NSApplication(NSApp).sendAction_to_from(objcselector('undo:'), nil, id(ACustomEdit.Handle));
+end;
+
 { TCocoaMemoStrings }
 
 constructor TCocoaMemoStrings.Create(ATextView: TCocoaTextView);
@@ -812,6 +843,10 @@ end;
 function TCocoaMemoStrings.GetTextStr: string;
 begin
   Result := NSStringToString(FTextView.string_);
+  Result := StringReplace( StringReplace(
+    StringReplace(Result, #10#13, LineEnding, [rfReplaceAll])
+    , #13#10, LineEnding, [rfReplaceAll])
+    , #13, LineEnding, [rfReplaceAll]);
 end;
 
 procedure TCocoaMemoStrings.SetTextStr(const Value: string);
@@ -1065,6 +1100,9 @@ begin
   txt := TCocoaTextView.alloc.initwithframe(nr);
   // setting up a default system font (to be consistent with other widgetsets)
   txt.setFont( NSFont.systemFontOfSize( NSFont.systemFontSizeForControlSize(NSRegularControlSize) ));
+  txt.setRichText(false);
+  txt.setImportsGraphics(false);
+  txt.setUsesRuler(false);
 
   // this is necessary for Ward Wrap disabled, so NSViewText
   // doesn't have a constraint to resize
@@ -1113,6 +1151,34 @@ begin
     txt.setBackgroundColor( NSColor.textBackgroundColor )
   else
     txt.setBackgroundColor( ColorToNSColor(ColorToRGB(AWinControl.Color)));
+end;
+
+class procedure TCocoaWSCustomMemo.SetSelStart(const ACustomEdit: TCustomEdit;
+  NewStart: integer);
+var
+  lRange: NSRange;
+  txt: TCocoaTextView;
+begin
+  txt := GetTextView(ACustomEdit);
+  if not Assigned(txt) then Exit;
+
+  lRange := txt.selectedRange;
+  lRange.location := NewStart;
+  txt.setSelectedRange(lRange);
+end;
+
+class procedure TCocoaWSCustomMemo.SetSelLength(const ACustomEdit: TCustomEdit;
+  NewLength: integer);
+var
+  lRange: NSRange;
+  txt: TCocoaTextView;
+begin
+  txt := GetTextView(ACustomEdit);
+  if not Assigned(txt) then Exit;
+
+  lRange := txt.selectedRange;
+  lRange.length := NewLength;
+  txt.setSelectedRange(lRange);
 end;
 
 class function TCocoaWSCustomMemo.GetCaretPos(const ACustomEdit: TCustomEdit): TPoint;

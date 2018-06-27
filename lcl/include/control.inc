@@ -1236,12 +1236,15 @@ begin
 
   if FParentFont then
   begin
-    Font.BeginUpdate;
-    try
-      Font.PixelsPerInch := FParent.Font.PixelsPerInch; // PixelsPerInch isn't assigned
-      Font := FParent.Font;
-    finally
-      Font.EndUpdate;
+    if Assigned(FParent) then
+    begin
+      Font.BeginUpdate;
+      try
+        Font.PixelsPerInch := FParent.Font.PixelsPerInch; // PixelsPerInch isn't assigned
+        Font := FParent.Font;
+      finally
+        Font.EndUpdate;
+      end;
     end;
     FParentFont := True;
   end;
@@ -3649,7 +3652,7 @@ end;
 
 procedure TControl.WMCancelMode(var Message: TLMessage);
 begin
-  MouseCapture := False;
+  SetCaptureControl(nil);
 end;
 
 function TControl.IsEnabledStored: Boolean;
@@ -5567,14 +5570,14 @@ function TControl.GetDefaultWidth: integer;
 begin
   if WidthIsAnchored then
     // if width is anchored the read and base bounds were changed at designtime
-    Result := GetControlClassDefaultSize.cx
+    Result := Scale96ToFont(GetControlClassDefaultSize.cx)
   else if cfBaseBoundsValid in FControlFlags then
     Result := FBaseBounds.Right - FBaseBounds.Left
   else
   if cfWidthLoaded in FControlFlags then
     Result := FReadBounds.Right - FReadBounds.Left
   else
-    Result := GetControlClassDefaultSize.cx;
+    Result := Scale96ToFont(GetControlClassDefaultSize.cx);
 end;
 
 {------------------------------------------------------------------------------
@@ -5587,14 +5590,14 @@ function TControl.GetDefaultHeight: integer;
 begin
   if HeightIsAnchored then
     // if height is anchored the read and base bounds were changed at designtime
-    Result := GetControlClassDefaultSize.cy
+    Result := Scale96ToFont(GetControlClassDefaultSize.cy)
   else if cfBaseBoundsValid in FControlFlags then
     Result := BaseBounds.Bottom - BaseBounds.Top
   else
   if cfHeightLoaded in FControlFlags then
     Result := FReadBounds.Bottom - FReadBounds.Top
   else
-    Result := GetControlClassDefaultSize.CY;
+    Result := Scale96ToFont(GetControlClassDefaultSize.cy);
 end;
 
 {------------------------------------------------------------------------------

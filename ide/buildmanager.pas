@@ -37,21 +37,21 @@ uses
   // RTL + FCL
   Classes, SysUtils, Laz_AVL_Tree,
   // LCL
-  InterfaceBase, LCLPlatformDef, LCLProc, Dialogs, Forms, Controls,
+  InterfaceBase, LCLPlatformDef, Dialogs, Forms, Controls,
   // CodeTools
   ExprEval, BasicCodeTools, CodeToolManager, DefineTemplates, CodeCache,
-  FileProcs, CodeToolsCfgScript,
+  FileProcs, CodeToolsCfgScript, LinkScanner,
   // LazUtils
   LConvEncoding, FileUtil, LazFileUtils, LazFileCache, LazUTF8, Laz2_XMLCfg,
-  LazUtilities,
+  LazUtilities, LazMethodList,
   // IDEIntf
   IDEOptionsIntf, ProjectIntf, MacroIntf, IDEDialogs, IDEExternToolIntf,
-  CompOptsIntf, LazIDEIntf, MacroDefIntf, IDEMsgIntf,
+  CompOptsIntf, LazIDEIntf, MacroDefIntf, IDEMsgIntf, PackageDependencyIntf,
   // IDE
-  IDECmdLine, LazarusIDEStrConsts, DialogProcs, IDEProcs, IDEUtils,
+  IDECmdLine, LazarusIDEStrConsts, DialogProcs, IDEProcs,
   InputHistory, EditDefineTree, ProjectResources, MiscOptions, LazConf,
   EnvironmentOpts, TransferMacros, CompilerOptions,
-  ExtTools, etMakeMsgParser, etFPCMsgParser,
+  ExtTools, etMakeMsgParser, etFPCMsgParser, etPas2jsMsgParser,
   Compiler, FPCSrcScan, PackageDefs, PackageSystem, Project, ProjectIcon,
   ModeMatrixOpts, BaseBuildManager, ApplicationBundle, RunParamsOpts;
   
@@ -195,6 +195,7 @@ type
     function GetLCLWidgetType: string; override;
     function GetRunCommandLine: string; override;
 
+    function GetCompilerFilename: string; override;
     function GetFPCompilerFilename: string; override;
     function GetFPCFrontEndOptions: string; override;
     function GetProjectPublishDir: string; override;
@@ -524,10 +525,12 @@ begin
   ExternalTools:=TExternalTools.Create(Self);
   EnvOptsChanged;
   RegisterFPCParser;
+  RegisterPas2jsParser;
   RegisterMakeParser;
   ExternalToolList.RegisterParser(TDefaultParser);
 
   FPCMsgFilePool:=TFPCMsgFilePool.Create(nil);
+  Pas2jsMsgFilePool:=TPas2jsMsgFilePool.Create(nil);
 end;
 
 procedure TBuildManager.SetupCompilerInterface;
@@ -629,15 +632,18 @@ begin
   end;
 end;
 
-function TBuildManager.GetFPCompilerFilename: string;
+function TBuildManager.GetCompilerFilename: string;
 var
   s: string;
   Opts: TProjectCompilerOptions;
+  Kind: TPascalCompiler;
 begin
   Result:='';
+  //debugln(['TBuildManager.GetCompilerFilename START FBuildTarget=',DbgSName(FBuildTarget)]);
   if FBuildTarget<>nil then
   begin
     Opts:=FBuildTarget.CompilerOptions;
+    //debugln(['TBuildManager.GetCompilerFilename FBuildTarget=',DbgSName(FBuildTarget),' Path=',Opts.CompilerPath,' Build=',[crCompile,crBuild]*Opts.CompileReasons<>[],' Parsing=',Opts.ParsedOpts.Values[pcosCompilerPath].Parsing]);
     if ([crCompile,crBuild]*Opts.CompileReasons<>[])
     and (Opts.CompilerPath<>'')
     and (not Opts.ParsedOpts.Values[pcosCompilerPath].Parsing) then
@@ -655,10 +661,18 @@ begin
       //debugln(['TBuildManager.GetFPCompilerFilename project compiler="',Result,'"']);
     end;
   end;
-  if not IsFPCExecutable(Result,s) then begin
-    //if Result<>'' then debugln(['TBuildManager.GetFPCompilerFilename project compiler NOT fpc: "',Result,'"']);
+  if not IsCompilerExecutable(Result,s,Kind) then begin
+    //debugln(['TBuildManager.GetFPCompilerFilename project compiler IS NOT a pascal compiler: "',Result,'"']);
     Result:=EnvironmentOptions.GetParsedCompilerFilename;
+    if Kind=pcFPC then ;
   end;
+end;
+
+function TBuildManager.GetFPCompilerFilename: string;
+begin
+  Result:=GetCompilerFilename;
+  if GuessCompilerType(Result)<>pcFPC then
+    Result:=EnvironmentOptions.GetParsedCompilerFilename;
 end;
 
 function TBuildManager.GetFPCFrontEndOptions: string;
@@ -815,19 +829,21 @@ procedure TBuildManager.RescanCompilerDefines(ResetBuildTarget,
   begin
     Cfg:=UnitSetCache.GetConfigCache(false);
     if Cfg=nil then exit(true);
-    if Cfg.RealCompiler='' then begin
-      if ConsoleVerbosity>=0 then
-        debugln(['Error: (lazarus) [PPUFilesAndCompilerMatch] Compiler=',Cfg.Compiler,' RealComp=',Cfg.RealCompiler,' InPath=',Cfg.RealCompilerInPath]);
-      IDEMessageDialog(lisCCOErrorCaption, Format(
-        lisCompilerDoesNotSupportTarget, [Cfg.Compiler, Cfg.TargetCPU, Cfg.TargetOS]),
-        mtError,[mbOk]);
-      exit(false);
-    end;
-    Filename:=GetPhysicalFilenameCached(Cfg.RealCompiler,true);
-    if (Filename='') then begin
-      IDEMessageDialog('Error','Compiler executable is missing: '+Cfg.RealCompiler,
-        mtError,[mbOk]);
-      exit(false);
+    if Cfg.Kind=pcFPC then begin
+      if Cfg.RealCompiler='' then begin
+        if ConsoleVerbosity>=0 then
+          debugln(['Error: (lazarus) [PPUFilesAndCompilerMatch] Compiler=',Cfg.Compiler,' RealComp=',Cfg.RealCompiler,' InPath=',Cfg.RealCompilerInPath]);
+        IDEMessageDialog(lisCCOErrorCaption, Format(
+          lisCompilerDoesNotSupportTarget, [Cfg.Compiler, Cfg.TargetCPU, Cfg.TargetOS]),
+          mtError,[mbOk]);
+        exit(false);
+      end;
+      Filename:=GetPhysicalFilenameCached(Cfg.RealCompiler,true);
+      if (Filename='') then begin
+        IDEMessageDialog('Error','Compiler executable is missing: '+Cfg.RealCompiler,
+          mtError,[mbOk]);
+        exit(false);
+      end;
     end;
     Result:=true;
   end;
@@ -844,8 +860,9 @@ var
   AsyncScanFPCSrcDir: String;
   UnitSetChanged: Boolean;
   HasTemplate: Boolean;
-  FPCExecMsg: string;
+  CompilerErrorMsg: string;
   Msg: String;
+  Kind: TPascalCompiler;
 begin
   if ClearCaches then begin
     {$IFDEF VerboseFPCSrcScan}
@@ -864,8 +881,11 @@ begin
   // use current TargetOS, TargetCPU, compilerfilename and FPC source dir
   TargetOS:=GetTargetOS;
   TargetCPU:=GetTargetCPU;
+  {$IFDEF VerboseFPCSrcScan}
+  debugln(['TBuildManager.RescanCompilerDefines GetParsedFPCSourceDirectory needs FPCVer...']);
+  {$ENDIF}
   FPCSrcDir:=EnvironmentOptions.GetParsedFPCSourceDirectory; // needs FPCVer macro
-  CompilerFilename:=GetFPCompilerFilename;
+  CompilerFilename:=GetCompilerFilename;
   FPCOptions:=GetFPCFrontEndOptions;
 
   {$IFDEF VerboseFPCSrcScan}
@@ -894,20 +914,21 @@ begin
   end;
 
   // then check the project's compiler
-  if not IsFPCExecutable(CompilerFilename,FPCExecMsg) then begin
+  if not IsCompilerExecutable(CompilerFilename,CompilerErrorMsg,Kind) then begin
     Msg:='';
     if (FBuildTarget<>nil)
     and ([crCompile,crBuild]*FBuildTarget.CompilerOptions.CompileReasons<>[])
     and (FBuildTarget.CompilerOptions.CompilerPath<>'')
     then begin
       CompilerFilename:=FBuildTarget.GetCompilerFilename;
-      if not IsFPCExecutable(CompilerFilename,FPCExecMsg) then begin
-        Msg+='Project''s compiler: "'+CompilerFilename+'": '+FPCExecMsg+#13;
+      if not IsCompilerExecutable(CompilerFilename,CompilerErrorMsg,Kind) then begin
+        Msg+='Project''s compiler: "'+CompilerFilename+'": '+CompilerErrorMsg+#13;
       end;
     end;
+
     CompilerFilename:=EnvironmentOptions.GetParsedCompilerFilename;
-    if not IsFPCExecutable(CompilerFilename,FPCExecMsg) then begin
-      Msg+='Environment compiler: "'+CompilerFilename+'": '+FPCExecMsg+#13;
+    if not IsFPCExecutable(CompilerFilename,CompilerErrorMsg) then begin
+      Msg+='Environment compiler: "'+CompilerFilename+'": '+CompilerErrorMsg+#13;
     end;
     debugln('Warning: (lazarus) [TBuildManager.RescanCompilerDefines]: invalid compiler:');
     debugln(Msg);
@@ -925,6 +946,7 @@ begin
   {$IFDEF VerboseFPCSrcScan}
   debugln(['TBuildManager.RescanCompilerDefines reading active compiler settings']);
   {$ENDIF}
+  //debugln(['TBuildManager.RescanCompilerDefines ',CompilerFilename,' OS=',TargetOS,' CPU=',TargetCPU,' Options="',FPCOptions,'"']);
   UnitSetCache:=CodeToolBoss.CompilerDefinesCache.FindUnitSet(
     CompilerFilename,TargetOS,TargetCPU,FPCOptions,FPCSrcDir,true);
 
@@ -1036,9 +1058,9 @@ begin
   if not Quiet then begin
     // check for common installation mistakes
     if not PPUFilesAndCompilerMatch then exit;
-    if (UnitSetCache<>nil) then begin
+    if (UnitSetCache.GetCompilerKind=pcFPC) then begin
       // check if at least one fpc config is there
-      if UnitSetCache.GetFirstFPCCfg='' then begin
+      if (UnitSetCache.GetFirstFPCCfg='') then begin
         IgnorePath:='MissingFPCCfg_'+TargetOS+'-'+TargetCPU;
         if (InputHistories<>nil) and (InputHistories.Ignores.Find(IgnorePath)=nil)
         then begin
@@ -1049,12 +1071,13 @@ begin
             InputHistories.Ignores.Add(IgnorePath,iiidIDERestart);
         end;
       end;
-    end else if not FoundSystemPPU then begin
-      // system.ppu is missing
-      IDEMessageDialog(lisCCOErrorCaption,
-        Format(lisTheProjectUsesTargetOSAndCPUTheSystemPpuForThisTar,
-               [TargetOS, TargetCPU, LineEnding, LineEnding]),
-        mtError,[mbOk]);
+      if not FoundSystemPPU then begin
+        // system.ppu is missing
+        IDEMessageDialog(lisCCOErrorCaption,
+          Format(lisTheProjectUsesTargetOSAndCPUTheSystemPpuForThisTar,
+                 [TargetOS, TargetCPU, LineEnding, LineEnding]),
+          mtError,[mbOk]);
+      end;
     end;
   end;
 end;
@@ -2282,7 +2305,8 @@ function TBuildManager.MacroFuncCompPath(const s: string; const Data: PtrInt;
 begin
   Result:='';
   if CompareText(s,'IDE')<>0 then
-    Result:=GetFPCompilerFilename;
+    Result:=GetCompilerFilename;
+
   if Result='' then
     Result:=EnvironmentOptions.GetParsedCompilerFilename;
 end;
@@ -2760,7 +2784,7 @@ begin
       CompQueryOptions:='-T'+GetFPCTargetOS(fTargetOS);
     // Note: resolving the comiler filename requires macros
     CodeToolBoss.CompilerDefinesCache.ConfigCaches.GetDefaultCompilerTarget(
-      GetFPCompilerFilename,CompQueryOptions,CompilerTargetOS,CompilerTargetCPU);
+      GetCompilerFilename,CompQueryOptions,CompilerTargetOS,CompilerTargetCPU);
     if fTargetOS='' then
       fTargetOS:=CompilerTargetOS;
     if fTargetOS='' then
@@ -2852,7 +2876,7 @@ begin
   Result:=((NewTargetOS='') or (NewTargetOS=GetCompiledTargetOS))
       and ((NewTargetCPU='') or (NewTargetCPU=GetCompiledTargetCPU))
       and (NewLCLWidgetSet<>lpNoGUI)
-      and (GetFPCompilerFilename=EnvironmentOptions.GetParsedCompilerFilename);
+      and (GetCompilerFilename=EnvironmentOptions.GetParsedCompilerFilename);
 end;
 
 end.

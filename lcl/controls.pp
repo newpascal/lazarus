@@ -39,41 +39,33 @@ uses
   // LCL
   LCLStrConsts, LCLType, LCLProc, GraphType, Graphics, LMessages, LCLIntf,
   InterfaceBase, ImgList, PropertyStorage, Menus, ActnList, LCLClasses,
-  LResources, LCLPlatformDef;
+  LResources, LCLPlatformDef,
+  // LazUtils
+  LazMethodList, LazLoggerBase, LazUtilities, UITypes;
 
 {$I controlconsts.inc}
 
 const
   // Used for ModalResult
-  mrNone = 0;
-  mrOK = mrNone + 1;
-  mrCancel = mrNone + 2;
-  mrAbort = mrNone + 3;
-  mrRetry = mrNone + 4;
-  mrIgnore = mrNone + 5;
-  mrYes = mrNone + 6;
-  mrNo = mrNone + 7;
-  mrAll = mrNone + 8;
-  mrNoToAll = mrNone + 9;
-  mrYesToAll = mrNone + 10;
-  mrClose = mrNone + 11;
-  mrLast = mrClose;
+  mrNone    = UITypes.mrNone;
+  mrOK      = UITypes.mrOK;
+  mrCancel  = UITypes.mrCancel;
+  mrAbort   = UITypes.mrAbort;
+  mrRetry   = UITypes.mrRetry;
+  mrIgnore  = UITypes.mrIgnore;
+  mrYes     = UITypes.mrYes;
+  mrNo      = UITypes.mrNo;
+  mrAll     = UITypes.mrAll;
+  mrNoToAll = UITypes.mrNoToAll;
+  mrYesToAll= UITypes.mrYesToAll;
+  mrClose   = UITypes.mrClose;
+  mrLast    = UITypes.mrLast;
 
-  // String representation of ModalResult values
-  ModalResultStr: array[mrNone..mrLast] of shortstring = (
-    'mrNone',
-    'mrOk',
-    'mrCancel',
-    'mrAbort',
-    'mrRetry',
-    'mrIgnore',
-    'mrYes',
-    'mrNo',
-    'mrAll',
-    'mrNoToAll',
-    'mrYesToAll',
-    'mrClose');
+function GetModalResultStr(ModalResult: TModalResult): ShortString;
+  deprecated 'Use the ModalResultStr array from unit UITypes directly.';
+property ModalResultStr[ModalResult: TModalResult]: shortstring read GetModalResultStr;
 
+const
   // define aliases for Delphi compatibility
   fsSurface = GraphType.fsSurface;
   fsBorder = GraphType.fsBorder;
@@ -335,6 +327,18 @@ type
 
 
   { TDragImageList }
+
+  TImageListHelper = class helper for TCustomImageList
+  private
+    function GetResolutionForControl(AImageWidth: Integer; AControl: TControl): TScaledImageListResolution;
+  public
+    procedure DrawForControl(ACanvas: TCanvas; AX, AY, AIndex, AImageWidthAt96PPI: Integer;
+      AControl: TControl; AEnabled: Boolean = True); overload;
+    procedure DrawForControl(ACanvas: TCanvas; AX, AY, AIndex, AImageWidthAt96PPI: Integer;
+      AControl: TControl; ADrawEffect: TGraphicsDrawEffect); overload;
+
+    property ResolutionForControl[AImageWidth: Integer; AControl: TControl]: TScaledImageListResolution read GetResolutionForControl;
+  end;
 
   TDragImageList = class;
 
@@ -2005,6 +2009,7 @@ type
     FOnExit: TNotifyEvent;
     FOnUnDock: TUnDockEvent;
     FOnUTF8KeyPress: TUTF8KeyPressEvent;
+    FParentDoubleBuffered: Boolean;
     FParentWindow: HWND;
     FRealizeBoundsLockCount: integer;
     FHandle: HWND;
@@ -2013,11 +2018,11 @@ type
     // keep small variables together to save some bytes
     FTabStop: Boolean;
     FShowing: Boolean;
-    FDoubleBuffered: Boolean;
     FDockSite: Boolean;
     FUseDockManager: Boolean;
     FDesignerDeleting: Boolean;
     procedure AlignControl(AControl: TControl);
+    function DoubleBufferedIsStored: Boolean;
     function GetBrush: TBrush;
     function GetControl(const Index: Integer): TControl;
     function GetControlCount: Integer;
@@ -2029,8 +2034,10 @@ type
     function GetVisibleDockClientCount: Integer;
     procedure SetChildSizing(const AValue: TControlChildSizing);
     procedure SetDockSite(const NewDockSite: Boolean);
+    procedure SetDoubleBuffered(Value: Boolean);
     procedure SetHandle(NewHandle: HWND);
     procedure SetBorderWidth(Value: TBorderWidth);
+    procedure SetParentDoubleBuffered(Value: Boolean);
     procedure SetParentWindow(const AValue: HWND);
     procedure SetTabOrder(NewTabOrder: TTabOrder);
     procedure SetTabStop(NewTabStop: Boolean);
@@ -2042,6 +2049,7 @@ type
     procedure AlignNonAlignedControls(ListOfControls: TFPList;
                                       var BoundsModified: Boolean);
   protected
+    FDoubleBuffered: Boolean;
     FWinControlFlags: TWinControlFlags;
     class procedure WSRegisterClass; override;
     procedure AdjustClientRect(var ARect: TRect); virtual;
@@ -2089,7 +2097,9 @@ type
     // messages
     procedure CMBiDiModeChanged(var Message: TLMessage); message CM_BIDIMODECHANGED;
     procedure CMBorderChanged(var Message: TLMessage); message CM_BORDERCHANGED;
+    procedure CMDoubleBufferedChanged(var Message: TLMessage); message CM_DOUBLEBUFFEREDCHANGED;
     procedure CMEnabledChanged(var Message: TLMessage); message CM_ENABLEDCHANGED;
+    procedure CMParentDoubleBufferedChanged(var Message: TLMessage); message CM_PARENTDOUBLEBUFFEREDCHANGED;
     procedure CMShowingChanged(var Message: TLMessage); message CM_SHOWINGCHANGED; // called by TWinControl.UpdateShowing
     procedure CMShowHintChanged(var Message: TLMessage); message CM_SHOWHINTCHANGED;
     procedure CMVisibleChanged(var Message: TLMessage); message CM_VISIBLECHANGED;
@@ -2229,7 +2239,7 @@ type
     property DockClients[Index: Integer]: TControl read GetDockClients;
     property DockManager: TDockManager read FDockManager write SetDockManager;
     property DockSite: Boolean read FDockSite write SetDockSite default False;
-    property DoubleBuffered: Boolean read FDoubleBuffered write FDoubleBuffered default False;
+    property DoubleBuffered: Boolean read FDoubleBuffered write SetDoubleBuffered stored DoubleBufferedIsStored;
     property Handle: HWND read GetHandle write SetHandle;
     property IsFlipped: Boolean read FFlipped;
     property IsResizing: Boolean read GetIsResizing;
@@ -2246,6 +2256,7 @@ type
     property OnKeyUp: TKeyEvent read FOnKeyUp write FOnKeyUp;
     property OnUnDock: TUnDockEvent read FOnUnDock write FOnUnDock;
     property OnUTF8KeyPress: TUTF8KeyPressEvent read FOnUTF8KeyPress write FOnUTF8KeyPress;
+    property ParentDoubleBuffered: Boolean read FParentDoubleBuffered write SetParentDoubleBuffered default True;
     property ParentWindow: HWND read FParentWindow write SetParentWindow;
     property Showing: Boolean read FShowing; // handle visible
     property UseDockManager: Boolean read FUseDockManager
@@ -2996,6 +3007,11 @@ begin
       Result:=Result+dbgs(cst);
     end;
   Result:='['+Result+']';
+end;
+
+function GetModalResultStr(ModalResult: TModalResult): ShortString;
+begin
+  Result := UITypes.ModalResultStr[ModalResult];
 end;
 
 {------------------------------------------------------------------------------

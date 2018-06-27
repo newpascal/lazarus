@@ -65,7 +65,7 @@
 
   ---------------------------------------------------------------------------- }
 
-unit spinex;
+unit SpinEx;
 
 {$mode objfpc}{$H+}
 
@@ -151,6 +151,7 @@ type
     property ArrowKeys: Boolean read FArrowKeys write FArrowKeys default True;
     property Edit: TGEEdit read GetEdit;
     property UpDown: TUpDown read GetUpDown;
+    property UpDownVisible: Boolean read GetBuddyVisible write SetBuddyVisible default True;
     property MinRepeatValue: Byte read FMinRepeatValue write SetMinRepeatValue default DefMinRepeatValue;
   public
     constructor Create(TheOwner: TComponent); override;
@@ -270,6 +271,7 @@ type
     property NullValue;
     property NullValueBehaviour;
     property Spacing;
+    property UpDownVisible;
     property Value;
   end;
 
@@ -285,7 +287,6 @@ type
   public
     function ValueToStr(const AValue: Int64): String; override;
     function StrToValue(const S: String): Int64; override;
-    constructor Create(TheOwner: TComponent); override;
   public
     property Increment default 1;
   end;
@@ -320,7 +321,7 @@ type
     property Hint;
     property Layout;
     property MaxLength;
-    property NumbersOnly default True;
+    property NumbersOnly;
     property ParentBiDiMode;
     property ParentColor;
     property ParentFont;
@@ -366,6 +367,7 @@ type
     property NullValue;
     property NullValueBehaviour;
     property Spacing;
+    property UpDownVisible;
     property Value;
   end;
 

@@ -1,31 +1,5 @@
-{ Unit implementing anchor docking.
+{ For license see anchordocking.pas
 
-  Copyright (C) 2010 Mattias Gaertner mattias@freepascal.org
-
-  This library is free software; you can redistribute it and/or modify it
-  under the terms of the GNU Library General Public License as published by
-  the Free Software Foundation; either version 2 of the License, or (at your
-  option) any later version with the following modification:
-
-  As a special exception, the copyright holders of this library give you
-  permission to link this library with independent modules to produce an
-  executable, regardless of the license terms of these independent modules,and
-  to copy and distribute the resulting executable under terms of your choice,
-  provided that you also meet, for each linked independent module, the terms
-  and conditions of the license of that module. An independent module is a
-  module which is not derived from or based on this library. If you modify
-  this library, you may extend this exception to your version of the library,
-  but you are not obligated to do so. If you do not wish to do so, delete this
-  exception statement from your version.
-
-  This program is distributed in the hope that it will be useful, but WITHOUT
-  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-  FITNESS FOR A PARTICULAR PURPOSE. See the GNU Library General Public License
-  for more details.
-
-  You should have received a copy of the GNU Library General Public License
-  along with this library; if not, write to the Free Software Foundation,
-  Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1335, USA.
 }
 unit AnchorDockOptionsDlg;
 
@@ -35,34 +9,39 @@ interface
 
 uses
   Classes, SysUtils, types,
-  Forms, Controls, ButtonPanel, StdCtrls, ComCtrls,
+  Forms, Controls, ButtonPanel, StdCtrls, ComCtrls, ExtCtrls, Spin,
   AnchorDocking, AnchorDockStr;
 
 type
   TAnchorDockOptionsFlag = (
-    adofShow_ShowHeader
+    adofShow_ShowHeader, // if option ShowHeader is shown to the user
+    adofSpinEdits // use spin edits instead of trackbars
     );
   TAnchorDockOptionsFlags = set of TAnchorDockOptionsFlag;
 
   { TAnchorDockOptionsFrame }
 
   TAnchorDockOptionsFrame = class(TFrame)
-    HighlightFocused: TCheckBox;
-    FlattenHeaders: TCheckBox;
-    FilledHeaders: TCheckBox;
     DragThresholdLabel: TLabel;
+    DragThresholdSpinEdit: TSpinEdit;
     DragThresholdTrackBar: TTrackBar;
+    FilledHeadersCheckBox: TCheckBox;
+    FlattenHeadersCheckBox: TCheckBox;
     HeaderAlignLeftLabel: TLabel;
+    HeaderAlignLeftSpinEdit: TSpinEdit;
     HeaderAlignLeftTrackBar: TTrackBar;
     HeaderAlignTopLabel: TLabel;
+    HeaderAlignTopSpinEdit: TSpinEdit;
     HeaderAlignTopTrackBar: TTrackBar;
     HeaderStyleComboBox: TComboBox;
     HeaderStyleLabel: TLabel;
     HideHeaderCaptionForFloatingCheckBox: TCheckBox;
+    HighlightFocusedCheckBox: TCheckBox;
     ScaleOnResizeCheckBox: TCheckBox;
     ShowHeaderCaptionCheckBox: TCheckBox;
     ShowHeaderCheckBox: TCheckBox;
     SplitterWidthLabel: TLabel;
+    SplitterWidthSpinEdit: TSpinEdit;
     SplitterWidthTrackBar: TTrackBar;
     procedure FrameClick(Sender: TObject);
     procedure HeaderStyleComboBoxDrawItem(Control: TWinControl; Index: Integer;
@@ -85,7 +64,6 @@ type
     procedure UpdateHeaderAlignLeftLabel;
     procedure UpdateSplitterWidthLabel;
     procedure UpdateHeaderOptions;
-    procedure ApplyFlags;
   public
     constructor Create(TheOwner: TComponent); override;
     procedure SaveToMaster;
@@ -193,11 +171,72 @@ begin
 end;
 
 procedure TAnchorDockOptionsFrame.SetFlags(AValue: TAnchorDockOptionsFlags);
+var
+  AddedFlags, RemovedFlags: TAnchorDockOptionsFlags;
 begin
   if FFlags=AValue then Exit;
+  AddedFlags:=AValue-FFlags;
+  RemovedFlags:=FFlags-AValue;
   FFlags:=AValue;
-  ApplyFlags;
-  UpdateHeaderOptions;
+
+  DisableAlign;
+  try
+    ShowHeaderCheckBox.Visible:=adofShow_ShowHeader in Flags;
+    if ShowHeaderCheckBox.Visible then
+      ShowHeaderCaptionCheckBox.BorderSpacing.Left:=15
+    else
+      ShowHeaderCaptionCheckBox.BorderSpacing.Left:=0;
+
+    if adofSpinEdits in AddedFlags then begin
+      DragThresholdSpinEdit.Visible:=true;
+      DragThresholdTrackBar.Visible:=false;
+      DragThresholdSpinEdit.AnchorParallel(akTop,10,Self);
+      DragThresholdLabel.AnchorVerticalCenterTo(DragThresholdSpinEdit);
+      UpdateDragThresholdLabel;
+
+      SplitterWidthSpinEdit.Visible:=true;
+      SplitterWidthTrackBar.Visible:=false;
+      SplitterWidthSpinEdit.AnchorToNeighbour(akTop,6,DragThresholdSpinEdit);
+      SplitterWidthLabel.AnchorVerticalCenterTo(SplitterWidthSpinEdit);
+      UpdateSplitterWidthLabel;
+
+      HeaderAlignTopSpinEdit.Visible:=true;
+      HeaderAlignTopTrackBar.Visible:=false;
+      HeaderAlignTopSpinEdit.AnchorToNeighbour(akTop,6,HighlightFocusedCheckBox);
+      HeaderAlignTopLabel.AnchorVerticalCenterTo(HeaderAlignTopSpinEdit);
+      UpdateHeaderAlignTopLabel;
+
+      HeaderAlignLeftSpinEdit.Visible:=true;
+      HeaderAlignLeftTrackBar.Visible:=false;
+      HeaderAlignLeftSpinEdit.AnchorToNeighbour(akTop,6,HeaderAlignTopSpinEdit);
+      HeaderAlignLeftLabel.AnchorVerticalCenterTo(HeaderAlignLeftSpinEdit);
+      UpdateHeaderAlignLeftLabel;
+    end;
+    if adofSpinEdits in RemovedFlags then begin
+      DragThresholdSpinEdit.Visible:=false;
+      DragThresholdTrackBar.Visible:=true;
+      DragThresholdLabel.AnchorParallel(akTop,10,Self);
+      UpdateDragThresholdLabel;
+
+      SplitterWidthSpinEdit.Visible:=false;
+      SplitterWidthTrackBar.Visible:=true;
+      SplitterWidthLabel.AnchorToNeighbour(akTop,6,DragThresholdTrackBar);
+      UpdateSplitterWidthLabel;
+
+      HeaderAlignTopSpinEdit.Visible:=false;
+      HeaderAlignTopTrackBar.Visible:=true;
+      HeaderAlignTopLabel.AnchorToNeighbour(akTop,6,SplitterWidthTrackBar);
+      UpdateHeaderAlignTopLabel;
+
+      HeaderAlignLeftSpinEdit.Visible:=false;
+      HeaderAlignLeftTrackBar.Visible:=true;
+      HeaderAlignLeftLabel.AnchorToNeighbour(akTop,6,HeaderAlignTopTrackBar);
+      UpdateHeaderAlignLeftLabel;
+    end;
+    UpdateHeaderOptions;
+  finally
+    EnableAlign;
+  end;
 end;
 
 procedure TAnchorDockOptionsFrame.SetSettings(AValue: TAnchorDockSettings);
@@ -209,27 +248,43 @@ begin
 end;
 
 procedure TAnchorDockOptionsFrame.UpdateDragThresholdLabel;
+var
+  s: String;
 begin
-  DragThresholdLabel.Caption:=adrsDragThreshold
-                             +' ('+IntToStr(DragThresholdTrackBar.Position)+')';
+  s:=adrsDragThreshold;
+  if not (adofSpinEdits in Flags) then
+    s+=' ('+IntToStr(DragThresholdTrackBar.Position)+')';
+  DragThresholdLabel.Caption:=s;
 end;
 
 procedure TAnchorDockOptionsFrame.UpdateHeaderAlignTopLabel;
+var
+  s: String;
 begin
-  HeaderAlignTopLabel.Caption:=adrsHeaderAlignTop
-                            +' ('+IntToStr(HeaderAlignTopTrackBar.Position)+')';
+  s:=adrsHeaderAlignTop;
+  if not (adofSpinEdits in Flags) then
+    s+=' ('+IntToStr(HeaderAlignTopTrackBar.Position)+')';
+  HeaderAlignTopLabel.Caption:=s;
 end;
 
 procedure TAnchorDockOptionsFrame.UpdateHeaderAlignLeftLabel;
+var
+  s: String;
 begin
-  HeaderAlignLeftLabel.Caption:=adrsHeaderAlignLeft
-                           +' ('+IntToStr(HeaderAlignLeftTrackBar.Position)+')';
+  s:=adrsHeaderAlignLeft;
+  if not (adofSpinEdits in Flags) then
+    s+=' ('+IntToStr(HeaderAlignLeftTrackBar.Position)+')';
+  HeaderAlignLeftLabel.Caption:=s;
 end;
 
 procedure TAnchorDockOptionsFrame.UpdateSplitterWidthLabel;
+var
+  s: String;
 begin
-  SplitterWidthLabel.Caption:=adrsSplitterWidth
-                             +' ('+IntToStr(SplitterWidthTrackBar.Position)+')';
+  s:=adrsSplitterWidth;
+  if not (adofSpinEdits in Flags) then
+    s+=' ('+IntToStr(SplitterWidthTrackBar.Position)+')';
+  SplitterWidthLabel.Caption:=s;
 end;
 
 procedure TAnchorDockOptionsFrame.UpdateHeaderOptions;
@@ -239,23 +294,17 @@ begin
   HasHeaders:=ShowHeaderCheckBox.Checked;
   ShowHeaderCaptionCheckBox.Enabled:=HasHeaders;
   HideHeaderCaptionForFloatingCheckBox.Enabled:=HasHeaders;
-  FlattenHeaders.Enabled:=HasHeaders;
-  FilledHeaders.Enabled:=HasHeaders;
-end;
-
-procedure TAnchorDockOptionsFrame.ApplyFlags;
-begin
-  ShowHeaderCheckBox.Visible:=adofShow_ShowHeader in Flags;
-  if ShowHeaderCheckBox.Visible then
-    ShowHeaderCaptionCheckBox.BorderSpacing.Left:=15
-  else
-    ShowHeaderCaptionCheckBox.BorderSpacing.Left:=0;
+  FlattenHeadersCheckBox.Enabled:=HasHeaders;
+  FilledHeadersCheckBox.Enabled:=HasHeaders;
+  HeaderStyleLabel.Enabled:=HasHeaders;
+  HeaderStyleComboBox.Enabled:=HasHeaders;
+  HighlightFocusedCheckBox.Enabled:=HasHeaders;
 end;
 
 constructor TAnchorDockOptionsFrame.Create(TheOwner: TComponent);
 begin
   inherited Create(TheOwner);
-  FFlags:=DefaultAnchorDockOptionFlags;
+  Flags:=DefaultAnchorDockOptionFlags;
 end;
 
 procedure TAnchorDockOptionsFrame.SaveToMaster;
@@ -288,18 +337,25 @@ end;
 procedure TAnchorDockOptionsFrame.SaveToSettings(
   TheSettings: TAnchorDockSettings);
 begin
-  TheSettings.HeaderStyle:=TADHeaderStyle(HeaderStyleComboBox.ItemIndex);
-  TheSettings.DragTreshold:=DragThresholdTrackBar.Position;
-  TheSettings.HeaderAlignTop:=HeaderAlignTopTrackBar.Position;
-  TheSettings.HeaderAlignLeft:=HeaderAlignLeftTrackBar.Position;
-  TheSettings.SplitterWidth:=SplitterWidthTrackBar.Position;
+  if adofSpinEdits in Flags then begin
+    TheSettings.DragTreshold:=DragThresholdSpinEdit.Value;
+    TheSettings.HeaderAlignTop:=HeaderAlignTopSpinEdit.Value;
+    TheSettings.HeaderAlignLeft:=HeaderAlignLeftSpinEdit.Value;
+    TheSettings.SplitterWidth:=SplitterWidthSpinEdit.Value;
+  end else begin
+    TheSettings.DragTreshold:=DragThresholdTrackBar.Position;
+    TheSettings.HeaderAlignTop:=HeaderAlignTopTrackBar.Position;
+    TheSettings.HeaderAlignLeft:=HeaderAlignLeftTrackBar.Position;
+    TheSettings.SplitterWidth:=SplitterWidthTrackBar.Position;
+  end;
   TheSettings.ScaleOnResize:=ScaleOnResizeCheckBox.Checked;
   TheSettings.ShowHeader:=ShowHeaderCheckBox.Checked;
   TheSettings.ShowHeaderCaption:=ShowHeaderCaptionCheckBox.Checked;
   TheSettings.HideHeaderCaptionFloatingControl:=HideHeaderCaptionForFloatingCheckBox.Checked;
-  TheSettings.HeaderFlatten:=FlattenHeaders.Checked;
-  TheSettings.HeaderFilled:=FilledHeaders.Checked;
-  TheSettings.HeaderHighlightFocused:=HighlightFocused.Checked;
+  TheSettings.HeaderFlatten:=FlattenHeadersCheckBox.Checked;
+  TheSettings.HeaderFilled:=FilledHeadersCheckBox.Checked;
+  TheSettings.HeaderStyle:=TADHeaderStyle(HeaderStyleComboBox.ItemIndex);
+  TheSettings.HeaderHighlightFocused:=HighlightFocusedCheckBox.Checked;
 end;
 
 procedure TAnchorDockOptionsFrame.LoadFromSettings(
@@ -308,34 +364,27 @@ var
   hs: TADHeaderStyle;
   sl: TStringList;
 begin
-  sl:=TStringList.Create;
-  try
-    for hs:=Low(TADHeaderStyle) to High(TADHeaderStyle) do
-      sl.Add(ADHeaderStyleNames[hs]);
-    HeaderStyleComboBox.Items.Assign(sl);
-  finally
-    sl.Free;
-  end;
-  HeaderStyleLabel.Caption:=adrsHeaderStyle;
-  HeaderStyleComboBox.ItemIndex:=ord(TheSettings.HeaderStyle);
-
   DragThresholdTrackBar.Hint:=
     adrsAmountOfPixelTheMouseHasToDragBeforeDragStarts;
   DragThresholdTrackBar.Position:=TheSettings.DragTreshold;
+  DragThresholdSpinEdit.Value:=TheSettings.DragTreshold;
   UpdateDragThresholdLabel;
 
   HeaderAlignTopTrackBar.Hint:=
     adrsMoveHeaderToTopWhenWidthHeight100HeaderAlignTop;
   HeaderAlignTopTrackBar.Position:=TheSettings.HeaderAlignTop;
+  HeaderAlignTopSpinEdit.Value:=TheSettings.HeaderAlignTop;
   UpdateHeaderAlignTopLabel;
 
   HeaderAlignLeftTrackBar.Hint:=
     adrsMoveHeaderToLeftWhenWidthHeight100HeaderAlignLeft;
   HeaderAlignLeftTrackBar.Position:=TheSettings.HeaderAlignLeft;
+  HeaderAlignLeftSpinEdit.Value:=TheSettings.HeaderAlignLeft;
   UpdateHeaderAlignLeftLabel;
 
   SplitterWidthTrackBar.Hint:=adrsSplitterThickness;
   SplitterWidthTrackBar.Position:=TheSettings.SplitterWidth;
+  SplitterWidthSpinEdit.Value:=TheSettings.SplitterWidth;
   UpdateSplitterWidthLabel;
 
   ScaleOnResizeCheckBox.Caption:=adrsScaleOnResize;
@@ -358,17 +407,28 @@ begin
   HideHeaderCaptionForFloatingCheckBox.Checked:=
     TheSettings.HideHeaderCaptionFloatingControl;
 
-  FlattenHeaders.Checked:=TheSettings.HeaderFlatten;
-  FlattenHeaders.Caption:=adrsFlattenHeaders;
-  FlattenHeaders.Hint:=adrsFlattenHeadersHint;
+  FlattenHeadersCheckBox.Checked:=TheSettings.HeaderFlatten;
+  FlattenHeadersCheckBox.Caption:=adrsFlattenHeaders;
+  FlattenHeadersCheckBox.Hint:=adrsFlattenHeadersHint;
 
-  FilledHeaders.Checked:=TheSettings.HeaderFilled;
-  FilledHeaders.Caption:=adrsFilledHeaders;
-  FilledHeaders.Hint:=adrsFilledHeadersHint;
+  FilledHeadersCheckBox.Checked:=TheSettings.HeaderFilled;
+  FilledHeadersCheckBox.Caption:=adrsFilledHeaders;
+  FilledHeadersCheckBox.Hint:=adrsFilledHeadersHint;
 
-  HighlightFocused.Checked:=TheSettings.HeaderHighlightFocused;
-  HighlightFocused.Caption:=adrsHighlightFocused;
-  HighlightFocused.Hint:=adrsHighlightFocusedHint;
+  sl:=TStringList.Create;
+  try
+    for hs:=Low(TADHeaderStyle) to High(TADHeaderStyle) do
+      sl.Add(ADHeaderStyleNames[hs]);
+    HeaderStyleComboBox.Items.Assign(sl);
+  finally
+    sl.Free;
+  end;
+  HeaderStyleLabel.Caption:=adrsHeaderStyle;
+  HeaderStyleComboBox.ItemIndex:=ord(TheSettings.HeaderStyle);
+
+  HighlightFocusedCheckBox.Checked:=TheSettings.HeaderHighlightFocused;
+  HighlightFocusedCheckBox.Caption:=adrsHighlightFocused;
+  HighlightFocusedCheckBox.Hint:=adrsHighlightFocusedHint;
 end;
 
 end.

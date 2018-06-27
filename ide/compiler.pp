@@ -38,10 +38,17 @@ unit Compiler;
 interface
 
 uses
-  Classes, SysUtils, LCLProc, Forms, Controls, contnrs, strutils,
-  IDEExternToolIntf, IDEMsgIntf, LazIDEIntf, MacroIntf, LazUTF8,
-  IDECmdLine, LazarusIDEStrConsts, CompilerOptions, Project,
-  DefineTemplates, TransferMacros, EnvironmentOpts, LazFileUtils;
+  Classes, SysUtils, contnrs, strutils,
+  // LazUtils
+  LazUTF8, LazFileUtils, LazUtilities, LazLoggerBase,
+  // LCL
+  Forms, Controls,
+  // Codetools
+  DefineTemplates, LinkScanner, TransferMacros,
+  // IdeIntf
+  IDEExternToolIntf, IDEMsgIntf, LazIDEIntf,
+  // IDE
+  IDECmdLine, LazarusIDEStrConsts, CompilerOptions, Project, EnvironmentOpts;
 
 type
   TOnCmdLineCreate = procedure(var CmdLine: string; var Abort:boolean) of object;
@@ -274,7 +281,7 @@ var
   Title: String;
   TargetOS: String;
   TargetCPU: String;
-  TargetFilename: String;
+  TargetFilename, SubTool: String;
 begin
   Result:=mrCancel;
   if ConsoleVerbosity>=1 then
@@ -336,7 +343,10 @@ begin
     Tool.CmdLineParams:=CmdLine;
     Tool.Process.CurrentDirectory:=WorkingDir;
     Tool.CurrentDirectoryIsTestDir:=CurrentDirectoryIsTestDir;
-    FPCParser:=TFPCParser(Tool.AddParsers(SubToolFPC));
+    SubTool:=SubToolFPC;
+    if GuessCompilerType(CompilerFilename)=pcPas2js then
+      SubTool:=SubToolPas2js;
+    FPCParser:=TFPCParser(Tool.AddParsers(SubTool));
     FPCParser.ShowLinesCompiled:=EnvironmentOptions.MsgViewShowFPCMsgLinesCompiled;
     FPCParser.HideHintsSenderNotUsed:=not AProject.CompilerOptions.ShowHintsForSenderNotUsed;
     FPCParser.HideHintsUnitNotUsedInMainSource:=not AProject.CompilerOptions.ShowHintsForUnusedUnitsInMainSrc;
@@ -1426,7 +1436,7 @@ procedure TCompilerOptThread.StartParsing;
 begin
   if fStartedOnce then
     WaitFor;
-  fReader.CompilerExecutable:=LazarusIDE.GetFPCompilerFilename;
+  fReader.CompilerExecutable:=LazarusIDE.GetCompilerFilename;
   fReader.UpdateTargetParam;
   Start;
   fStartedOnce:=true;

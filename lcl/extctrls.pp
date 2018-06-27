@@ -26,9 +26,13 @@ interface
 {$endif}
 
 uses
-  SysUtils, Types, Classes, LCLStrConsts, LCLType, LCLProc, LResources, Controls,
-  Forms, StdCtrls, lMessages, GraphType, Graphics, LCLIntf, CustomTimer, Themes,
-  LCLClasses, Menus, PopupNotifier, ImgList, contnrs, FGL;
+  SysUtils, Types, Classes, contnrs, FGL,
+  // LCL
+  LCLStrConsts, LCLType, LCLProc, LResources, LMessages, Controls, Forms,
+  StdCtrls, GraphType, Graphics, LCLIntf, CustomTimer, Themes, LCLClasses, Menus,
+  PopupNotifier, ImgList,
+  // LazUtils
+  LazLoggerBase, LazUtilities;
 
 type
 
@@ -414,6 +418,7 @@ type
     property Color;
     property Constraints;
     property Cursor;
+    property DoubleBuffered;
     property Height;
     property MinSize;
     property OnCanOffset;
@@ -425,6 +430,7 @@ type
     property OnMouseWheelUp;
     property OnPaint;
     property ParentColor;
+    property ParentDoubleBuffered;
     property ParentShowHint;
     property PopupMenu;
     property ResizeAnchor;
@@ -732,6 +738,7 @@ type
     property ColumnLayout;
     property Columns;
     property Constraints;
+    property DoubleBuffered;
     property DragCursor;
     property DragMode;
     property Enabled;
@@ -764,6 +771,7 @@ type
     property ParentBidiMode;
     property ParentFont;
     property ParentColor;
+    property ParentDoubleBuffered;
     property ParentShowHint;
     property PopupMenu;
     property ShowHint;
@@ -847,6 +855,7 @@ type
     property ColumnLayout;
     property Columns;
     property Constraints;
+    property DoubleBuffered;
     property DragCursor;
     property DragMode;
     property Enabled;
@@ -878,6 +887,7 @@ type
     property ParentBiDiMode;
     property ParentFont;
     property ParentColor;
+    property ParentDoubleBuffered;
     property ParentShowHint;
     property PopupMenu;
     property ShowHint;
@@ -974,6 +984,7 @@ type
     property CharCase;
     property Color;
     property Constraints;
+    property DoubleBuffered;
     property DragCursor;
     property DragMode;
     property EchoMode;
@@ -985,6 +996,7 @@ type
     property MaxLength;
     property ParentBidiMode;
     property ParentColor;
+    property ParentDoubleBuffered;
     property ParentFont;
     property ParentShowHint;
     property PasswordChar;
@@ -1092,6 +1104,7 @@ type
     property Color;
     property Constraints;
     property DockSite;
+    property DoubleBuffered;
     property DragCursor;
     property DragKind;
     property DragMode;
@@ -1101,6 +1114,7 @@ type
     property ParentBackground;
     property ParentBidiMode;
     property ParentColor;
+    property ParentDoubleBuffered;
     property ParentFont;
     property ParentShowHint;
     property PopupMenu;
@@ -1249,6 +1263,7 @@ type
     property Font;
     property ParentBiDiMode;
     property ParentColor;
+    property ParentDoubleBuffered;
     property ParentFont;
     property ParentShowHint;
     property PopupMenu;
@@ -1386,7 +1401,7 @@ type
   TBandInfoEvent = procedure (Sender: TObject; Control: TControl;
     var Insets: TRect; var PreferredSize, RowCount: Integer) of object;
   TBandMoveEvent = procedure (Sender: TObject; Control: TControl; var ARect: TRect) of object;
-  TBandPaintEvent = procedure (Sender: TObject; Control: TControl; Canvas: TCanvas;
+  TBandPaintEvent = procedure (Sender: TObject; Control: TControl; ACanvas: TCanvas;
     var ARect: TRect; var Options: TBandPaintOptions) of object;
 
   TRowSize = 1..MaxInt;
@@ -1577,6 +1592,7 @@ type
     property Color;
     property Constraints;
     property DockSite;
+    property DoubleBuffered;
     property DragCursor;
     property DragKind;
     property DragMode;
@@ -1586,6 +1602,7 @@ type
     property GradientEndColor;
     property GradientStartColor;
     property ParentColor;
+    property ParentDoubleBuffered;
     property ParentFont;
     property ParentShowHint;
     property Picture;

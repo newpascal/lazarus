@@ -281,4 +281,27 @@ begin
   RegisterDragImageListResolution;
 end;
 
+{ TImageListHelper }
+
+procedure TImageListHelper.DrawForControl(ACanvas: TCanvas; AX, AY, AIndex,
+  AImageWidthAt96PPI: Integer; AControl: TControl; AEnabled: Boolean);
+begin
+  DrawForPPI(ACanvas, AX, AY, AIndex, AImageWidthAt96PPI,
+    AControl.Font.PixelsPerInch, AControl.GetCanvasScaleFactor, AEnabled);
+end;
+
+procedure TImageListHelper.DrawForControl(ACanvas: TCanvas; AX, AY, AIndex,
+  AImageWidthAt96PPI: Integer; AControl: TControl;
+  ADrawEffect: TGraphicsDrawEffect);
+begin
+  DrawForPPI(ACanvas, AX, AY, AIndex, AImageWidthAt96PPI,
+    AControl.Font.PixelsPerInch, AControl.GetCanvasScaleFactor, ADrawEffect);
+end;
+
+function TImageListHelper.GetResolutionForControl(AImageWidth: Integer;
+  AControl: TControl): TScaledImageListResolution;
+begin
+  Result := ResolutionForPPI[AImageWidth, AControl.Font.PixelsPerInch, AControl.GetCanvasScaleFactor];
+end;
+
 // included by controls.pp

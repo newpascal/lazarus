@@ -16,8 +16,13 @@ unit LazIDEIntf;
 interface
 
 uses
-  Classes, SysUtils, LCLProc, Forms, Controls, Dialogs, PropEdits, LazHelpHTML,
-  IDEOptionsIntf, CompOptsIntf, ProjectIntf,
+  Classes, SysUtils,
+  // LCL
+  LCLProc, Forms, Controls, Dialogs, LazHelpHTML,
+  // LazUtils
+  LazMethodList,
+  // IdeIntf
+  PropEdits, IDEOptionsIntf, IDEOptEditorIntf, CompOptsIntf, ProjectIntf,
   IDEExternToolIntf, SrcEditorIntf, IDEWindowIntf;
 
 type
@@ -402,6 +407,7 @@ type
                           NewOwner: TObject; Flags: TSearchIDEFileFlags;
                           TryWithoutNumber: boolean): string; virtual; abstract;
     function GetTestBuildDirectory: string; virtual; abstract;
+    function GetCompilerFilename: string; virtual; abstract;
     function GetFPCompilerFilename: string; virtual; abstract;
     function GetFPCFrontEndOptions: string; virtual; abstract;
 
@@ -564,6 +570,7 @@ type
     function GetTabDisplayState: TTabDisplayState; virtual; abstract;
     function GetTabDisplayStateEditor(Index: TSourceEditorInterface): TTabDisplayState; virtual; abstract;
   public
+    function AutoSizeInShowDesigner(AControl: TControl): Boolean; virtual; abstract;
     procedure ToggleFormUnit; virtual; abstract;
     procedure JumpToCompilerMessage(ASourceEditor: TSourceEditorInterface); virtual; abstract;
 

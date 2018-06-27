@@ -1267,7 +1267,7 @@ begin
     Add('EXCLUDE'     ,{$ifdef FPC}@{$endif}AllwaysTrue);
     Add('EXIT'        ,{$ifdef FPC}@{$endif}AllwaysTrue);
     Add('FINALIZE'    ,{$ifdef FPC}@{$endif}AllwaysTrue);
-    Add('GET_FRAME'  ,{$ifdef FPC}@{$endif}AllwaysTrue);
+    Add('GET_FRAME'   ,{$ifdef FPC}@{$endif}AllwaysTrue);
     Add('HI'          ,{$ifdef FPC}@{$endif}AllwaysTrue);
     Add('HIGH'        ,{$ifdef FPC}@{$endif}AllwaysTrue);
     Add('INC'         ,{$ifdef FPC}@{$endif}AllwaysTrue);
@@ -1291,6 +1291,7 @@ begin
     Add('TYPEOF'      ,{$ifdef FPC}@{$endif}AllwaysTrue);
     Add('WRITE'       ,{$ifdef FPC}@{$endif}AllwaysTrue);
     Add('WRITELN'     ,{$ifdef FPC}@{$endif}AllwaysTrue);
+    Add('WRITESTR'    ,{$ifdef FPC}@{$endif}AllwaysTrue);
   end;
   
   WordIsTermOperator:=TKeyWordFunctionList.Create('WordIsTermOperator');
@@ -1807,6 +1808,7 @@ begin
     Add('CHAR'       ,{$ifdef FPC}@{$endif}AllwaysTrue);
     Add('CONTINUE'   ,{$ifdef FPC}@{$endif}AllwaysTrue);
     Add('COPY'       ,{$ifdef FPC}@{$endif}AllwaysTrue);
+    Add('DEFAULT'    ,{$ifdef FPC}@{$endif}AllwaysTrue);
     Add('DOUBLE'     ,{$ifdef FPC}@{$endif}AllwaysTrue);
     Add('EXIT'       ,{$ifdef FPC}@{$endif}AllwaysTrue);
     Add('FALSE'      ,{$ifdef FPC}@{$endif}AllwaysTrue);
@@ -1829,6 +1831,7 @@ begin
     Add('SUCC'       ,{$ifdef FPC}@{$endif}AllwaysTrue);
     Add('TRUE'       ,{$ifdef FPC}@{$endif}AllwaysTrue);
     Add('TYPEINFO'   ,{$ifdef FPC}@{$endif}AllwaysTrue);
+    Add('UNICODESTRING',{$ifdef FPC}@{$endif}AllwaysTrue);
     Add('WORD'       ,{$ifdef FPC}@{$endif}AllwaysTrue);
     Add('WORDBOOL'   ,{$ifdef FPC}@{$endif}AllwaysTrue);
   end;

@@ -39,18 +39,20 @@ interface
 uses
   // FCL, LCL
   Classes, SysUtils, contnrs, typinfo, Laz_AVL_Tree,
-  LCLProc, LCLType, LResources, Graphics, Controls, Forms, Dialogs,
+  LCLType, LResources, Graphics, Controls, Forms, Dialogs,
   // Codetools
-  FileProcs, FileUtil, LazConfigStorage, Laz2_XMLCfg, BasicCodeTools,
-  DefineTemplates, CodeToolManager, CodeCache, CodeToolsCfgScript, CodeToolsStructs,
+  FileProcs, LazConfigStorage, BasicCodeTools, DefineTemplates, CodeToolManager,
+  CodeCache, CodeToolsCfgScript, CodeToolsStructs,
   // LazUtils
-  LazFileUtils, LazFileCache, LazUTF8, AvgLvlTree,
+  FileUtil, LazFileUtils, LazFileCache, LazUTF8, LazTracer, LazUtilities,
+  Laz2_XMLCfg, AvgLvlTree,
   // IDEIntf
-  PropEdits, LazIDEIntf, MacroIntf, MacroDefIntf, IDEOptionsIntf,
+  PropEdits, LazIDEIntf, MacroIntf, MacroDefIntf, IDEOptionsIntf, IDEOptEditorIntf,
   PackageDependencyIntf, PackageIntf, IDEDialogs, ComponentReg, IDEImagesIntf,
   // IDE
   EditDefineTree, CompilerOptions, CompOptsModes, IDEOptionDefs, ProjPackCommon,
-  LazarusIDEStrConsts, IDEProcs, TransferMacros, FileReferenceList, PublishModule;
+  LazarusIDEStrConsts, IDEProcs, TransferMacros, FileReferenceList,
+  PublishModule, ImgList;
 
 type
   TLazPackage = class;
@@ -68,7 +70,7 @@ type
   TGetAllRequiredPackagesEvent =
     procedure(APackage: TLazPackage; // if not nil then ignore FirstDependency and do not add APackage to Result
               FirstDependency: TPkgDependency;
-              out List: TFPList;
+              out List, FPMakeList: TFPList;
               Flags: TPkgIntfRequiredFlags = [];
               MinPolicy: TPackageUpdatePolicy = low(TPackageUpdatePolicy)) of object;
   TGetDependencyOwnerDescription =
@@ -84,8 +86,6 @@ type
   TPkgComponent = class(TRegisteredComponent)
   private
     FPkgFile: TPkgFile;
-    FIcon: TCustomBitmap;
-    FIconLoaded: boolean;
     procedure SetPkgFile(const AValue: TPkgFile);
   public
     constructor Create(ThePkgFile: TPkgFile; TheComponentClass: TComponentClass;
@@ -94,8 +94,8 @@ type
     function GetUnitName: string; override;
     function GetPriority: TComponentPriority; override;
     procedure ConsistencyCheck; override;
-    function Icon: TCustomBitmap;
-    function GetIconCopy: TCustomBitmap;
+    function ImageIndex: TImageIndex;
+    class function Images: TCustomImageList;
     function HasIcon: boolean;
     function CanBeCreatedInDesigner: boolean; override;
   public
@@ -229,12 +229,26 @@ type
     pdlRequires,
     pdlUsedBy
     );
-  
+
+  TPkgDependencyType = (
+    pdtLazarus,
+    pdtFPMake
+    );
+
+const
+  PkgDependencyTypeNames: array[TPkgDependencyType] of string = (
+    'Lazarus',
+    'FPMake'
+    );
+
+type
+
   { TPkgDependency }
 
   TPkgDependency = class(TPkgDependencyID)
   private
     FDefaultFilename: string;
+    FDependencyType: TPkgDependencyType;
     FHoldPackage: boolean;
     FMarkerFlags: TPKgMarkerFlags;
     FOwner: TObject;
@@ -291,10 +305,11 @@ type
     property DefaultFilename: string read FDefaultFilename write FDefaultFilename;
     property PreferDefaultFilename: boolean read FPreferDefaultFilename write FPreferDefaultFilename;
     property RequiredPackage: TLazPackage read GetRequiredPackage write SetRequiredPackage;
+    property DependencyType: TPkgDependencyType read FDependencyType write FDependencyType;
   end;
   PPkgDependency = ^TPkgDependency;
-  
-  
+
+
   { TPkgPair }
 
   TPkgPair = class
@@ -683,7 +698,7 @@ type
     function CreateDependencyWithOwner(NewOwner: TObject;
                                WithMinVersion: boolean = false): TPkgDependency;
     function Requires(APackage: TLazPackage): boolean;
-    procedure GetAllRequiredPackages(var List: TFPList; WithSelf: boolean;
+    procedure GetAllRequiredPackages(var List, FPMakeList: TFPList; WithSelf: boolean;
       aFlags: TPkgIntfRequiredFlags = [];
       MinPolicy: TPackageUpdatePolicy = low(TPackageUpdatePolicy));
     // components
@@ -1745,6 +1760,7 @@ end;
 
 procedure TPkgDependency.SetRequiredPackage(AValue: TLazPackage);
 begin
+  Assert((FDependencyType=pdtLazarus) or not assigned(AValue), 'Not possible to set a reference to a LazPackage into an FPMake-dependency');
   RequiredIDEPackage := AValue;
 end;
 
@@ -1796,6 +1812,10 @@ begin
   if FileVersion=1 then ;
   Clear;
   PackageName:=XMLConfig.GetValue(Path+'PackageName/Value','');
+  if SameText(XMLConfig.GetValue(Path+'DependencyType/Value',''), PkgDependencyTypeNames[pdtFPMake]) then
+    DependencyType:=pdtFPMake
+  else
+    DependencyType:=pdtLazarus;
   PkgVersionLoadFromXMLConfig(MaxVersion,XMLConfig,Path+'MaxVersion/',FileVersion);
   PkgVersionLoadFromXMLConfig(MinVersion,XMLConfig,Path+'MinVersion/',FileVersion);
   if XMLConfig.GetValue(Path+'MaxVersion/Valid',false) then
@@ -1830,6 +1850,7 @@ begin
   XMLConfig.SetDeleteValue(Path+'MinVersion/Valid',pdfMinVersion in FFlags,false);
   SaveFilename('DefaultFilename/Value',FDefaultFilename);
   XMLConfig.SetDeleteValue(Path+'DefaultFilename/Prefer',PreferDefaultFilename,false);
+  XMLConfig.SetDeleteValue(Path+'DependencyType/Value',PkgDependencyTypeNames[DependencyType],PkgDependencyTypeNames[pdtLazarus]);
 end;
 
 function TPkgDependency.Compare(Dependency2: TPkgDependency): integer;
@@ -3672,12 +3693,12 @@ begin
     Result:=podDefault;
 end;
 
-procedure TLazPackage.GetAllRequiredPackages(var List: TFPList;
+procedure TLazPackage.GetAllRequiredPackages(var List, FPMakeList: TFPList;
   WithSelf: boolean; aFlags: TPkgIntfRequiredFlags;
   MinPolicy: TPackageUpdatePolicy);
 begin
   if Assigned(OnGetAllRequiredPackages) then
-    OnGetAllRequiredPackages(Self,FirstRequiredDependency,List,aFlags,MinPolicy);
+    OnGetAllRequiredPackages(Self,FirstRequiredDependency,List,FPMakeList,aFlags,MinPolicy);
   if WithSelf then begin
     if List=nil then List:=TFPList.Create;
     if List.IndexOf(Self)<0 then
@@ -3691,11 +3712,14 @@ end;
 procedure TLazPackage.GetInheritedCompilerOptions(var OptionsList: TFPList);
 var
   PkgList: TFPList; // list of TLazPackage
+  FPMakeList: TFPList;
 begin
   PkgList:=nil;
-  GetAllRequiredPackages(PkgList,false,[pirCompileOrder]);
+  FPMakeList:=nil;
+  GetAllRequiredPackages(PkgList,FPMakeList,false,[pirCompileOrder]);
   OptionsList:=GetUsageOptionsList(PkgList);
   PkgList.Free;
+  FPMakeList.Free;
 end;
 
 function TLazPackage.GetCompileSourceFilename: string;
@@ -3929,11 +3953,6 @@ end;
 destructor TPkgComponent.Destroy;
 begin
   PkgFile:=nil;
-  if fIconLoaded then begin
-    FIcon.Free;
-    FIcon:=nil;
-    fIconLoaded:=false;
-  end;
   inherited Destroy;
 end;
 
@@ -3970,33 +3989,21 @@ begin
     RaiseGDBException('TIDEComponent.ConsistencyCheck PkgFile.FComponents.IndexOf(Self)<0');
 end;
 
-function TPkgComponent.Icon: TCustomBitmap;
+class function TPkgComponent.Images: TCustomImageList;
 begin
-  if not fIconLoaded
-  then begin
-    fIcon:=GetIconCopy;
-    fIconLoaded:=true;
-  end;
-  Result:=FIcon;
-end;
-
-function TPkgComponent.GetIconCopy: TCustomBitMap;
-var
-  ResName: String;
-begin
-  ResName := ComponentClass.ClassName;
-  Result := TIDEImages.CreateImage(ResName, 24);
-
-  if Result = nil then
-    Result := CreateBitmapFromResourceName(HInstance, 'default')
-  else
-  if Result is TBitmap then
-    Result.Transparent := True;
+  Result := IDEImages.Images_24;
 end;
 
 function TPkgComponent.HasIcon: boolean;
 begin
   Result:=RealPage.PageName<>'';
+end;
+
+function TPkgComponent.ImageIndex: TImageIndex;
+begin
+  Result := IDEImages.GetImageIndex(ComponentClass.ClassName, 24);
+  if Result=-1 then
+    Result := IDEImages.GetImageIndex('default', 24);
 end;
 
 function TPkgComponent.CanBeCreatedInDesigner: boolean;

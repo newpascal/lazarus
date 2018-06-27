@@ -25,11 +25,17 @@ unit editor_keymapping_options;
 interface
 
 uses
-  Classes, SysUtils, FileUtil, TreeFilterEdit, Forms, StdCtrls, ComCtrls,
-  Controls, Dialogs, LCLType, LazUTF8, Menus, Buttons, Clipbrd, EditorOptions,
-  LazarusIDEStrConsts, IDEOptionsIntf, IDEImagesIntf, editor_general_options,
-  KeymapSchemeDlg, KeyMapping, IDECommands, KeyMapShortCutDlg, SrcEditorIntf,
-  EditBtn, ExtCtrls;
+  Classes, SysUtils,
+  // LCL
+  Forms, StdCtrls, ComCtrls, Controls, Dialogs, LCLType, LazUTF8, Menus, Buttons,
+  Clipbrd, EditBtn, ExtCtrls,
+  // LazControls
+  TreeFilterEdit,
+  // IdeIntf
+  IDEOptionsIntf, IDEOptEditorIntf, IDEImagesIntf, SrcEditorIntf,
+  // IDE
+  EditorOptions, LazarusIDEStrConsts, editor_general_options,
+  KeymapSchemeDlg, KeyMapping, IDECommands, KeyMapShortCutDlg;
 
 type
 
@@ -386,15 +392,15 @@ begin
   ConflictsTreeView.Images := IDEImages.Images_16;
   imgKeyCategory := IDEImages.LoadImage('item_keyboard');
   imgKeyItem := IDEImages.LoadImage('item_character');
-  TIDEImages.AssignImage(ChooseSchemeButton.Glyph, 'item_keyboard'); // keymapcategory
-  TIDEImages.AssignImage(FindKeyButton.Glyph, 'menu_search_find');
-  TIDEImages.AssignImage(EditButton.Glyph, 'laz_edit');
-  TIDEImages.AssignImage(ClearButton.Glyph, 'menu_clean');
+  IDEImages.AssignImage(ChooseSchemeButton, 'item_keyboard'); // keymapcategory
+  IDEImages.AssignImage(FindKeyButton, 'menu_search_find');
+  IDEImages.AssignImage(EditButton, 'laz_edit');
+  IDEImages.AssignImage(ClearButton, 'menu_clean');
   PopupMenu1.Images := IDEImages.Images_16;
   EditMenuItem.ImageIndex := IDEImages.LoadImage('laz_edit');
   ClearMenuItem.ImageIndex := IDEImages.LoadImage('menu_clean');
 
-  TIDEImages.AssignImage(ResetKeyFilterBtn.Glyph, ResBtnListFilter);
+  IDEImages.AssignImage(ResetKeyFilterBtn, ResBtnListFilter);
   ResetKeyFilterBtn.Enabled := not IDEShortCutEmpty(KeyMapKeyFilter);
 
 //  FillKeyMappingTreeView;    ... Done in ReadSettings.

@@ -1,6 +1,6 @@
 { Installs anchor docking manager in the Lazarus IDE.
 
-  Copyright (C) 2010 Mattias Gaertner mattias@freepascal.org
+  Copyright (C) 2018 Mattias Gaertner mattias@freepascal.org
 
   This library is free software; you can redistribute it and/or modify it
   under the terms of the GNU Library General Public License as published by
@@ -42,7 +42,7 @@ uses
   // LazUtils
   LazFileCache, LazFileUtils,
   // IdeIntf
-  LCLIntf, IDEWindowIntf, IDEOptionsIntf, LazIDEIntf,
+  LCLIntf, IDEWindowIntf, IDEOptionsIntf, IDEOptEditorIntf, LazIDEIntf,
   // AnchorDocking
   AnchorDockStr, AnchorDocking, AnchorDesktopOptions, AnchorDockOptionsDlg;
 
@@ -192,7 +192,7 @@ end;
 constructor TIDEAnchorDockMaster.Create;
 begin
   inherited Create;
-  DefaultAnchorDockOptionFlags:=[adofShow_ShowHeader];
+  DefaultAnchorDockOptionFlags:=[adofShow_ShowHeader,adofSpinEdits];
 
   IDEAnchorDockMaster:=Self;
   DockMaster.OnCreateControl:=@DockMasterCreateControl;

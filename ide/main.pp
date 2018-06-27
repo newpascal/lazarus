@@ -67,11 +67,12 @@ uses
   // CodeTools
   FileProcs, FindDeclarationTool, LinkScanner, BasicCodeTools, CodeToolsStructs,
   CodeToolManager, CodeCache, DefineTemplates, KeywordFuncLists, CodeTree,
-  StdCodeTools, EventCodeTool, CodeCreationDlg,
+  StdCodeTools, EventCodeTool, CodeCreationDlg, IdentCompletionTool,
   // LazUtils
   // use lazutf8, lazfileutils and lazfilecache after FileProcs and FileUtil
-  FileUtil, LazFileUtils, LazFileCache, LazUTF8, LazUTF8Classes, UTF8Process,
-  LConvEncoding, Laz2_XMLCfg, LazLogger, AvgLvlTree,
+  FileUtil, LazFileUtils, LazUtilities, LazUTF8, LazUTF8Classes, UTF8Process,
+  LConvEncoding, Laz2_XMLCfg, LazLoggerBase, LazLogger, LazFileCache, AvgLvlTree,
+  LCLExceptionStacktrace,
   // SynEdit
   SynEdit, AllSynEdit, SynEditKeyCmds, SynEditMarks, SynEditHighlighter,
   // IDE interface
@@ -79,7 +80,7 @@ uses
   MacroIntf, IDECommands, IDEWindowIntf, ComponentReg,
   SrcEditorIntf, NewItemIntf, IDEExternToolIntf, IDEMsgIntf,
   PackageIntf, ProjectIntf, CompOptsIntf, MenuIntf, LazIDEIntf, IDEDialogs,
-  IDEOptionsIntf, IDEImagesIntf, ComponentEditors, ToolBarIntf,
+  IDEOptionsIntf, IDEOptEditorIntf, IDEImagesIntf, ComponentEditors, ToolBarIntf,
   // protocol
   IDEProtocol,
   // compile
@@ -155,7 +156,7 @@ uses
   CleanDirDlg, CodeContextForm, AboutFrm, CompatibilityRestrictions,
   RestrictionBrowser, ProjectWizardDlg, IDECmdLine, IDEGuiCmdLine, CodeExplOpts,
   EditorMacroListViewer, SourceFileManager, EditorToolbarStatic,
-  IDEInstances, NotifyProcessEnd,
+  IDEInstances, NotifyProcessEnd, WordCompletion,
   // main ide
   MainBar, MainIntf, MainBase;
 
@@ -617,6 +618,10 @@ type
                 );
     procedure CodeToolBossFindFPCMangledSource(Sender: TObject;
       SrcType: TCodeTreeNodeDesc; const SrcName: string; out SrcFilename: string);
+    procedure CodeToolBossGatherUserIdentifiers(Sender: TIdentCompletionTool;
+      const ContextFlags: TIdentifierListContextFlags);
+    procedure CodeToolBossGatherUserIdentifiersToFilteredList(
+      Sender: TIdentifierList; FilteredList: TFPList; PriorityCount: Integer);
 
     function CTMacroFunctionProject(Data: Pointer): boolean;
     procedure CompilerParseStampIncHandler;
@@ -649,9 +654,16 @@ type
     FFixingGlobalComponentLock: integer;
     OldCompilerFilename, OldLanguage: String;
     OIChangedTimer: TIdleTimer;
+
+    FIdentifierWordCompletion: TSourceEditorWordCompletion;
+    FIdentifierWordCompletionWordList: TStringList;
+    FIdentifierWordCompletionEnabled: Boolean;
+
     procedure DoDropFilesAsync(Data: PtrInt);
     procedure RenameInheritedMethods(AnUnitInfo: TUnitInfo; List: TStrings);
     function OIHelpProvider: TAbstractIDEHTMLProvider;
+    procedure DoAddWordsToIdentCompletion(Sender: TIdentifierList;
+      FilteredList: TFPList; PriorityCount: Integer);
     // form editor and designer
     procedure DoBringToFrontFormOrUnit;
     procedure DoBringToFrontFormOrInspector(ForceInspector: boolean);
@@ -935,6 +947,7 @@ type
 
     // methods for debugging, compiling and external tools
     function GetTestBuildDirectory: string; override;
+    function GetCompilerFilename: string; override;
     function GetFPCompilerFilename: string; override;
     function GetFPCFrontEndOptions: string; override;
     procedure GetIDEFileState(Sender: TObject; const AFilename: string;
@@ -1200,8 +1213,10 @@ var
   IsUpgrade: boolean;
   MsgResult: TModalResult;
   CurPrgName: String;
-  AltPrgName: String;
+  AltPrgName, PCP: String;
 begin
+  PCP:=AppendPathDelim(GetPrimaryConfigPath);
+
   with EnvironmentOptions do
   begin
     EnvOptsCfgExisted := FileExistsCached(GetDefaultConfigFilename);
@@ -1235,7 +1250,7 @@ begin
   // check if this PCP was used by another lazarus exe
   s := ExtractFileName(ParamStrUTF8(0));
   CurPrgName := NormalizeLazExe(AppendPathDelim(ProgramDirectory(False)) + s);
-  AltPrgName := NormalizeLazExe(AppendPathDelim(AppendPathDelim(GetPrimaryConfigPath) + 'bin') + s);
+  AltPrgName := NormalizeLazExe(AppendPathDelim(PCP + 'bin') + s);
   LastCalled := NormalizeLazExe(EnvironmentOptions.LastCalledByLazarusFullPath);
 
   if (LastCalled = '') then
@@ -1267,7 +1282,7 @@ begin
     debugln(['Hint: (lazarus) AltPrgName="',AltPrgName,'"']);
     MsgResult := IDEQuestionDialog(lisIncorrectConfigurationDirectoryFound,
         SimpleFormat(lisIDEConficurationFoundMayBelongToOtherLazarus,
-            [LineEnding, GetSecondConfDirWarning, GetPrimaryConfigPath,
+            [LineEnding, GetSecondConfDirWarning, ChompPathDelim(PCP),
              EnvironmentOptions.LastCalledByLazarusFullPath, CurPrgName]),
         mtWarning, [mrOK, lisUpdateInfo,
                     mrIgnore,
@@ -1299,7 +1314,7 @@ begin
     if OldVer='' then
       OldVer:=SimpleFormat(lisPrior, [GetLazarusVersionString]);
     s:=SimpleFormat(lisWelcomeToLazarusThereIsAlreadyAConfigurationFromVe,
-      [GetLazarusVersionString, LineEnding+LineEnding, OldVer, LineEnding, GetPrimaryConfigPath+LineEnding] );
+      [GetLazarusVersionString, LineEnding+LineEnding, OldVer, LineEnding, ChompPathDelim(PCP)+LineEnding] );
     if IsUpgrade then
       s+=lisTheOldConfigurationWillBeUpgraded
     else
@@ -1319,6 +1334,14 @@ begin
       Application.Terminate;
       exit;
     end;
+
+    // clear users/fallback ppu cache .lazarus/bin, units
+    if not DeleteDirectory(PCP+'bin',false) then
+      if ConsoleVerbosity>0 then
+        debugln(['Warning: (lazarus) unable to delete directory "'+PCP+'bin"']);
+    if not DeleteDirectory(PCP+'units',false) then
+      if ConsoleVerbosity>0 then
+        debugln(['Warning: (lazarus) unable to delete directory "'+PCP+'units"']);
   end;
 
   UpdateDefaultPasFileExt;
@@ -1387,7 +1410,7 @@ begin
 
   // check compiler
   if (not ShowSetupDialog)
-  and (CheckCompilerQuality(EnvironmentOptions.GetParsedCompilerFilename,Note,
+  and (CheckFPCExeQuality(EnvironmentOptions.GetParsedCompilerFilename,Note,
                        CodeToolBoss.CompilerDefinesCache.TestFilename)=sddqInvalid)
   then begin
     debugln(['Warning: (lazarus) invalid compiler: ',EnvironmentOptions.GetParsedCompilerFilename]);
@@ -1653,6 +1676,8 @@ begin
   FreeThenNil(SearchResultsView);
   FreeThenNil(ObjectInspector1);
   FreeThenNil(SourceEditorManagerIntf);
+  FreeAndNil(FIdentifierWordCompletionWordList);
+  FreeAndNil(FIdentifierWordCompletion);
 
   // disconnect handlers
   Application.RemoveAllHandlersOfObject(Self);
@@ -2005,6 +2030,19 @@ begin
   SrcFilename:='';
 end;
 
+procedure TMainIDE.CodeToolBossGatherUserIdentifiers(
+  Sender: TIdentCompletionTool; const ContextFlags: TIdentifierListContextFlags
+  );
+begin
+  FIdentifierWordCompletionEnabled := not (ilcfStartIsSubIdent in ContextFlags);
+end;
+
+procedure TMainIDE.CodeToolBossGatherUserIdentifiersToFilteredList(
+  Sender: TIdentifierList; FilteredList: TFPList; PriorityCount: Integer);
+begin
+  DoAddWordsToIdentCompletion(Sender, FilteredList, PriorityCount);
+end;
+
 {------------------------------------------------------------------------------}
 procedure TMainIDE.MainIDEFormClose(Sender: TObject;
   var CloseAction: TCloseAction);
@@ -2084,6 +2122,7 @@ end;
 procedure TMainIDE.SetupFormEditor;
 begin
   GlobalDesignHook:=TPropertyEditorHook.Create(nil);
+  GlobalDesignHook.ComponentPropertyOnlyDesign:=true;
   GlobalDesignHook.GetPrivateDirectory:=AppendPathDelim(GetPrimaryConfigPath);
   GlobalDesignHook.AddHandlerGetMethodName(@PropHookGetMethodName);
   GlobalDesignHook.AddHandlerGetCompatibleMethods(@PropHookGetCompatibleMethods);
@@ -2200,6 +2239,8 @@ begin
   IDECmdScopeSrcEdit.AddWindowClass(TSourceEditorWindowInterface);
   IDECmdScopeSrcEdit.AddWindowClass(nil);
   IDECmdScopeSrcEditOnly.AddWindowClass(TSourceEditorWindowInterface);
+
+  IDECmdScopeSrcEditOnlyMultiCaret.AddWindowClass(TLazSynPluginTemplateMultiCaret);
 
   IDECmdScopeSrcEditOnlyTmplEdit.AddWindowClass(TLazSynPluginTemplateEditForm);
   IDECmdScopeSrcEditOnlyTmplEditOff.AddWindowClass(TLazSynPluginTemplateEditFormOff);
@@ -2417,6 +2458,7 @@ begin
     nil,@CreateIDEWindow,'250','250','','');
   IDEWindowCreators.Add(NonModalIDEWindowNames[nmiwEditorFileManager],
     nil,@CreateIDEWindow,'200','200','','');
+  IDEWindowCreators.SimpleLayoutStorage.MoveToTop('MainIDE');
 end;
 
 procedure TMainIDE.RestoreIDEWindows;
@@ -3512,9 +3554,12 @@ begin
     AForm.WindowState := wsMinimized;
     exit;
   end;
-  // do not call 'AForm.Show', because it will set Visible to true
-  AForm.BringToFront;
-  LCLIntf.ShowWindow(AForm.Handle,SW_SHOWNORMAL);
+  if IDETabMaster = nil then
+  begin
+    // do not call 'AForm.Show', because it will set Visible to true
+    AForm.BringToFront;
+    LCLIntf.ShowWindow(AForm.Handle,SW_SHOWNORMAL);
+  end;
 end;
 
 procedure TMainIDE.DoViewAnchorEditor(State: TIWGetFormState);
@@ -6421,6 +6466,56 @@ begin
   Result := SourceFileMgr.AddUnitToProject(AEditor);
 end;
 
+procedure TMainIDE.DoAddWordsToIdentCompletion(Sender: TIdentifierList;
+  FilteredList: TFPList; PriorityCount: Integer);
+var
+  New: TIdentifierListItem;
+  I, OldPriorityCount: Integer;
+begin
+  if not(
+    FIdentifierWordCompletionEnabled and (
+         (Sender.Prefix<>'')      // gather words only if prefix is not empty
+      or (FilteredList.Count=0))) // or if identifer completion didn't find anything (e.g. because of a syntax error)
+  then
+    Exit;
+
+  if FIdentifierWordCompletionWordList=nil then
+  begin
+    FIdentifierWordCompletionWordList:=TStringList.Create;
+    FIdentifierWordCompletionWordList.OwnsObjects := True;
+  end else
+    FIdentifierWordCompletionWordList.Clear;
+  if FIdentifierWordCompletion=nil then
+    FIdentifierWordCompletion := TSourceEditorWordCompletion.Create;
+
+  OldPriorityCount := PriorityCount;
+  PriorityCount := FilteredList.Count;
+  FIdentifierWordCompletion.IncludeWords := CodeToolsOpts.IdentComplIncludeWords;
+  FIdentifierWordCompletion.GetWordList(FIdentifierWordCompletionWordList, Sender.Prefix, Sender.ContainsFilter, False, 100);
+  FilteredList.Capacity := FilteredList.Count+FIdentifierWordCompletionWordList.Count;
+  for I := 0 to FIdentifierWordCompletionWordList.Count-1 do
+  begin
+    if Sender.FindIdentifier(PChar(FIdentifierWordCompletionWordList[I]))=nil then
+    begin
+      New := CIdentifierListItem.Create(WordCompatibility, False, 0,
+        PChar(FIdentifierWordCompletionWordList[I]), 0, nil, nil, ctnWord);
+      FIdentifierWordCompletionWordList.Objects[I] := New;
+      if SameText(Sender.Prefix, FIdentifierWordCompletionWordList[I]) then
+      begin // show exact match between exact matches and in-word-matches
+        FilteredList.Insert(OldPriorityCount, New);
+        Inc(PriorityCount);
+      end else
+      if Sender.ContainsFilter and (Sender.Prefix<>'')
+      and (strlicomp(PChar(Sender.Prefix), PChar(FIdentifierWordCompletionWordList[I]), Length(Sender.Prefix))=0) then
+      begin // show start-match before other matches
+        FilteredList.Insert(PriorityCount, New);
+        Inc(PriorityCount);
+      end else
+        FilteredList.Add(New);
+    end;
+  end;
+end;
+
 function TMainIDE.DoRemoveFromProjectDialog: TModalResult;
 Begin
   Result:=SourceFileMgr.RemoveFromProjectDialog;
@@ -6592,7 +6687,7 @@ var
   TargetExeName: String;
   TargetExeDirectory: String;
   FPCVersion, FPCRelease, FPCPatch: integer;
-  aCompileHint: String;
+  aCompileHint, ShortFilename: String;
   OldToolStatus: TIDEToolStatus;
   IsComplete: Boolean;
   StartTime: TDateTime;
@@ -6781,21 +6876,39 @@ begin
 
       // create target output directory
       TargetExeName := Project1.CompilerOptions.CreateTargetFilename;
-      TargetExeDirectory:=ExtractFilePath(TargetExeName);
-      if (FilenameIsAbsolute(TargetExeDirectory))
-      and (not DirPathExistsCached(TargetExeDirectory)) then begin
-        if not FileIsInPath(TargetExeDirectory,WorkingDir) then begin
-          Result:=IDEQuestionDialog(lisCreateDirectory,
-              Format(lisTheOutputDirectoryIsMissing, [TargetExeDirectory]),
-              mtConfirmation, [mrYes, lisCreateIt,
-                               mrCancel]);
-          if Result<>mrYes then exit;
+      TargetExeDirectory:=ChompPathDelim(ExtractFilePath(TargetExeName)); // Note: chomp is needed by FileExistsCached under Windows
+      if FilenameIsAbsolute(TargetExeDirectory) then begin
+        if FileExistsCached(TargetExeDirectory) then begin
+          if not DirPathExistsCached(TargetExeDirectory) then begin
+            Result:=IDEQuestionDialog(lisFileFound,
+                Format(lisTheTargetDirectoryIsAFile, [sLineBreak
+                +TargetExeDirectory]),
+                mtWarning, [mrCancel,mrIgnore]);
+            if Result<>mrIgnore then exit(mrCancel);
+          end;
+        end else begin
+          if not FileIsInPath(TargetExeDirectory,WorkingDir) then begin
+            Result:=IDEQuestionDialog(lisCreateDirectory,
+                Format(lisTheOutputDirectoryIsMissing, [TargetExeDirectory]),
+                mtConfirmation, [mrYes, lisCreateIt,
+                                 mrCancel]);
+            if Result<>mrYes then exit;
+          end;
+          Result:=ForceDirectoryInteractive(TargetExeDirectory,[mbRetry]);
+          if Result<>mrOk then begin
+            debugln(['Error: (lazarus) [TMainIDE.DoBuildProject] ForceDirectoryInteractive "',TargetExeDirectory,'" failed']);
+            exit;
+          end;
         end;
-        Result:=ForceDirectoryInteractive(TargetExeDirectory,[mbRetry]);
-        if Result<>mrOk then begin
-          debugln(['Error: (lazarus) [TMainIDE.DoBuildProject] ForceDirectoryInteractive "',TargetExeDirectory,'" failed']);
-          exit;
-        end;
+      end;
+      ShortFilename:=ExtractFileName(TargetExeName);
+      if (ShortFilename='') or (ShortFilename='.') or (ShortFilename='..')
+      or (FilenameIsAbsolute(TargetExeName) and DirPathExistsCached(TargetExeName)) then
+      begin
+        Result:=IDEQuestionDialog(lisInvalidFileName,
+            lisTheTargetFileNameIsADirectory,
+            mtWarning, [mrCancel,mrIgnore]);
+        if Result<>mrIgnore then exit(mrCancel);
       end;
 
       // create application bundle
@@ -6856,7 +6969,7 @@ begin
           debugln(['Error: (lazarus) [TMainIDE.DoBuildProject] Compile failed']);
           exit;
         end;
-        // compilation succeded -> write state file
+        // compilation succeeded -> write state file
         IsComplete:=[pbfSkipLinking,pbfSkipAssembler,pbfSkipTools]*Flags=[];
         Result:=Project1.SaveStateFile(CompilerFilename,CompilerParams,IsComplete);
         if Result<>mrOk then begin
@@ -8754,11 +8867,12 @@ function TMainIDE.DoJumpToSearchResult(FocusEditor: boolean): boolean;
 var
   AFileName: string;
   SearchedFilename: string;
-  LogCaretXY: TPoint;
+  LogCaretXY, JumpPointCaretXY: TPoint;
   OpenFlags: TOpenFlags;
-  SrcEdit: TSourceEditor;
+  SrcEdit, JumpPointEditor: TSourceEditor;
   AnUnitInfo: TUnitInfo;
   AnEditorInfo: TUnitEditorInfo;
+  JumpPointTopLine: Integer;
 begin
   Result:=false;
   AFileName:= SearchResultsView.GetSourceFileName;
@@ -8773,6 +8887,12 @@ begin
       SearchedFilename := FindUnitFile(AFilename);
     end;
     if SearchedFilename<>'' then begin
+      JumpPointEditor := SourceEditorManager.ActiveEditor;
+      if JumpPointEditor<>nil then
+      begin
+        JumpPointCaretXY := JumpPointEditor.EditorComponent.LogicalCaretXY;
+        JumpPointTopLine := JumpPointEditor.EditorComponent.TopLine;
+      end;
       // open the file in the source editor
       AnUnitInfo := nil;
       if Project1<>nil then
@@ -8787,7 +8907,8 @@ begin
         Result:=(DoOpenEditorFile(SearchedFilename,-1,-1,OpenFlags)=mrOk);
       if Result then begin
         // set caret position
-        SourceEditorManager.AddJumpPointClicked(Self);
+        if JumpPointEditor<>nil then
+          SourceEditorManager.AddCustomJumpPoint(JumpPointCaretXY, JumpPointTopLine, JumpPointEditor, True);
         SrcEdit:=SourceEditorManager.ActiveEditor;
         if LogCaretXY.Y>SrcEdit.EditorComponent.Lines.Count then
           LogCaretXY.Y:=SrcEdit.EditorComponent.Lines.Count;
@@ -8839,16 +8960,17 @@ begin
   end else if State=iwgfDisabled then
     SearchResultsView.DisableAutoSizing{$IFDEF DebugDisableAutoSizing}('TMainIDE.DoShowSearchResultsView'){$ENDIF};
   if State>=iwgfShow then
-  begin
     IDEWindowCreators.ShowForm(SearchresultsView,State=iwgfShowOnTop);
-    if (State=iwgfShowOnTop) and SearchresultsView.SearchInListEdit.CanFocus then
-      SearchresultsView.SearchInListEdit.SetFocus;
-  end;
 end;
 
 function TMainIDE.GetTestBuildDirectory: string;
 begin
   Result:=MainBuildBoss.GetTestBuildDirectory;
+end;
+
+function TMainIDE.GetCompilerFilename: string;
+begin
+  Result:=MainBuildBoss.GetCompilerFilename;
 end;
 
 function TMainIDE.GetFPCompilerFilename: string;
@@ -9181,6 +9303,7 @@ begin
   CodeToolBoss.DefineTree.OnGetVirtualDirectoryDefines:=
     @CodeToolBossGetVirtualDirectoryDefines;
   CodeToolBoss.DefineTree.OnPrepareTree:=@CodeToolBossPrepareTree;
+  CodeToolBoss.IdentifierList.OnGatherUserIdentifiersToFilteredList := @CodeToolBossGatherUserIdentifiersToFilteredList;
 
   CodeToolBoss.DefineTree.MacroFunctions.AddExtended(
     'PROJECT',nil,@CTMacroFunctionProject);
@@ -9221,6 +9344,7 @@ begin
     OnGetIndenterExamples:=@CodeToolBossGetIndenterExamples;
     OnScannerInit:=@CodeToolBossScannerInit;
     OnFindFPCMangledSource:=@CodeToolBossFindFPCMangledSource;
+    OnGatherUserIdentifiers:=@CodeToolBossGatherUserIdentifiers;
   end;
 
   CodeToolsOpts.AssignGlobalDefineTemplatesToTree(CodeToolBoss.DefineTree);
@@ -10091,6 +10215,7 @@ var
 begin
   ActiveSrcEdit:=nil;
   if not BeginCodeTool(ActiveSrcEdit,ActiveUnitInfo,[]) then exit(false);
+  FIdentifierWordCompletionEnabled := True;
   {$IFDEF IDE_DEBUG}
   debugln('');
   debugln('[TMainIDE.DoInitIdentCompletion] ************');
@@ -10099,12 +10224,15 @@ begin
   LogCaretXY:=ActiveSrcEdit.EditorComponent.LogicalCaretXY;
   Result:=CodeToolBoss.GatherIdentifiers(ActiveUnitInfo.Source,
                                          LogCaretXY.X,LogCaretXY.Y);
+
   if not Result then begin
     if JumpToError then
       DoJumpToCodeToolBossError
     else
+    begin
       DoShowCodeToolBossError;
-    exit;
+      Result := True; // proceed and show ident completion (add words from word completion)
+    end;
   end;
   {$IFDEF IDE_MEM_CHECK}CheckHeapWrtMemCnt('TMainIDE.DoInitIdentCompletion B');{$ENDIF}
 end;
@@ -10859,6 +10987,115 @@ begin
     CodeExplorerView.CurrentCodeBufferChanged;
 end;
 
+type
+
+  { TSrcNotebookHintCallback
+    ONLY used by SrcNotebookShowHintForSource
+  }
+
+  TSrcNotebookHintCallback = class
+  private
+    FExpression, FBaseURL, FSmartHintStr, FDebugResText: string;
+    FAutoShown: Boolean;
+    FSrcEdit: TSourceEditor;
+    FCaretPos: TPoint;
+    procedure ShowHint;
+  public
+    constructor Create(SrcEdit: TSourceEditor; CaretPos: TPoint; AnExpression, ABaseURL, ASmartHintStr: string; AAutoShown: Boolean);
+    procedure AddDebuggerResult(Sender: TObject; ASuccess: Boolean; ResultText: String; ResultDBGType: TDBGType);
+    procedure AddDebuggerResultDeref(Sender: TObject; ASuccess: Boolean; ResultText: String; ResultDBGType: TDBGType);
+  end;
+
+{ TSrcNotebookHintCallback }
+
+procedure TSrcNotebookHintCallback.ShowHint;
+var
+  AtomStartPos, AtomEndPos: integer;
+  p: SizeInt;
+  AtomRect: TRect;
+begin
+  FExpression := FExpression + ' = ' + FDebugResText;
+  if FSmartHintStr<>'' then
+  begin
+    p:=System.Pos('<body>',lowercase(FSmartHintStr));
+    if p>0 then
+      Insert('<div class="debuggerhint">'+CodeHelpBoss.TextToHTML(FExpression)+'</div><br>',
+             FSmartHintStr, p+length('<body>'))
+    else
+      FSmartHintStr:=FExpression+LineEnding+LineEnding+FSmartHintStr;
+  end else
+    FSmartHintStr:=FExpression;
+
+  AtomRect := Rect(-1,-1,-1,-1);
+  FSrcEdit.EditorComponent.GetWordBoundsAtRowCol(FCaretPos, AtomStartPos, AtomEndPos);
+  AtomRect.TopLeft := FSrcEdit.EditorComponent.RowColumnToPixels(Point(AtomStartPos, FCaretPos.y));
+  AtomRect.BottomRight := FSrcEdit.EditorComponent.RowColumnToPixels(Point(AtomEndPos, FCaretPos.y+1));
+
+  FSrcEdit.ActivateHint(AtomRect, FBaseURL, FSmartHintStr, FAutoShown, False);
+  Destroy;
+end;
+
+constructor TSrcNotebookHintCallback.Create(SrcEdit: TSourceEditor;
+  CaretPos: TPoint; AnExpression, ABaseURL, ASmartHintStr: string;
+  AAutoShown: Boolean);
+begin
+  FExpression := AnExpression;
+  FSrcEdit := SrcEdit;
+  FCaretPos := CaretPos;
+  FBaseURL := ABaseURL;
+  FSmartHintStr := ASmartHintStr;
+  FAutoShown := AAutoShown;
+end;
+
+procedure TSrcNotebookHintCallback.AddDebuggerResult(Sender: TObject;
+  ASuccess: Boolean; ResultText: String; ResultDBGType: TDBGType);
+var
+  Opts: TDBGEvaluateFlags;
+begin
+  if not ASuccess then begin
+    FDebugResText := '???';
+  end
+  else begin
+    // deference a pointer - maybe it is a class
+    if ASuccess and Assigned(ResultDBGType) and (ResultDBGType.Kind in [skPointer]) and
+       not( StringCase(Lowercase(ResultDBGType.TypeName), ['char', 'character', 'ansistring']) in [0..2] )
+    then
+    begin
+      if ResultDBGType.Value.AsPointer <> nil then
+      begin
+        Opts := [];
+        if EditorOpts.DbgHintAutoTypeCastClass
+        then Opts := [defClassAutoCast];
+
+        FDebugResText := ResultText;
+
+        if DebugBoss.Evaluate('('+FExpression + ')^', @AddDebuggerResultDeref, Opts) then begin
+          FreeAndNil(ResultDBGType);
+          exit;
+        end;
+      end;
+    end else
+      FDebugResText := DebugBoss.FormatValue(ResultDBGType, ResultText);
+
+    FreeAndNil(ResultDBGType);
+  end;
+  ShowHint;
+end;
+
+procedure TSrcNotebookHintCallback.AddDebuggerResultDeref(Sender: TObject;
+  ASuccess: Boolean; ResultText: String; ResultDBGType: TDBGType);
+begin
+  if ASuccess and Assigned(ResultDBGType) and
+    ( (ResultDBGType.Kind <> skPointer) or
+      (StringCase(Lowercase(ResultDBGType.TypeName), ['char', 'character', 'ansistring']) in [0..2])
+    )
+  then
+    FDebugResText := FDebugResText + LineEnding + LineEnding + '(' + FExpression + ')^ = ' + DebugBoss.FormatValue(ResultDBGType, ResultText);
+
+  FreeAndNil(ResultDBGType);
+  ShowHint;
+end;
+
 procedure TMainIDE.SrcNotebookShowHintForSource(SrcEdit: TSourceEditor;
   CaretPos: TPoint; AutoShown: Boolean);
 
@@ -10887,13 +11124,12 @@ procedure TMainIDE.SrcNotebookShowHintForSource(SrcEdit: TSourceEditor;
 
 var
   ActiveUnitInfo: TUnitInfo;
-  BaseURL, SmartHintStr, Expression, DebugEval, DebugEvalDerefer: String;
-  DBGType,DBGTypeDerefer: TDBGType;
+  BaseURL, SmartHintStr, Expression: String;
   HasHint: Boolean;
-  p: SizeInt;
   Opts: TDBGEvaluateFlags;
   AtomStartPos, AtomEndPos: integer;
   AtomRect: TRect;
+  DebugHint: TSrcNotebookHintCallback;
 begin
   //DebugLn(['TMainIDE.OnSrcNotebookShowHintForSource START']);
   if (SrcEdit=nil) then exit;
@@ -10928,53 +11164,20 @@ begin
     end
     else
       Expression := SrcEdit.GetOperandFromCaret(CaretPos);
-    if Expression='' then exit;
     //DebugLn(['TMainIDE.OnSrcNotebookShowHintForSource Expression="',Expression,'"']);
-    DBGType:=nil;
-    DBGTypeDerefer:=nil;
-    Opts := [];
-    if EditorOpts.DbgHintAutoTypeCastClass
-    then Opts := [defClassAutoCast];
-    DebugEval:='';
-    if DebugBoss.Evaluate(Expression, DebugEval, DBGType, Opts) and not (DebugEval = '') then
-    begin
-      // deference a pointer - maybe it is a class
-      if Assigned(DBGType) and (DBGType.Kind in [skPointer]) and
-         not( StringCase(Lowercase(DBGType.TypeName), ['char', 'character', 'ansistring']) in [0..2] )
-      then
-      begin
-        if DBGType.Value.AsPointer <> nil then
-        begin
-          DebugEvalDerefer:='';
-          if DebugBoss.Evaluate(Expression + '^', DebugEvalDerefer, DBGTypeDerefer, Opts) then
-          begin
-            if Assigned(DBGTypeDerefer) and
-              ( (DBGTypeDerefer.Kind <> skPointer) or
-                (StringCase(Lowercase(DBGTypeDerefer.TypeName), ['char', 'character', 'ansistring']) in [0..2])
-              )
-            then
-              DebugEval := DebugEval + LineEnding + LineEnding + '(' + Expression + ')^ = ' + DebugEvalDerefer;
-          end;
-        end;
-      end else
-        DebugEval := DebugBoss.FormatValue(DBGType, DebugEval);
-    end else
-      DebugEval := '???';
 
-    FreeAndNil(DBGType);
-    FreeAndNil(DBGTypeDerefer);
-    HasHint:=true;
-    Expression := Expression + ' = ' + DebugEval;
-    if SmartHintStr<>'' then
-    begin
-      p:=System.Pos('<body>',lowercase(SmartHintStr));
-      if p>0 then
-        Insert('<div class="debuggerhint">'+CodeHelpBoss.TextToHTML(Expression)+'</div><br>',
-               SmartHintStr, p+length('<body>'))
-      else
-        SmartHintStr:=Expression+LineEnding+LineEnding+SmartHintStr;
-    end else
-      SmartHintStr:=Expression;
+    if Expression <> '' then begin
+      Opts := [];
+      if EditorOpts.DbgHintAutoTypeCastClass
+      then Opts := [defClassAutoCast];
+
+      DebugHint := TSrcNotebookHintCallback.Create(SrcEdit, CaretPos, Expression, BaseURL, SmartHintStr, AutoShown);
+      if DebugBoss.Evaluate(Expression, @DebugHint.AddDebuggerResult, Opts) then
+        exit;
+
+      DebugHint.Free; // eval not available
+      // Add note to SmartHintStr: no debug result for expression
+    end;
   end;
 
   if HasHint then
@@ -12151,8 +12354,9 @@ begin
     // place object inspector below main bar
     ScreenR:=IDEWindowCreators.GetScreenrectForDefaults;
     aBounds:=Rect(ScreenR.Left,
-       Min(MainIDEBar.Top+MainIDEBar.Height+25,200),ScreenR.Left+230,
-       ScreenR.Bottom-ScreenR.Top-150);
+       MainIDEBar.Top+MainIDEBar.Height+MainIDEBar.Scale96ToForm(35),
+       ScreenR.Left+MainIDEBar.Scale96ToForm(230),
+       ScreenR.Bottom-MainIDEBar.Scale96ToForm(50));
     // do not dock object inspector, because this would hide the floating designers
   end
   else if (aFormName=NonModalIDEWindowNames[nmiwMessagesViewName]) then begin
@@ -12161,10 +12365,14 @@ begin
     if SourceEditorManager.SourceWindowCount>0 then begin
       SrcEditWnd:=SourceEditorManager.SourceWindows[0];
       aBounds:=GetParentForm(SrcEditWnd).BoundsRect;
-      aBounds.Top:=aBounds.Bottom+25;
-      aBounds.Bottom:=aBounds.Top+100;
+      aBounds.Top:=aBounds.Bottom+MainIDEBar.Scale96ToForm(35);
+      aBounds.Bottom:=ScreenR.Bottom-MainIDEBar.Scale96ToForm(50);
     end else begin
-      aBounds:=Rect(ScreenR.Left+250,ScreenR.Bottom-200,ScreenR.Right-250,100);
+      aBounds:=Rect(
+        ScreenR.Left+MainIDEBar.Scale96ToForm(250),
+        ScreenR.Bottom-MainIDEBar.Scale96ToForm(200),
+        ScreenR.Right-MainIDEBar.Scale96ToForm(250),
+        ScreenR.Bottom-MainIDEBar.Scale96ToForm(50));
     end;
     if IDEDockMaster<>nil then begin
       DockSibling:=NonModalIDEWindowNames[nmiwSourceNoteBookName];

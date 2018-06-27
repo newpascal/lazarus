@@ -633,7 +633,9 @@ msgid "Alphabetically"
 msgstr "按字母顺序排列"
 
 #: lazarusidestrconsts.dlgalwaysvisiblecursor
-msgid "Always visible cursor"
+#, fuzzy
+#| msgid "Always visible cursor"
+msgid "Always keep Caret in visible area of editor"
 msgstr "光标总是可视"
 
 #: lazarusidestrconsts.dlgambigfileact
@@ -811,6 +813,10 @@ msgstr "是括号成对"
 msgid "You cannot use docked desktop in undocked environment and vice versa."
 msgstr ""
 
+#: lazarusidestrconsts.dlgcaretgroupoptions
+msgid "Caret (Text Cursor)"
+msgstr ""
+
 #: lazarusidestrconsts.dlgcasesensitive
 msgctxt "lazarusidestrconsts.dlgcasesensitive"
 msgid "&Case sensitive"
@@ -849,9 +855,9 @@ msgstr "测试: 检查编译器日期..."
 msgid "Test: Compiling an empty file ..."
 msgstr "测试: 编译空文件..."
 
-#: lazarusidestrconsts.dlgccotestmissingppu
-msgid "Test: Checking missing fpc ppu ..."
-msgstr "测试: 检查缺少的 FPC ppu ..."
+#: lazarusidestrconsts.dlgccotestrtlunits
+msgid "Test: Checking RTL units ..."
+msgstr ""
 
 #: lazarusidestrconsts.dlgccotestsrcinppupaths
 msgid "Test: Checking sources in fpc ppu search paths ..."
@@ -1270,16 +1276,12 @@ msgstr ""
 msgid "Cursor beyond EOL"
 msgstr ""
 
-#: lazarusidestrconsts.dlgcursorgroupoptions
-msgid "Cursor"
-msgstr "光标"
-
 #: lazarusidestrconsts.dlgcursorskipsselection
-msgid "Cursor skips selection"
+msgid "Caret skips selection"
 msgstr ""
 
 #: lazarusidestrconsts.dlgcursorskipstab
-msgid "Cursor skips tabs"
+msgid "Caret skips tabs"
 msgstr ""
 
 #: lazarusidestrconsts.dlgcustomext
@@ -2158,11 +2160,15 @@ msgid "Highlight Font Color"
 msgstr "字体高亮颜色"
 
 #: lazarusidestrconsts.dlghighlightleftofcursor
-msgid "Left Of Cursor"
+#, fuzzy
+#| msgid "Left Of Cursor"
+msgid "Left Of Caret"
 msgstr "光标左边"
 
 #: lazarusidestrconsts.dlghighlightrightofcursor
-msgid "Right Of Cursor"
+#, fuzzy
+#| msgid "Right Of Cursor"
+msgid "Right Of Caret"
 msgstr "光标右边"
 
 #: lazarusidestrconsts.dlghintsparametersendernotused
@@ -2234,6 +2240,22 @@ msgstr ""
 msgid "Include system variables"
 msgstr "包含系统变量"
 
+#: lazarusidestrconsts.dlgincludewordstoidentcompl
+msgid "Include words"
+msgstr ""
+
+#: lazarusidestrconsts.dlgincludewordstoidentcompl_dontinclude
+msgid "don't include"
+msgstr ""
+
+#: lazarusidestrconsts.dlgincludewordstoidentcompl_includefromallunits
+msgid "from all units"
+msgstr ""
+
+#: lazarusidestrconsts.dlgincludewordstoidentcompl_includefromcurrentunit
+msgid "from current unit"
+msgstr ""
+
 #: lazarusidestrconsts.dlgindentsindentgroupoptions
 msgid "Indent"
 msgstr "缩进"
@@ -2301,7 +2323,9 @@ msgid "Jump directly to method body"
 msgstr ""
 
 #: lazarusidestrconsts.dlgkeepcursorx
-msgid "Keep cursor X position"
+#, fuzzy
+#| msgid "Keep cursor X position"
+msgid "Keep caret X position when navigating up/down"
 msgstr "保持光标 X 定位"
 
 #: lazarusidestrconsts.dlgkeylink
@@ -2904,15 +2928,23 @@ msgid "Warning"
 msgstr "警告"
 
 #: lazarusidestrconsts.dlgmulticaretcolumnmode
-msgid "Multi-caret (column-select) move with cursor"
+msgid "Navigation keys move all carets (column-select)"
+msgstr ""
+
+#: lazarusidestrconsts.dlgmulticaretdelskipcr
+msgid "Skip delete key at EOL (do not join lines)"
+msgstr ""
+
+#: lazarusidestrconsts.dlgmulticaretgroupoptions
+msgid "Multi-caret"
 msgstr ""
 
 #: lazarusidestrconsts.dlgmulticaretmode
-msgid "Multi-caret move with cursor"
+msgid "Navigation keys move all carets"
 msgstr ""
 
 #: lazarusidestrconsts.dlgmulticaretoncolumnselection
-msgid "Enable multi caret for column selection"
+msgid "Enable multi-caret for column selection"
 msgstr ""
 
 #: lazarusidestrconsts.dlgmultipleinstances
@@ -3106,7 +3138,7 @@ msgid "Persistent block"
 msgstr ""
 
 #: lazarusidestrconsts.dlgpersistentcursor
-msgid "Persistent cursor"
+msgid "Visible caret in unfocused editor"
 msgstr ""
 
 #: lazarusidestrconsts.dlgpoapplication
@@ -3438,7 +3470,7 @@ msgstr "滚动超过文件末尾"
 #: lazarusidestrconsts.dlgscrollpastendline
 #, fuzzy
 #| msgid "Scroll past end of line"
-msgid "Caret past end of line"
+msgid "Allow caret to move past end of line"
 msgstr "滚动超过行末"
 
 #: lazarusidestrconsts.dlgseachdirectorynotfound
@@ -3510,7 +3542,7 @@ msgid "Show all units"
 msgstr "显示所有单元"
 
 #: lazarusidestrconsts.dlgshowcaptionsofnonvisuals
-msgid "Show captions of non-visual components"
+msgid "Show captions of nonvisual components"
 msgstr ""
 
 #: lazarusidestrconsts.dlgshowcompiledprocedures
@@ -4389,7 +4421,9 @@ msgid "Official:"
 msgstr "官方网站:"
 
 #: lazarusidestrconsts.lisacannotholdtcontrolsyoucanonlyputnonvisualcomponen
-msgid "A %s cannot hold TControls.%sYou can only put non visual components on it."
+#, fuzzy
+#| msgid "A %s cannot hold TControls.%sYou can only put non visual components on it."
+msgid "A %s cannot hold TControls.%sYou can only put nonvisual components on it."
 msgstr "%s不能包含TControls.%s你只能在上面放置非可见组件. "
 
 #: lazarusidestrconsts.lisacknowledgements
@@ -4484,6 +4518,18 @@ msgstr "添加"
 #: lazarusidestrconsts.lisaddkeyworddo
 msgid "Add keyword \"do\""
 msgstr "添加关键字\"do\""
+
+#: lazarusidestrconsts.lisaddmodifieroverload
+msgid "Add modifier \"overload\""
+msgstr ""
+
+#: lazarusidestrconsts.lisaddmodifieroverride
+msgid "Add modifier \"override\""
+msgstr ""
+
+#: lazarusidestrconsts.lisaddmodifierreintroduce
+msgid "Add modifier \"reintroduce\""
+msgstr ""
 
 #: lazarusidestrconsts.lisaddnewbuildmodecopyingsettingsfrom
 msgid "Add new build mode, copying settings from \"%s\""
@@ -5331,9 +5377,9 @@ msgstr "无效的测试目录"
 msgid "Missing unit"
 msgstr "缺少单元"
 
-#: lazarusidestrconsts.lisccomsgppunotfound
-msgid "compiled FPC unit not found: %s.ppu"
-msgstr "编译的 FPC 单元文件没有找到: %s.ppu"
+#: lazarusidestrconsts.lisccomsgrtlunitnotfound
+msgid "RTL unit not found: %s"
+msgstr ""
 
 #: lazarusidestrconsts.lisccomultiplecfgfound
 msgid "multiple compiler configs found: "
@@ -5351,13 +5397,13 @@ msgstr "非ASCII"
 msgid "ppu exists twice: %s, %s"
 msgstr "ppu存在双份: %s, %s"
 
-#: lazarusidestrconsts.lisccoppunotfounddetailed
-msgid "The compiled FPC unit %s.ppu was not found.%sThis typically means your fpc.cfg has a bug. Or your FPC installation is broken."
-msgstr "编译后的 FPC 单元 %s.ppu 没有找到.%s 典型的原因是 fpc.cfg 有问题. 或者你的 FPC 安装被破坏."
-
 #: lazarusidestrconsts.lisccoppuolderthancompiler
 msgid "There is a .ppu file older than the compiler itself:%s%s"
 msgstr "这里有个.ppu文件旧于编译器本身的文件:%s%s"
+
+#: lazarusidestrconsts.lisccortlunitnotfounddetailed
+msgid "The RTL unit %s was not found.%sThis typically means your %s has wrong unit paths. Or your installation is broken."
+msgstr ""
 
 #: lazarusidestrconsts.lisccoseveralcompilers
 msgid "There are several Free Pascal Compilers in your path.%s%s%sMaybe you forgot to delete an old compiler?"
@@ -5896,9 +5942,9 @@ msgstr "选择Lazarus目录"
 msgid "Choose \"make\" executable"
 msgstr "选择\"make\"可执行文件"
 
-#: lazarusidestrconsts.lischoosename
-msgid "Choose name"
-msgstr "选择名字"
+#: lazarusidestrconsts.lischoosenameandtext
+msgid "Choose name and text"
+msgstr ""
 
 #: lazarusidestrconsts.lischooseoneoftheseitemstocreateanewfile
 msgid "Choose one of these items to create a new File"
@@ -6801,6 +6847,10 @@ msgstr "编译工程"
 msgid "Compiler"
 msgstr "编译器"
 
+#: lazarusidestrconsts.liscompilercfgismissing
+msgid "%s is missing."
+msgstr ""
+
 #: lazarusidestrconsts.liscompilerdoesnotsupporttarget
 msgid "Compiler \"%s\" does not support target %s-%s"
 msgstr "编译器\"%s\"不支持目标%s-%s"
@@ -6989,6 +7039,12 @@ msgstr "构造代码"
 #: lazarusidestrconsts.liscontains
 msgid "contains"
 msgstr "包含"
+
+#: lazarusidestrconsts.liscontents
+#, fuzzy
+msgctxt "lazarusidestrconsts.liscontents"
+msgid "Contents"
+msgstr "目录"
 
 #: lazarusidestrconsts.liscontextsensitive
 msgid "Context sensitive"
@@ -8661,6 +8717,14 @@ msgstr "从剪切板粘贴组件"
 msgid "Select parent component"
 msgstr "选择父组件"
 
+#: lazarusidestrconsts.lisdsgshownonvisualcomponents
+msgid "Show nonvisual components"
+msgstr ""
+
+#: lazarusidestrconsts.lisdsgtoggleshowingnonvisualcomponents
+msgid "Toggle showing nonvisual components"
+msgstr ""
+
 #: lazarusidestrconsts.lisduplicate
 msgid "Duplicate"
 msgstr ""
@@ -9450,6 +9514,10 @@ msgstr "设置默认"
 msgid "These are file filters that will appear in all File Open dialogs"
 msgstr ""
 
+#: lazarusidestrconsts.lisfilefound
+msgid "File found"
+msgstr ""
+
 #: lazarusidestrconsts.lisfilehaschangedsave
 msgid "File \"%s\" has changed. Save?"
 msgstr "文件\"%s\"已经改变.保存？"
@@ -9718,10 +9786,6 @@ msgstr "对于Windows"
 #: lazarusidestrconsts.lisfoundversionexpected
 msgid "Found version %s, expected %s"
 msgstr "找到版本%s,要求 %s"
-
-#: lazarusidestrconsts.lisfpccfgismissing
-msgid "fpc.cfg is missing."
-msgstr "fpc.cfg丢失"
 
 #: lazarusidestrconsts.lisfpcfullversioneg20701
 msgid "FPC version as one number (e.g. 20701)"
@@ -10642,6 +10706,10 @@ msgstr "无效的表达式:%s%s%s%s"
 #: lazarusidestrconsts.lisinvalidexpressionhintthemakeresourcestringfunction
 msgid "Invalid expression.%sHint: The \"Make Resourcestring\" function expects a string constant in a single file. Please select the expression and try again."
 msgstr "无效的表达式.%s提示: 编译资源功能要求在一个独立的文件中包含连续的字符串."
+
+#: lazarusidestrconsts.lisinvalidfilename
+msgid "Invalid file name"
+msgstr ""
 
 #: lazarusidestrconsts.lisinvalidfilter
 msgid "Invalid filter"
@@ -13304,41 +13372,6 @@ msgctxt "lazarusidestrconsts.lismenutemplateabout"
 msgid "About"
 msgstr "关于"
 
-#: lazarusidestrconsts.lismenutemplatecontents
-msgid "Contents"
-msgstr "目录"
-
-#: lazarusidestrconsts.lismenutemplatedescriptionstandardeditmenu
-msgid "Standard Edit Menu"
-msgstr "标准编辑菜单"
-
-#: lazarusidestrconsts.lismenutemplatedescriptionstandardfilemenu
-msgid "Standard File Menu"
-msgstr "标准文件菜单"
-
-#: lazarusidestrconsts.lismenutemplatedescriptionstandardhelpmenu
-msgid "Standard Help Menu"
-msgstr "标准的帮助菜单"
-
-#: lazarusidestrconsts.lismenutemplatefind
-msgctxt "lazarusidestrconsts.lismenutemplatefind"
-msgid "Find"
-msgstr "查找"
-
-#: lazarusidestrconsts.lismenutemplatefindnext
-msgctxt "lazarusidestrconsts.lismenutemplatefindnext"
-msgid "Find Next"
-msgstr "查找下一个"
-
-#: lazarusidestrconsts.lismenutemplateopenrecent
-msgctxt "lazarusidestrconsts.lismenutemplateopenrecent"
-msgid "Open Recent"
-msgstr "打开最近的文件"
-
-#: lazarusidestrconsts.lismenutemplatetutorial
-msgid "Tutorial"
-msgstr "指南"
-
 #: lazarusidestrconsts.lismenutogglecomment
 msgid "Toggle Comment in Selection"
 msgstr ""
@@ -14789,6 +14822,10 @@ msgstr "编辑一般选项"
 msgid "File Properties"
 msgstr "文件属性"
 
+#: lazarusidestrconsts.lispckeditfpmakepackage
+msgid "(fpmake)"
+msgstr ""
+
 #: lazarusidestrconsts.lispckeditinstall
 msgid "Install"
 msgstr "安装"
@@ -16139,6 +16176,10 @@ msgstr "最大版本号 (可选):"
 msgid "Minimum Version (optional):"
 msgstr "最小版本号 (可选):"
 
+#: lazarusidestrconsts.lisprojaddnewfpmakerequirement
+msgid "New FPMake Requirement"
+msgstr ""
+
 #: lazarusidestrconsts.lisprojaddnewrequirement
 msgid "New Requirement"
 msgstr "新的需求"
@@ -16416,6 +16457,10 @@ msgstr ""
 #: lazarusidestrconsts.lisproperties
 msgid "Properties (replace or remove)"
 msgstr "属性(替换或移除)"
+
+#: lazarusidestrconsts.lisproperty
+msgid "%s property"
+msgstr ""
 
 #: lazarusidestrconsts.lisprotected
 msgid "Protected"
@@ -17329,6 +17374,10 @@ msgstr "显示信息框"
 #: lazarusidestrconsts.lisshowmessagetypeid
 msgid "Show Message Type ID"
 msgstr "选择消息类型ID"
+
+#: lazarusidestrconsts.lisshowmultiplelines
+msgid "Show multiple lines"
+msgstr ""
 
 #: lazarusidestrconsts.lisshowonlymodified
 msgid "Show only modified"
@@ -18300,6 +18349,14 @@ msgstr "这些单元没有找到:"
 
 #: lazarusidestrconsts.listhesourcesofthefreepascalpackagesarerequiredforbro
 msgid "The sources of the Free Pascal packages are required for browsing and code completion. For example it has the file \"%s\"."
+msgstr ""
+
+#: lazarusidestrconsts.listhetargetdirectoryisafile
+msgid "The target directory is a file:%s"
+msgstr ""
+
+#: lazarusidestrconsts.listhetargetfilenameisadirectory
+msgid "The target file name is a directory."
 msgstr ""
 
 #: lazarusidestrconsts.listhetargetisnotwritable
@@ -20974,6 +21031,14 @@ msgstr "选择页上移"
 msgid "Select Right"
 msgstr " "
 
+#: lazarusidestrconsts.srkmecselsmartwordleft
+msgid "Smart select word left (start/end of word)"
+msgstr ""
+
+#: lazarusidestrconsts.srkmecselsmartwordright
+msgid "Smart select word right (start/end of word)"
+msgstr ""
+
 #: lazarusidestrconsts.srkmecselsticky
 msgid "Start sticky selecting"
 msgstr ""
@@ -21039,6 +21104,14 @@ msgstr "显示生代码上下文"
 
 #: lazarusidestrconsts.srkmecshowexecutionpoint
 msgid "show execution point"
+msgstr ""
+
+#: lazarusidestrconsts.srkmecsmartwordleft
+msgid "Smart move cursor left (start/end of word)"
+msgstr ""
+
+#: lazarusidestrconsts.srkmecsmartwordright
+msgid "Smart move cursor right (start/end of word)"
 msgstr ""
 
 #: lazarusidestrconsts.srkmecstopprogram

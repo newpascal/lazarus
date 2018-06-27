@@ -11,9 +11,12 @@
       <SearchPaths>
         <IncludeFiles Value="vst\include\intf\$(LCLWidgetType);vst\include\$(LCLWidgetType)"/>
         <OtherUnitFiles Value="vst;vst\units\$(LCLWidgetType);fpcmod;frames"/>
-        <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
+        <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)\$(LCLWidgetType)"/>
       </SearchPaths>
       <Other>
+        <CompilerMessages>
+          <IgnoredMessages idx5024="True"/>
+        </CompilerMessages>
         <CustomOptions Value="$(IDEBuildOptions)"/>
       </Other>
     </CompilerOptions>

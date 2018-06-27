@@ -25,9 +25,13 @@ unit debugger_language_exceptions_options;
 interface
 
 uses
-  Classes, SysUtils, FileUtil, Forms, Controls, StdCtrls, CheckLst,
-  Buttons, Dialogs,
-  LazarusIDEStrConsts, IDEImagesIntf, IDEOptionsIntf, Debugger, BaseDebugManager;
+  Classes, SysUtils,
+  // LCL
+  Forms, Controls, StdCtrls, CheckLst, Buttons, Dialogs,
+  // IdeIntf
+  IDEImagesIntf, IDEOptionsIntf, IDEOptEditorIntf,
+  // IDE
+  LazarusIDEStrConsts, Debugger, BaseDebugManager;
 
 type
 
@@ -149,8 +153,8 @@ begin
   DbgLangExceptHint.Caption := lisTheseSettingsAreStoredWithTheProject;
   cmdExceptionRemove.Caption := lisRemove;
   cmdExceptionAdd.Caption := lisAdd;
-  TIDEImages.AssignImage(cmdExceptionRemove.Glyph, 'laz_delete');
-  TIDEImages.AssignImage(cmdExceptionAdd.Glyph, 'laz_add');
+  IDEImages.AssignImage(cmdExceptionRemove, 'laz_delete');
+  IDEImages.AssignImage(cmdExceptionAdd, 'laz_add');
   chkNotifyOnException.Caption := lisDebugOptionsFrmNotifyOnLazarusExceptions;
 end;
 

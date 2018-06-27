@@ -15,7 +15,11 @@ unit MacroIntf;
 interface
 
 uses
-  Classes, SysUtils, LazFileUtils, MacroDefIntf;
+  Classes, SysUtils,
+  // LazUtils
+  LazFileUtils,
+  // IdeIntf
+  MacroDefIntf;
 
 type
   { TIDEMacros - macros for paths and compiler settings }
@@ -25,8 +29,8 @@ type
     FBaseTimeStamp: integer;
     FGraphTimeStamp: integer;
   public
-    property BaseTimeStamp: integer read FBaseTimeStamp;
-    property GraphTimeStamp: integer read FGraphTimeStamp;
+    property BaseTimeStamp: integer read FBaseTimeStamp; // macro value changed
+    property GraphTimeStamp: integer read FGraphTimeStamp; // package dependency changed
     procedure IncreaseBaseStamp;
     procedure IncreaseGraphStamp;
     function StrHasMacros(const s: string): boolean; virtual; abstract;
@@ -37,13 +41,13 @@ type
                                       const BaseDirectory: string): boolean;
     procedure Add(NewMacro: TTransferMacro); virtual; abstract;
   end;
-  
+
+const
+  InvalidIDEMacroStamp = low(integer);
+
 var
   // the global IDE values
   IDEMacros: TIDEMacros = nil; // set by the IDE
-
-var
-  ConsoleVerbosity: integer = 0; // 0=normal, -1=quiet, 1=verbose, 2=very verbose
 
 procedure RenameIDEMacroInString(var s: string; const OldName, NewName: string);
 

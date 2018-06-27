@@ -631,7 +631,9 @@ msgid "Alphabetically"
 msgstr "アルファベット順に"
 
 #: lazarusidestrconsts.dlgalwaysvisiblecursor
-msgid "Always visible cursor"
+#, fuzzy
+#| msgid "Always visible cursor"
+msgid "Always keep Caret in visible area of editor"
 msgstr "常にカーソルを表示"
 
 #: lazarusidestrconsts.dlgambigfileact
@@ -809,6 +811,10 @@ msgstr "括弧のペアを揃える"
 msgid "You cannot use docked desktop in undocked environment and vice versa."
 msgstr "非ドック環境でドックデスクトップを使用したりその逆を行ったりはできません。"
 
+#: lazarusidestrconsts.dlgcaretgroupoptions
+msgid "Caret (Text Cursor)"
+msgstr ""
+
 #: lazarusidestrconsts.dlgcasesensitive
 msgctxt "lazarusidestrconsts.dlgcasesensitive"
 msgid "&Case sensitive"
@@ -847,9 +853,9 @@ msgstr "テスト：コンパイラ日時をチェック中 ..."
 msgid "Test: Compiling an empty file ..."
 msgstr "テスト：コンパイラをチェック中 ..."
 
-#: lazarusidestrconsts.dlgccotestmissingppu
-msgid "Test: Checking missing fpc ppu ..."
-msgstr "テスト：見つからないfpc ppuをチェック中 ..."
+#: lazarusidestrconsts.dlgccotestrtlunits
+msgid "Test: Checking RTL units ..."
+msgstr ""
 
 #: lazarusidestrconsts.dlgccotestsrcinppupaths
 msgid "Test: Checking sources in fpc ppu search paths ..."
@@ -1266,16 +1272,16 @@ msgstr "現在メッセージウィンドウ、ジャンプ履歴および検索
 msgid "Cursor beyond EOL"
 msgstr "EOL（ファイル終端）を越えたカーソル"
 
-#: lazarusidestrconsts.dlgcursorgroupoptions
-msgid "Cursor"
-msgstr "カーソル"
-
 #: lazarusidestrconsts.dlgcursorskipsselection
-msgid "Cursor skips selection"
+#, fuzzy
+#| msgid "Cursor skips selection"
+msgid "Caret skips selection"
 msgstr "カーソルは選択部分をスキップ"
 
 #: lazarusidestrconsts.dlgcursorskipstab
-msgid "Cursor skips tabs"
+#, fuzzy
+#| msgid "Cursor skips tabs"
+msgid "Caret skips tabs"
 msgstr "カーソルはタブをスキップ"
 
 #: lazarusidestrconsts.dlgcustomext
@@ -2153,11 +2159,15 @@ msgid "Highlight Font Color"
 msgstr "強調フォント色"
 
 #: lazarusidestrconsts.dlghighlightleftofcursor
-msgid "Left Of Cursor"
+#, fuzzy
+#| msgid "Left Of Cursor"
+msgid "Left Of Caret"
 msgstr "カーソルの左"
 
 #: lazarusidestrconsts.dlghighlightrightofcursor
-msgid "Right Of Cursor"
+#, fuzzy
+#| msgid "Right Of Cursor"
+msgid "Right Of Caret"
 msgstr "カーソルの右"
 
 #: lazarusidestrconsts.dlghintsparametersendernotused
@@ -2229,6 +2239,22 @@ msgstr ""
 msgid "Include system variables"
 msgstr "システム変数を含む"
 
+#: lazarusidestrconsts.dlgincludewordstoidentcompl
+msgid "Include words"
+msgstr ""
+
+#: lazarusidestrconsts.dlgincludewordstoidentcompl_dontinclude
+msgid "don't include"
+msgstr ""
+
+#: lazarusidestrconsts.dlgincludewordstoidentcompl_includefromallunits
+msgid "from all units"
+msgstr ""
+
+#: lazarusidestrconsts.dlgincludewordstoidentcompl_includefromcurrentunit
+msgid "from current unit"
+msgstr ""
+
 #: lazarusidestrconsts.dlgindentsindentgroupoptions
 msgid "Indent"
 msgstr "インデント"
@@ -2294,7 +2320,9 @@ msgid "Jump directly to method body"
 msgstr "メソッドの本体に直接移動"
 
 #: lazarusidestrconsts.dlgkeepcursorx
-msgid "Keep cursor X position"
+#, fuzzy
+#| msgid "Keep cursor X position"
+msgid "Keep caret X position when navigating up/down"
 msgstr "カーソルのX座標を保持"
 
 #: lazarusidestrconsts.dlgkeylink
@@ -2893,15 +2921,29 @@ msgid "Warning"
 msgstr "警告"
 
 #: lazarusidestrconsts.dlgmulticaretcolumnmode
-msgid "Multi-caret (column-select) move with cursor"
+#, fuzzy
+#| msgid "Multi-caret (column-select) move with cursor"
+msgid "Navigation keys move all carets (column-select)"
 msgstr "複数キャレット（列選択）をカーソルとともに移動"
 
+#: lazarusidestrconsts.dlgmulticaretdelskipcr
+msgid "Skip delete key at EOL (do not join lines)"
+msgstr ""
+
+#: lazarusidestrconsts.dlgmulticaretgroupoptions
+msgid "Multi-caret"
+msgstr ""
+
 #: lazarusidestrconsts.dlgmulticaretmode
-msgid "Multi-caret move with cursor"
+#, fuzzy
+#| msgid "Multi-caret move with cursor"
+msgid "Navigation keys move all carets"
 msgstr "複数キャレットをカーソルとともに移動"
 
 #: lazarusidestrconsts.dlgmulticaretoncolumnselection
-msgid "Enable multi caret for column selection"
+#, fuzzy
+#| msgid "Enable multi caret for column selection"
+msgid "Enable multi-caret for column selection"
 msgstr "列選択のために複数キャレットを可能にする"
 
 #: lazarusidestrconsts.dlgmultipleinstances
@@ -3089,7 +3131,9 @@ msgid "Persistent block"
 msgstr "固着ブロック"
 
 #: lazarusidestrconsts.dlgpersistentcursor
-msgid "Persistent cursor"
+#, fuzzy
+#| msgid "Persistent cursor"
+msgid "Visible caret in unfocused editor"
 msgstr "固着カーソル"
 
 #: lazarusidestrconsts.dlgpoapplication
@@ -3413,7 +3457,9 @@ msgid "Scroll past end of file"
 msgstr "ファイル末までスクロール"
 
 #: lazarusidestrconsts.dlgscrollpastendline
-msgid "Caret past end of line"
+#, fuzzy
+#| msgid "Caret past end of line"
+msgid "Allow caret to move past end of line"
 msgstr "行末までスクロール"
 
 #: lazarusidestrconsts.dlgseachdirectorynotfound
@@ -3485,7 +3531,9 @@ msgid "Show all units"
 msgstr "すべてのユニットを表示"
 
 #: lazarusidestrconsts.dlgshowcaptionsofnonvisuals
-msgid "Show captions of non-visual components"
+#, fuzzy
+#| msgid "Show captions of non-visual components"
+msgid "Show captions of nonvisual components"
 msgstr "非ビジュアルコンポーネントのキャプションを表示"
 
 #: lazarusidestrconsts.dlgshowcompiledprocedures
@@ -4329,7 +4377,9 @@ msgid "Official:"
 msgstr "公式："
 
 #: lazarusidestrconsts.lisacannotholdtcontrolsyoucanonlyputnonvisualcomponen
-msgid "A %s cannot hold TControls.%sYou can only put non visual components on it."
+#, fuzzy
+#| msgid "A %s cannot hold TControls.%sYou can only put non visual components on it."
+msgid "A %s cannot hold TControls.%sYou can only put nonvisual components on it."
 msgstr "%sはTControlsを保持できません。%s非ビジュアルコンポーネントのみ置くことができます。"
 
 #: lazarusidestrconsts.lisacknowledgements
@@ -4424,6 +4474,18 @@ msgstr "追加"
 #: lazarusidestrconsts.lisaddkeyworddo
 msgid "Add keyword \"do\""
 msgstr "キーワード\"do\"を追加"
+
+#: lazarusidestrconsts.lisaddmodifieroverload
+msgid "Add modifier \"overload\""
+msgstr ""
+
+#: lazarusidestrconsts.lisaddmodifieroverride
+msgid "Add modifier \"override\""
+msgstr ""
+
+#: lazarusidestrconsts.lisaddmodifierreintroduce
+msgid "Add modifier \"reintroduce\""
+msgstr ""
 
 #: lazarusidestrconsts.lisaddnewbuildmodecopyingsettingsfrom
 msgid "Add new build mode, copying settings from \"%s\""
@@ -5258,9 +5320,9 @@ msgstr "無効なテストディレクトリ"
 msgid "Missing unit"
 msgstr "見つからないユニット"
 
-#: lazarusidestrconsts.lisccomsgppunotfound
-msgid "compiled FPC unit not found: %s.ppu"
-msgstr "コンパイルされたFPCユニットが見つかりません: %s.ppu"
+#: lazarusidestrconsts.lisccomsgrtlunitnotfound
+msgid "RTL unit not found: %s"
+msgstr ""
 
 #: lazarusidestrconsts.lisccomultiplecfgfound
 msgid "multiple compiler configs found: "
@@ -5278,13 +5340,13 @@ msgstr "非ASCII "
 msgid "ppu exists twice: %s, %s"
 msgstr "ppuが二つあります: %s, %s"
 
-#: lazarusidestrconsts.lisccoppunotfounddetailed
-msgid "The compiled FPC unit %s.ppu was not found.%sThis typically means your fpc.cfg has a bug. Or your FPC installation is broken."
-msgstr "コンパイルされたFPCユニット%s.ppuが見つかりませんでした。%sこれはたいていあなたのfpc.cfgにバグがあることを意味しています。あるいはFPCのインストールが壊れています。"
-
 #: lazarusidestrconsts.lisccoppuolderthancompiler
 msgid "There is a .ppu file older than the compiler itself:%s%s"
 msgstr "コンパイラ自身より古い.ppuファイルがあります：%s%s"
+
+#: lazarusidestrconsts.lisccortlunitnotfounddetailed
+msgid "The RTL unit %s was not found.%sThis typically means your %s has wrong unit paths. Or your installation is broken."
+msgstr ""
 
 #: lazarusidestrconsts.lisccoseveralcompilers
 msgid "There are several Free Pascal Compilers in your path.%s%s%sMaybe you forgot to delete an old compiler?"
@@ -5816,9 +5878,9 @@ msgstr "Lazarusのディレクトリを選択してください"
 msgid "Choose \"make\" executable"
 msgstr "\"make\"実行ファイルを選択してください"
 
-#: lazarusidestrconsts.lischoosename
-msgid "Choose name"
-msgstr "名前を選択してください"
+#: lazarusidestrconsts.lischoosenameandtext
+msgid "Choose name and text"
+msgstr ""
 
 #: lazarusidestrconsts.lischooseoneoftheseitemstocreateanewfile
 msgid "Choose one of these items to create a new File"
@@ -6708,6 +6770,10 @@ msgstr "プロジェクトをコンパイル"
 msgid "Compiler"
 msgstr "コンパイラ"
 
+#: lazarusidestrconsts.liscompilercfgismissing
+msgid "%s is missing."
+msgstr ""
+
 #: lazarusidestrconsts.liscompilerdoesnotsupporttarget
 msgid "Compiler \"%s\" does not support target %s-%s"
 msgstr "コンパイラ \"%s\" は対象 %s-%s をサポートしていません"
@@ -6896,6 +6962,12 @@ msgstr "コンストラクタコード"
 #: lazarusidestrconsts.liscontains
 msgid "contains"
 msgstr "含む"
+
+#: lazarusidestrconsts.liscontents
+#, fuzzy
+msgctxt "lazarusidestrconsts.liscontents"
+msgid "Contents"
+msgstr "目次"
 
 #: lazarusidestrconsts.liscontextsensitive
 msgid "Context sensitive"
@@ -8561,6 +8633,14 @@ msgstr "クリップボードから選択されたコンポーネントを貼り
 msgid "Select parent component"
 msgstr "親コンポーネントを選択"
 
+#: lazarusidestrconsts.lisdsgshownonvisualcomponents
+msgid "Show nonvisual components"
+msgstr ""
+
+#: lazarusidestrconsts.lisdsgtoggleshowingnonvisualcomponents
+msgid "Toggle showing nonvisual components"
+msgstr ""
+
 #: lazarusidestrconsts.lisduplicate
 msgid "Duplicate"
 msgstr "重複"
@@ -9341,6 +9421,10 @@ msgstr "既定値を設定"
 msgid "These are file filters that will appear in all File Open dialogs"
 msgstr "これらはファイルを開くダイアログに表示されるフィルタです"
 
+#: lazarusidestrconsts.lisfilefound
+msgid "File found"
+msgstr ""
+
 #: lazarusidestrconsts.lisfilehaschangedsave
 msgid "File \"%s\" has changed. Save?"
 msgstr "ファイル\"%s\"は変更されています。保存しますか？"
@@ -9609,10 +9693,6 @@ msgstr "Windows向け"
 #: lazarusidestrconsts.lisfoundversionexpected
 msgid "Found version %s, expected %s"
 msgstr "バージョン %sが見つかりましたが、%sが期待されています"
-
-#: lazarusidestrconsts.lisfpccfgismissing
-msgid "fpc.cfg is missing."
-msgstr "fpc.cfgがありません。"
 
 #: lazarusidestrconsts.lisfpcfullversioneg20701
 msgid "FPC version as one number (e.g. 20701)"
@@ -10536,6 +10616,10 @@ msgstr "無効な式：%s%s%s%s"
 #: lazarusidestrconsts.lisinvalidexpressionhintthemakeresourcestringfunction
 msgid "Invalid expression.%sHint: The \"Make Resourcestring\" function expects a string constant in a single file. Please select the expression and try again."
 msgstr "無効な式。%sヒント：「リソース文字列作成」機能は 1 つのファイル内で文字列を宣言された定数として扱います。文字列表現を選択し、再び試してみて下さい。"
+
+#: lazarusidestrconsts.lisinvalidfilename
+msgid "Invalid file name"
+msgstr ""
 
 #: lazarusidestrconsts.lisinvalidfilter
 msgid "Invalid filter"
@@ -13088,41 +13172,6 @@ msgctxt "lazarusidestrconsts.lismenutemplateabout"
 msgid "About"
 msgstr "紹介"
 
-#: lazarusidestrconsts.lismenutemplatecontents
-msgid "Contents"
-msgstr "目次"
-
-#: lazarusidestrconsts.lismenutemplatedescriptionstandardeditmenu
-msgid "Standard Edit Menu"
-msgstr "標準編集メニュー"
-
-#: lazarusidestrconsts.lismenutemplatedescriptionstandardfilemenu
-msgid "Standard File Menu"
-msgstr "標準ファイルメニュー"
-
-#: lazarusidestrconsts.lismenutemplatedescriptionstandardhelpmenu
-msgid "Standard Help Menu"
-msgstr "標準ヘルプメニュー"
-
-#: lazarusidestrconsts.lismenutemplatefind
-msgctxt "lazarusidestrconsts.lismenutemplatefind"
-msgid "Find"
-msgstr "検索"
-
-#: lazarusidestrconsts.lismenutemplatefindnext
-msgctxt "lazarusidestrconsts.lismenutemplatefindnext"
-msgid "Find Next"
-msgstr "次を検索"
-
-#: lazarusidestrconsts.lismenutemplateopenrecent
-msgctxt "lazarusidestrconsts.lismenutemplateopenrecent"
-msgid "Open Recent"
-msgstr "最近扱ったファイルを開く"
-
-#: lazarusidestrconsts.lismenutemplatetutorial
-msgid "Tutorial"
-msgstr "チュートリアル"
-
 #: lazarusidestrconsts.lismenutogglecomment
 msgid "Toggle Comment in Selection"
 msgstr "選択部分のコメントの切り替え"
@@ -14581,6 +14630,10 @@ msgstr "一般的なオプションを編集"
 msgid "File Properties"
 msgstr "ファイルのプロパティ"
 
+#: lazarusidestrconsts.lispckeditfpmakepackage
+msgid "(fpmake)"
+msgstr ""
+
 #: lazarusidestrconsts.lispckeditinstall
 msgid "Install"
 msgstr "インストール"
@@ -15864,6 +15917,10 @@ msgstr "バージョンの上限(オプション)"
 msgid "Minimum Version (optional):"
 msgstr "バージョン番号の下限値（オプション）"
 
+#: lazarusidestrconsts.lisprojaddnewfpmakerequirement
+msgid "New FPMake Requirement"
+msgstr ""
+
 #: lazarusidestrconsts.lisprojaddnewrequirement
 msgid "New Requirement"
 msgstr "新規の要求"
@@ -16135,6 +16192,10 @@ msgstr "値を確認"
 #: lazarusidestrconsts.lisproperties
 msgid "Properties (replace or remove)"
 msgstr "プロパティ（置換もしくは削除）"
+
+#: lazarusidestrconsts.lisproperty
+msgid "%s property"
+msgstr ""
 
 #: lazarusidestrconsts.lisprotected
 msgid "Protected"
@@ -17057,6 +17118,10 @@ msgstr "情報ボックスを表示"
 #: lazarusidestrconsts.lisshowmessagetypeid
 msgid "Show Message Type ID"
 msgstr "メッセージ型IDを表示"
+
+#: lazarusidestrconsts.lisshowmultiplelines
+msgid "Show multiple lines"
+msgstr ""
 
 #: lazarusidestrconsts.lisshowonlymodified
 msgid "Show only modified"
@@ -17985,6 +18050,14 @@ msgstr "それらのユニットは見つかりませんでした。"
 #: lazarusidestrconsts.listhesourcesofthefreepascalpackagesarerequiredforbro
 msgid "The sources of the Free Pascal packages are required for browsing and code completion. For example it has the file \"%s\"."
 msgstr "Free Pascalパッケージのソースはブラウザとコード補完に必要です。例えばそれはファイル\"%s\"を持ちます。"
+
+#: lazarusidestrconsts.listhetargetdirectoryisafile
+msgid "The target directory is a file:%s"
+msgstr ""
+
+#: lazarusidestrconsts.listhetargetfilenameisadirectory
+msgid "The target file name is a directory."
+msgstr ""
 
 #: lazarusidestrconsts.listhetargetisnotwritable
 msgid "The target %s is not writable."
@@ -20601,6 +20674,14 @@ msgstr "ページの上方を選択"
 msgid "Select Right"
 msgstr "右側選択"
 
+#: lazarusidestrconsts.srkmecselsmartwordleft
+msgid "Smart select word left (start/end of word)"
+msgstr ""
+
+#: lazarusidestrconsts.srkmecselsmartwordright
+msgid "Smart select word right (start/end of word)"
+msgstr ""
+
 #: lazarusidestrconsts.srkmecselsticky
 msgid "Start sticky selecting"
 msgstr "粘着性選択を開始"
@@ -20663,6 +20744,14 @@ msgstr "コードの内容を表示"
 #: lazarusidestrconsts.srkmecshowexecutionpoint
 msgid "show execution point"
 msgstr "実行位置を表示"
+
+#: lazarusidestrconsts.srkmecsmartwordleft
+msgid "Smart move cursor left (start/end of word)"
+msgstr ""
+
+#: lazarusidestrconsts.srkmecsmartwordright
+msgid "Smart move cursor right (start/end of word)"
+msgstr ""
 
 #: lazarusidestrconsts.srkmecstopprogram
 msgid "stop program"

@@ -73,7 +73,10 @@ uses
     TurboPowerIPro, TurboPowerIProDsgn,
     jcfidelazarus, chmhelppkg,
     FPCUnitTestRunner, FPCUnitIDE, ProjTemplates, TAChartLazarusPkg,
-    TodoListLaz, DateTimeCtrls, SQLDBLaz, DBFLaz, pascalscript, EditorMacroScript,
+    TodoListLaz, DateTimeCtrls, SQLDBLaz, DBFLaz, pascalscript,
+    EditorMacroScript,
+    RegisterVirtualTreeView,
+    OnlinePackageManager,
   {$ENDIF}
   MainBase;
 
@@ -98,6 +101,9 @@ begin
   // end of build flags
   
   LazarusRevisionStr:=RevisionStr;
+  {$IFDEF EnableWriteLazRev}
+  writeln('[20180608074905] lazarus.pp ide/revision.inc: ',LazarusRevisionStr);
+  {$ENDIF}
   Application.Title:='Lazarus';
   Application.Scaled := True;
   OnGetApplicationName:=@GetLazarusApplicationName;

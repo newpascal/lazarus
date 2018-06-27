@@ -32,15 +32,15 @@ interface
 uses
   // FCL
   Classes, SysUtils,
-  Laz2_DOM, Laz2_XMLRead,
+  // LazUtils
+  Laz2_DOM, Laz2_XMLRead, LazUtilities, LazTracer,
   // LCL
-  LCLProc, LResources, StdCtrls, Buttons, ComCtrls, Controls, Dialogs,
+  LResources, StdCtrls, Buttons, ComCtrls, Controls, Dialogs,
   ExtCtrls, Forms, Graphics, LCLType,
   // Synedit
   SynEdit, SynHighlighterXML,
   // codetools
-  FileProcs, CodeCache, CodeToolManager,
-  CTXMLFixFragment,
+  FileProcs, CodeCache, CodeToolManager, CTXMLFixFragment,
   // IDEIntf
   IDEWindowIntf, ProjectIntf, LazIDEIntf, IDEHelpIntf, Menus,
   SrcEditorIntf, IDEDialogs, LazFileUtils, IDEImagesIntf,
@@ -293,14 +293,14 @@ begin
 
   Name := NonModalIDEWindowNames[nmiwFPDocEditorName];
 
-  TIDEImages.AssignImage(BoldFormatButton.Glyph, 'formatbold');
-  TIDEImages.AssignImage(UnderlineFormatButton.Glyph, 'formatunderline');
-  TIDEImages.AssignImage(ItalicFormatButton.Glyph, 'formatitalic');
-  TIDEImages.AssignImage(InsertVarTagButton.Glyph, 'insertvartag');
-  TIDEImages.AssignImage(InsertCodeTagButton.Glyph, 'insertcodetag');
-  TIDEImages.AssignImage(InsertRemarkButton.Glyph, 'insertremark');
-  TIDEImages.AssignImage(InsertURLTagSpeedButton.Glyph, 'formatunderline');
-  TIDEImages.AssignImage(SaveButton.Glyph, 'laz_save');
+  IDEImages.AssignImage(BoldFormatButton, 'formatbold');
+  IDEImages.AssignImage(UnderlineFormatButton, 'formatunderline');
+  IDEImages.AssignImage(ItalicFormatButton, 'formatitalic');
+  IDEImages.AssignImage(InsertVarTagButton, 'insertvartag');
+  IDEImages.AssignImage(InsertCodeTagButton, 'insertcodetag');
+  IDEImages.AssignImage(InsertRemarkButton, 'insertremark');
+  IDEImages.AssignImage(InsertURLTagSpeedButton, 'formatunderline');
+  IDEImages.AssignImage(SaveButton, 'laz_save');
 
   SourceEditorManagerIntf.RegisterChangeEvent(semEditorActivate, @DoEditorUpdate);
   SourceEditorManagerIntf.RegisterChangeEvent(semEditorStatus, @DoEditorUpdate);

@@ -631,7 +631,7 @@ msgid "Alphabetically"
 msgstr "Alfabetisch"
 
 #: lazarusidestrconsts.dlgalwaysvisiblecursor
-msgid "Always visible cursor"
+msgid "Always keep Caret in visible area of editor"
 msgstr ""
 
 #: lazarusidestrconsts.dlgambigfileact
@@ -816,6 +816,10 @@ msgstr ""
 msgid "You cannot use docked desktop in undocked environment and vice versa."
 msgstr ""
 
+#: lazarusidestrconsts.dlgcaretgroupoptions
+msgid "Caret (Text Cursor)"
+msgstr ""
+
 #: lazarusidestrconsts.dlgcasesensitive
 msgctxt "lazarusidestrconsts.dlgcasesensitive"
 msgid "&Case sensitive"
@@ -854,8 +858,8 @@ msgstr ""
 msgid "Test: Compiling an empty file ..."
 msgstr ""
 
-#: lazarusidestrconsts.dlgccotestmissingppu
-msgid "Test: Checking missing fpc ppu ..."
+#: lazarusidestrconsts.dlgccotestrtlunits
+msgid "Test: Checking RTL units ..."
 msgstr ""
 
 #: lazarusidestrconsts.dlgccotestsrcinppupaths
@@ -1308,16 +1312,12 @@ msgstr ""
 msgid "Cursor beyond EOL"
 msgstr "Cursor voorbij EOL"
 
-#: lazarusidestrconsts.dlgcursorgroupoptions
-msgid "Cursor"
-msgstr ""
-
 #: lazarusidestrconsts.dlgcursorskipsselection
-msgid "Cursor skips selection"
+msgid "Caret skips selection"
 msgstr ""
 
 #: lazarusidestrconsts.dlgcursorskipstab
-msgid "Cursor skips tabs"
+msgid "Caret skips tabs"
 msgstr ""
 
 #: lazarusidestrconsts.dlgcustomext
@@ -2215,11 +2215,11 @@ msgid "Highlight Font Color"
 msgstr ""
 
 #: lazarusidestrconsts.dlghighlightleftofcursor
-msgid "Left Of Cursor"
+msgid "Left Of Caret"
 msgstr ""
 
 #: lazarusidestrconsts.dlghighlightrightofcursor
-msgid "Right Of Cursor"
+msgid "Right Of Caret"
 msgstr ""
 
 #: lazarusidestrconsts.dlghintsparametersendernotused
@@ -2295,6 +2295,22 @@ msgstr ""
 msgid "Include system variables"
 msgstr "Include systeemvariabelen"
 
+#: lazarusidestrconsts.dlgincludewordstoidentcompl
+msgid "Include words"
+msgstr ""
+
+#: lazarusidestrconsts.dlgincludewordstoidentcompl_dontinclude
+msgid "don't include"
+msgstr ""
+
+#: lazarusidestrconsts.dlgincludewordstoidentcompl_includefromallunits
+msgid "from all units"
+msgstr ""
+
+#: lazarusidestrconsts.dlgincludewordstoidentcompl_includefromcurrentunit
+msgid "from current unit"
+msgstr ""
+
 #: lazarusidestrconsts.dlgindentsindentgroupoptions
 msgid "Indent"
 msgstr ""
@@ -2360,7 +2376,7 @@ msgid "Jump directly to method body"
 msgstr ""
 
 #: lazarusidestrconsts.dlgkeepcursorx
-msgid "Keep cursor X position"
+msgid "Keep caret X position when navigating up/down"
 msgstr ""
 
 #: lazarusidestrconsts.dlgkeylink
@@ -2972,15 +2988,23 @@ msgid "Warning"
 msgstr ""
 
 #: lazarusidestrconsts.dlgmulticaretcolumnmode
-msgid "Multi-caret (column-select) move with cursor"
+msgid "Navigation keys move all carets (column-select)"
+msgstr ""
+
+#: lazarusidestrconsts.dlgmulticaretdelskipcr
+msgid "Skip delete key at EOL (do not join lines)"
+msgstr ""
+
+#: lazarusidestrconsts.dlgmulticaretgroupoptions
+msgid "Multi-caret"
 msgstr ""
 
 #: lazarusidestrconsts.dlgmulticaretmode
-msgid "Multi-caret move with cursor"
+msgid "Navigation keys move all carets"
 msgstr ""
 
 #: lazarusidestrconsts.dlgmulticaretoncolumnselection
-msgid "Enable multi caret for column selection"
+msgid "Enable multi-caret for column selection"
 msgstr ""
 
 #: lazarusidestrconsts.dlgmultipleinstances
@@ -3181,7 +3205,7 @@ msgid "Persistent block"
 msgstr ""
 
 #: lazarusidestrconsts.dlgpersistentcursor
-msgid "Persistent cursor"
+msgid "Visible caret in unfocused editor"
 msgstr ""
 
 #: lazarusidestrconsts.dlgpoapplication
@@ -3517,7 +3541,7 @@ msgstr "Scroll voorbij het einde van het bestand"
 #: lazarusidestrconsts.dlgscrollpastendline
 #, fuzzy
 #| msgid "Scroll past end of line"
-msgid "Caret past end of line"
+msgid "Allow caret to move past end of line"
 msgstr "Scroll voorbij het eind van de regel"
 
 #: lazarusidestrconsts.dlgseachdirectorynotfound
@@ -3591,7 +3615,7 @@ msgid "Show all units"
 msgstr ""
 
 #: lazarusidestrconsts.dlgshowcaptionsofnonvisuals
-msgid "Show captions of non-visual components"
+msgid "Show captions of nonvisual components"
 msgstr ""
 
 #: lazarusidestrconsts.dlgshowcompiledprocedures
@@ -4521,7 +4545,7 @@ msgstr ""
 #: lazarusidestrconsts.lisacannotholdtcontrolsyoucanonlyputnonvisualcomponen
 #, fuzzy
 #| msgid "A %s can not hold TControls.%sYou can only put non visual components on it."
-msgid "A %s cannot hold TControls.%sYou can only put non visual components on it."
+msgid "A %s cannot hold TControls.%sYou can only put nonvisual components on it."
 msgstr "A %s kan geen TControls bevatten.%sU kunt er alleen niet-visuele componenten op plaatsen."
 
 #: lazarusidestrconsts.lisacknowledgements
@@ -4615,6 +4639,18 @@ msgstr ""
 
 #: lazarusidestrconsts.lisaddkeyworddo
 msgid "Add keyword \"do\""
+msgstr ""
+
+#: lazarusidestrconsts.lisaddmodifieroverload
+msgid "Add modifier \"overload\""
+msgstr ""
+
+#: lazarusidestrconsts.lisaddmodifieroverride
+msgid "Add modifier \"override\""
+msgstr ""
+
+#: lazarusidestrconsts.lisaddmodifierreintroduce
+msgid "Add modifier \"reintroduce\""
 msgstr ""
 
 #: lazarusidestrconsts.lisaddnewbuildmodecopyingsettingsfrom
@@ -5486,8 +5522,8 @@ msgstr ""
 msgid "Missing unit"
 msgstr ""
 
-#: lazarusidestrconsts.lisccomsgppunotfound
-msgid "compiled FPC unit not found: %s.ppu"
+#: lazarusidestrconsts.lisccomsgrtlunitnotfound
+msgid "RTL unit not found: %s"
 msgstr ""
 
 #: lazarusidestrconsts.lisccomultiplecfgfound
@@ -5506,12 +5542,12 @@ msgstr ""
 msgid "ppu exists twice: %s, %s"
 msgstr ""
 
-#: lazarusidestrconsts.lisccoppunotfounddetailed
-msgid "The compiled FPC unit %s.ppu was not found.%sThis typically means your fpc.cfg has a bug. Or your FPC installation is broken."
-msgstr ""
-
 #: lazarusidestrconsts.lisccoppuolderthancompiler
 msgid "There is a .ppu file older than the compiler itself:%s%s"
+msgstr ""
+
+#: lazarusidestrconsts.lisccortlunitnotfounddetailed
+msgid "The RTL unit %s was not found.%sThis typically means your %s has wrong unit paths. Or your installation is broken."
 msgstr ""
 
 #: lazarusidestrconsts.lisccoseveralcompilers
@@ -6044,8 +6080,8 @@ msgstr "Kies Lazarus-directory"
 msgid "Choose \"make\" executable"
 msgstr ""
 
-#: lazarusidestrconsts.lischoosename
-msgid "Choose name"
+#: lazarusidestrconsts.lischoosenameandtext
+msgid "Choose name and text"
 msgstr ""
 
 #: lazarusidestrconsts.lischooseoneoftheseitemstocreateanewfile
@@ -6963,6 +6999,10 @@ msgstr ""
 msgid "Compiler"
 msgstr "Compiler"
 
+#: lazarusidestrconsts.liscompilercfgismissing
+msgid "%s is missing."
+msgstr ""
+
 #: lazarusidestrconsts.liscompilerdoesnotsupporttarget
 msgid "Compiler \"%s\" does not support target %s-%s"
 msgstr ""
@@ -7161,6 +7201,12 @@ msgstr ""
 #: lazarusidestrconsts.liscontains
 msgid "contains"
 msgstr "bevat"
+
+#: lazarusidestrconsts.liscontents
+#, fuzzy
+msgctxt "lazarusidestrconsts.liscontents"
+msgid "Contents"
+msgstr "Inhoud"
 
 #: lazarusidestrconsts.liscontextsensitive
 msgid "Context sensitive"
@@ -8853,6 +8899,14 @@ msgstr "Plak geselecteerde componenten van het klembord"
 msgid "Select parent component"
 msgstr "Selecteer het parent component"
 
+#: lazarusidestrconsts.lisdsgshownonvisualcomponents
+msgid "Show nonvisual components"
+msgstr ""
+
+#: lazarusidestrconsts.lisdsgtoggleshowingnonvisualcomponents
+msgid "Toggle showing nonvisual components"
+msgstr ""
+
 #: lazarusidestrconsts.lisduplicate
 msgid "Duplicate"
 msgstr ""
@@ -9645,6 +9699,10 @@ msgstr ""
 msgid "These are file filters that will appear in all File Open dialogs"
 msgstr ""
 
+#: lazarusidestrconsts.lisfilefound
+msgid "File found"
+msgstr ""
+
 #: lazarusidestrconsts.lisfilehaschangedsave
 msgid "File \"%s\" has changed. Save?"
 msgstr ""
@@ -9920,10 +9978,6 @@ msgstr ""
 
 #: lazarusidestrconsts.lisfoundversionexpected
 msgid "Found version %s, expected %s"
-msgstr ""
-
-#: lazarusidestrconsts.lisfpccfgismissing
-msgid "fpc.cfg is missing."
 msgstr ""
 
 #: lazarusidestrconsts.lisfpcfullversioneg20701
@@ -10841,6 +10895,10 @@ msgstr ""
 #: lazarusidestrconsts.lisinvalidexpressionhintthemakeresourcestringfunction
 msgid "Invalid expression.%sHint: The \"Make Resourcestring\" function expects a string constant in a single file. Please select the expression and try again."
 msgstr "Ongeldige expressie.%sHint: De \"Make Resourcestring\" Functie verwacht een string in een enkel bestand. Selecteer de expressie en probeer het opnieuw."
+
+#: lazarusidestrconsts.lisinvalidfilename
+msgid "Invalid file name"
+msgstr ""
 
 #: lazarusidestrconsts.lisinvalidfilter
 msgid "Invalid filter"
@@ -13592,41 +13650,6 @@ msgctxt "lazarusidestrconsts.lismenutemplateabout"
 msgid "About"
 msgstr "Informatie"
 
-#: lazarusidestrconsts.lismenutemplatecontents
-msgid "Contents"
-msgstr "Inhoud"
-
-#: lazarusidestrconsts.lismenutemplatedescriptionstandardeditmenu
-msgid "Standard Edit Menu"
-msgstr "Standaard Edit Menu"
-
-#: lazarusidestrconsts.lismenutemplatedescriptionstandardfilemenu
-msgid "Standard File Menu"
-msgstr "Standaard bestand menu"
-
-#: lazarusidestrconsts.lismenutemplatedescriptionstandardhelpmenu
-msgid "Standard Help Menu"
-msgstr "Standaard Help Menu"
-
-#: lazarusidestrconsts.lismenutemplatefind
-msgctxt "lazarusidestrconsts.lismenutemplatefind"
-msgid "Find"
-msgstr "Zoeken"
-
-#: lazarusidestrconsts.lismenutemplatefindnext
-msgctxt "lazarusidestrconsts.lismenutemplatefindnext"
-msgid "Find Next"
-msgstr "Zoek Volgende"
-
-#: lazarusidestrconsts.lismenutemplateopenrecent
-msgctxt "lazarusidestrconsts.lismenutemplateopenrecent"
-msgid "Open Recent"
-msgstr "Open Recent"
-
-#: lazarusidestrconsts.lismenutemplatetutorial
-msgid "Tutorial"
-msgstr "Leerprogramma"
-
 #: lazarusidestrconsts.lismenutogglecomment
 msgid "Toggle Comment in Selection"
 msgstr ""
@@ -15116,6 +15139,10 @@ msgstr "Bewerk algemene opies"
 msgid "File Properties"
 msgstr "Bestand eigenschappen"
 
+#: lazarusidestrconsts.lispckeditfpmakepackage
+msgid "(fpmake)"
+msgstr ""
+
 #: lazarusidestrconsts.lispckeditinstall
 msgid "Install"
 msgstr "Installeren"
@@ -16530,6 +16557,10 @@ msgstr "Maximum Versie (optioneel):"
 msgid "Minimum Version (optional):"
 msgstr "Minimum Versie (optioneel):"
 
+#: lazarusidestrconsts.lisprojaddnewfpmakerequirement
+msgid "New FPMake Requirement"
+msgstr ""
+
 #: lazarusidestrconsts.lisprojaddnewrequirement
 msgid "New Requirement"
 msgstr "Nieuwe vereiste"
@@ -16818,6 +16849,10 @@ msgstr "Vraag om een waarde"
 
 #: lazarusidestrconsts.lisproperties
 msgid "Properties (replace or remove)"
+msgstr ""
+
+#: lazarusidestrconsts.lisproperty
+msgid "%s property"
 msgstr ""
 
 #: lazarusidestrconsts.lisprotected
@@ -17746,6 +17781,10 @@ msgstr ""
 
 #: lazarusidestrconsts.lisshowmessagetypeid
 msgid "Show Message Type ID"
+msgstr ""
+
+#: lazarusidestrconsts.lisshowmultiplelines
+msgid "Show multiple lines"
 msgstr ""
 
 #: lazarusidestrconsts.lisshowonlymodified
@@ -18731,6 +18770,14 @@ msgstr ""
 
 #: lazarusidestrconsts.listhesourcesofthefreepascalpackagesarerequiredforbro
 msgid "The sources of the Free Pascal packages are required for browsing and code completion. For example it has the file \"%s\"."
+msgstr ""
+
+#: lazarusidestrconsts.listhetargetdirectoryisafile
+msgid "The target directory is a file:%s"
+msgstr ""
+
+#: lazarusidestrconsts.listhetargetfilenameisadirectory
+msgid "The target file name is a directory."
 msgstr ""
 
 #: lazarusidestrconsts.listhetargetisnotwritable
@@ -21465,6 +21512,14 @@ msgstr "Selecteer pagina omhoog"
 msgid "Select Right"
 msgstr "SelRechts"
 
+#: lazarusidestrconsts.srkmecselsmartwordleft
+msgid "Smart select word left (start/end of word)"
+msgstr ""
+
+#: lazarusidestrconsts.srkmecselsmartwordright
+msgid "Smart select word right (start/end of word)"
+msgstr ""
+
 #: lazarusidestrconsts.srkmecselsticky
 msgid "Start sticky selecting"
 msgstr ""
@@ -21530,6 +21585,14 @@ msgstr "Toon code samenhang"
 
 #: lazarusidestrconsts.srkmecshowexecutionpoint
 msgid "show execution point"
+msgstr ""
+
+#: lazarusidestrconsts.srkmecsmartwordleft
+msgid "Smart move cursor left (start/end of word)"
+msgstr ""
+
+#: lazarusidestrconsts.srkmecsmartwordright
+msgid "Smart move cursor right (start/end of word)"
 msgstr ""
 
 #: lazarusidestrconsts.srkmecstopprogram

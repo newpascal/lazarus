@@ -54,13 +54,14 @@ uses
   CodeToolsConfig, ExprEval, DefineTemplates, BasicCodeTools, CodeToolsCfgScript,
   LinkScanner, CodeToolManager, CodeCache, FileProcs,
   // LazUtils
-  FPCAdds, FileUtil, LazFileUtils, LazFileCache, LazUTF8, Laz2_XMLCfg, Maps,
+  FPCAdds, LazUtilities, FileUtil, LazFileUtils, LazFileCache, LazMethodList,
+  LazLoggerBase, LazUTF8, Laz2_XMLCfg, Maps,
   // IDEIntf
   PropEdits, UnitResources, EditorSyntaxHighlighterDef,
   CompOptsIntf, ProjectIntf, MacroIntf, MacroDefIntf, SrcEditorIntf,
-  IDEOptionsIntf, IDEDialogs, LazIDEIntf, ProjPackIntf, PackageIntf,
+  IDEOptionsIntf, IDEOptEditorIntf, IDEDialogs, LazIDEIntf, PackageIntf,
   // IDE
-  CompOptsModes, ProjectResources, LazConf, W32Manifest, ProjectIcon,
+  CompOptsModes, ProjectResources, LazConf, ProjectIcon,
   IDECmdLine, IDEProcs, CompilerOptions, RunParamsOpts, ModeMatrixOpts,
   TransferMacros, ProjectDefs, FileReferenceList, EditDefineTree,
   LazarusIDEStrConsts, ProjPackCommon, PackageDefs, PackageSystem;
@@ -4618,9 +4619,13 @@ end;
 
 procedure TProject.GetAllRequiredPackages(var List: TFPList;
   ReqFlags: TPkgIntfRequiredFlags; MinPolicy: TPackageUpdatePolicy);
+var
+  FPMakeList: TFPList;
 begin
-  if Assigned(OnGetAllRequiredPackages) then
-    OnGetAllRequiredPackages(nil,FirstRequiredDependency,List,ReqFlags,MinPolicy);
+  if Assigned(OnGetAllRequiredPackages) then begin
+    OnGetAllRequiredPackages(nil,FirstRequiredDependency,List,FPMakeList,ReqFlags,MinPolicy);
+    FPMakeList.Free;
+  end;
 end;
 
 procedure TProject.AddPackageDependency(const PackageName: string);
@@ -4630,6 +4635,7 @@ begin
   if FindDependencyByNameInList(FirstRequiredDependency,pdlRequires,PackageName)
   <>nil then exit;
   PkgDependency:=TPkgDependency.Create;
+  PkgDependency.DependencyType:=pdtLazarus;
   PkgDependency.PackageName:=PackageName;
   AddRequiredDependency(PkgDependency);
 end;

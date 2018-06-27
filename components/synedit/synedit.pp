@@ -82,8 +82,13 @@ uses
   {$IFDEF WithSynExperimentalCharWidth}
   SynEditTextSystemCharWidth,
   {$ENDIF}
-  Types, LCLIntf, LCLType, LMessages, LazUTF8, LCLProc, LazMethodList, LazLoggerBase,
-  SysUtils, Classes, Messages, Controls, Graphics, Forms, StdCtrls, ExtCtrls, Menus,
+  Types, SysUtils, Classes,
+  // LCL
+  LCLProc, LCLIntf, LCLType, LMessages, LResources, Messages, Controls, Graphics,
+  Forms, StdCtrls, ExtCtrls, Menus, Clipbrd, StdActns,
+  // LazUtils
+  LazMethodList, LazLoggerBase, LazUTF8,
+  // SynEdit
   SynEditTypes, SynEditSearch, SynEditKeyCmds, SynEditMouseCmds, SynEditMiscProcs,
   SynEditPointClasses, SynBeautifier, SynEditMarks,
   // Markup
@@ -97,8 +102,8 @@ uses
   // Gutter
   SynGutterBase, SynGutter, SynGutterCodeFolding, SynGutterChanges,
   SynGutterLineNumber, SynGutterMarks, SynGutterLineOverview,
-  SynEditMiscClasses, SynEditHighlighter, LazSynTextArea, SynTextDrawer, SynEditTextBidiChars,
-  LResources, Clipbrd, StdActns;
+  SynEditMiscClasses, SynEditHighlighter, LazSynTextArea, SynTextDrawer,
+  SynEditTextBidiChars;
 
 const
   ScrollBarWidth=0;
@@ -421,7 +426,8 @@ type
     swbWordEnd,
     swbTokenBegin,
     swbTokenEnd,
-    swbCaseChange
+    swbCaseChange,
+    swbWordSmart // begin or end of word with smart gaps (1 char)
   );
 
   { TCustomSynEdit }
@@ -1734,12 +1740,18 @@ end;
 
 function TCustomSynEdit.GetCharsInWindow: Integer;
 begin
-  Result := FTextArea.CharsInWindow;
+  if not Assigned(FTextArea) then
+    Result := -1
+  else
+    Result := FTextArea.CharsInWindow;
 end;
 
 function TCustomSynEdit.GetCharWidth: integer;
 begin
-  Result := FTextArea.CharWidth;
+  if not Assigned(FTextArea) then
+    Result := -1
+  else
+    Result := FTextArea.CharWidth;
 end;
 
 function TCustomSynEdit.GetDefSelectionMode: TSynSelectionMode;
@@ -1764,17 +1776,26 @@ end;
 
 function TCustomSynEdit.GetLeftChar: Integer;
 begin
-  Result := FTextArea.LeftChar;
+  if not Assigned(FTextArea) then
+    Result := -1
+  else
+    Result := FTextArea.LeftChar;
 end;
 
 function TCustomSynEdit.GetLineHeight: integer;
 begin
-  Result := FTextArea.LineHeight;
+  if not Assigned(FTextArea) then
+    Result := -1
+  else
+    Result := FTextArea.LineHeight;
 end;
 
 function TCustomSynEdit.GetLinesInWindow: Integer;
 begin
-  Result := FTextArea.LinesInWindow;
+  if not Assigned(FTextArea) then
+    Result := -1
+  else
+    Result := FTextArea.LinesInWindow;
 end;
 
 function TCustomSynEdit.GetModified: Boolean;
@@ -1809,12 +1830,18 @@ end;
 
 function TCustomSynEdit.GetRightEdge: Integer;
 begin
-  Result := FTextArea.RightEdgeColumn;
+  if not Assigned(FTextArea) then
+    Result := -1
+  else
+    Result := FTextArea.RightEdgeColumn;
 end;
 
 function TCustomSynEdit.GetRightEdgeColor: TColor;
 begin
-  Result := FTextArea.RightEdgeColor;
+  if not Assigned(FTextArea) then
+    Result := clNone
+  else
+    Result := FTextArea.RightEdgeColor;
 end;
 
 function TCustomSynEdit.GetTextBetweenPoints(aStartPoint, aEndPoint: TPoint): String;
@@ -1827,7 +1854,10 @@ end;
 
 function TCustomSynEdit.GetTopLine: Integer;
 begin
-  Result := FFoldedLinesView.ViewPosToTextIndex(FTextArea.TopLine) + 1;
+  if not Assigned(FTextArea) then
+    Result := -1
+  else
+    Result := FFoldedLinesView.ViewPosToTextIndex(FTextArea.TopLine) + 1;
 end;
 
 procedure TCustomSynEdit.SetBlockTabIndent(AValue: integer);
@@ -2115,9 +2145,11 @@ begin
   FLeftGutter := CreateGutter(self, gsLeft, FTextDrawer);
   FLeftGutter.RegisterChangeHandler(@GutterChanged);
   FLeftGutter.RegisterResizeHandler(@GutterResized);
+  FLeftGutter.DoAutoSize;
   FRightGutter := CreateGutter(self, gsRight, FTextDrawer);
   FRightGutter.RegisterChangeHandler(@GutterChanged);
   FRightGutter.RegisterResizeHandler(@GutterResized);
+  FRightGutter.DoAutoSize;
 
   ControlStyle := ControlStyle + [csOpaque, csSetCaption, csTripleClicks, csQuadClicks];
   Height := 150;
@@ -4052,6 +4084,16 @@ begin
         CX := WordBreaker.NextWordEnd(Line,  CX);
         if (CX <= 0) then CX := LineLen + 1;
       end;
+    swbWordSmart: begin
+        NX := WordBreaker.NextWordEnd(Line, CX);
+        if (NX <= 0) then NX := LineLen + 1;
+        CX := WordBreaker.NextWordStart(Line, CX, InclCurrent);
+        if (CX <= 0) and not InclCurrent then CX := LineLen + 1;
+        if (CX <= 0) and InclCurrent then CX := 1;
+
+        if ((ABoundary=swbWordSmart) and (NX<CX-1)) then // step over 1 char gap
+          CX := NX;
+      end;
     swbTokenBegin: begin
         if not (   InclCurrent and
                    ((CX <= 1) or (Line[CX-1] in FWordBreaker.WhiteChars)) and
@@ -4156,6 +4198,18 @@ begin
         CX := WordBreaker.PrevWordEnd(Line,  Min(CX, Length(Line) + 1));
         CheckLineStart(CX, CY);
       end;
+    swbWordSmart: begin
+        Dec(CX); // step over 1 char gap
+        if WordBreaker.IsAtWordStart(Line, CX) then
+          NX := CX
+        else
+          NX := WordBreaker.PrevWordStart(Line,  Min(CX, Length(Line) + 1));
+        CX := WordBreaker.PrevWordEnd(Line,  Min(CX, Length(Line) + 1));
+
+        if (NX>CX-1) then // select the nearest
+          CX := NX;
+        CheckLineStart(CX, CY);
+    end;
     swbTokenBegin: begin
         CX := WordBreaker.PrevBoundary(Line,  Min(CX, Length(Line) + 1));
         if (CX > 0) and (Line[CX] in FWordBreaker.WhiteChars) then
@@ -4539,6 +4593,7 @@ begin
     inherited CreateHandle;   //SizeOrFontChanged will be called
     FLeftGutter.RecalcBounds;
     FRightGutter.RecalcBounds;
+    fStateFlags := fStateFlags - [sfHorizScrollbarVisible, sfVertScrollbarVisible];
     UpdateScrollBars;
   finally
     DoDecPaintLock(nil);
@@ -5060,6 +5115,7 @@ begin
       Application.AddOnIdleHandler(@IdleScanRanges, False);
     exit;
   end;
+//TODO: exit if in paintlock ???
   if not assigned(FHighlighter) then begin
     if ATextChanged then begin
       fMarkupManager.TextChanged(FChangedLinesStart, FChangedLinesEnd, FChangedLinesDiff);
@@ -6632,12 +6688,14 @@ begin
         end;
 // word selection
       ecWordLeft, ecSelWordLeft, ecColSelWordLeft,
-      ecWordEndLeft, ecSelWordEndLeft, ecHalfWordLeft, ecSelHalfWordLeft:
+      ecWordEndLeft, ecSelWordEndLeft, ecHalfWordLeft, ecSelHalfWordLeft,
+      ecSmartWordLeft, ecSelSmartWordLeft:
         begin
           case Command of
-            ecWordEndLeft, ecSelWordEndLeft:   CaretNew := PrevWordLogicalPos(swbWordEnd);
-            ecHalfWordLeft, ecSelHalfWordLeft: CaretNew := PrevWordLogicalPos(swbCaseChange);
-            else                               CaretNew := PrevWordLogicalPos;
+            ecWordEndLeft, ecSelWordEndLeft:     CaretNew := PrevWordLogicalPos(swbWordEnd);
+            ecHalfWordLeft, ecSelHalfWordLeft:   CaretNew := PrevWordLogicalPos(swbCaseChange);
+            ecSmartWordLeft, ecSelSmartWordLeft: CaretNew := PrevWordLogicalPos(swbWordSmart);
+            else                                 CaretNew := PrevWordLogicalPos;
           end;
           if FFoldedLinesView.FoldedAtTextIndex[CaretNew.Y - 1] then begin
             CY := FindNextUnfoldedLine(CaretNew.Y, False);
@@ -6646,12 +6704,14 @@ begin
           FCaret.LineBytePos := CaretNew;
         end;
       ecWordRight, ecSelWordRight, ecColSelWordRight,
-      ecWordEndRight, ecSelWordEndRight, ecHalfWordRight, ecSelHalfWordRight:
+      ecWordEndRight, ecSelWordEndRight, ecHalfWordRight, ecSelHalfWordRight,
+      ecSmartWordRight, ecSelSmartWordRight:
         begin
           case Command of
-            ecWordEndRight, ecSelWordEndRight:   CaretNew := NextWordLogicalPos(swbWordEnd);
-            ecHalfWordRight, ecSelHalfWordRight: CaretNew := NextWordLogicalPos(swbCaseChange);
-            else                                 CaretNew := NextWordLogicalPos;
+            ecWordEndRight, ecSelWordEndRight:     CaretNew := NextWordLogicalPos(swbWordEnd);
+            ecHalfWordRight, ecSelHalfWordRight:   CaretNew := NextWordLogicalPos(swbCaseChange);
+            ecSmartWordRight, ecSelSmartWordRight: CaretNew := NextWordLogicalPos(swbWordSmart);
+            else                                   CaretNew := NextWordLogicalPos;
           end;
           if FFoldedLinesView.FoldedAtTextIndex[CaretNew.Y - 1] then
             CaretNew := Point(1, FindNextUnfoldedLine(CaretNew.Y, True));
@@ -6710,7 +6770,7 @@ begin
             end;
           end;
         end;
-      ecDeleteChar:
+      ecDeleteChar, ecDeleteCharNoCrLf:
         if not ReadOnly then begin
           if SelAvail and (not FBlockSelection.Persistent) and (eoOverwriteBlock in fOptions2) then
             SetSelTextExternal('')
@@ -6724,7 +6784,9 @@ begin
               Counter:=GetCharLen(Temp,LogCaretXY.X);
               FTheLinesView.EditDelete(LogCaretXY.X, CaretY, Counter);
               SetLogicalCaretXY(LogCaretXY);
-            end else begin
+            end
+            else
+            if Command = ecDeleteChar then begin
               // join line with the line after
               if CaretY < FTheLinesView.Count then begin
                 Helper := StringOfChar(' ', LogCaretXY.X - 1 - Len);
@@ -8199,8 +8261,6 @@ end;
 
 procedure TCustomSynEdit.CreateWnd;
 begin
-  if not (csDesigning in ComponentState) then
-    DoubleBuffered := DoubleBuffered or (GetSystemMetrics(SM_REMOTESESSION)=0); // force DoubleBuffered if not used in remote session
   inherited;
   if (eoDropFiles in fOptions) and not (csDesigning in ComponentState) then
     // ToDo DragAcceptFiles

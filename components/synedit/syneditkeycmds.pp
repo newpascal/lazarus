@@ -85,8 +85,10 @@ const
   ecLineTextStart   = 18;   // Move cursor to the first none whitespace in the line
   ecWordEndLeft     = 19;   // Move cursor left one word (to end of word)
   ecWordEndRight    = 20;   // Move cursor right one word (to end of word)
-  ecHalfWordLeft    = 21;    // Move cursor left to word-begin/end or case change lower to uppper
-  ecHalfWordRight   = 22;    // Move cursor right to word-begin/end or case change lower to uppper
+  ecHalfWordLeft    = 21;   // Move cursor left to word-begin/end or case change lower to uppper
+  ecHalfWordRight   = 22;   // Move cursor right to word-begin/end or case change lower to uppper
+  ecSmartWordLeft   = 23;   // Move cursor left one word with smart boundaries (either start of current word or end of previous word)
+  ecSmartWordRight  = 24;   // Move cursor right one word with smart boundaries (either end of current word or start of next word)
 
   // Allow selecting with any movement
   ecStickySelection     = 95;
@@ -124,6 +126,8 @@ const
   ecSelWordEndRight = ecWordEndRight + ecSelection;
   ecSelHalfWordLeft = ecHalfWordLeft + ecSelection;
   ecSelHalfWordRight= ecHalfWordRight + ecSelection;
+  ecSelSmartWordLeft= ecSmartWordLeft + ecSelection;
+  ecSelSmartWordRight=ecSmartWordRight + ecSelection;
 
   ecSelCmdRangeStart = ecLeft + ecSelection;
   ecSelCmdRangeEnd   = ecLeft + ecSelection + 49;
@@ -245,6 +249,7 @@ const
   ecInsertLine      = 510;  // Break line at current position, leave caret
   ecChar            = 511;  // Insert a character at current position
   ecSmartUnindent   = 512;  // NOT regocniced as command, used for group-undo, set by beautifier
+  ecDeleteCharNoCrLf= 513;  // Delete char at cursor (i.e. delete key), but do not join lines
 
   ecImeStr          = 550;  // Insert character(s) from IME
 
@@ -490,7 +495,7 @@ end;
 { Command mapping routines }
 
 const
-  EditorCommandStrs: array[0..153] of TIdentMapEntry = (
+  EditorCommandStrs: array[0..157] of TIdentMapEntry = (
     (Value: ecNone; Name: 'ecNone'),
     (Value: ecLeft; Name: 'ecLeft'),
     (Value: ecRight; Name: 'ecRight'),
@@ -502,6 +507,8 @@ const
     (Value: ecWordEndRight; Name: 'ecWordEndRight'),
     (Value: ecHalfWordLeft; Name: 'ecHalfWordLeft'),
     (Value: ecHalfWordRight; Name: 'ecHalfWordRight'),
+    (Value: ecSmartWordLeft; Name: 'ecSmartWordLeft'),
+    (Value: ecSmartWordRight; Name: 'ecSmartWordRight'),
     (Value: ecLineStart; Name: 'ecLineStart'),
     (Value: ecLineEnd; Name: 'ecLineEnd'),
     (Value: ecPageUp; Name: 'ecPageUp'),
@@ -528,6 +535,8 @@ const
     (Value: ecSelWordEndRight; Name: 'ecSelWordEndRight'),
     (Value: ecSelHalfWordLeft; Name: 'ecSelHalfWordLeft'),
     (Value: ecSelHalfWordRight; Name: 'ecSelHalfWordRight'),
+    (Value: ecSelSmartWordLeft; Name: 'ecSelSmartWordLeft'),
+    (Value: ecSelSmartWordRight; Name: 'ecSelSmartWordRight'),
     (Value: ecSelLineStart; Name: 'ecSelLineStart'),
     (Value: ecSelLineEnd; Name: 'ecSelLineEnd'),
     (Value: ecSelPageUp; Name: 'ecSelPageUp'),

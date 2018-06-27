@@ -36,11 +36,19 @@ unit SynEditPointClasses;
 interface
 
 uses
-  Classes, SysUtils, Controls, LCLProc, LCLType, LCLIntf, ExtCtrls, Graphics, Forms,
+  {$IFDEF windows}
+  windows,
+  {$ENDIF}
+  Classes, SysUtils,
+  // LCL
+  Controls, LCLProc, LCLType, LCLIntf, ExtCtrls, Graphics, Forms,
   {$IFDEF SYN_MBCSSUPPORT}
   Imm,
   {$ENDIF}
-  LazSynEditText, SynEditTypes, SynEditMiscProcs;//, SynEditTextBuffer;
+  // LazUtils
+  LazMethodList,
+  // SynEdit
+  LazSynEditText, SynEditTypes, SynEditMiscProcs;
 
 type
 
@@ -1939,7 +1947,8 @@ var
             FInternalCaret.LineCharPos := Point(l, y);
             xb := FInternalCaret.BytePos;
             FInternalCaret.LineCharPos := Point(r, y);
-            xe := Min(FInternalCaret.BytePos, 1 + length(FInternalCaret.LineText));
+//            xe := Min(FInternalCaret.BytePos, 1 + length(FInternalCaret.LineText));
+            xe := FInternalCaret.BytePos;
             if xe > xb then
               FLines.EditDelete(xb, y, xe - xb);
           end;
@@ -2499,12 +2508,28 @@ begin
 end;
 
 constructor TSynEditScreenCaretTimer.Create;
+{$IFDEF windows}
+var
+  i: UINT;
+{$ENDIF}
 begin
   FTimerList := TMethodList.Create;
   FAfterPaintList := TMethodList.Create;
   FTimer := TTimer.Create(nil);
   FTimer.Enabled := False;
+  {$IFDEF windows}
+  i := GetCaretBlinkTime;
+  if (i = high(i)) or (i = 0) then begin
+    FTimer.Enabled := False;
+    FDisplayCycle := True;
+    FTimer.Interval := 0;
+  end
+  else begin
+    FTimer.Interval := i;
+  end;
+  {$ELSE}
   FTimer.Interval := 500;
+  {$ENDIF}
   FTimer.OnTimer := @DoTimer;
 end;
 
@@ -2578,6 +2603,11 @@ begin
     include(FLocFlags, lfRestart);
     exit;
   end;
+  if FTimer.Interval = 0 then begin
+    FTimerList.CallNotifyEvents(Self);
+    exit;
+  end;
+
   if FTimerList.Count = 0 then exit;
   FTimer.Enabled := False;
   FDisplayCycle := False;
@@ -3085,7 +3115,7 @@ end;
 
 procedure TSynEditScreenCaret.ChangePainter(APainterClass: TSynEditScreenCaretPainterClass);
 begin
-  DestroyCaret;
+  DestroyCaret(True);
   FreeAndNil(FCaretPainter);
   FCaretPainter := APainterClass.Create(FHandleOwner, Self);
   UpdateDisplay;

@@ -21,7 +21,7 @@ uses
   {$IFDEF USE_GENERICS_COLLECTIONS}
     Generics.Collections, Generics.Defaults,
   {$ELSE}
-    ghashmap, sparta_HashUtils, gvector,
+    ghashmap, sparta_HashUtils, gvector, contnrs,
   {$ENDIF}
   // LCL
   LCLIntf, LCLType, LMessages, ComCtrls, Controls, Forms, ExtCtrls, Graphics,
@@ -121,10 +121,16 @@ type
   { TDTXTabMaster }
 
   TDTXTabMaster = class(TIDETabMaster)
+  private
+    FAutoSizeControlList: TObjectList;
   protected
     function GetTabDisplayState: TTabDisplayState; override;
     function GetTabDisplayStateEditor(Index: TSourceEditorInterface): TTabDisplayState; override;
   public
+    constructor Create;
+    destructor Destroy; override;
+    function AutoSizeInShowDesigner(AControl: TControl): Boolean; override;
+    procedure EnableAutoSizing(AControl: TControl);
     procedure ToggleFormUnit; override;
     procedure JumpToCompilerMessage(ASourceEditor: TSourceEditorInterface); override;
 
@@ -445,6 +451,10 @@ procedure TDesignFormData.WndMethod(var Msg: TLMessage);
   var
     i: Integer;
   begin
+    // Just do it for new created forms or the last loaded form becomes the active
+    // source editor after reopening a project.
+    if Form.Form.Designer <> SourceEditorManagerIntf.ActiveEditor.GetDesigner(True) then Exit;
+
     SourceEditorManagerIntf.ActiveEditor := nil;
     for i := 0 to SourceEditorManagerIntf.UniqueSourceEditorCount - 1 do
       if Form.Form.Designer = SourceEditorManagerIntf.UniqueSourceEditors[i].GetDesigner(True) then
@@ -783,6 +793,47 @@ begin
   end;
 end;
 
+constructor TDTXTabMaster.Create;
+begin
+  FAutoSizeControlList := TObjectList.Create(False);
+end;
+
+destructor TDTXTabMaster.Destroy;
+begin
+  FAutoSizeControlList.Free;
+  inherited Destroy;
+end;
+
+function TDTXTabMaster.AutoSizeInShowDesigner(AControl: TControl): Boolean;
+begin
+  FAutoSizeControlList.Add(AControl);
+  Result := True;
+end;
+
+procedure TDTXTabMaster.EnableAutoSizing(AControl: TControl);
+var
+  AIndex: Integer;
+  AutoSizeControl: TControl;
+begin
+  if not Assigned(AControl) then Exit;
+  AutoSizeControl := nil;
+
+  if AControl is TNonFormProxyDesignerForm then
+  begin
+    if (TNonFormProxyDesignerForm(AControl).LookupRoot is TControl) then
+      AutoSizeControl := TControl(TNonFormProxyDesignerForm(AControl).LookupRoot);
+  end
+  else
+    AutoSizeControl := AControl;
+
+  AIndex := FAutoSizeControlList.IndexOf(AutoSizeControl);
+  if (AIndex >= 0) then
+  begin
+    FAutoSizeControlList.Delete(AIndex);
+    AutoSizeControl.EnableAutoSizing{$IFDEF DebugDisableAutoSizing}('TAnchorDockMaster Delayed'){$ENDIF};
+  end;
+end;
+
 procedure TDTXTabMaster.ToggleFormUnit;
 begin
   case TabDisplayState of
@@ -812,6 +863,8 @@ end;
 procedure TDTXTabMaster.ShowDesigner(ASourceEditor: TSourceEditorInterface; AIndex: Integer);
 var
   LPageCtrl: TModulePageControl;
+  Designer: TIDesigner;
+  Form: TCustomForm;
 begin
   if ASourceEditor = nil then
     Exit;
@@ -838,8 +891,7 @@ end;
 
 { TDTXComponentsMaster }
 
-function TDTXComponentsMaster.DrawNonVisualComponents(ALookupRoot: TComponent
-  ): Boolean;
+function TDTXComponentsMaster.DrawNonVisualComponents(ALookupRoot: TComponent): Boolean;
 var
   LFormData: TDesignFormData;
   LPageCtrl: TModulePageControl;
@@ -1214,7 +1266,10 @@ begin
       0: if LDesignFormData <> nil then LDesignFormData.Form.HideWindow;
       1:
         begin
-          LazarusIDE.DoShowDesignerFormOfSrc(LSourceEditorWindow.ActiveEditor);
+          // Michl: I comment the next line, as it breaks other editors
+          // (like Actionlist Editor). Imho in all cases all designer
+          // were already active, so it isn't needed. See issue #33872
+          // LazarusIDE.DoShowDesignerFormOfSrc(LSourceEditorWindow.ActiveEditor);
 
           // for lfm edition...
           with LDesignFormData as IDesignedForm do
@@ -1435,6 +1490,8 @@ begin
             end;
 
             LSourceWndData.ActiveDesignFormData := LFormData;
+            // enable autosizing after creating a new form, see issue #32207
+            TDTXTabMaster(IDETabMaster).EnableAutoSizing(LFormData.Form.Form);
             // to handle windows with different size
             LPageCtrl.BoundToDesignTabSheet;
           end;

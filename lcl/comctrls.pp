@@ -31,7 +31,7 @@ interface
 uses
   SysUtils, Types, Classes, Math, Laz_AVL_Tree,
   // LazUtils
-  LazUTF8, LazUTF8Classes,
+  LazUTF8, LazUTF8Classes, LazLoggerBase, LazUtilities,
   // LCL
   LCLStrConsts, LResources, LCLIntf, LCLType, LMessages, WSLCLClasses,
   WSReferences, LCLProc, GraphType, Graphics, ImgList, ActnList, Themes, Menus,
@@ -1941,7 +1941,7 @@ type
     property Position: SmallInt read GetPosition write SetPosition;
     property Thousands: Boolean read FThousands write SetThousands default True;
     property Flat: Boolean read GetFlat write SetFlat default False;
-    property Wrap: Boolean read FWrap write SetWrap;
+    property Wrap: Boolean read FWrap write SetWrap default False;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; Override;
@@ -3300,7 +3300,7 @@ type
   private
     FAccessibilityOn: Boolean;
     FBottomItem: TTreeNode;
-    FCallingOnChange: Boolean;
+    FCallingChange: Boolean;
     FEditingItem: TTreeNode;
     FExpandSignType: TTreeViewExpandSignType;
     FExpandSignSize: integer;

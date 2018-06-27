@@ -38,7 +38,7 @@
         <PackageName Value="fpcunitconsolerunner"/>
       </Item2>
     </RequiredPackages>
-    <Units Count="14">
+    <Units Count="16">
       <Unit0>
         <Filename Value="runtestscodetools.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -105,6 +105,16 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="TestIdentCompletion"/>
       </Unit13>
+      <Unit14>
+        <Filename Value="testctpas2js.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="TestCTPas2js"/>
+      </Unit14>
+      <Unit15>
+        <Filename Value="testchangedeclaration.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="TestChangeDeclaration"/>
+      </Unit15>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

@@ -18,20 +18,28 @@
  *                                                                         *
  ***************************************************************************
 }
-unit componentpalette_options;
+unit ComponentPalette_Options;
 
 {$mode objfpc}{$H+}
 
 interface
 
 uses
-  Classes, SysUtils, Graphics, Forms, Controls, StdCtrls, Dialogs, Buttons,
-  ComCtrls, ExtCtrls, FileUtil, LCLProc, LCLType, Menus, IDEProcs, Laz2_XMLCfg,
-  EnvironmentOpts, LazarusIDEStrConsts, IDEOptionsIntf,
-  IDEImagesIntf, DividerBevel, ComponentReg, IDEOptionDefs,
-  PackageDefs;
+  Classes, SysUtils,
+  // LCL
+  LCLProc, LCLType, Forms, Controls, StdCtrls, ComCtrls, ExtCtrls,
+  Dialogs, Buttons, Menus, Graphics,
+  // LazControls
+  DividerBevel,
+  // LazUtils
+  FileUtil, Laz2_XMLCfg, ImgList,
+  // IdeIntf
+  IDEOptionsIntf, IDEOptEditorIntf, IDEImagesIntf, FormEditingIntf, ComponentReg,
+  // IDE
+  IDEProcs, EnvironmentOpts, LazarusIDEStrConsts, IDEOptionDefs, PackageDefs;
 
 type
+
   { TCompPaletteOptionsFrame }
 
   TCompPaletteOptionsFrame = class(TAbstractIDEOptionsEditor)
@@ -69,6 +77,10 @@ type
     procedure ComponentsListViewItemChecked(Sender: TObject; {%H-}Item: TListItem);
     procedure ComponentsListViewKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure CompMoveDownBtnClick(Sender: TObject);
+    procedure CompPalModeAddButtonClick(Sender: TObject);
+    procedure CompPalModeComboBoxChange(Sender: TObject);
+    procedure CompPalModeDeleteButtonClick(Sender: TObject);
+    procedure CompPalModeRenameButtonClick(Sender: TObject);
     procedure ImportButtonClick(Sender: TObject);
     procedure ExportButtonClick(Sender: TObject);
     procedure PageMoveDownBtnClick(Sender: TObject);
@@ -152,12 +164,12 @@ begin
   // Component pages
   PagesGroupBox.Caption := lisCmpPages;
   AddPageButton.Caption := lisBtnDlgAdd;
-  TIDEImages.AssignImage(AddPageButton.Glyph, 'laz_add');
+  IDEImages.AssignImage(AddPageButton, 'laz_add');
   RestoreButton.Caption := lisCmpRestoreDefaults;
   ImportDividerBevel.Caption := lisExportImport;
-  TIDEImages.AssignImage(ImportButton.Glyph, 'laz_open');
+  IDEImages.AssignImage(ImportButton, 'laz_open');
   ImportButton.Caption := lisDlgImport;
-  TIDEImages.AssignImage(ExportButton.Glyph, 'laz_save');
+  IDEImages.AssignImage(ExportButton, 'laz_save');
   ExportButton.Caption := lisDlgExport;
   // File dialogs
   ImportDialog.Title := lisImport;
@@ -171,13 +183,13 @@ begin
   ComponentsListView.Column[3].Caption := lisUnit;
   ComponentsListView.SmallImages := IDEImages.Images_24;
   // Arrow buttons for pages
-  TIDEImages.AssignImage(PageMoveUpBtn.Glyph, 'arrow_up');
-  TIDEImages.AssignImage(PageMoveDownBtn.Glyph, 'arrow_down');
+  IDEImages.AssignImage(PageMoveUpBtn, 'arrow_up');
+  IDEImages.AssignImage(PageMoveDownBtn, 'arrow_down');
   PageMoveUpBtn.Hint := lisMoveSelectedUp;
   PageMoveDownBtn.Hint := lisMoveSelectedDown;
   // Arrow buttons for components
-  TIDEImages.AssignImage(CompMoveUpBtn.Glyph, 'arrow_up');
-  TIDEImages.AssignImage(CompMoveDownBtn.Glyph, 'arrow_down');
+  IDEImages.AssignImage(CompMoveUpBtn, 'arrow_up');
+  IDEImages.AssignImage(CompMoveDownBtn, 'arrow_down');
   CompMoveUpBtn.Hint := lisMoveSelectedUp;
   CompMoveDownBtn.Hint := lisMoveSelectedDown;
 
@@ -291,6 +303,7 @@ begin
     PagesListBox.Items.Objects[i].Free;
   PagesListBox.Clear;
   PagesListBox.Items.Add(lis_All_);
+  // then add all pages
   for i := 0 to fLocalUserOrder.ComponentPages.Count-1 do
   begin
     PgName := fLocalUserOrder.ComponentPages[i];
@@ -619,15 +632,22 @@ procedure TCompPaletteOptionsFrame.ComponentsListViewCustomDrawItem(Sender: TCus
 var
   Comp: TRegisteredComponent;
   ARect: TRect;
-  CurIcon: TCustomBitmap;
+  IL: TCustomImageList;
+  II: TImageIndex;
+  Res: TScaledImageListResolution;
 begin
   Comp := TRegisteredComponent(Item.Data);
   ARect := Item.DisplayRect(drIcon);
   if Comp is TPkgComponent then begin
-    CurIcon := TPkgComponent(Comp).Icon;
-    if CurIcon<>nil then
-      Sender.Canvas.Draw(ARect.Left+(25-CurIcon.Width) div 2,
-               ARect.Top+(ARect.Bottom-ARect.Top-CurIcon.Height) div 2, CurIcon);
+    IL := TPkgComponent(Comp).Images;
+    II := TPkgComponent(Comp).ImageIndex;
+    if (IL<>nil) and (II>=0) then
+    begin
+      Res := IL.ResolutionForControl[0, Sender];
+      Res.Draw(Sender.Canvas,
+               ARect.Left+(Scale96ToFont(ComponentPaletteImageWidth)-Res.Width) div 2 + 2,
+               ARect.Top+(ARect.Bottom-ARect.Top-Res.Height) div 2, II);
+    end;
   end;
 end;
 
@@ -715,6 +735,28 @@ begin
     UpdateCompMoveButtons(i+1);
     MarkAsChanged;
   end;
+end;
+
+procedure TCompPaletteOptionsFrame.CompPalModeAddButtonClick(Sender: TObject);
+begin
+
+end;
+
+procedure TCompPaletteOptionsFrame.CompPalModeComboBoxChange(Sender: TObject);
+begin
+
+end;
+
+procedure TCompPaletteOptionsFrame.CompPalModeDeleteButtonClick(Sender: TObject
+  );
+begin
+
+end;
+
+procedure TCompPaletteOptionsFrame.CompPalModeRenameButtonClick(Sender: TObject
+  );
+begin
+
 end;
 
 procedure TCompPaletteOptionsFrame.MarkAsChanged;

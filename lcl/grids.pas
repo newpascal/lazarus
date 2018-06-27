@@ -36,11 +36,11 @@ uses
   // RTL + FCL
   Classes, SysUtils, Types, TypInfo, Math, FPCanvas,
   // LCL
-  LCLStrConsts, LCLProc, LCLType, LCLIntf, Controls, Graphics, Forms,
+  LCLStrConsts, LCLType, LCLIntf, Controls, Graphics, Forms,
   LMessages, StdCtrls, LResources, MaskEdit, Buttons, Clipbrd, Themes, imglist,
   // LazUtils
   LazFileUtils, DynamicArray, Maps, LazUTF8, LazUtf8Classes, Laz2_XMLCfg,
-  LCSVUtils, IntegerList
+  LazLoggerBase, LazUtilities, LCSVUtils, IntegerList
 {$ifdef WINDOWS}
   ,messages
 {$endif}
@@ -1534,6 +1534,7 @@ type
     property DefaultColWidth;
     property DefaultDrawing;
     property DefaultRowHeight;
+    property DoubleBuffered;
     property DragCursor;
     property DragKind;
     property DragMode;
@@ -1554,6 +1555,7 @@ type
     property Options2;
     //property ParentBiDiMode;
     property ParentColor default false;
+    property ParentDoubleBuffered;
     property ParentFont;
     property ParentShowHint;
     property PopupMenu;
@@ -1685,6 +1687,7 @@ type
     procedure DoCutToClipboard; override;
     procedure DoPasteFromClipboard; override;
     procedure DoCellProcess(aCol, aRow: Integer; processType: TCellProcessType; var aValue: string); virtual;
+    procedure DrawColumnText(aCol, aRow: Integer; aRect: TRect; aState: TGridDrawState); override;
     procedure DrawTextInCell(aCol,aRow: Integer; aRect: TRect; aState: TGridDrawState); override;
     procedure DrawCellAutonumbering(aCol,aRow: Integer; aRect: TRect; const aValue: string); override;
     //procedure EditordoGetValue; override;
@@ -1764,6 +1767,7 @@ type
     property DefaultColWidth;
     property DefaultDrawing;
     property DefaultRowHeight;
+    property DoubleBuffered;
     property DragCursor;
     property DragKind;
     property DragMode;
@@ -1784,6 +1788,7 @@ type
     property Options2;
     property ParentBiDiMode;
     property ParentColor default false;
+    property ParentDoubleBuffered;
     property ParentFont;
     property ParentShowHint;
     property PopupMenu;
@@ -1869,7 +1874,6 @@ procedure Register;
 implementation
 
 {$R lcl_grid_images.res}
-{$R lcl_dbgrid_images.res}
 
 uses
   WSGrids;
@@ -4118,7 +4122,7 @@ procedure TCustomGrid.DrawColumnText(aCol, aRow: Integer; aRect: TRect;
   aState: TGridDrawState);
 begin
   DrawColumnTitleImage(aRect, aCol);
-  DrawCellText(aCol,aRow,aRect,aState,GetColumnTitle(aCol));
+  DrawCellText(aCol,aRow,aRect,aState,GetColumnTitle(aCol))
 end;
 
 procedure TCustomGrid.DrawColumnTitleImage(
@@ -4152,10 +4156,15 @@ begin
       w := Scale96ToFont(s.cx);
       h := Scale96ToFont(s.cy);
 
-      Dec(ARect.Right, w);
-      r.Left := ARect.Right - DEFIMAGEPADDING;
-      r.Top := ARect.Top + (ARect.Bottom - ARect.Top - h) div 2;
+      if IsRightToLeft then begin
+        r.Left := ARect.Left + DEFIMAGEPADDING;
+        Inc(ARect.Left, w + DEFIMAGEPADDING);
+      end else begin
+        Dec(ARect.Right, w + DEFIMAGEPADDING);
+        r.Left := ARect.Right - DEFIMAGEPADDING;
+      end;
       r.Right := r.Left + w;
+      r.Top := ARect.Top + (ARect.Bottom - ARect.Top - h) div 2;
       r.Bottom := r.Top + h;
 
       ThemeServices.DrawElement(Canvas.Handle, Details, r, nil);
@@ -4165,8 +4174,13 @@ begin
       w := ImgRes.Width;
       h := ImgRes.Height;
 
-      Dec(ARect.Right, w);
-      p.X := ARect.Right - DEFIMAGEPADDING;
+      if IsRightToLeft then begin
+        P.X := ARect.Left + DEFIMAGEPADDING;
+        Inc(ARect.Left, w + DEFIMAGEPADDING);
+      end else begin
+        Dec(ARect.Right, w + DEFIMAGEPADDING);
+        p.X := ARect.Right - DEFIMAGEPADDING;
+      end;
       p.Y := ARect.Top + (ARect.Bottom - ARect.Top - h) div 2;
 
       ImgRes.Draw(Canvas, p.X, p.Y, ImgIndex);
@@ -4534,7 +4548,7 @@ begin
   ChkII := -1;
   ChkBitmap := nil;
 
-  if (TitleStyle=tsNative) and not Assigned(OnUserCheckboxBitmap) then
+  if not Assigned(OnUserCheckboxBitmap) then
   begin
     Details := ThemeServices.GetElementDetails(arrtb[AState]);
     CSize := ThemeServices.GetDetailSize(Details);
@@ -4877,8 +4891,12 @@ begin
   if not GetSmoothScroll(SB_Vert) then
     FGCache.TLRowOff := 0;
 
-  if not PointIgual(OldTopleft,FTopLeft) then
+  if not PointIgual(OldTopleft,FTopLeft) then begin
     TopLeftChanged;
+    if goScrollKeepVisible in Options then
+      MoveNextSelectable(False, FTopLeft.x - oldTopLeft.x + col,
+                                FTopLeft.y - oldTopLeft.y + row);
+  end;
 
   NewTopLeftXY := GetPxTopLeft;
   ScrollBy((OldTopLeftXY.x-NewTopLeftXY.x)*RTLSign, OldTopLeftXY.y-NewTopLeftXY.y);
@@ -5288,7 +5306,8 @@ end;
 
 function TCustomGrid.GetIsCellTitle(aCol, aRow: Integer): boolean;
 begin
-  result := (FixedRows>0) and (aRow=0) and Columns.Enabled and (aCol>=FirstGridColumn)
+  result := (FixedRows>0) and (aRow=0) {and Columns.Enabled} and (aCol>=FirstGridColumn);
+    // Columns.Enabled removed in order to allow sort arrows also without columns
 end;
 
 function TCustomGrid.GetIsCellSelected(aCol, aRow: Integer): boolean;
@@ -5397,6 +5416,12 @@ begin
     ImgIndex := -1;
     ImgLayout := blGlyphRight;
   end;
+  if IsRightToLeft then begin
+    if ImgLayout = blGlyphRight then
+      ImgLayout := blGlyphLeft
+    else if ImgLayout = blGlyphLeft then
+      ImgLayout := blGlyphRight;
+  end;
 end;
 
 procedure TCustomGrid.GetSortTitleImageInfo(aColumnIndex: Integer; out
@@ -5432,6 +5457,7 @@ begin
       FSortLCLImages.Width := 8;
       FSortLCLImages.Height := 8;
       FSortLCLImages.RegisterResolutions([8, 12, 16]);
+      FSortLCLImages.SetWidth100Suffix(16);
     end;
     ImgList := FSortLCLImages;
     case FSortOrder of
@@ -5446,18 +5472,7 @@ end;
 procedure TCustomGrid.GetImageForCheckBox(const aCol, aRow: Integer;
   CheckBoxView: TCheckBoxState; var ImageList: TCustomImageList;
   var ImageIndex: TImageIndex; var Bitmap: TBitmap);
-var
-  ResName: string;
 begin
-  if CheckboxView=cbUnchecked then
-    ResName := 'dbgriduncheckedcb'
-  else if CheckboxView=cbChecked then
-    ResName := 'dbgridcheckedcb'
-  else
-    ResName := 'dbgridgrayedcb';
-  ImageList := LCLGlyphs;
-  ImageIndex := LCLGlyphs.GetImageIndex(ResName);
-
   if Assigned(OnUserCheckboxBitmap) then
     OnUserCheckboxBitmap(Self, aCol, aRow, CheckBoxView, Bitmap);
 end;
@@ -11206,6 +11221,17 @@ procedure TCustomStringGrid.DrawCellAutonumbering(aCol, aRow: Integer;
 begin
   if Cells[aCol,aRow]='' then
     inherited DrawCellAutoNumbering(aCol,aRow,aRect,aValue);
+end;
+
+procedure TCustomStringGrid.DrawColumnText(aCol, aRow: Integer; aRect: TRect;
+  aState: TGridDrawState);
+begin
+  if Columns.Enabled then
+    inherited
+  else begin
+    DrawColumnTitleImage(aRect, aCol);
+    DrawCellText(aCol,aRow,aRect,aState,Cells[aCol,aRow])
+  end;
 end;
 
 procedure TCustomStringGrid.GetCheckBoxState(const aCol, aRow: Integer;

@@ -91,7 +91,7 @@ end;
 
 destructor TOPMInterfaceEx.Destroy;
 begin
-  if PackageDownloader.DownloadingJSON then
+  if (PackageDownloader<>nil) and PackageDownloader.DownloadingJSON then
     PackageDownloader.Cancel;
   FWaitForIDE.StopTimer;
   FWaitForIDE.Terminate;
@@ -127,13 +127,14 @@ begin
     begin
       if (FPackageLinks.Count = 0) then
       begin
-        if not PackageDownloader.DownloadingJSON then
+        if (not PackageDownloader.DownloadingJSON) and (not Application.Terminated) then
           PackageDownloader.DownloadJSON(Options.ConTimeOut*1000, True);
         Exit;
       end;
-      if (not FBusyUpdating) then
-        if (Assigned(OnPackageListAvailable)) then
-          OnPackageListAvailable(Self);
+      if (not Application.terminated) then
+        if (not FBusyUpdating) then
+          if (Assigned(OnPackageListAvailable)) then
+            OnPackageListAvailable(Self);
     end;
   end;
 end;
@@ -146,7 +147,6 @@ begin
   SerializablePackages.OnUpdatePackageLinks := @DoUpdatePackageLinks;
   PackageDownloader := TPackageDownloader.Create(Options.RemoteRepository[Options.ActiveRepositoryIndex]);
   InstallPackageList := TObjectList.Create(True);
-  PackageDownloader.DownloadJSON(Options.ConTimeOut*1000);
 end;
 
 procedure TOPMInterfaceEx.DoUpdatePackageLinks(Sender: TObject);
@@ -191,7 +191,7 @@ begin
       for J := 0 to MetaPackage.LazarusPackages.Count - 1 do
       begin
         LazPackage := TLazarusPackage(MetaPackage.LazarusPackages.Items[J]);
-        FileName := Options.LocalRepositoryPackages + MetaPackage.PackageBaseDir + LazPackage.PackageRelativePath + LazPackage.Name;
+        FileName := Options.LocalRepositoryPackagesExpanded + MetaPackage.PackageBaseDir + LazPackage.PackageRelativePath + LazPackage.Name;
         Name := StringReplace(LazPackage.Name, '.lpk', '', [rfReplaceAll, rfIgnoreCase]);
         URL := Options.RemoteRepository[Options.ActiveRepositoryIndex] + MetaPackage.RepositoryFileName;
         PackageLink := FindOnlineLink(Name);
@@ -433,7 +433,7 @@ begin
   PackageAction := paInstall;
   if SerializablePackages.DownloadCount > 0 then
   begin
-    Result := Download(Options.LocalRepositoryArchive);
+    Result := Download(Options.LocalRepositoryArchiveExpanded);
     SerializablePackages.GetPackageStates;
   end;
 
@@ -441,7 +441,7 @@ begin
   begin
     if SerializablePackages.ExtractCount > 0 then
     begin
-      Result := Extract(Options.LocalRepositoryArchive, Options.LocalRepositoryPackages);
+      Result := Extract(Options.LocalRepositoryArchiveExpanded, Options.LocalRepositoryPackagesExpanded);
       SerializablePackages.GetPackageStates;
     end;
 
@@ -489,7 +489,7 @@ begin
   PackageAction := paInstall;
   if SerializablePackages.DownloadCount > 0 then
   begin
-    Result := Download(Options.LocalRepositoryArchive);
+    Result := Download(Options.LocalRepositoryArchiveExpanded);
     SerializablePackages.GetPackageStates;
   end;
 
@@ -497,7 +497,7 @@ begin
   begin
     if SerializablePackages.ExtractCount > 0 then
     begin
-      Result := Extract(Options.LocalRepositoryArchive, Options.LocalRepositoryPackages);
+      Result := Extract(Options.LocalRepositoryArchiveExpanded, Options.LocalRepositoryPackagesExpanded);
       SerializablePackages.GetPackageStates;
     end;
 

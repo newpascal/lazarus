@@ -43,6 +43,7 @@ type
   published
     class function CreateHandle(const AWinControl: TWinControl;
           const AParams: TCreateParams): HWND; override;
+    class function GetDoubleBuffered(const AWinControl: TWinControl): Boolean; override;
     class procedure SetParams(const AScrollBar: TCustomScrollBar); override;
   end;
 
@@ -77,6 +78,7 @@ type
           const AParams: TCreateParams): HWND; override;
     class procedure AdaptBounds(const AWinControl: TWinControl;
           var Left, Top, Width, Height: integer; var SuppressMove: boolean); override;
+    class function GetDoubleBuffered(const AWinControl: TWinControl): Boolean; override;
     class procedure GetPreferredSize(const AWinControl: TWinControl;
       var PreferredWidth, PreferredHeight: integer; WithThemeSpace: Boolean); override;
     class function GetDroppedDown(const ACustomComboBox: TCustomComboBox): Boolean; override;
@@ -256,6 +258,7 @@ type
   published
     class function CreateHandle(const AWinControl: TWinControl;
           const AParams: TCreateParams): HWND; override;
+    class function GetDoubleBuffered(const AWinControl: TWinControl): Boolean; override;
     class procedure SetDefault(const AButton: TCustomButton; ADefault: Boolean); override;
     class procedure SetShortCut(const AButton: TCustomButton; const ShortCutK1, ShortCutK2: TShortCut); override;
   end;
@@ -401,7 +404,7 @@ begin
     WM_ERASEBKGND:
       begin
         WindowInfo := GetWin32WindowInfo(Window);
-        if not WindowInfo^.WinControl.DoubleBuffered then
+        if not TWSWinControlClass(WindowInfo^.WinControl.WidgetSetClass).GetDoubleBuffered(WindowInfo^.WinControl) then
         begin
           LMessage.msg := Msg;
           LMessage.wParam := WParam;
@@ -440,7 +443,7 @@ begin
     WM_ERASEBKGND:
       begin
         Control := GetWin32WindowInfo(Window)^.WinControl;
-        if not Control.DoubleBuffered then
+        if not TWSWinControlClass(Control.WidgetSetClass).GetDoubleBuffered(Control) then
         begin
           LMessage.msg := Msg;
           LMessage.wParam := WParam;
@@ -472,6 +475,12 @@ begin
   // create window
   FinishCreateWindow(AWinControl, Params, false);
   Result := Params.Window;
+end;
+
+class function TWin32WSScrollBar.GetDoubleBuffered(
+  const AWinControl: TWinControl): Boolean;
+begin
+  Result := GetWin32NativeDoubleBuffered(AWinControl); // double buffered scrollbar flickers on mouse-in/mouse-out on Windows 10
 end;
 
 class procedure TWin32WSScrollBar.SetParams(const AScrollBar: TCustomScrollBar);
@@ -984,6 +993,12 @@ begin
       BuddyWindowInfo:=nil;
   end;
   Result := Params.Window;
+end;
+
+class function TWin32WSCustomComboBox.GetDoubleBuffered(
+  const AWinControl: TWinControl): Boolean;
+begin
+  Result := False; // force DoubleBuffered False, see #33831
 end;
 
 class procedure TWin32WSCustomComboBox.AdaptBounds(const AWinControl: TWinControl;
@@ -1775,7 +1790,7 @@ begin
     WM_ERASEBKGND:
       begin
         Control := GetWin32WindowInfo(Window)^.WinControl;
-        if not Control.DoubleBuffered then
+        if not TWSWinControlClass(Control.WidgetSetClass).GetDoubleBuffered(Control) then
         begin
           LMessage.msg := Msg;
           LMessage.wParam := WParam;
@@ -1812,6 +1827,12 @@ begin
   Result := Params.Window;
 end;
 
+class function TWin32WSButton.GetDoubleBuffered(
+  const AWinControl: TWinControl): Boolean;
+begin
+  Result := GetWin32NativeDoubleBuffered(AWinControl);
+end;
+
 class procedure TWin32WSButton.SetDefault(const AButton: TCustomButton; ADefault: Boolean);
 var
   WindowStyle: dword;
@@ -1846,6 +1867,7 @@ begin
   with Params do
   begin
     pClassName := @ButtonClsName[0];
+    SubClassWndProc := @ButtonWndProc;
     WindowTitle := StrCaption;
   end;
   // create window
@@ -1856,7 +1878,7 @@ end;
 class function TWin32WSCustomCheckBox.GetDoubleBuffered(
   const AWinControl: TWinControl): Boolean;
 begin
-  Result := GetWin32ThemedDoubleBuffered(AWinControl);
+  Result := GetWin32NativeDoubleBuffered(AWinControl);
 end;
 
 class procedure TWin32WSCustomCheckBox.GetPreferredSize(const AWinControl: TWinControl;
@@ -1964,6 +1986,7 @@ begin
   with Params do
   begin
     pClassName := @ButtonClsName[0];
+    SubClassWndProc := @ButtonWndProc;
     WindowTitle := StrCaption;
   end;
   // create window

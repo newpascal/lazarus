@@ -113,6 +113,7 @@ function FindNextIdentifierSkipStrings(const Source: string;
     StartPos, MaxPos: integer): integer;
 function IsValidIdentPair(const NamePair: string): boolean;
 function IsValidIdentPair(const NamePair: string; out First, Second: string): boolean;
+function ExtractPasIdentifier(const Ident: string; AllowDots: Boolean): string;
 
 // line/code ends
 function SrcPosToLineCol(const s: string; Position: integer;
@@ -4818,6 +4819,38 @@ begin
   until false;
 end;
 
+function ExtractPasIdentifier(const Ident: string; AllowDots: Boolean): string;
+var
+  p: Integer;
+begin
+  p:=1;
+  Result:=Ident;
+  while p<=length(Result) do begin
+    if Result[p] in ['a'..'z','A'..'Z','_'] then begin
+      inc(p);
+      while p<=length(Result) do begin
+        case Result[p] of
+        'a'..'z','A'..'Z','_','0'..'9': inc(p);
+        '.':
+          if AllowDots then
+            break
+          else
+            Delete(Result,p,1);
+        else
+          Delete(Result,p,1);
+        end;
+      end;
+      if p>length(Result) then exit;
+      // p is now on the '.'
+      inc(p);
+    end else
+      Delete(Result,p,1);
+  end;
+  p:=length(Result);
+  if (p>0) and (Result[p]='.') then
+    Delete(Result,p,1);
+end;
+
 function GetLineIndentWithTabs(const Source: string; Position: integer;
   TabWidth: integer): integer;
 var p: integer;
@@ -5873,11 +5906,9 @@ begin
   if not IsDottedIdentifier(UnitName) then exit;
   FileAndNameSpaceFits(UnitName, FileNameFits, NameSpaceFits);
   if FileNameFits then
-    AddToTreeOfUnitFiles(TreeOfUnitFiles,FileName,UnitName,
-                       KeepDoubles);
+    AddToTreeOfUnitFiles(TreeOfUnitFiles,FileName,UnitName,KeepDoubles);
   if NameSpaceFits then
-    AddToTreeOfNamespaces(TreeOfNamespaces,UnitName,NameSpacePath,
-                          KeepDoubles)
+    AddToTreeOfNamespaces(TreeOfNamespaces,UnitName,NameSpacePath,KeepDoubles)
 end;
 
 function GatherUnitFiles(const BaseDir, SearchPath, Extensions,

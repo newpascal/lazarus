@@ -631,7 +631,9 @@ msgid "Alphabetically"
 msgstr "Aakkosjärjestys"
 
 #: lazarusidestrconsts.dlgalwaysvisiblecursor
-msgid "Always visible cursor"
+#, fuzzy
+#| msgid "Always visible cursor"
+msgid "Always keep Caret in visible area of editor"
 msgstr "Kursori näkyy aina"
 
 #: lazarusidestrconsts.dlgambigfileact
@@ -809,6 +811,10 @@ msgstr "Yhteensopivat sulkuparit"
 msgid "You cannot use docked desktop in undocked environment and vice versa."
 msgstr "Telakoitua työpäytää ei voi käyttää erillisten ikkunoiden kanssa ja päinvastoin."
 
+#: lazarusidestrconsts.dlgcaretgroupoptions
+msgid "Caret (Text Cursor)"
+msgstr ""
+
 #: lazarusidestrconsts.dlgcasesensitive
 msgid "&Case sensitive"
 msgstr "&Sama kirjainkoko"
@@ -845,9 +851,9 @@ msgstr "Testi: Tarkistetaan kääntäjän päiväys ..."
 msgid "Test: Compiling an empty file ..."
 msgstr "Testi: Käännetään tyhjä tiedosto ..."
 
-#: lazarusidestrconsts.dlgccotestmissingppu
-msgid "Test: Checking missing fpc ppu ..."
-msgstr "Testi: Tarkistetaan puuttuvat FPC:n ppu:t ..."
+#: lazarusidestrconsts.dlgccotestrtlunits
+msgid "Test: Checking RTL units ..."
+msgstr ""
 
 #: lazarusidestrconsts.dlgccotestsrcinppupaths
 msgid "Test: Checking sources in fpc ppu search paths ..."
@@ -1261,16 +1267,16 @@ msgstr "Nyt käytössä viesti-ikkunassa, hyppyhistoriassa ja hakutuloksissa."
 msgid "Cursor beyond EOL"
 msgstr "Kursori yli rivin lopun"
 
-#: lazarusidestrconsts.dlgcursorgroupoptions
-msgid "Cursor"
-msgstr "Kursori"
-
 #: lazarusidestrconsts.dlgcursorskipsselection
-msgid "Cursor skips selection"
+#, fuzzy
+#| msgid "Cursor skips selection"
+msgid "Caret skips selection"
 msgstr "Kursori ohittaa valinnan"
 
 #: lazarusidestrconsts.dlgcursorskipstab
-msgid "Cursor skips tabs"
+#, fuzzy
+#| msgid "Cursor skips tabs"
+msgid "Caret skips tabs"
 msgstr "Kursori ohittaa tabulaattorit"
 
 #: lazarusidestrconsts.dlgcustomext
@@ -2126,11 +2132,15 @@ msgid "Highlight Font Color"
 msgstr "Korostuksen fontin väri"
 
 #: lazarusidestrconsts.dlghighlightleftofcursor
-msgid "Left Of Cursor"
+#, fuzzy
+#| msgid "Left Of Cursor"
+msgid "Left Of Caret"
 msgstr "Vasemmalla kursorista"
 
 #: lazarusidestrconsts.dlghighlightrightofcursor
-msgid "Right Of Cursor"
+#, fuzzy
+#| msgid "Right Of Cursor"
+msgid "Right Of Caret"
 msgstr "Oikealla kursorista"
 
 #: lazarusidestrconsts.dlghintsparametersendernotused
@@ -2201,6 +2211,22 @@ msgstr ""
 msgid "Include system variables"
 msgstr "Ota järjestelmän muuttujat mukaan"
 
+#: lazarusidestrconsts.dlgincludewordstoidentcompl
+msgid "Include words"
+msgstr ""
+
+#: lazarusidestrconsts.dlgincludewordstoidentcompl_dontinclude
+msgid "don't include"
+msgstr ""
+
+#: lazarusidestrconsts.dlgincludewordstoidentcompl_includefromallunits
+msgid "from all units"
+msgstr ""
+
+#: lazarusidestrconsts.dlgincludewordstoidentcompl_includefromcurrentunit
+msgid "from current unit"
+msgstr ""
+
 #: lazarusidestrconsts.dlgindentsindentgroupoptions
 msgid "Indent"
 msgstr "Sisennys"
@@ -2266,7 +2292,9 @@ msgid "Jump directly to method body"
 msgstr ""
 
 #: lazarusidestrconsts.dlgkeepcursorx
-msgid "Keep cursor X position"
+#, fuzzy
+#| msgid "Keep cursor X position"
+msgid "Keep caret X position when navigating up/down"
 msgstr "Säilytä kursorin X-koordinaatti"
 
 #: lazarusidestrconsts.dlgkeylink
@@ -2864,15 +2892,29 @@ msgid "Warning"
 msgstr "Varoitus"
 
 #: lazarusidestrconsts.dlgmulticaretcolumnmode
-msgid "Multi-caret (column-select) move with cursor"
+#, fuzzy
+#| msgid "Multi-caret (column-select) move with cursor"
+msgid "Navigation keys move all carets (column-select)"
 msgstr "Moni-osoitin (sarakevalinta) siirrä kursorin mukana"
 
+#: lazarusidestrconsts.dlgmulticaretdelskipcr
+msgid "Skip delete key at EOL (do not join lines)"
+msgstr ""
+
+#: lazarusidestrconsts.dlgmulticaretgroupoptions
+msgid "Multi-caret"
+msgstr ""
+
 #: lazarusidestrconsts.dlgmulticaretmode
-msgid "Multi-caret move with cursor"
+#, fuzzy
+#| msgid "Multi-caret move with cursor"
+msgid "Navigation keys move all carets"
 msgstr "Moni-osoitin siirrä kursorin mukana"
 
 #: lazarusidestrconsts.dlgmulticaretoncolumnselection
-msgid "Enable multi caret for column selection"
+#, fuzzy
+#| msgid "Enable multi caret for column selection"
+msgid "Enable multi-caret for column selection"
 msgstr "Salli moni-osoitin sarakevalintaan"
 
 #: lazarusidestrconsts.dlgmultipleinstances
@@ -3062,7 +3104,9 @@ msgid "Persistent block"
 msgstr "Pysyvä lohko"
 
 #: lazarusidestrconsts.dlgpersistentcursor
-msgid "Persistent cursor"
+#, fuzzy
+#| msgid "Persistent cursor"
+msgid "Visible caret in unfocused editor"
 msgstr "Pysyvä kursori"
 
 #: lazarusidestrconsts.dlgpoapplication
@@ -3385,7 +3429,9 @@ msgid "Scroll past end of file"
 msgstr "Vieritä tiedostoa sen lopun yli"
 
 #: lazarusidestrconsts.dlgscrollpastendline
-msgid "Caret past end of line"
+#, fuzzy
+#| msgid "Caret past end of line"
+msgid "Allow caret to move past end of line"
 msgstr "Kursori liikkuu yli rivin lopun"
 
 #: lazarusidestrconsts.dlgseachdirectorynotfound
@@ -3457,7 +3503,9 @@ msgid "Show all units"
 msgstr "Näytä kaikki käännösyksiköt"
 
 #: lazarusidestrconsts.dlgshowcaptionsofnonvisuals
-msgid "Show captions of non-visual components"
+#, fuzzy
+#| msgid "Show captions of non-visual components"
+msgid "Show captions of nonvisual components"
 msgstr "Näytä ei-näkyvien komponenttien otsikko"
 
 #: lazarusidestrconsts.dlgshowcompiledprocedures
@@ -4299,7 +4347,9 @@ msgid "Official:"
 msgstr "Virallinen:"
 
 #: lazarusidestrconsts.lisacannotholdtcontrolsyoucanonlyputnonvisualcomponen
-msgid "A %s cannot hold TControls.%sYou can only put non visual components on it."
+#, fuzzy
+#| msgid "A %s cannot hold TControls.%sYou can only put non visual components on it."
+msgid "A %s cannot hold TControls.%sYou can only put nonvisual components on it."
 msgstr "%s ei voi sisltää TControl:ia.%sSiellä voi olla vain ei-visuaalisia komponentteja."
 
 #: lazarusidestrconsts.lisacknowledgements
@@ -4394,6 +4444,18 @@ msgstr "Lisäykset"
 #: lazarusidestrconsts.lisaddkeyworddo
 msgid "Add keyword \"do\""
 msgstr "Lisää avainsana \"do\""
+
+#: lazarusidestrconsts.lisaddmodifieroverload
+msgid "Add modifier \"overload\""
+msgstr ""
+
+#: lazarusidestrconsts.lisaddmodifieroverride
+msgid "Add modifier \"override\""
+msgstr ""
+
+#: lazarusidestrconsts.lisaddmodifierreintroduce
+msgid "Add modifier \"reintroduce\""
+msgstr ""
 
 #: lazarusidestrconsts.lisaddnewbuildmodecopyingsettingsfrom
 msgid "Add new build mode, copying settings from \"%s\""
@@ -5226,9 +5288,9 @@ msgstr "Kelvoton testihakemisto"
 msgid "Missing unit"
 msgstr "Puuttuva käännösyksikkö"
 
-#: lazarusidestrconsts.lisccomsgppunotfound
-msgid "compiled FPC unit not found: %s.ppu"
-msgstr "FPC-käännösyksikköä: %s.ppu ei löydy käännettynä"
+#: lazarusidestrconsts.lisccomsgrtlunitnotfound
+msgid "RTL unit not found: %s"
+msgstr ""
 
 #: lazarusidestrconsts.lisccomultiplecfgfound
 msgid "multiple compiler configs found: "
@@ -5246,13 +5308,13 @@ msgstr "ei ole ASCII"
 msgid "ppu exists twice: %s, %s"
 msgstr "ppu löytyy kahdesta paikasta: %s, %s"
 
-#: lazarusidestrconsts.lisccoppunotfounddetailed
-msgid "The compiled FPC unit %s.ppu was not found.%sThis typically means your fpc.cfg has a bug. Or your FPC installation is broken."
-msgstr "FPC käännösyksikköä: %s.ppu ei löydy käännettynä.%sSe tavallisesti tarkoittaa että tiedostossa fpc.cfg on virhe tai FPC:n asennus on rikki."
-
 #: lazarusidestrconsts.lisccoppuolderthancompiler
 msgid "There is a .ppu file older than the compiler itself:%s%s"
 msgstr "Löytyi itse kääntäjää vanhempi .ppu-tiedosto:%s%s"
+
+#: lazarusidestrconsts.lisccortlunitnotfounddetailed
+msgid "The RTL unit %s was not found.%sThis typically means your %s has wrong unit paths. Or your installation is broken."
+msgstr ""
 
 #: lazarusidestrconsts.lisccoseveralcompilers
 msgid "There are several Free Pascal Compilers in your path.%s%s%sMaybe you forgot to delete an old compiler?"
@@ -5777,9 +5839,9 @@ msgstr "Valitse Lazaruksen kansio"
 msgid "Choose \"make\" executable"
 msgstr "Valitse \"make\" ohjelma"
 
-#: lazarusidestrconsts.lischoosename
-msgid "Choose name"
-msgstr "Valitse nimi"
+#: lazarusidestrconsts.lischoosenameandtext
+msgid "Choose name and text"
+msgstr ""
 
 #: lazarusidestrconsts.lischooseoneoftheseitemstocreateanewfile
 msgid "Choose one of these items to create a new File"
@@ -6663,6 +6725,10 @@ msgstr "Käännä projekti"
 msgid "Compiler"
 msgstr "Kääntäjä"
 
+#: lazarusidestrconsts.liscompilercfgismissing
+msgid "%s is missing."
+msgstr ""
+
 #: lazarusidestrconsts.liscompilerdoesnotsupporttarget
 msgid "Compiler \"%s\" does not support target %s-%s"
 msgstr "Kääntäjä \"%s\" ei tue kohdetta %s-%s"
@@ -6850,6 +6916,12 @@ msgstr "Constructor koodi"
 #: lazarusidestrconsts.liscontains
 msgid "contains"
 msgstr "sisältää"
+
+#: lazarusidestrconsts.liscontents
+#, fuzzy
+msgctxt "lazarusidestrconsts.liscontents"
+msgid "Contents"
+msgstr "Sisältö"
 
 #: lazarusidestrconsts.liscontextsensitive
 msgid "Context sensitive"
@@ -8504,6 +8576,14 @@ msgstr "Liitä komponentit leikepöydältä"
 msgid "Select parent component"
 msgstr "Valitse emokomponentti"
 
+#: lazarusidestrconsts.lisdsgshownonvisualcomponents
+msgid "Show nonvisual components"
+msgstr ""
+
+#: lazarusidestrconsts.lisdsgtoggleshowingnonvisualcomponents
+msgid "Toggle showing nonvisual components"
+msgstr ""
+
 #: lazarusidestrconsts.lisduplicate
 msgid "Duplicate"
 msgstr "Päällekkäinen"
@@ -9281,6 +9361,10 @@ msgstr "Aseta oletukset"
 msgid "These are file filters that will appear in all File Open dialogs"
 msgstr "Nämä tiedostosuotimet näkyvät kaikissa 'Avaa Tiedosto' -ikkunoissa"
 
+#: lazarusidestrconsts.lisfilefound
+msgid "File found"
+msgstr ""
+
 #: lazarusidestrconsts.lisfilehaschangedsave
 msgid "File \"%s\" has changed. Save?"
 msgstr "Tiedosto \"%s\" on muuttunut. Talletetaanko?"
@@ -9549,10 +9633,6 @@ msgstr "Windowsille"
 #: lazarusidestrconsts.lisfoundversionexpected
 msgid "Found version %s, expected %s"
 msgstr "Versio %s löytyi, odotettiin versiota %s"
-
-#: lazarusidestrconsts.lisfpccfgismissing
-msgid "fpc.cfg is missing."
-msgstr "fpc.cfg puuttuu"
 
 #: lazarusidestrconsts.lisfpcfullversioneg20701
 msgid "FPC version as one number (e.g. 20701)"
@@ -10463,6 +10543,10 @@ msgstr "Kelvoton lauseke:%s%s%s%s"
 #: lazarusidestrconsts.lisinvalidexpressionhintthemakeresourcestringfunction
 msgid "Invalid expression.%sHint: The \"Make Resourcestring\" function expects a string constant in a single file. Please select the expression and try again."
 msgstr "Kelvoton lauseke.%sVihje: \"Tee resurssiteksti\" funktio olettaa merkkijonovakiota yhdessä tiedostossa. Valitse lauseke ja yritä uudelleen."
+
+#: lazarusidestrconsts.lisinvalidfilename
+msgid "Invalid file name"
+msgstr ""
 
 #: lazarusidestrconsts.lisinvalidfilter
 msgid "Invalid filter"
@@ -12997,40 +13081,6 @@ msgctxt "lazarusidestrconsts.lismenutemplateabout"
 msgid "About"
 msgstr "Tietoja"
 
-#: lazarusidestrconsts.lismenutemplatecontents
-msgid "Contents"
-msgstr "Sisältö"
-
-#: lazarusidestrconsts.lismenutemplatedescriptionstandardeditmenu
-msgid "Standard Edit Menu"
-msgstr "Standardi Muokkaa-valikko"
-
-#: lazarusidestrconsts.lismenutemplatedescriptionstandardfilemenu
-msgid "Standard File Menu"
-msgstr "Standardi Tiedosto-valikko"
-
-#: lazarusidestrconsts.lismenutemplatedescriptionstandardhelpmenu
-msgid "Standard Help Menu"
-msgstr "Standardi Ohje-valikko"
-
-#: lazarusidestrconsts.lismenutemplatefind
-msgctxt "lazarusidestrconsts.lismenutemplatefind"
-msgid "Find"
-msgstr "Etsi"
-
-#: lazarusidestrconsts.lismenutemplatefindnext
-msgctxt "lazarusidestrconsts.lismenutemplatefindnext"
-msgid "Find Next"
-msgstr "Etsi seuraava"
-
-#: lazarusidestrconsts.lismenutemplateopenrecent
-msgid "Open Recent"
-msgstr "Avaa viimeksi esillä olleista"
-
-#: lazarusidestrconsts.lismenutemplatetutorial
-msgid "Tutorial"
-msgstr "Käyttöopastus"
-
 #: lazarusidestrconsts.lismenutogglecomment
 msgid "Toggle Comment in Selection"
 msgstr "Valinnan kommentti päälle/pois"
@@ -14468,6 +14518,10 @@ msgstr "Muokkaa yleisiä asetuksia"
 msgid "File Properties"
 msgstr "Tiedoston ominaisuudet"
 
+#: lazarusidestrconsts.lispckeditfpmakepackage
+msgid "(fpmake)"
+msgstr ""
+
 #: lazarusidestrconsts.lispckeditinstall
 msgid "Install"
 msgstr "Asenna"
@@ -15747,6 +15801,10 @@ msgstr "Maximiversio (valinnainen):"
 msgid "Minimum Version (optional):"
 msgstr "Pienin versio (valinnainen):"
 
+#: lazarusidestrconsts.lisprojaddnewfpmakerequirement
+msgid "New FPMake Requirement"
+msgstr ""
+
 #: lazarusidestrconsts.lisprojaddnewrequirement
 msgid "New Requirement"
 msgstr "Uusi riippuvuus"
@@ -16018,6 +16076,10 @@ msgstr "Kysy arvoa"
 #: lazarusidestrconsts.lisproperties
 msgid "Properties (replace or remove)"
 msgstr "Ominaisuudet (korvaa tai poista)"
+
+#: lazarusidestrconsts.lisproperty
+msgid "%s property"
+msgstr ""
 
 #: lazarusidestrconsts.lisprotected
 msgid "Protected"
@@ -16913,6 +16975,10 @@ msgstr "Näytä lisätieto-osa"
 #: lazarusidestrconsts.lisshowmessagetypeid
 msgid "Show Message Type ID"
 msgstr "Näytä viestin tyyppi ID"
+
+#: lazarusidestrconsts.lisshowmultiplelines
+msgid "Show multiple lines"
+msgstr ""
 
 #: lazarusidestrconsts.lisshowonlymodified
 msgid "Show only modified"
@@ -17839,6 +17905,14 @@ msgstr "Näitä käännösyksikköjä ei löydy:"
 #: lazarusidestrconsts.listhesourcesofthefreepascalpackagesarerequiredforbro
 msgid "The sources of the Free Pascal packages are required for browsing and code completion. For example it has the file \"%s\"."
 msgstr "Free Pascalin pakettien lähdekoodit tarvitaan niiden tutkimista ja koodin täydennystä varten. Niissä on mukana esim. tiedosto \"%s\"."
+
+#: lazarusidestrconsts.listhetargetdirectoryisafile
+msgid "The target directory is a file:%s"
+msgstr ""
+
+#: lazarusidestrconsts.listhetargetfilenameisadirectory
+msgid "The target file name is a directory."
+msgstr ""
 
 #: lazarusidestrconsts.listhetargetisnotwritable
 msgid "The target %s is not writable."
@@ -20457,6 +20531,14 @@ msgstr "Valitse sivu ylös"
 msgid "Select Right"
 msgstr "Valitse oikea"
 
+#: lazarusidestrconsts.srkmecselsmartwordleft
+msgid "Smart select word left (start/end of word)"
+msgstr ""
+
+#: lazarusidestrconsts.srkmecselsmartwordright
+msgid "Smart select word right (start/end of word)"
+msgstr ""
+
 #: lazarusidestrconsts.srkmecselsticky
 msgid "Start sticky selecting"
 msgstr "Aloita tahmea valinta"
@@ -20520,6 +20602,14 @@ msgstr "Näytä koodin konteksti"
 #: lazarusidestrconsts.srkmecshowexecutionpoint
 msgid "show execution point"
 msgstr "näytä suorituskohta"
+
+#: lazarusidestrconsts.srkmecsmartwordleft
+msgid "Smart move cursor left (start/end of word)"
+msgstr ""
+
+#: lazarusidestrconsts.srkmecsmartwordright
+msgid "Smart move cursor right (start/end of word)"
+msgstr ""
 
 #: lazarusidestrconsts.srkmecstopprogram
 msgid "stop program"

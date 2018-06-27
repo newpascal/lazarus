@@ -25,9 +25,9 @@ unit frmmain;
 interface
 
 uses
-  Classes, SysUtils, fpJSON, jsonscanner, JSONParser,
+  Classes, SysUtils, fpJSON, jsonscanner, JSONParser, frarest, ExtCtrls,
   Forms, Controls, Dialogs, ActnList, Menus, ComCtrls, IniPropStorage, PropertyStorage,
-  DefaultTranslator;
+  DefaultTranslator, SynEdit, SynHighlighterJScript;
 
 type
 
@@ -51,28 +51,37 @@ type
     FCurrentFind: TTreeNode;
     FDocNo: Integer;
     FFileName: String;
+    FIsRequestResult: Boolean;
     FJSONData: TJSONData;
     FModified: Boolean;
     FOptions: TViewerOptions;
     FTreeView: TTreeview;
+    FPageControl : TPageControl;
+    FSyn : TSynEdit;
+    procedure DoTabChange(Sender: TObject);
     procedure SetCurrentFind(AValue: TTreeNode);
+    procedure SetDocNo(AValue: Integer);
     procedure SetFileName(AValue: String);
+    procedure SetIsRequestResult(AValue: Boolean);
     procedure SetJSONData(AValue: TJSONData);
     procedure SetModified(AValue: Boolean);
   Protected
-    Procedure SetCaption;
+    procedure CreatePageControl; virtual;
+    Procedure SetCaption; virtual;
   Public
     Constructor Create(AOwner : TComponent); override;
     Destructor Destroy; override;
     procedure ShowJSONData(AParent: TTreeNode; Data: TJSONData);
     procedure ShowJSONDocument;
+    Procedure ShowJSONDocumentText;
     Property FileName : String read FFileName Write SetFileName;
     Property TVJSON : TTreeview Read FTreeView;
     // We own JSON
     Property Root : TJSONData Read FJSONData Write SetJSONData;
     Property CurrentFind : TTreeNode Read FCurrentFind Write SetCurrentFind;
     Property Modified : Boolean Read FModified Write SetModified;
-    Property DocNo : Integer Read FDocNo Write FDocNo;
+    Property DocNo : Integer Read FDocNo Write SetDocNo;
+    Property IsRequestResult : Boolean Read FIsRequestResult Write SetIsRequestResult;
     // Just a reference
     Property Options : TViewerOptions Read FOptions Write FOptions;
   end;
@@ -81,6 +90,7 @@ type
     ACopy: TAction;
     AClose: TAction;
     ACreateCode: TAction;
+    AAddToFavourites: TAction;
     AFindNext: TAction;
     AFind: TAction;
     AExpandCurrentContainer: TAction;
@@ -109,6 +119,9 @@ type
     MenuItem12: TMenuItem;
     MenuItem13: TMenuItem;
     MenuItem14: TMenuItem;
+    MenuItem15: TMenuItem;
+    MSepFavourites: TMenuItem;
+    MFavourites: TMenuItem;
     MIGenCode: TMenuItem;
     MenuItem2: TMenuItem;
     MenuItem3: TMenuItem;
@@ -169,6 +182,9 @@ type
     TBNewString: TToolButton;
     TBNewArray: TToolButton;
     ToolButton5: TToolButton;
+    TBShowRest: TToolButton;
+    procedure AAddToFavouritesExecute(Sender: TObject);
+    procedure AAddToFavouritesUpdate(Sender: TObject);
     procedure ACloseExecute(Sender: TObject);
     procedure ACloseUpdate(Sender: TObject);
     procedure ACopyExecute(Sender: TObject);
@@ -201,6 +217,7 @@ type
     procedure ANewExecute(Sender: TObject);
     procedure AOpenExecute(Sender: TObject);
     procedure FDJSONFind(Sender: TObject);
+    procedure FormClose(Sender: TObject; var CloseAction: TCloseAction);
     procedure FormCloseQuery(Sender: TObject; var CanClose: boolean);
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
@@ -214,23 +231,33 @@ type
     procedure MISortMembersClick(Sender: TObject);
     procedure MIStrictClick(Sender: TObject);
     procedure PCJSONCloseTabClicked(Sender: TObject);
-    procedure PSMainStoredValues0Restore(Sender: TStoredValue;
-      var Value: TStoredType);
-    procedure PSMainStoredValues1Restore(Sender: TStoredValue;
-      var Value: TStoredType);
-    procedure PSMainStoredValues2Restore(Sender: TStoredValue;
-      var Value: TStoredType);
-    procedure PSMainStoredValues3Restore(Sender: TStoredValue;
-      var Value: TStoredType);
-    procedure PSMainStoredValues6Restore(Sender: TStoredValue;
-      var Value: TStoredType);
+    procedure PSMainStoredValues0Restore(Sender: TStoredValue; var Value: TStoredType);
+    procedure PSMainStoredValues1Restore(Sender: TStoredValue; var Value: TStoredType);
+    procedure PSMainStoredValues2Restore(Sender: TStoredValue; var Value: TStoredType);
+    procedure PSMainStoredValues3Restore(Sender: TStoredValue; var Value: TStoredType);
+    procedure PSMainStoredValues6Restore(Sender: TStoredValue; var Value: TStoredType);
+    procedure PSMainStoredValues7Restore(Sender: TStoredValue; var Value: TStoredType);
+    procedure TBShowRestClick(Sender: TObject);
     procedure TVJSONEdited(Sender: TObject; Node: TTreeNode; var S: string);
     procedure TVJSONEditing(Sender: TObject; Node: TTreeNode;
       var AllowEdit: Boolean);
   private
+    FFavouritesFileName : String;
     FOptions : TViewerOptions;
+    PRest : TPanel;
+    FRest : TRestFrame;
+    FSplitter : TSplitter;
+    FRestPanelHeight : Integer;
+    procedure BuildFavourites;
     function CheckClose(T: TJSONTab): Boolean;
     procedure CloseCurrent;
+    procedure DoFavouriteClick(Sender: TObject);
+    procedure DoRebuildFavourites(Sender: TObject);
+    procedure GetCurrentJSON(Sender: TObject; Stream: TStream);
+    function GetDocNo: Integer;
+    procedure ShowRequestJSON(Sender: TObject; Stream: TStream);
+    Procedure ShowRestpanel;
+    Procedure HideRestPanel;
     function GetCurrentFind: TTreeNode;
     function GetCurrenTJSONTab: TJSONTab;
     function GetCurrentRoot: TJSONData;
@@ -311,20 +338,69 @@ begin
   SetCaption;
 end;
 
+procedure TJSONTab.SetIsRequestResult(AValue: Boolean);
+begin
+  if FIsRequestResult=AValue then Exit;
+  FIsRequestResult:=AValue;
+  SetCaption;
+end;
+
 procedure TJSONTab.SetCurrentFind(AValue: TTreeNode);
 begin
   if FCurrentFind=AValue then Exit;
   FCurrentFind:=AValue;
 end;
 
+procedure TJSONTab.SetDocNo(AValue: Integer);
+begin
+  if FDocNo=AValue then Exit;
+  FDocNo:=AValue;
+  SetCaption;
+end;
+
+procedure TJSONTab.DoTabChange(Sender: TObject);
+begin
+  If (PageControl.ActivePageIndex=1) then
+    ShowJSONDocumentText;
+end;
+
 constructor TJSONTab.Create(AOwner: TComponent);
 
 begin
   inherited Create(AOwner);
-  FTreeView:=TTreeview.Create(Self);
-  FTreeView.Parent:=Self;
+  CreatePageControl;
+end;
+
+
+Procedure TJSONTab.CreatePageControl;
+
+Var
+  TS : TTabSheet;
+
+begin
+  FPageControl:=TPageControl.Create(Self.Owner);
+  FPageControl.Parent:=Self;
+  FPageControl.Align:=alClient;
+  FPageControl.TabPosition:=tpBottom;
+  FPageControl.OnChange:=@DoTabChange;
+  // Visual
+  TS:=TTabsheet.Create(Self.Owner);
+  TS.Caption:=STabCaptionVisual;
+  TS.Parent:=FPageControl;
+  FTreeView:=TTreeview.Create(Self.Owner);
+  FTreeView.Parent:=TS;
   FTreeView.Options:= [tvoAutoItemHeight,tvoKeepCollapsedNodes,tvoRightClickSelect,tvoShowButtons,tvoShowLines,tvoShowRoot,tvoToolTips,tvoThemedDraw];
   FTreeView.Align:=alClient;
+  // Raw
+  TS:=TTabsheet.Create(Self.Owner);
+  TS.Caption:=STabCaptionRaw;
+  TS.Parent:=FPageControl;
+  FSyn:=TSynEdit.Create(Self.Owner);
+  FSyn.align:=alClient;
+  FSyn.Parent:=TS;
+  FSyn.Highlighter:=TSynJScriptSyn.Create(Self.Owner);
+  FSyn.Highlighter.Enabled:=True;
+  FSyn.ReadOnly:=True;
   SetCaption;
 end;
 
@@ -342,7 +418,10 @@ Var
 begin
   S:=ExtractFileName(FFileName);
   if S='' then
-    S:=Format('New file %d',[docNo]);
+    if IsRequestResult then
+      S:=Format('Request %d result',[docNo])
+    else
+      S:=Format('New file %d',[docNo]);
   if Modified then
     S:=S+' *';
   Caption:=S;
@@ -428,6 +507,19 @@ procedure TMainForm.PSMainStoredValues6Restore(Sender: TStoredValue;
   var Value: TStoredType);
 begin
   FOptions.FQuoteStrings:=StrToIntDef(Value,0)=1;
+end;
+
+procedure TMainForm.PSMainStoredValues7Restore(Sender: TStoredValue; var Value: TStoredType);
+begin
+  FRestPanelHeight:=StrToIntDef(Value,0);
+end;
+
+procedure TMainForm.TBShowRestClick(Sender: TObject);
+begin
+  if TBShowRest.Down then
+    ShowRestPanel
+  else
+    HideRestPanel;
 end;
 
 procedure TMainForm.TVJSONEdited(Sender: TObject; Node: TTreeNode; var S: string);
@@ -550,7 +642,8 @@ begin
   SetCaption;
 end;
 
-function TMainForm.NewJSONTab: TJSONTab;
+function TMainForm.GetDocNo : Integer;
+
 Var
   I,DC : Integer;
 
@@ -560,6 +653,16 @@ begin
     If (PCJSON.Pages[i] is TJSONTab)
       and (TJSONTab(PCJSON.Pages[i]).FileName='') then
       Inc(DC);
+  Result:=DC;
+end;
+
+function TMainForm.NewJSONTab: TJSONTab;
+
+Var
+  DC : Integer;
+
+begin
+  DC:=GetDocNo;
   Result:=TJSONTab.Create(Self);
   Result.PageControl:=PCJSON;
   Result.TVJSON.PopupMenu:=PMTreeView;
@@ -762,8 +865,22 @@ begin
 end;
 
 procedure TMainForm.ACloseExecute(Sender: TObject);
+
 begin
   CloseCurrent;
+end;
+
+procedure TMainForm.AAddToFavouritesUpdate(Sender: TObject);
+
+begin
+  (Sender as TAction).Enabled:=Assigned(FRest) and (FRest.HaveFavouriteData);
+end;
+
+procedure TMainForm.AAddToFavouritesExecute(Sender: TObject);
+
+begin
+  if Assigned(FRest) then
+    FRest.AddtoFavourites;
 end;
 
 procedure TMainForm.CloseCurrent;
@@ -775,6 +892,82 @@ begin
   T:=CurrentJSONTab;
   if CheckClose(t) then
     T.Free;
+end;
+
+procedure TMainForm.GetCurrentJSON(Sender: TObject; Stream: TStream);
+
+Var
+  S : TJSONStringType;
+
+begin
+  if Assigned(CurrentData) then
+    begin
+    S:=CurrentData.FormatJSON();
+    Stream.WriteBuffer(S[1],Length(S));
+    end;
+end;
+
+procedure TMainForm.ShowRequestJSON(Sender: TObject; Stream: TStream);
+
+Var
+  D : TJSONData;
+  DC : Integer;
+
+begin
+  Stream.Position:=0;
+  D:=GetJSON(Stream);
+  DC:=GetDocNo;
+  With NewDocument do
+    begin
+    Root:=D;
+    IsRequestResult:=True;
+    DocNo:=DC;
+    end;
+end;
+
+procedure TMainForm.ShowRestpanel;
+
+
+begin
+  if Assigned(PRest) then
+    begin
+    PRest.Visible:=True;
+    FSplitter.Visible:=True;
+    Exit;
+    end;
+  PRest:=TPanel.Create(Self);
+  FRest:=TRestFrame.Create(self);
+  PRest.BevelInner:=bvNone;
+  PRest.BevelOuter:=bvNone;
+  PRest.Top:=TBJSON.Top+TBJSON.Height+3;
+  if FRestPanelHeight>0 then
+    PRest.Height:=FRestPanelHeight
+  else
+    PRest.Height:=FRest.Height+1;
+  PRest.Parent:=Self;
+  PRest.Align:=alTop;
+  FSplitter:=TSplitter.Create(Self);
+  FSplitter.Align:=alTop;
+  FSplitter.Top:=PRest.Top+PRest.Height+3;
+  FSplitter.Parent:=Self;
+  FRest.Parent:=PRest;
+  FRest.Align:=alClient;
+  FRest.OnSendContent:=@GetCurrentJSON;
+  FRest.OnContentReceived:=@ShowRequestJSON;
+  FRest.OnFavouritesChanged:=@DoRebuildFavourites;
+  if FileExists(FFavouritesFileName) then
+    FRest.LoadFavourites(FFavouritesFileName);
+  MFavourites.Visible:=True;
+end;
+
+procedure TMainForm.HideRestPanel;
+
+begin
+  if not Assigned(PRest) then
+    Exit;
+  PRest.Visible:=False;
+  FSplitter.Visible:=False;
+  MFavourites.Visible:=False;
 end;
 
 Function TMainForm.CheckClose(T : TJSONTab) : Boolean;
@@ -1150,7 +1343,8 @@ procedure TMainForm.AOpenExecute(Sender: TObject);
 begin
   With ODJSON do
     begin
-    FileName:=CurrentJSONTab.FileName;
+    if Assigned(CurrentJSONTab) then
+      FileName:=CurrentJSONTab.FileName;
     If Execute then
       OpenFile(FileName)
     end;
@@ -1183,6 +1377,14 @@ begin
   else
     ShowMessage(SNoMoreMatches);
   CurrentFind:=N;
+end;
+
+procedure TMainForm.FormClose(Sender: TObject; var CloseAction: TCloseAction);
+begin
+  if Assigned(FRest) then
+    PSMain.StoredValue['RestPanelHeight']:=IntToStr(FRest.Parent.Height);
+  if Assigned(FRest) then
+    FRest.SaveFavourites(FFavouritesFileName);
 end;
 
 Function TMainForm.GetNextSearchNode(Anode : TTreeNode) : TTreeNode;
@@ -1266,6 +1468,7 @@ begin
   S:=ExtractFilePath(S);
   If not ForceDirectories(S) then
     ShowMessage(Format(SErrCreatingConfigDir,[S]));
+  FFavouritesFileName:=S+'favourites.json';
   PSMain.Active:=True;
 {$IF FPC_FULLVERSION<30002}
   MIAllowTrailingComma.Visible:=False;
@@ -1285,13 +1488,53 @@ procedure TMainForm.FormShow(Sender: TObject);
 begin
   if (ParamCount>0)  and FileExists(ParamStr(1)) then
     OpenFile(ParamStr(1))
-  else
-    NewDocument;
+//  else
+//    NewDocument;
 end;
 
 procedure TMainForm.HaveData(Sender: TObject);
 begin
   (Sender as TAction).Enabled:=(CurrentRoot<>Nil);
+end;
+
+Type
+   TFavouriteMenuitem = Class(TMenuItem)
+     RequestData : TRequestData;
+   end;
+
+procedure TMainForm.DoFavouriteClick(Sender : TObject);
+
+begin
+  if Assigned(FRest) then
+    FRest.ApplyFavourite((Sender as TFavouriteMenuitem).RequestData);
+end;
+
+procedure TMainForm.DoRebuildFavourites(Sender: TObject);
+begin
+  BuildFavourites;
+end;
+
+procedure TMainForm.BuildFavourites;
+
+Var
+  I : integer;
+  M : TFavouriteMenuitem;
+  A : Array of TMenuItem;
+
+begin
+  For I:=MFavourites.Count-1 downto 0 do
+    if MFavourites.Items[i] is TFavouriteMenuitem then
+      MFavourites.Items[i].Free;
+  SetLength(A,FRest.Favourites.Count);
+  For I:=0 to FRest.Favourites.Count-1 do
+    begin
+    M:=TFavouriteMenuitem.Create(Self);
+    M.RequestData:=FRest.Favourites[i];
+    M.Caption:=FRest.Favourites[i].Name;
+    M.OnClick:=@DoFavouriteClick;
+    A[i]:=M;
+    end;
+  MFavourites.Add(A);
 end;
 
 procedure TMainForm.MIAllowTrailingCommaClick(Sender: TObject);
@@ -1372,8 +1615,12 @@ begin
   finally
     S.Free;
   end;
-  NewDocument.FileName:=AFileName;
-  NewDocument.Root:=D;
+  With NewDocument do
+      begin
+      FileName:=AFileName;
+      Root:=D;
+      Modified:=False;
+      end;
   SetCaption;
 //  NewDocument.ShowJSONDocument;
 end;
@@ -1381,6 +1628,7 @@ end;
 procedure TJSONTab.ShowJSONDocument;
 
 begin
+  ShowJSONDocumentText;
   With TVJSON.Items do
     begin
     BeginUpdate;
@@ -1397,6 +1645,11 @@ begin
       EndUpdate;
     end;
     end;
+end;
+
+procedure TJSONTab.ShowJSONDocumentText;
+begin
+  FSyn.Text:=Root.FormatJSON();
 end;
 
 procedure TJSONTab.ShowJSONData(AParent : TTreeNode; Data : TJSONData);

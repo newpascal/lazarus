@@ -64,7 +64,7 @@ uses
   // IDE
   LazarusIDEStrConsts, IDEProcs, DialogProcs, IDEOptionDefs, EnvironmentOpts,
   PackageDefs, Project, PackageEditor, AddToProjectDlg, AddPkgDependencyDlg,
-  InputHistory, MainBase, ProjPackChecks, PackageLinks;
+  InputHistory, MainBase, ProjPackChecks, PackageLinks, AddFPMakeDependencyDlg;
 
 type
   TOnAddUnitToProject =
@@ -93,6 +93,7 @@ type
     FilterEdit: TTreeFilterEdit;
     MenuItem1: TMenuItem;
     MenuItem2: TMenuItem;
+    mnuAddFPMakeReq: TMenuItem;
     mnuAddEditorFiles: TMenuItem;
     mnuAddDiskFile: TMenuItem;
     mnuAddDiskFiles: TMenuItem;
@@ -126,6 +127,7 @@ type
     procedure mnuAddBitBtnClick(Sender: TObject);
     procedure mnuAddDiskFilesClick(Sender: TObject);
     procedure mnuAddEditorFilesClick(Sender: TObject);
+    procedure mnuAddFPMakeReqClick(Sender: TObject);
     procedure mnuAddReqClick(Sender: TObject);
     procedure MoveDependencyUpClick(Sender: TObject);
     procedure MoveDependencyDownClick(Sender: TObject);
@@ -177,6 +179,7 @@ type
     function AddOneFile(aFilename: string): TModalResult;
     procedure DoAddMoreDialog(AInitTab: TAddToProjectType);
     procedure DoAddDepDialog;
+    procedure DoAddFPMakeDepDialog;
     procedure FreeNodeData(Typ: TPENodeType);
     function CreateNodeData(Typ: TPENodeType; aName: string; aRemoved: boolean): TPENodeData;
     procedure SetDependencyDefaultFilename(AsPreferred: boolean);
@@ -377,6 +380,11 @@ begin
   DoAddMoreDialog(a2pEditorFiles);
 end;
 
+procedure TProjectInspectorForm.mnuAddFPMakeReqClick(Sender: TObject);
+begin
+  DoAddFPMakeDepDialog;
+end;
+
 procedure TProjectInspectorForm.mnuAddReqClick(Sender: TObject);
 begin
   DoAddDepDialog;
@@ -526,6 +534,28 @@ begin
   end;
 end;
 
+procedure TProjectInspectorForm.DoAddFPMakeDepDialog;
+var
+  Deps: TPkgDependencyList;
+  i: Integer;
+  Resu: TModalResult;
+begin
+  Resu:=ShowAddFPMakeDependencyDlg(LazProject, Deps);
+  try
+    if (Resu<>mrOK) or (Deps.Count=0) then exit;
+    try
+      BeginUpdate;
+      for i := 0 to Deps.Count-1 do
+        OnAddDependency(Self, Deps[i]);
+      FNextSelectedPart:=Deps[Deps.Count-1];
+    finally
+      EndUpdate;
+    end;
+  finally
+    Deps.Free;
+  end;
+end;
+
 procedure TProjectInspectorForm.CopyMoveToDirMenuItemClick(Sender: TObject);
 begin
   OnCopyMoveFiles(Self);
@@ -651,7 +681,8 @@ begin
         else
           SingleSelectedDep:=nil;
         inc(CanRemoveCount);
-        inc(CanOpenCount);
+        if Dependency.DependencyType=pdtLazarus then
+          inc(CanOpenCount);
         if Dependency.RequiredPackage<>nil then
           inc(HasValidDep);
         if (Dependency.DefaultFilename<>'') then
@@ -766,7 +797,7 @@ begin
              PkgLinks.Free;
              Exit;
           end;
-        end else if Item is TPkgDependency then begin
+        end else if (Item is TPkgDependency) and (TPkgDependency(Item).DependencyType=pdtLazarus) then begin
           CurDependency:=TPkgDependency(Item);
           if CurDependency.LoadPackageResult = lprSuccess then begin
             if PackageEditingInterface.DoOpenPackageWithName(CurDependency.PackageName,[],false)<>mrOk then begin
@@ -836,7 +867,7 @@ var
   TVNode: TTreeNode;
   NodeData: TPENodeData;
   Item: TObject;
-  Msg: String;
+  Msg, Cap: String;
   DeleteCount: Integer;
   CurFile: TUnitInfo;
 begin
@@ -867,7 +898,11 @@ begin
     if DeleteCount=0 then exit;
     if DeleteCount>1 then
       Msg:=Format(lisProjInspRemoveItemsF, [IntToStr(DeleteCount)]);
-    if IDEMessageDialog(lisProjInspConfirmDeletingDependency,
+    if CurFile<>nil then
+      Cap:=lisProjInspConfirmRemovingFile
+    else
+      Cap:=lisProjInspConfirmDeletingDependency;
+    if IDEMessageDialog(Cap,
       Msg, mtConfirmation,[mbYes,mbNo])<>mrYes then exit;
 
     // delete
@@ -1063,21 +1098,22 @@ begin
   OptionsBitBtn := CreateToolButton('OptionsBitBtn', lisOptions, lisPckEditEditGeneralOptions, 'menu_environment_options', @OptionsBitBtnClick);
   OptionsBitBtn.DropdownMenu := TSetBuildModeToolButton.TBuildModeMenu.Create(Self);
   OptionsBitBtn.Style := tbsDropDown;
-  HelpBitBtn    := CreateToolButton('HelpBitBtn', GetButtonCaption(idButtonHelp), lisMenuOnlineHelp, 'menu_help', @HelpBitBtnClick);
+  HelpBitBtn    := CreateToolButton('HelpBitBtn', GetButtonCaption(idButtonHelp), lisMenuOnlineHelp, 'btn_help', @HelpBitBtnClick);
 
   AddBitBtn.DropdownMenu:=AddPopupMenu;
   mnuAddDiskFile.Caption:=lisPckEditAddFilesFromFileSystem;
   mnuAddDiskFiles.Caption:=lisAddFilesInDirectory;
   mnuAddEditorFiles.Caption:=lisProjAddEditorFile;
   mnuAddReq.Caption:=lisProjAddNewRequirement;
+  mnuAddFPMakeReq.Caption:=lisProjAddNewFPMakeRequirement;
 
-  TIDEImages.AssignImage(OpenButton.Glyph, 'laz_open');
+  IDEImages.AssignImage(OpenButton, 'laz_open');
   OpenButton.Caption:='';
   OpenButton.Hint:=lisOpenFile2;
   SortAlphabeticallyButton.Hint:=lisPESortFilesAlphabetically;
-  TIDEImages.AssignImage(SortAlphabeticallyButton.Glyph, 'pkg_sortalphabetically');
+  IDEImages.AssignImage(SortAlphabeticallyButton, 'pkg_sortalphabetically');
   DirectoryHierarchyButton.Hint:=lisPEShowDirectoryHierarchy;
-  TIDEImages.AssignImage(DirectoryHierarchyButton.Glyph, 'pkg_hierarchical');
+  IDEImages.AssignImage(DirectoryHierarchyButton, 'pkg_hierarchical');
 
   with ItemsTreeView do begin
     FFilesNode:=Items.Add(nil, dlgEnvFiles);
@@ -1190,6 +1226,8 @@ begin
           if OPMInterface<>nil then
             if FindOnlinePackageLink(Dependency)<>nil then
               NodeText:=NodeText+' '+lisPckEditAvailableOnline;
+        if Dependency.DependencyType=pdtFPMake then
+          NodeText:=NodeText+' '+lisPckEditFPMakePackage;
         // Add the required package under the branch
         ANodeData := CreateNodeData(penDependency, Dependency.PackageName, False);
         RequiredBranch.AddNodeData(NodeText, ANodeData);
@@ -1275,7 +1313,7 @@ begin
     for i:=0 to ItemsTreeView.Items.Count-1 do begin
       TVNode:=ItemsTreeView.Items[i];
       if not GetNodeDataItem(TVNode,NodeData,Item) then continue;
-      if not (Item is TPkgDependency) then continue;
+      if not (Item is TPkgDependency) or (TPkgDependency(Item).DependencyType=pdtFPMake) then continue;
       CurDependency:=TPkgDependency(Item);
       NodeText:=CurDependency.AsString;
       ImageIndex:=ImageIndexRequired;
@@ -1532,7 +1570,7 @@ begin
         if CurUnitInfo<>LazProject.MainUnitInfo then
           inc(CanRemoveCount);
       end else if Item is TPkgDependency then begin
-        if not NodeData.Removed then begin
+        if not NodeData.Removed and (TPkgDependency(Item).DependencyType=pdtLazarus) then begin
           inc(CanRemoveCount);
           inc(CanOpenCount);
         end;

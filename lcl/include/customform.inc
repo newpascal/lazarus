@@ -1905,10 +1905,16 @@ begin
        (GetParentForm(AWinControl) <> Self) or
        not ((csLoading in ComponentState) or AWinControl.CanFocus) then
     begin
-      DebugLn('TCustomForm.SetActiveControl ',DbgSName(Self),' AWinControl=',DbgSName(AWinControl),' GetParentForm(AWinControl)=',
-              DbgSName(GetParentForm(AWinControl)),' csLoading=',dbgs(csLoading in ComponentState),' AWinControl.CanFocus=',
-              dbgs((AWinControl<>nil) and AWinControl.CanFocus),' IsControlVisible=',dbgs((AWinControl<>nil) and AWinControl.IsControlVisible),
-              ' Enabled=',dbgs((AWinControl<>nil) and AWinControl.Enabled));
+      DebugLn(['TCustomForm.SetActiveControl ',DbgSName(Self),' AWinControl=',DbgSName(AWinControl),' GetParentForm(AWinControl)=',
+              DbgSName(GetParentForm(AWinControl)),'=Self=',GetParentForm(AWinControl) = Self,
+              ' csLoading=',csLoading in ComponentState,
+              ' AWinControl.CanFocus=',AWinControl.CanFocus,
+              ' IsControlVisible=',AWinControl.IsControlVisible,
+              ' Enabled=',AWinControl.Enabled]);
+      while AWinControl<>nil do begin
+        debugln(['  ',DbgSName(AWinControl),' IsControlVisible=',AWinControl.IsControlVisible,' Enabled=',AWinControl.Enabled,' CanFocus=',AWinControl.CanFocus]);
+        AWinControl:=AWinControl.Parent;
+      end;
       {$IFDEF VerboseFocus}
       RaiseGDBException(SCannotFocus);
       {$ELSE}
@@ -2048,7 +2054,7 @@ begin
     begin
       Include(FFormState, fsCreating);
       try
-         ProcessResource;
+        ProcessResource;
       finally
         Exclude(FFormState, fsCreating);
       end;
@@ -2061,11 +2067,11 @@ end;
 procedure TCustomForm.ProcessResource;
 begin
   if not InitResourceComponent(Self, TForm) then
-  if RequireDerivedFormResource then
-    raise EResNotFound.CreateFmt(
-      rsFormResourceSNotFoundForResourcelessFormsCreateNew, [ClassName])
-  else
-    DebugLn(Format(rsFormResourceSNotFoundForResourcelessFormsCreateNew, [ClassName]));
+    if RequireDerivedFormResource then
+      raise EResNotFound.CreateFmt(
+        rsFormResourceSNotFoundForResourcelessFormsCreateNew, [ClassName])
+    else
+      DebugLn(Format(rsFormResourceSNotFoundForResourcelessFormsCreateNew, [ClassName]));
 end;
 
 {------------------------------------------------------------------------------
@@ -2083,6 +2089,11 @@ begin
   FShowInTaskbar := stDefault;
   FAlphaBlend := False;
   FAlphaBlendValue := 255;
+  case Application.DoubleBuffered of
+    adbDefault: FDoubleBuffered := TWSCustomFormClass(WidgetSetClass).GetDefaultDoubleBuffered;
+    adbTrue: FDoubleBuffered := True;
+    adbFalse: FDoubleBuffered := False;
+  end;
   // set border style before handle is allocated
   if not (fsBorderStyleChanged in FFormState) then
     FFormBorderStyle:= bsSizeable;

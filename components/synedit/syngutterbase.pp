@@ -5,8 +5,13 @@ unit SynGutterBase;
 interface
 
 uses
-  Classes, SysUtils, Graphics, Controls, Menus, math, LCLProc, SynEditMarks,
-  SynEditMiscClasses, SynTextDrawer, SynEditMouseCmds, SynEditFoldedView;
+  Classes, SysUtils, math,
+  // LCL
+  LCLProc, Graphics, Controls, Menus,
+  // LazUtils
+  LazMethodList,
+  // SynEdit
+  SynEditMarks, SynEditMiscClasses, SynTextDrawer, SynEditMouseCmds, SynEditFoldedView;
 
 type
 
@@ -52,7 +57,6 @@ type
     procedure SetVisible(const AValue: boolean);
     procedure SetWidth(Value: integer);
   protected
-    procedure DoAutoSize;
     procedure SetChildBounds;
     procedure DoChange(Sender: TObject);
     procedure DoResize(Sender: TObject);
@@ -72,6 +76,7 @@ type
     procedure Assign(Source: TPersistent); override;
     procedure RecalcBounds;
     procedure ScalePPI(const AScaleFactor: Double);
+    procedure DoAutoSize;
     function MaybeHandleMouseAction(var AnInfo: TSynEditMouseActionInfo;
                  HandleActionProc: TSynEditMouseActionHandler): Boolean; virtual;
     procedure ResetMouseActions; virtual; // set mouse-actions according to current Options / may clear them
@@ -431,7 +436,11 @@ begin
   NewWidth := FLeftOffset + FRightOffset;
   for i := PartCount-1 downto 0 do
     if Parts[i].Visible then
+    begin
+      if Parts[i].AutoSize then
+        Parts[i].DoAutoSize;
       NewWidth := NewWidth + Parts[i].Width;
+    end;
 
   if FWidth = NewWidth then exit;
 
@@ -604,6 +613,8 @@ var
   NewWidth: Integer;
 begin
   NewWidth := PreferedWidth;
+  if FSynEdit<>nil then
+    NewWidth := FSynEdit.Scale96ToFont(NewWidth);
   if FWidth = NewWidth then exit;
   FWidth := NewWidth;
   VisibilityOrSize;
@@ -665,7 +676,6 @@ begin
   FVisible := True;
   FAutoSize := True;
   Inherited Create(AOwner); // Todo: Lock the DoChange from RegisterItem, and call DoChange at the end (after/in autosize)
-  DoAutoSize; // Calls PreferedWidth(), must be after Init();
 end;
 
 procedure TSynGutterPartBase.Init;
@@ -757,7 +767,10 @@ end;
 
 procedure TSynGutterPartBase.ScalePPI(const AScaleFactor: Double);
 begin
-  Width := Round(Width*AScaleFactor);
+  if not FAutoSize then
+    Width := Round(Width*AScaleFactor)
+  else
+    DoAutoSize;
 end;
 
 procedure TSynGutterPartBase.DoOnGutterClick(X, Y : integer);
